@@ -1,0 +1,327 @@
+
+Supported schemas
+Structured Outputs supports a subset of the JSON Schema language.
+
+Supported types
+The following types are supported for Structured Outputs:
+
+String
+Number
+Boolean
+Integer
+Object
+Array
+Enum
+anyOf
+Root objects must not be anyOf
+Note that the root level object of a schema must be an object, and not use anyOf. A pattern that appears in Zod (as one example) is using a discriminated union, which produces an anyOf at the top level. So code such as the following won't work:
+
+
+import { z } from 'zod';
+import { zodResponseFormat } from 'openai/helpers/zod';
+
+const BaseResponseSchema = z.object({ /* ... */ });
+const UnsuccessfulResponseSchema = z.object({ /* ... */ });
+
+const finalSchema = z.discriminatedUnion('status', [
+BaseResponseSchema,
+UnsuccessfulResponseSchema,
+]);
+
+// Invalid JSON Schema for Structured Outputs
+const json = zodResponseFormat(finalSchema, 'final_schema');
+All fields must be required
+To use Structured Outputs, all fields or function parameters must be specified as required.
+
+
+{
+"name": "get_weather",
+"description": "Fetches the weather in the given location",
+"strict": true,
+"parameters": {
+"type": "object",
+"properties": {
+"location": {
+"type": "string",
+"description": "The location to get the weather for"
+},
+"unit": {
+"type": "string",
+"description": "The unit to return the temperature in",
+"enum": ["F", "C"]
+}
+},
+"additionalProperties": false,
+"required": ["location", "unit"]
+}
+}
+Although all fields must be required (and the model will return a value for each parameter), it is possible to emulate an optional parameter by using a union type with null.
+
+
+{
+"name": "get_weather",
+"description": "Fetches the weather in the given location",
+"strict": true,
+"parameters": {
+"type": "object",
+"properties": {
+"location": {
+"type": "string",
+"description": "The location to get the weather for"
+},
+"unit": {
+"type": ["string", "null"],
+"description": "The unit to return the temperature in",
+"enum": ["F", "C"]
+}
+},
+"additionalProperties": false,
+"required": [
+"location", "unit"
+]
+}
+}
+Objects have limitations on nesting depth and size
+A schema may have up to 100 object properties total, with up to 5 levels of nesting.
+
+Limitations on total string size
+In a schema, total string length of all property names, definition names, enum values, and const values cannot exceed 15,000 characters.
+
+Limitations on enum size
+A schema may have up to 500 enum values across all enum properties.
+
+For a single enum property with string values, the total string length of all enum values cannot exceed 7,500 characters when there are more than 250 enum values.
+
+additionalProperties: false must always be set in objects
+additionalProperties controls whether it is allowable for an object to contain additional keys / values that were not defined in the JSON Schema.
+
+Structured Outputs only supports generating specified keys / values, so we require developers to set additionalProperties: false to opt into Structured Outputs.
+
+
+{
+"name": "get_weather",
+"description": "Fetches the weather in the given location",
+"strict": true,
+"schema": {
+"type": "object",
+"properties": {
+"location": {
+"type": "string",
+"description": "The location to get the weather for"
+},
+"unit": {
+"type": "string",
+"description": "The unit to return the temperature in",
+"enum": ["F", "C"]
+}
+},
+"additionalProperties": false,
+"required": [
+"location", "unit"
+]
+}
+}
+Key ordering
+When using Structured Outputs, outputs will be produced in the same order as the ordering of keys in the schema.
+
+Some type-specific keywords are not yet supported
+Notable keywords not supported include:
+
+For strings: minLength, maxLength, pattern, format
+For numbers: minimum, maximum, multipleOf
+For objects: patternProperties, unevaluatedProperties, propertyNames, minProperties, maxProperties
+For arrays: unevaluatedItems, contains, minContains, maxContains, minItems, maxItems, uniqueItems
+If you turn on Structured Outputs by supplying strict: true and call the API with an unsupported JSON Schema, you will receive an error.
+
+For anyOf, the nested schemas must each be a valid JSON Schema per this subset
+Here's an example supported anyOf schema:
+
+
+{
+"type": "object",
+"properties": {
+"item": {
+"anyOf": [
+{
+"type": "object",
+"description": "The user object to insert into the database",
+"properties": {
+"name": {
+"type": "string",
+"description": "The name of the user"
+},
+"age": {
+"type": "number",
+"description": "The age of the user"
+}
+},
+"additionalProperties": false,
+"required": [
+"name",
+"age"
+]
+},
+{
+"type": "object",
+"description": "The address object to insert into the database",
+"properties": {
+"number": {
+"type": "string",
+"description": "The number of the address. Eg. for 123 main st, this would be 123"
+},
+"street": {
+"type": "string",
+"description": "The street name. Eg. for 123 main st, this would be main st"
+},
+"city": {
+"type": "string",
+"description": "The city of the address"
+}
+},
+"additionalProperties": false,
+"required": [
+"number",
+"street",
+"city"
+]
+}
+]
+}
+},
+"additionalProperties": false,
+"required": [
+"item"
+]
+}
+Definitions are supported
+You can use definitions to define subschemas which are referenced throughout your schema. The following is a simple example.
+
+
+{
+"type": "object",
+"properties": {
+"steps": {
+"type": "array",
+"items": {
+"$ref": "#/$defs/step"
+}
+},
+"final_answer": {
+"type": "string"
+}
+},
+"$defs": {
+"step": {
+"type": "object",
+"properties": {
+"explanation": {
+"type": "string"
+},
+"output": {
+"type": "string"
+}
+},
+"required": [
+"explanation",
+"output"
+],
+"additionalProperties": false
+}
+},
+"required": [
+"steps",
+"final_answer"
+],
+"additionalProperties": false
+}
+Recursive schemas are supported
+Sample recursive schema using # to indicate root recursion.
+
+
+{
+"name": "ui",
+"description": "Dynamically generated UI",
+"strict": true,
+"schema": {
+"type": "object",
+"properties": {
+"type": {
+"type": "string",
+"description": "The type of the UI component",
+"enum": ["div", "button", "header", "section", "field", "form"]
+},
+"label": {
+"type": "string",
+"description": "The label of the UI component, used for buttons or form fields"
+},
+"children": {
+"type": "array",
+"description": "Nested UI components",
+"items": {
+"$ref": "#"
+}
+},
+"attributes": {
+"type": "array",
+"description": "Arbitrary attributes for the UI component, suitable for any element",
+"items": {
+"type": "object",
+"properties": {
+"name": {
+"type": "string",
+"description": "The name of the attribute, for example onClick or className"
+},
+"value": {
+"type": "string",
+"description": "The value of the attribute"
+}
+},
+"additionalProperties": false,
+"required": ["name", "value"]
+}
+}
+},
+"required": ["type", "label", "children", "attributes"],
+"additionalProperties": false
+}
+}
+Sample recursive schema using explicit recursion:
+
+
+{
+"type": "object",
+"properties": {
+"linked_list": {
+"$ref": "#/$defs/linked_list_node"
+}
+},
+"$defs": {
+"linked_list_node": {
+"type": "object",
+"properties": {
+"value": {
+"type": "number"
+},
+"next": {
+"anyOf": [
+{
+"$ref": "#/$defs/linked_list_node"
+},
+{
+"type": "null"
+}
+]
+}
+},
+"additionalProperties": false,
+"required": [
+"next",
+"value"
+]
+}
+},
+"additionalProperties": false,
+"required": [
+"linked_list"
+]
+}
