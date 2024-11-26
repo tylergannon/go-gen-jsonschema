@@ -8,7 +8,9 @@ var PackageLoadNeeds = packages.NeedDeps |
 	packages.NeedName |
 	packages.NeedSyntax |
 	packages.NeedTypes |
-	packages.NeedTypesInfo
+	packages.NeedTypesInfo |
+	packages.NeedCompiledGoFiles |
+	packages.NeedFiles
 
 var DefaultPackageCfg = &packages.Config{
 	Mode:  PackageLoadNeeds,

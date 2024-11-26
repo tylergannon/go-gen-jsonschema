@@ -2,38 +2,39 @@ package schemabuilder
 
 import (
 	"fmt"
-	"golang.org/x/tools/go/packages"
+	"github.com/dave/dst/decorator"
 	"slices"
 )
 
 type importMapTuple struct {
 	alias string
-	pkg   *packages.Package
+	pkg   *decorator.Package
 }
 
 // ImportMap helps with code generation by storing a list of packages
 // along with aliases.  The alias can be looked up using the package object,
 // which is stored alongside our AST nodes in QuestImpl and TaskImpl objects.
 type ImportMap struct {
-	localPackage *packages.Package
+	localPackage *decorator.Package
 	aliasCount   int
 	types        []importMapTuple
 }
 
-func NewImportMap(localPackage *packages.Package) *ImportMap {
+func NewImportMap(localPackage *decorator.Package) *ImportMap {
 	return &ImportMap{localPackage: localPackage}
 }
 
-func (m *ImportMap) FindPackageContainingDeclaration(name string) *packages.Package {
+func (m *ImportMap) FindPackageContainingDeclaration(name string) *decorator.Package {
 	for _, tuple := range m.types {
 		pkg := tuple.pkg
 		for _, info := range pkg.TypesInfo.Types {
-
+			_ = info
 		}
 	}
+	return nil
 }
 
-func (m *ImportMap) GetPackage(path string) *packages.Package {
+func (m *ImportMap) GetPackage(path string) *decorator.Package {
 	if m.localPackage.PkgPath == path {
 		return m.localPackage
 	}
@@ -49,7 +50,7 @@ func (m *ImportMap) GetPackage(path string) *packages.Package {
 // AddPackage inserts the package into the map, unless it is already contained
 // there.  Adds an alias if the alias has already been found.  Keeps a simple
 // counter for creating very simple aliases.
-func (m *ImportMap) AddPackage(pkg *packages.Package) {
+func (m *ImportMap) AddPackage(pkg *decorator.Package) {
 	if m.localPackage.ID == pkg.ID {
 		return
 	}
@@ -57,7 +58,7 @@ func (m *ImportMap) AddPackage(pkg *packages.Package) {
 
 	newObj := struct {
 		alias string
-		pkg   *packages.Package
+		pkg   *decorator.Package
 	}{pkg: pkg}
 
 	for _, t := range m.types {
@@ -79,7 +80,7 @@ func (m *ImportMap) AddPackage(pkg *packages.Package) {
 // building a template object.  It correctly prints a type name or call
 // expression using the right package name prefix/alias (or none if the
 // expression refers to an identifier defined in the local package).
-func (m *ImportMap) PrefixExpr(expr string, pkg *packages.Package) string {
+func (m *ImportMap) PrefixExpr(expr string, pkg *decorator.Package) string {
 	if pkg.ID == m.localPackage.ID {
 		return expr
 	}
@@ -97,7 +98,7 @@ func (m *ImportMap) ImportStatements() []string {
 	return result
 }
 
-func (m *ImportMap) Alias(pkg *packages.Package) string {
+func (m *ImportMap) Alias(pkg *decorator.Package) string {
 	for _, t := range m.types {
 		if t.pkg.ID == pkg.ID {
 			if t.alias == "" {
