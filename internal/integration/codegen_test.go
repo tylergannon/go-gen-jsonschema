@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 )
 
-var cleanUp = true
+var cleanUp = false
 
 var _ = AfterSuite(func() {
 	if cleanUp {
@@ -21,6 +21,7 @@ var _ = Describe("Codegen", func() {
 	// Function to assert successful command execution
 	var CmdSuccessAssertions = func(stdout, stderr string, exitCode int) {
 		Expect(stderr).To(BeEmpty())
+		fmt.Println(stdout)
 		//Expect(stdout).NotTo(BeEmpty())
 		Expect(exitCode).To(Equal(0))
 	}
