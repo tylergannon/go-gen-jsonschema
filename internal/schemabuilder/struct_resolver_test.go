@@ -11,7 +11,7 @@ import (
 
 var _ = Describe("AST Struct Resolution", func() {
 	var (
-		importMap *ImportMap
+		importMap *PackageMap
 	)
 	BeforeEach(func() {
 		var err error
@@ -24,7 +24,7 @@ var _ = Describe("AST Struct Resolution", func() {
 			return p.Name == "testapp1"
 		})
 		Expect(mainPkgIdx).To(BeNumerically(">=", 0))
-		importMap = NewImportMap(pkgs[mainPkgIdx])
+		importMap = NewPackageMap(pkgs[mainPkgIdx])
 		for _, pkg := range pkgs {
 			importMap.AddPackage(pkg)
 		}

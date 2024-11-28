@@ -52,7 +52,7 @@ type StructTypeData struct {
 }
 
 // resolveStruct recursively resolves a struct type, handling definitions and aliases.
-func resolveStruct(importMap *ImportMap, typeName string, path string) (result *StructTypeData, err error) {
+func resolveStruct(importMap *PackageMap, typeName string, path string) (result *StructTypeData, err error) {
 	var (
 		pkg = importMap.GetPackage(path)
 	)
@@ -99,7 +99,7 @@ func resolveStruct(importMap *ImportMap, typeName string, path string) (result *
 }
 
 // getImportedPackage resolves an imported package from the current AST.
-func getImportedPackage(importMap *ImportMap, importName string) *packages.Package {
+func getImportedPackage(importMap *PackageMap, importName string) *packages.Package {
 	// Example: look through imports and resolve the associated package.
 	// This function needs the imports loaded and parsed to work correctly.
 	// Stubbed here for simplicity.

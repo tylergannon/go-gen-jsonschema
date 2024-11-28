@@ -2,15 +2,15 @@ package schemabuilder
 
 import (
 	"fmt"
-	"github.com/fatih/structtag"
 	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+	"github.com/tylergannon/structtag"
 	"golang.org/x/tools/go/packages"
 	"log"
 )
 
 type SchemaBuilder struct {
 	RootType  *StructTypeData
-	ImportMap *ImportMap
+	ImportMap *PackageMap
 	// The schema of the actual type we're making a schema for.
 	Root jsonschema.JSONSchema
 	// Any nested types can be either:
@@ -49,7 +49,7 @@ func (b *SchemaBuilder) scan() error {
 		if err != nil {
 			log.Fatalf("Required JSON annotations not implemented on struct %s", b.RootType.TypeSpec.Name.Name)
 		}
-		if jsonTag.Name == "-" {
+		if jsonTag.Options[0] == "-" {
 			continue
 		}
 	}
