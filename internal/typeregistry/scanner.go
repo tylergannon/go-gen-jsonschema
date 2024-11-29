@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/dave/dst"
 	"github.com/dave/dst/decorator"
+	"github.com/tylergannon/go-gen-jsonschema/internal/loader"
 	"go/token"
 	"log"
 )
@@ -16,10 +17,12 @@ const (
 
 func NewRegistry(pkgs []*decorator.Package) (*Registry, error) {
 	registry := &Registry{
-		typeMap:  make(map[string]TypeSpec),
-		packages: pkgs,
+		typeMap:    map[TypeID]TypeSpec{},
+		packages:   map[string]*decorator.Package{},
+		unionTypes: map[TypeID]*UnionTypeDecl{},
 	}
 	for _, pkg := range pkgs {
+		registry.packages[pkg.PkgPath] = pkg
 		if err := registry.Scan(pkg); err != nil {
 			return nil, err
 		}
@@ -27,7 +30,26 @@ func NewRegistry(pkgs []*decorator.Package) (*Registry, error) {
 	return registry, nil
 }
 
+func (r *Registry) LoadAndScan(pkgPath string) error {
+	if r.packages[pkgPath] != nil {
+		return nil
+	}
+	if pkgs, err := loader.Load(pkgPath); err != nil {
+		return err
+	} else {
+		for _, pkg := range pkgs {
+			if err = r.Scan(pkg); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 func (r *Registry) Scan(pkg *decorator.Package) error {
+	if r.packages[pkg.PkgPath] != nil {
+		return nil
+	}
 	for _, file := range pkg.Syntax {
 		if err := r.scanFile(file, pkg); err != nil {
 			return err
@@ -97,8 +119,7 @@ func (r *Registry) registerUnionTypeDecl(file *dst.File, pkg *decorator.Package,
 	}
 	unionTypeDecl.File = file
 	unionTypeDecl.Pkg = pkg
-
-	r.unionTypes = append(r.unionTypes, unionTypeDecl)
+	r.unionTypes[unionTypeDecl.ID()] = unionTypeDecl
 
 	return nil
 }

@@ -1,24 +1,42 @@
 package typeregistry
 
 import (
-	"fmt"
 	"github.com/dave/dst"
 	"github.com/dave/dst/decorator"
 	"log"
 )
 
 type Registry struct {
-	packages   []*decorator.Package
-	typeMap    map[string]TypeSpec
-	unionTypes []*UnionTypeDecl
+	packages   map[string]*decorator.Package
+	typeMap    map[TypeID]TypeSpec
+	unionTypes map[TypeID]*UnionTypeDecl
+}
+
+type TypeID string
+
+type IdentifiableByType interface {
+	// ID returns a string name composed of package and type name.
+	ID() TypeID
+}
+
+func NewTypeID(pkgPath, typeName string) TypeID {
+	return TypeID(pkgPath + "." + typeName)
+}
+
+func (r *Registry) GetType(name string, pkgPath string) (TypeSpec, *UnionTypeDecl, bool) {
+	typeID := NewTypeID(pkgPath, name)
+	if ts, ok := r.typeMap[typeID]; !ok {
+		return ts, r.unionTypes[typeID], true
+	}
+	return nil, nil, false
 }
 
 type TypeSpec interface {
+	IdentifiableByType
 	TypeSpec() *dst.TypeSpec
 	Pkg() *decorator.Package
 	GenDecl() *dst.GenDecl
 	File() *dst.File
-	ID() string
 }
 
 type TypeAlternative struct {
@@ -35,6 +53,10 @@ type UnionTypeDecl struct {
 	Alternatives        []TypeAlternative
 	File                *dst.File
 	Pkg                 *decorator.Package
+}
+
+func (d *UnionTypeDecl) ID() TypeID {
+	return NewTypeID(d.DestTypePackagePath, d.DestTypeName)
 }
 
 func NewUnionTypeDecl(importMap ImportMap, expr dst.Expr) *UnionTypeDecl {
@@ -63,8 +85,8 @@ type typeSpec struct {
 	file    *dst.File
 }
 
-func (ts *typeSpec) ID() string {
-	return fmt.Sprintf("%s.%s", ts.pkg.PkgPath, ts.typeSpec.Name.Name)
+func (ts *typeSpec) ID() TypeID {
+	return NewTypeID(ts.pkg.PkgPath, ts.typeSpec.Name.Name)
 }
 
 var _ TypeSpec = (*typeSpec)(nil)

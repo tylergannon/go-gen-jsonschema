@@ -4,7 +4,7 @@ import (
 	"github.com/dave/dst/decorator"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/tylergannon/go-gen-jsonschema/internal/schemabuilder"
+	"github.com/tylergannon/go-gen-jsonschema/internal/loader"
 )
 
 var _ = Describe("Scan", func() {
@@ -14,7 +14,7 @@ var _ = Describe("Scan", func() {
 	)
 	BeforeEach(func() {
 		var err error
-		pkgs, err = decorator.Load(schemabuilder.DefaultPackageCfg, "./testfixtures/registrytestapp/...")
+		pkgs, err = loader.Load("./testfixtures/registrytestapp/...")
 		Expect(err).NotTo(HaveOccurred())
 		registry, err = NewRegistry(pkgs)
 		Expect(err).NotTo(HaveOccurred())
