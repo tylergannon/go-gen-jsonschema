@@ -4,7 +4,7 @@ type UnionType struct{}
 
 type TypeAlt[T any] struct{}
 
-func NewUnionType[T any](typeAlternatives ...TypeAlt[T]) UnionType {
+func SetTypeAlternative[T any](typeAlternatives ...TypeAlt[T]) UnionType {
 	return UnionType{}
 }
 

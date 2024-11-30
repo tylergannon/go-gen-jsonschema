@@ -11,7 +11,7 @@ import (
 // to provide actual times in various frames
 type LLMFriendlyTime time.Time
 
-var _ = jsonschema.NewUnionType[LLMFriendlyTime](
+var _ = jsonschema.SetTypeAlternative[LLMFriendlyTime](
 	// For referencing a time in the past using relative units
 	jsonschema.Alt("timeAgo", TimeAgo.ToTime),
 	// For referencing a time in the future using relative units

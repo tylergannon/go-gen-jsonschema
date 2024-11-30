@@ -15,7 +15,7 @@ func Norgle(x int) (LLMFriendlyTime, error) {
 // to provide actual times in various frames
 type LLMFriendlyTime time.Time
 
-var _ = jsonschema.NewUnionType[LLMFriendlyTime](
+var _ = jsonschema.SetTypeAlternative[LLMFriendlyTime](
 	// For referencing a time in the past using relative units
 	jsonschema.Alt("timeAgo", TimeAgo.ToTime),
 	// For referencing a time in the future using relative units
@@ -29,7 +29,7 @@ var _ = jsonschema.NewUnionType[LLMFriendlyTime](
 	jsonschema.Alt("norgle", Norgle),
 )
 
-var NamedUnionType = jsonschema.NewUnionType[LLMFriendlyTime](
+var NamedUnionType = jsonschema.SetTypeAlternative[LLMFriendlyTime](
 	// For referencing a time in the past using relative units
 	jsonschema.Alt("timeAgo", TimeAgo.ToTime),
 	// For referencing a time in the future using relative units

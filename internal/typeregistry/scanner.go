@@ -11,7 +11,7 @@ import (
 
 const (
 	JSONSchemaPackage = "github.com/tylergannon/go-gen-jsonschema"
-	UnionTypeFunc     = "NewUnionType"
+	UnionTypeFunc     = "SetTypeAlternative"
 	TypeAltFunc       = "Alt"
 )
 
@@ -91,7 +91,7 @@ func (r *Registry) registerVarDecl(file *dst.File, pkg *decorator.Package, decl 
 }
 
 // isUnionTypeDecl determines whether the *dst.CallExpr is a call to
-// jsonschema.NewUnionType, by checking the selector expression.
+// jsonschema.SetTypeAlternative, by checking the selector expression.
 func isUnionTypeDecl(callExpr *dst.CallExpr, importMap ImportMap) bool {
 	indexExpr, ok := callExpr.Fun.(*dst.IndexExpr)
 	if !ok {
@@ -109,7 +109,7 @@ func (r *Registry) registerUnionTypeDecl(file *dst.File, pkg *decorator.Package,
 	if !ok {
 		panic("that should not be")
 	}
-	unionTypeDecl := NewUnionTypeDecl(importMap, indexExpr.Index)
+	unionTypeDecl := SetTypeAlternativeDecl(importMap, indexExpr.Index)
 	for _, arg := range callExpr.Args {
 		alt, err := interpretUnionTypeAltArg(arg, importMap)
 		if err != nil {

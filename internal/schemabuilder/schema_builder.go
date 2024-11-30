@@ -18,7 +18,12 @@ func New(typeNames []string, pkgPath string, pkgs []*decorator.Package) (*Schema
 		return nil, fmt.Errorf("could not create typeregister registry: %w", err)
 	}
 	builder := &SchemaBuilder{
-		registry: registry,
+		registry:     registry,
+		localPkgPath: pkgPath,
+	}
+
+	for _, typeName := range typeNames {
+		target, union, found := registry.GetType(typeName, pkgPath)
 	}
 
 	// For each of the given types, search the types maps to ensure that all

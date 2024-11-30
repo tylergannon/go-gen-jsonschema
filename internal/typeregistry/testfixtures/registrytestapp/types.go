@@ -5,7 +5,7 @@ import (
 	"github.com/tylergannon/go-gen-jsonschema/internal/typeregistry/testfixtures/registrytestapp/subpkg"
 )
 
-var _ = jsonschema.NewUnionType[subpkg.LLMFriendlyTime](
+var _ = jsonschema.SetTypeAlternative[subpkg.LLMFriendlyTime](
 	// For referencing a time in the past using relative units
 	jsonschema.Alt("timeAgo", subpkg.TimeAgo.ToTime),
 	// For referencing a time in the future using relative units

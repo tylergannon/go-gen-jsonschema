@@ -1,6 +1,7 @@
 package typeregistry
 
 import (
+	"fmt"
 	"github.com/dave/dst"
 	"github.com/dave/dst/decorator"
 	"log"
@@ -10,6 +11,15 @@ type Registry struct {
 	packages   map[string]*decorator.Package
 	typeMap    map[TypeID]TypeSpec
 	unionTypes map[TypeID]*UnionTypeDecl
+}
+
+func (r *Registry) AddTarget(typeName, pkgPath string) error {
+	if err := r.LoadAndScan(pkgPath); err != nil {
+		return fmt.Errorf("loading package: %w", err)
+	}
+	//ts, unionType, _ := r.GetType(typeName, pkgPath)
+
+	return nil
 }
 
 type TypeID string
@@ -59,7 +69,7 @@ func (d *UnionTypeDecl) ID() TypeID {
 	return NewTypeID(d.DestTypePackagePath, d.DestTypeName)
 }
 
-func NewUnionTypeDecl(importMap ImportMap, expr dst.Expr) *UnionTypeDecl {
+func SetTypeAlternativeDecl(importMap ImportMap, expr dst.Expr) *UnionTypeDecl {
 	switch expr := expr.(type) {
 	case *dst.Ident:
 		//log.Printf("Name: %s, Path: %s, Obj: %v, %T", expr.Name, expr.Path, expr.Obj, expr.Obj)
