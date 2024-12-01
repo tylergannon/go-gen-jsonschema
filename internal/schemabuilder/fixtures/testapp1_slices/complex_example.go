@@ -1,6 +1,6 @@
 package testapp1
 
-import "github.com/tylergannon/go-gen-jsonschema/internal/schemabuilder/fixtures/testapp1/subpkg"
+import "github.com/tylergannon/go-gen-jsonschema/internal/schemabuilder/fixtures/testapp0_simple/subpkg"
 
 // Build this struct in order to really get a lot of meaning out of life.
 // It's really essential that you get all of this down.
