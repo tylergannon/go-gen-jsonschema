@@ -2,6 +2,7 @@ package typeregistry
 
 import (
 	"errors"
+	"fmt"
 	"github.com/dave/dst"
 	"github.com/dave/dst/decorator"
 	"github.com/tylergannon/go-gen-jsonschema/internal/loader"
@@ -20,33 +21,40 @@ func NewRegistry(pkgs []*decorator.Package) (*Registry, error) {
 		typeMap:    map[TypeID]TypeSpec{},
 		packages:   map[string]*decorator.Package{},
 		unionTypes: map[TypeID]*UnionTypeDecl{},
+		imports:    map[string]*decorator.Package{},
 	}
 	for _, pkg := range pkgs {
-		registry.packages[pkg.PkgPath] = pkg
-		if err := registry.Scan(pkg); err != nil {
+		if err := registry.scan(pkg); err != nil {
 			return nil, err
 		}
 	}
 	return registry, nil
 }
 
+// LoadAndScan finds all type declarations and type alternate declarations.
+// Does *NOT* differentiate type declarations, filter them, validate them, etc.
 func (r *Registry) LoadAndScan(pkgPath string) error {
 	if r.packages[pkgPath] != nil {
 		return nil
 	}
-	if pkgs, err := loader.Load(pkgPath); err != nil {
+	var (
+		pkgs []*decorator.Package
+		err  error
+	)
+	if pkg, ok := r.imports[pkgPath]; ok {
+		pkgs = append(pkgs, pkg)
+	} else if pkgs, err = loader.Load(pkgPath); err != nil {
 		return err
-	} else {
-		for _, pkg := range pkgs {
-			if err = r.Scan(pkg); err != nil {
-				return err
-			}
+	}
+	for _, pkg := range pkgs {
+		if err = r.scan(pkg); err != nil {
+			return err
 		}
 	}
 	return nil
 }
 
-func (r *Registry) Scan(pkg *decorator.Package) error {
+func (r *Registry) scan(pkg *decorator.Package) error {
 	if r.packages[pkg.PkgPath] != nil {
 		return nil
 	}
@@ -54,6 +62,10 @@ func (r *Registry) Scan(pkg *decorator.Package) error {
 		if err := r.scanFile(file, pkg); err != nil {
 			return err
 		}
+	}
+	r.packages[pkg.PkgPath] = pkg
+	for _, pkg := range pkg.Imports {
+		r.imports[pkg.PkgPath] = pkg
 	}
 	return nil
 }
@@ -63,7 +75,9 @@ func (r *Registry) scanFile(file *dst.File, pkg *decorator.Package) error {
 	for _, decl := range getTypeDecls(file) {
 		switch decl.Tok {
 		case token.TYPE:
-			r.registerTypeDecl(file, pkg, decl)
+			if err := r.registerTypeDecl(file, pkg, decl); err != nil {
+				return fmt.Errorf("registering type decl %v in file %s (pkg %s): %w", decl, file.Name.Name, pkg.PkgPath, err)
+			}
 		case token.VAR:
 			if err := r.registerVarDecl(file, pkg, decl, importMap); err != nil {
 				return err
@@ -137,7 +151,6 @@ func interpretUnionTypeAltArg(expr dst.Expr, importMap ImportMap) (alt TypeAlter
 			return alt, ErrInvalidUnionTypeArg
 		}
 	default:
-		log.Printf("Alt Arg: %T, %v\n", callExpr.Fun, callExpr.Fun)
 		return alt, ErrInvalidUnionTypeArg
 	}
 	alt.Alias = callExpr.Args[0].(*dst.BasicLit).Value
@@ -152,22 +165,21 @@ func interpretUnionTypeAltArg(expr dst.Expr, importMap ImportMap) (alt TypeAlter
 			alt.TypeName = ident.Name
 			alt.FuncName = typeArg.Sel.Name
 		} else {
-			log.Printf("Selector.X unrecognized: %T, %v\n", typeArg, typeArg)
 			return alt, ErrInvalidUnionTypeArg
 		}
 	case *dst.Ident:
 		alt.PkgPath = importMap[""]
 		alt.FuncName = typeArg.Name
 	default:
-		log.Printf("Unrecognized arg Alt Arg: %T, %v\n", typeArg, typeArg)
 		return alt, ErrInvalidUnionTypeArg
 	}
 
 	return alt, nil
 }
 
-func (r *Registry) registerTypeDecl(file *dst.File, pkg *decorator.Package, genDecl *dst.GenDecl) {
+func (r *Registry) registerTypeDecl(file *dst.File, pkg *decorator.Package, genDecl *dst.GenDecl) error {
 	for _, spec := range toTypeSpecs(genDecl.Specs) {
+		inspect("Scanned spec", spec)
 		ts := &typeSpec{
 			typeSpec: spec,
 			pkg:      pkg,
@@ -176,6 +188,7 @@ func (r *Registry) registerTypeDecl(file *dst.File, pkg *decorator.Package, genD
 		}
 		r.typeMap[ts.ID()] = ts
 	}
+	return nil
 }
 
 // getTypeDecls locates all GenDecl nodes for TYPE and VAR declarations
@@ -200,4 +213,8 @@ func toTypeSpecs(specs []dst.Spec) (ts []*dst.TypeSpec) {
 		ts = append(ts, spec.(*dst.TypeSpec))
 	}
 	return ts
+}
+
+func inspect(str string, item any) {
+	log.Printf("inspect %s: %T %v\n", str, item, item)
 }

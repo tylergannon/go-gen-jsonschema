@@ -1,9 +1,9 @@
 package typeregistry
 
 import (
-	"fmt"
 	"github.com/dave/dst"
 	"github.com/dave/dst/decorator"
+	"go/types"
 	"log"
 )
 
@@ -11,15 +11,7 @@ type Registry struct {
 	packages   map[string]*decorator.Package
 	typeMap    map[TypeID]TypeSpec
 	unionTypes map[TypeID]*UnionTypeDecl
-}
-
-func (r *Registry) AddTarget(typeName, pkgPath string) error {
-	if err := r.LoadAndScan(pkgPath); err != nil {
-		return fmt.Errorf("loading package: %w", err)
-	}
-	//ts, unionType, _ := r.GetType(typeName, pkgPath)
-
-	return nil
+	imports    map[string]*decorator.Package
 }
 
 type TypeID string
@@ -35,18 +27,85 @@ func NewTypeID(pkgPath, typeName string) TypeID {
 
 func (r *Registry) GetType(name string, pkgPath string) (TypeSpec, *UnionTypeDecl, bool) {
 	typeID := NewTypeID(pkgPath, name)
-	if ts, ok := r.typeMap[typeID]; !ok {
+
+	if ts, ok := r.typeMap[typeID]; ok {
 		return ts, r.unionTypes[typeID], true
+	}
+	for k, _ := range r.typeMap {
+		if string(typeID) == string(k) {
+			log.Printf("Found type %s in map", typeID)
+		}
 	}
 	return nil, nil, false
 }
 
+type (
+	BasicType   string
+	InvalidType string
+)
+
+func (b BasicType) GetType() *types.TypeName {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (b BasicType) GetTypeSpec() *dst.TypeSpec {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (b BasicType) Pkg() *decorator.Package {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (b BasicType) GenDecl() *dst.GenDecl {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (b BasicType) File() *dst.File {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (b BasicType) Decorations() *dst.NodeDecs {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (b BasicType) ID() TypeID {
+	return TypeID(string(b))
+}
+
+const (
+	BasicTypeString BasicType = "string"
+	BasicTypeInt    BasicType = "int"
+	BasicTypeBool   BasicType = "bool"
+	BasicTypeFloat  BasicType = "float"
+)
+
+var _ TypeSpec = BasicTypeString
+
+const (
+	InvalidTypeChannel   InvalidType = "channel"
+	InvalidTypeFunc      InvalidType = "func"
+	InvalidTypeInterface InvalidType = "interface"
+	InvalidTypeUnsafe    InvalidType = "unsafe"
+)
+
+func (i InvalidType) ID() TypeID {
+	return TypeID(string(i))
+}
+
 type TypeSpec interface {
 	IdentifiableByType
-	TypeSpec() *dst.TypeSpec
+	GetTypeSpec() *dst.TypeSpec
 	Pkg() *decorator.Package
 	GenDecl() *dst.GenDecl
 	File() *dst.File
+	Decorations() *dst.NodeDecs
+	GetType() *types.TypeName
 }
 
 type TypeAlternative struct {
@@ -95,13 +154,32 @@ type typeSpec struct {
 	file    *dst.File
 }
 
+func (ts *typeSpec) GetType() *types.TypeName {
+	return ts.pkg.Types.Scope().Lookup(ts.typeSpec.Name.Name).(*types.TypeName)
+}
+
+func (ts *typeSpec) Decorations() *dst.NodeDecs {
+	var nodeDecs dst.NodeDecs
+	if start := ts.typeSpec.Decorations().Start; start != nil {
+		nodeDecs.Start.Replace(start...)
+	} else if start := ts.genDecl.Decorations().Start; start != nil {
+		nodeDecs.Start.Replace(start...)
+	}
+	if end := ts.typeSpec.Decorations().End; end != nil {
+		nodeDecs.End.Replace(end...)
+	} else if end := ts.genDecl.Decorations().End; end != nil {
+		nodeDecs.End.Replace(end...)
+	}
+	return &nodeDecs
+}
+
 func (ts *typeSpec) ID() TypeID {
 	return NewTypeID(ts.pkg.PkgPath, ts.typeSpec.Name.Name)
 }
 
 var _ TypeSpec = (*typeSpec)(nil)
 
-func (ts *typeSpec) TypeSpec() *dst.TypeSpec {
+func (ts *typeSpec) GetTypeSpec() *dst.TypeSpec {
 	return ts.typeSpec
 }
 
