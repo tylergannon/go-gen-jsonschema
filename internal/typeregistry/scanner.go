@@ -18,7 +18,7 @@ const (
 
 func NewRegistry(pkgs []*decorator.Package) (*Registry, error) {
 	registry := &Registry{
-		typeMap:    map[TypeID]TypeSpec{},
+		typeMap:    map[TypeID]*typeSpec{},
 		packages:   map[string]*decorator.Package{},
 		unionTypes: map[TypeID]*UnionTypeDecl{},
 		imports:    map[string]*decorator.Package{},
@@ -215,6 +215,9 @@ func toTypeSpecs(specs []dst.Spec) (ts []*dst.TypeSpec) {
 	return ts
 }
 
-func inspect(str string, item any) {
-	log.Printf("inspect %s: %T %v\n", str, item, item)
+func inspect(str string, item ...any) {
+	log.Printf("inspect %s: %T %v\n", str, item[0], item[0])
+	for i := 1; i < len(item); i++ {
+		log.Printf("     item[%d]: %T %v\n", i, item[i], item[i])
+	}
 }

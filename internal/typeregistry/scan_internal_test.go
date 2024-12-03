@@ -38,8 +38,55 @@ var _ = Describe("LoadAndValidate", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(registry.LoadAndScan("./testfixtures/testapp0_simple/...")).To(Succeed())
 	})
+	DescribeTable("Struct Types", func(typeName string, countFields int, options ...any) {
+		ts, _, found := registry.getType(typeName, filepath.Join(packageBase, "testapp0_simple"))
+		Expect(found).To(BeTrue(), "item to be found, got %v", found)
+		_type := ts.GetType().Type()
+		namedType, ok := _type.(*types.Named)
+		Expect(ok).To(BeTrue(), "type is not a named type")
+		newTypeSpec, err := registry.LoadAndValidateNamedType(namedType)
+		Expect(err).NotTo(HaveOccurred())
+		structType, ok := newTypeSpec.(*NamedStructSpec)
+		Expect(ok).To(BeTrue(), "type is not a named type, but %T", newTypeSpec)
+		Expect(structType.Fields).To(HaveLen(countFields))
+		for _, opt := range options {
+			switch _opt := opt.(type) {
+			case func([]StructField):
+				_opt(structType.Fields)
+			}
+		}
+	},
+		Entry("Simple Struct", "SimpleStruct", 4, func(fields []StructField) {
+			f0 := fields[0]
+			Expect(f0.JSONName).To(Equal("_boolio"))
+		}),
+		Entry("Simple Struct", "SimpleStructWithPointer", 3, func(fields []StructField) {
+			f2 := fields[2]
+			Expect(f2.JSONName).To(Equal("baz"))
+			Expect(f2.Type).To(BeAssignableToTypeOf(BasicTypeString))
+			Expect(f2.Description).To(Equal("There can be multiline comments on a field But in that case, this will be ignored."))
+		}),
+		Entry("Struct with inline type for field", "EmbeddedStruct", 5, func(fields []StructField) {
+			inlineField := fields[2]
+			Expect(inlineField.JSONName).To(Equal("__nice__"))
+			inlineStruct, ok := inlineField.Type.(*InlineStructSpec)
+			Expect(ok).To(BeTrue())
+			Expect(inlineStruct.Fields).To(HaveLen(1))
+			Expect(inlineStruct.Fields[0].JSONName).To(Equal("node"))
+		}),
+		Entry("Struct with embedded types", "StructWithEmbeddedField", 6, func(fields []StructField) {
+			inlineField := fields[2]
+			Expect(inlineField.JSONName).To(Equal("__nice__"))
+			inlineStruct, ok := inlineField.Type.(*InlineStructSpec)
+			Expect(ok).To(BeTrue())
+			Expect(inlineStruct.Fields).To(HaveLen(1))
+			Expect(inlineStruct.Fields[0].JSONName).To(Equal("node"))
+
+			Expect(fields[5].JSONName).To(Equal("non_embedded_field"))
+		}),
+	)
 	DescribeTable("Invalid Types", func(typeName string) {
-		ts, _, found := registry.GetType(typeName, filepath.Join(packageBase, "testapp0_simple"))
+		ts, _, found := registry.getType(typeName, filepath.Join(packageBase, "testapp0_simple"))
 		Expect(found).To(BeTrue(), "item to be found, got %v", found)
 		_type := ts.GetType().Type()
 		namedType, ok := _type.(*types.Named)

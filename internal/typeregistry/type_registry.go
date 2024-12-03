@@ -1,6 +1,7 @@
 package typeregistry
 
 import (
+	"fmt"
 	"github.com/dave/dst"
 	"github.com/dave/dst/decorator"
 	"go/types"
@@ -9,7 +10,7 @@ import (
 
 type Registry struct {
 	packages   map[string]*decorator.Package
-	typeMap    map[TypeID]TypeSpec
+	typeMap    map[TypeID]*typeSpec
 	unionTypes map[TypeID]*UnionTypeDecl
 	imports    map[string]*decorator.Package
 }
@@ -25,7 +26,7 @@ func NewTypeID(pkgPath, typeName string) TypeID {
 	return TypeID(pkgPath + "." + typeName)
 }
 
-func (r *Registry) GetType(name string, pkgPath string) (TypeSpec, *UnionTypeDecl, bool) {
+func (r *Registry) getType(name string, pkgPath string) (*typeSpec, *UnionTypeDecl, bool) {
 	typeID := NewTypeID(pkgPath, name)
 
 	if ts, ok := r.typeMap[typeID]; ok {
@@ -193,4 +194,21 @@ func (ts *typeSpec) GenDecl() *dst.GenDecl {
 
 func (ts *typeSpec) File() *dst.File {
 	return ts.file
+}
+
+func resolveBasicType(t *types.Basic) (BasicType, error) {
+	switch t.Kind() {
+	case types.String:
+		return BasicTypeString, nil
+	case types.Bool:
+		return BasicTypeBool, nil
+	case types.Int:
+		return BasicTypeInt, nil
+	case types.Float32, types.Float64:
+		return BasicTypeFloat, nil
+	case types.Int8, types.Int16, types.Int32, types.Int64, types.Uint, types.Uint8, types.Uint16, types.Uint32, types.Uint64, types.Uintptr:
+		return BasicTypeInt, nil
+	default:
+		return BasicTypeString, fmt.Errorf("unsupported type %v", t.Kind())
+	}
 }

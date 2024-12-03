@@ -1,0 +1,29 @@
+{
+	"type": "object",
+	"description": "Build this struct in order to really get a lot of meaning out of life. It's really essential that you get all of this down.\n# There can be multiple paragraphs of text\n```go\ntype Foo string\n\n\tfunc foo() {\n\t    cool := 1\n\t}\n\n```\nThat's the end.",
+	"properties": {
+		"_boolio": {
+			"type": "boolean",
+			"description": "Boolean Types"
+		},
+		"foo": {
+			"type": "integer",
+			"description": "There can be comments here"
+		},
+		"bar": {
+			"type": "string",
+			"description": "There can also be comments to the right"
+		},
+		"baz": {
+			"type": "string",
+			"description": "There can be multiline comments on a field But in that case, this will be ignored."
+		}
+	},
+	"required": [
+		"_boolio",
+		"foo",
+		"bar",
+		"baz"
+	],
+	"additionalProperties": false
+}

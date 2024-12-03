@@ -53,7 +53,7 @@ type EmbeddedStruct struct {
 	EmbeddedField2 string `json:"embedded_field2"`
 	Foobar         struct {
 		Node string `json:"node"`
-	}
+	} `json:"__nice__"`
 	AnotherField AnotherStruct
 	PointerField *AnotherStruct
 }
