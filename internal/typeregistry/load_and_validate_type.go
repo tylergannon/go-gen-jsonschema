@@ -37,6 +37,16 @@ var (
 	ErrUnsupportedType = errors.New("unsupported type")
 )
 
+type PointerTypeSpec struct {
+	TypeSpec
+}
+
+var _ TypeSpec = (*PointerTypeSpec)(nil)
+
+type ArrayTypeSpec struct {
+	TypeSpec
+}
+
 func (r *Registry) LoadAndValidateType(typ types.Type) (TypeSpec, error) {
 	inspect("LoadAndValidateType", typ)
 	switch t := typ.(type) {
@@ -64,10 +74,12 @@ func (r *Registry) loadAndValidateNamedStruct(ts *typeSpec, namedType *types.Nam
 	if !ok {
 		panic("not a struct type (in loadAndValidateNamedStruct)")
 	}
+
 	structNode, ok := ts.typeSpec.Type.(*dst.StructType)
 	if !ok {
-		panic("ast node is not a struct type (in loadAndValidateNamedStruct)")
+		panic("ast Node is not a struct type (in loadAndValidateNamedStruct)")
 	}
+
 	var (
 		spec = &NamedStructSpec{
 			Description: buildComments(ts.Decorations()),
@@ -153,7 +165,7 @@ func (r *Registry) LoadAndValidateStruct(parent *NamedStructSpec, typ *types.Str
 		} else if !fieldConf.Exported() {
 			return spec, fmt.Errorf("exported fields are not supported: %w", ErrUnsupportedType)
 		}
-	
+
 		switch fieldType := fieldConf.fieldType().(type) {
 		case *types.Struct:
 			if fieldStructExpr, ok := str.Fields.List[i].Type.(*dst.StructType); !ok {
@@ -241,7 +253,7 @@ func (i InlineStructSpec) Decorations() *dst.NodeDecs {
 	panic("Not Implemented on inline type.")
 }
 
-func (i InlineStructSpec) GetType() *types.TypeName {
+func (i InlineStructSpec) GetType() types.Type {
 	panic("Not Implemented on inline type.")
 }
 

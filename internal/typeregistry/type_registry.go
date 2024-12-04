@@ -45,7 +45,7 @@ type (
 	InvalidType string
 )
 
-func (b BasicType) GetType() *types.TypeName {
+func (b BasicType) GetType() types.Type {
 	//TODO implement me
 	panic("implement me")
 }
@@ -106,7 +106,7 @@ type TypeSpec interface {
 	GenDecl() *dst.GenDecl
 	File() *dst.File
 	Decorations() *dst.NodeDecs
-	GetType() *types.TypeName
+	GetType() types.Type
 }
 
 type TypeAlternative struct {
@@ -155,8 +155,8 @@ type typeSpec struct {
 	file    *dst.File
 }
 
-func (ts *typeSpec) GetType() *types.TypeName {
-	return ts.pkg.Types.Scope().Lookup(ts.typeSpec.Name.Name).(*types.TypeName)
+func (ts *typeSpec) GetType() types.Type {
+	return ts.pkg.Types.Scope().Lookup(ts.typeSpec.Name.Name).(*types.TypeName).Type()
 }
 
 func (ts *typeSpec) Decorations() *dst.NodeDecs {

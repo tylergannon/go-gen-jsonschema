@@ -41,7 +41,7 @@ var _ = Describe("LoadAndValidate", func() {
 	DescribeTable("Struct Types", func(typeName string, countFields int, options ...any) {
 		ts, _, found := registry.getType(typeName, filepath.Join(packageBase, "testapp0_simple"))
 		Expect(found).To(BeTrue(), "item to be found, got %v", found)
-		_type := ts.GetType().Type()
+		_type := ts.GetType()
 		namedType, ok := _type.(*types.Named)
 		Expect(ok).To(BeTrue(), "type is not a named type")
 		newTypeSpec, err := registry.LoadAndValidateNamedType(namedType)
@@ -88,7 +88,7 @@ var _ = Describe("LoadAndValidate", func() {
 	DescribeTable("Invalid Types", func(typeName string) {
 		ts, _, found := registry.getType(typeName, filepath.Join(packageBase, "testapp0_simple"))
 		Expect(found).To(BeTrue(), "item to be found, got %v", found)
-		_type := ts.GetType().Type()
+		_type := ts.GetType()
 		namedType, ok := _type.(*types.Named)
 		Expect(ok).To(BeTrue(), "type is not a named type")
 		_, err := registry.LoadAndValidateNamedType(namedType)
