@@ -1,17 +1,32 @@
 package typeregistry
 
 import (
+	"errors"
 	"fmt"
 	"github.com/dave/dst"
 	"github.com/dave/dst/decorator"
 	"go/types"
-	"log"
 	"strings"
 )
+
+const maxRecursionDepth = 500
+
+var errRecursionDepthExceeded = errors.New("recursion depth exceeded (this probably means circular embedded pointer types)")
 
 // resolveType recurses into the given type up to the next named type,
 // to build a string name for the given type.
 func (r *Registry) resolveType(t types.Type, ts dst.Node, pkg *decorator.Package) (TypeID, error) {
+	return r.resolveTypeRecursive(t, ts, pkg, 0)
+}
+
+// resolveType recurses into the given type up to the next named type,
+// to build a string name for the given type.
+func (r *Registry) resolveTypeRecursive(t types.Type, ts dst.Node, pkg *decorator.Package, depth int) (TypeID, error) {
+	depth++
+	if depth > maxRecursionDepth {
+		return "", errRecursionDepthExceeded
+	}
+
 	switch t := t.(type) {
 	case *types.Named:
 		return NewTypeID(t.Obj().Pkg().Path(), t.Obj().Name()), nil
@@ -19,30 +34,38 @@ func (r *Registry) resolveType(t types.Type, ts dst.Node, pkg *decorator.Package
 		_t := ts.(*dst.Ident)
 		return TypeID(_t.Name), nil
 	case *types.Pointer:
-		return r.resolveType(t.Elem(), ts.(*dst.StarExpr).X, pkg)
+		return r.resolveTypeRecursive(t.Elem(), ts.(*dst.StarExpr).X, pkg, depth)
 	case *types.Slice:
 		var arrayT = ts.(*dst.ArrayType).Elt
-		inner, err := r.resolveType(t.Elem(), arrayT, pkg)
+		inner, err := r.resolveTypeRecursive(t.Elem(), arrayT, pkg, depth)
 		return TypeID(fmt.Sprintf("%s[]", inner)), err
 	case *types.Array:
 		var arrayT = ts.(*dst.ArrayType)
-		inner, err := r.resolveType(t.Elem(), arrayT.Elt, pkg)
+		inner, err := r.resolveTypeRecursive(t.Elem(), arrayT.Elt, pkg, depth)
 		if lit, ok := arrayT.Len.(*dst.BasicLit); ok {
 			return TypeID(fmt.Sprintf("%s[%s]", inner, lit.Value)), err
 		}
-		log.Panicf("Can't handle array len type %T", arrayT.Len)
+		panic(fmt.Sprintf("unhandled array len type: %T", arrayT.Len))
 	case *types.Struct:
-		return r.resolveStructType(t, ts.(*dst.StructType), pkg)
+		switch nodeType := ts.(type) {
+		case *dst.Ident:
+			if _typeSpec, err := r.resolveTypeIdent(nodeType, pkg); err != nil {
+				return "", err
+			} else if structNode, ok := _typeSpec.GetTypeSpec().Type.(*dst.StructType); ok {
+				return r.resolveStructType(t, structNode, pkg, depth)
+			}
+		}
+		return r.resolveStructType(t, ts.(*dst.StructType), pkg, depth)
 	}
 	return "", fmt.Errorf("unsupported type %T: %w", t, ErrUnsupportedType)
 }
 
-func (r *Registry) resolveStructType(t *types.Struct, ts *dst.StructType, pkg *decorator.Package) (TypeID, error) {
+func (r *Registry) resolveStructType(t *types.Struct, ts *dst.StructType, pkg *decorator.Package, depth int) (TypeID, error) {
 	var (
 		sb = strings.Builder{}
 	)
 	sb.WriteString("struct {")
-	_, err := r.resolveFields(t, ts, pkg, 0, &sb)
+	_, err := r.resolveFields(t, ts, pkg, 0, &sb, depth)
 	if err != nil {
 		return "", err
 	}
@@ -50,7 +73,11 @@ func (r *Registry) resolveStructType(t *types.Struct, ts *dst.StructType, pkg *d
 	return TypeID(sb.String()), nil
 }
 
-func (r *Registry) resolveFields(t *types.Struct, ts *dst.StructType, pkg *decorator.Package, cntFields int, sb *strings.Builder) (int, error) {
+func (r *Registry) resolveFields(t *types.Struct, ts *dst.StructType, pkg *decorator.Package, cntFields int, sb *strings.Builder, depth int) (int, error) {
+	depth++
+	if depth > maxRecursionDepth {
+		return 0, errRecursionDepthExceeded
+	}
 	for i := 0; i < t.NumFields(); i++ {
 		f, err := parseFieldConf(t.Field(i), ts.Fields.List[i], pkg)
 		if err != nil {
@@ -71,32 +98,31 @@ func (r *Registry) resolveFields(t *types.Struct, ts *dst.StructType, pkg *decor
 			}
 			named, ok := _ts.GetType().(*types.Named)
 			if !ok {
-				return 0, fmt.Errorf("embed issue: should be named but is %T %s", _ts.GetType(), f.posString())
+				return 0, fmt.Errorf("embed issue: should be named but is %T %s", _ts.GetType(), f.PositionString())
 			}
 			embeddedType, ok := named.Underlying().(*types.Struct)
 			if !ok {
-				return 0, fmt.Errorf("illegal embed type %T %s", _ts.GetType(), f.posString())
+				return 0, fmt.Errorf("illegal embed type %T %s", _ts.GetType(), f.PositionString())
 			}
 			embeddedStructNode, ok := _ts.typeSpec.Type.(*dst.StructType)
 			if !ok {
-				return 0, fmt.Errorf("illegal embed found struct type but wrong node %T %s", _ts.typeSpec.Type, f.posString())
+				return 0, fmt.Errorf("illegal embed found struct type but wrong node %T %s", _ts.typeSpec.Type, f.PositionString())
 			}
-			cntFields, err = r.resolveFields(embeddedType, embeddedStructNode, _ts.pkg, cntFields, sb)
-			//cntFields, err = r.resolveFields(_ts.GetType().(*types.Named).Underlying().(*types.Struct), _ts.typeSpec.Type, _ts.pkg, cntFields, sb)
+			if cntFields, err = r.resolveFields(embeddedType, embeddedStructNode, _ts.pkg, cntFields, sb, depth); err != nil {
+				return 0, err
+			}
 
 		} else {
 			cntFields++
 			if cntFields > 1 {
 				sb.WriteString(" ")
 			}
-			if resolvedType, err = r.resolveType(f.fieldType(), f.Type, pkg); err != nil {
+
+			if resolvedType, err = r.resolveTypeRecursive(f.FieldType(), f.Type, pkg, depth); err != nil {
 				return 0, err
 			}
 			resolvedType = resolvedType.shorten(pkg)
-			//if len(id) > 200 {
-			//	id = id.hash()
-			//}
-			sb.WriteString(fmt.Sprintf("%s %s", f.fieldName, resolvedType))
+			sb.WriteString(fmt.Sprintf("%s %s", f.FieldName, resolvedType))
 		}
 
 		if f.Field.Tag != nil && f.Field.Tag.Value != "" {

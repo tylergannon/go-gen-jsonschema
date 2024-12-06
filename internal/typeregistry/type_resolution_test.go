@@ -35,7 +35,7 @@ var _ = Describe("Type Resolution", func() {
 	It("Finds something foo", func() {
 		//var ts, _, found = registry.getType("ArrayType", pkgPath)
 		//Expect(found).To(BeTrue())
-		//inspect("underlying: ", ts.GetType().(*types.Named).Underlying(), ts.typeSpec.Type)
+		//inspect("underlying: ", ts.GetType().(*types.Named).Underlying(), ts.TypeSpec.Type)
 	})
 
 	var typeName = func(indexer, typeName string) string {
@@ -77,7 +77,10 @@ var _ = Describe("Type Resolution", func() {
 		Entry("Struct type with inline struct and named types", "StructWithInlineAndNamed", "struct {Foo ../testapp1_typeresolution.ArrayType; Bar struct {Foo ../testapp1_typeresolution.SliceOfSlice; Bar ../testapp1_typeresolution.SliceOfSlice[10];};}", true),
 		Entry("Crazy Struct type with inline struct and named types", "StructWithInlineAndNamedAllCrazy", "struct {Foo ../testapp1_typeresolution.ArrayType; Bar struct {Foo ../testapp1_typeresolution.SliceOfSlice; Bar ../testapp1_typeresolution.SliceOfSlice[10]; __nobody__ struct {Bark ../testapp1_typeresolution.SliceOfSlice; Bite int; Recurse ../testapp1_typeresolution.StructWithInlineAndNamedAllCrazy; Foo ../testapp1_typeresolution.ArrayType; Bar struct {Foo ../testapp1_typeresolution.SliceOfSlice; Bar ../testapp1_typeresolution.SliceOfSlice[10];}; boop struct {bat int `json:\"bat\"`;} `json:\"boop\"`;}[][] `json:\"__nobody__\"`; Foo ../testapp1_typeresolution.ArrayType; Bar struct {Foo ../testapp1_typeresolution.SliceOfSlice; Bar ../testapp1_typeresolution.SliceOfSlice[10];};};}", true),
 
+		Entry("Crazy Recursive", "ParentStruct", "struct {Inline struct {Bar int; Baz string; Coolio bool; Child ../testapp1_typeresolution.ChildStruct;}; Foobar ../testapp1_typeresolution.ParentStruct; Inline struct {Bar int; Bark string; Coolio bool; Foobar ../testapp1_typeresolution.ChildStruct; Inline struct {Bar int;};}; GoodKid ../testapp1_typeresolution.ChildStruct; BadKid ../testapp1_typeresolution.ChildStruct;}", true),
+
 		// Fail
 		Entry("Crazy struct with a channel in", "IllegalStructWithInlineAndNamedAllCrazy", "", false),
+		Entry("Crazy Recursive", "ParentStructRecursive", "", false),
 	)
 })

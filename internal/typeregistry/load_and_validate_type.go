@@ -48,7 +48,6 @@ type ArrayTypeSpec struct {
 }
 
 func (r *Registry) LoadAndValidateType(typ types.Type) (TypeSpec, error) {
-	inspect("LoadAndValidateType", typ)
 	switch t := typ.(type) {
 	case *types.Basic:
 		return resolveBasicType(t)
@@ -65,7 +64,6 @@ func (r *Registry) LoadAndValidateType(typ types.Type) (TypeSpec, error) {
 	case *types.Alias:
 		return r.LoadAndValidateType(t.Underlying())
 	}
-	inspect("Type", typ)
 	return nil, errors.New("unsupported type")
 }
 
@@ -120,7 +118,6 @@ func (f fieldConfiguration) fieldType() types.Type {
 }
 
 func (spec *NamedStructSpec) parseFieldConf(field *types.Var, fieldNode *dst.Field) (fieldConfiguration, error) {
-	inspect("parseFieldConf", spec, field, fieldNode)
 	var (
 		fieldName      string
 		jsonTagOptions []string
@@ -152,7 +149,6 @@ func (spec *NamedStructSpec) parseFieldConf(field *types.Var, fieldNode *dst.Fie
 
 func (r *Registry) LoadAndValidateStruct(parent *NamedStructSpec, typ *types.Struct, str *dst.StructType) (spec StructTypeSpec, err error) {
 
-	inspect("Struct", typ)
 	for i := 0; i < typ.NumFields(); i++ {
 		var (
 			fieldConf fieldConfiguration

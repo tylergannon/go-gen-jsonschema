@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/tylergannon/go-gen-jsonschema/internal/typeregistry"
-	"log"
 	"slices"
 )
 
@@ -79,5 +78,5 @@ func New(typeName string, pkgPath string, registry *typeregistry.Registry) (*Sch
 	return builder, nil
 }
 func inspect(str string, item any) {
-	log.Printf("inspect %s: %T %v\n", str, item, item)
+	//log.Printf("inspect %s: %T %v\n", str, item, item)
 }

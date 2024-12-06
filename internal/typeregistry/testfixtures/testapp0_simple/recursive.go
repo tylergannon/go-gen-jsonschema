@@ -2,12 +2,13 @@ package testapp0_simple
 
 type ParentStruct struct {
 	Inline struct {
-		Bar    *int
-		Baz    *string
-		Coolio *bool
-		Child  ChildStruct
-		//Children []ChildStruct
-		//Nieces   []*ChildStruct
+		Bar           *int
+		Baz           *string
+		Coolio        *bool
+		Child         ChildStruct
+		Children      []ChildStruct
+		Nieces        []*ChildStruct
+		GrandChildren [][]GrandChildStruct
 	}
 	ChildStruct
 	GoodKid ChildStruct
@@ -16,7 +17,7 @@ type ParentStruct struct {
 
 type ChildStruct struct {
 	Inline struct {
-		*ParentStruct
+		Parent *ParentStruct
 		Bar    *int
 		Bark   *string
 		Coolio *bool
@@ -26,7 +27,7 @@ type ChildStruct struct {
 
 type GrandChildStruct struct {
 	Inline struct {
-		*ChildStruct
-		Bar *int
+		Child *ChildStruct
+		Bar   *int
 	}
 }

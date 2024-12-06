@@ -75,7 +75,7 @@ func (r *Registry) scanFile(file *dst.File, pkg *decorator.Package) error {
 		switch decl.Tok {
 		case token.TYPE:
 			if err := r.registerTypeDecl(file, pkg, decl); err != nil {
-				return fmt.Errorf("registering type decl %v in file %s (pkg %s): %w", decl, file.Name.Name, pkg.PkgPath, err)
+				return fmt.Errorf("registering type decl %v in file %s (Pkg %s): %w", decl, file.Name.Name, pkg.PkgPath, err)
 			}
 		case token.VAR:
 			if err := r.registerVarDecl(file, pkg, decl, importMap); err != nil {

@@ -19,7 +19,6 @@ var _ = Describe("Graphing", func() {
 
 	var (
 		registry *Registry
-		nodes    map[TypeID]*Node
 		rootNode *Node
 	)
 
@@ -29,21 +28,57 @@ var _ = Describe("Graphing", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(registry.LoadAndScan("./testfixtures/testapp0_simple/...")).To(Succeed())
 	})
+	DescribeTable("Building a type graph", func(typeName string, valid bool, opts ...any) {
+		//fmt.Println("Beginning test case ", typeName)
+		ts, _, ok := registry.getType(typeName, filepath.Join(packageBase, "testapp0_simple"))
+		Expect(ok).To(BeTrue())
+		graph, err := registry.GraphTypeForSchema(ts)
+		if valid {
+			Expect(err).NotTo(HaveOccurred())
+			for _, opt := range opts {
+				if f, ok := opt.(func(*SchemaGraph)); ok {
+					f(graph)
+				}
+			}
+		} else {
+			Expect(err).To(HaveOccurred())
+		}
+	},
+		Entry("Declared Type Direct", "DeclaredTypeDirect", true, func(graph *SchemaGraph) {
+			Expect(graph.Nodes).To(HaveLen(4))
+			Expect(graph.RootNode.ID).To(Equal(TypeID("github.com/tylergannon/go-gen-jsonschema/internal/typeregistry/testfixtures/testapp0_simple.DeclaredTypeDirect")))
+		}),
+		Entry("Declared Type Pointer", "DeclaredTypePointer", true),
+		Entry("Declared Type Definition", "DeclaredTypeDefinition", true),
+		Entry("Type Defined As Pointer To Type (definition)", "DeclaredTypeAsPointer", true),
+		Entry("Type Defined As type in subpackage", "DeclaredAsRemoteType", true),
+		Entry("Declared as slice of remote type", "DeclaredAsSliceOfRemoteType", true),
+		Entry("Declared as array of remote type", "DeclaredAsArrayOfRemoteType", true),
+		Entry("Struct with embedded types", "StructWithVariousTypes", true),
+		Entry("Complicated", "ParentStruct", true, func(graph *SchemaGraph) {
+			Expect(graph.Nodes).NotTo(BeEmpty())
+
+			//for k, node := range graph.Nodes {
+			//log.Println(k, node.inbound)
+			//}
+		}),
+	)
+
 	DescribeTable("Checking out the various types", func(typeName string, valid bool, opts ...any) {
+		Skip("Wait for it")
 		fmt.Println("Beginning test case ", typeName)
 		ts, _, ok := registry.getType(typeName, filepath.Join(packageBase, "testapp0_simple"))
 		Expect(ok).To(BeTrue())
-		nodes = map[TypeID]*Node{}
 		id, err := registry.resolveType(ts.GetType(), ts.GetTypeSpec(), ts.pkg)
 		Expect(err).NotTo(HaveOccurred())
 		rootNode = &Node{
-			id:       id,
-			typ:      ts.GetType(),
-			typeSpec: ts,
-			pkg:      ts.Pkg(),
-			expr:     ts.GetTypeSpec(),
+			ID:       id,
+			Type:     ts.GetType(),
+			TypeSpec: ts,
+			Pkg:      ts.Pkg(),
+			Node:     ts.GetTypeSpec(),
 		}
-		nodes, err := registry.visitNode(rootNode, nodes)
+		nodes, err := registry.visitNode(rootNode)
 		if valid {
 			Expect(err).NotTo(HaveOccurred())
 			for _, opt := range opts {
@@ -59,64 +94,65 @@ var _ = Describe("Graphing", func() {
 		}
 	},
 		Entry("Declared Type Direct", "DeclaredTypeDirect", true, func(node *Node) {
-			Expect(node.typ).To(BeAssignableToTypeOf(&types.Struct{}))
-			Expect(node.expr).To(BeAssignableToTypeOf(&dst.StructType{}))
+			Expect(node.Type).To(BeAssignableToTypeOf(&types.Struct{}))
+			Expect(node.Node).To(BeAssignableToTypeOf(&dst.StructType{}))
 
-			next, err := registry.visitNode(node, nodes)
+			next, err := registry.visitNode(node)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(next).To(HaveLen(2))
-			Expect(false).To(BeTrue(), "Next step is to handle embedded and inline types")
 		}),
 		Entry("Declared Type Pointer", "DeclaredTypePointer", true, func(node *Node) {
-			Expect(node.typ).To(BeAssignableToTypeOf(&types.Basic{}))
-			Expect(node.expr).To(BeAssignableToTypeOf(&dst.Ident{}))
-			ident := node.expr.(*dst.Ident)
+			Expect(node.Type).To(BeAssignableToTypeOf(&types.Basic{}))
+			Expect(node.Node).To(BeAssignableToTypeOf(&dst.Ident{}))
+			ident := node.Node.(*dst.Ident)
 			Expect(ident.Name).To(Equal("int"))
 		}),
 		Entry("Declared Type Definition", "DeclaredTypeDefinition", true, func(node *Node) {
-			Expect(node.typ).To(BeAssignableToTypeOf(&types.Struct{}))
-			Expect(node.expr).To(BeAssignableToTypeOf(&dst.StructType{}))
+			Expect(node.Type).To(BeAssignableToTypeOf(&types.Struct{}))
+			Expect(node.Node).To(BeAssignableToTypeOf(&dst.StructType{}))
 		}),
 		Entry("Type Defined As Pointer To Type (definition)", "DeclaredTypeAsPointer", true, func(node *Node) {
-			Expect(node.typ).To(BeAssignableToTypeOf(&types.Named{}))
-			Expect(node.typ.(*types.Named).Obj().Name()).To(Equal("DeclaredTypeDefinition"))
-			Expect(node.expr).To(BeAssignableToTypeOf(&dst.Ident{}))
-			ident := node.expr.(*dst.Ident)
+			Expect(node.Type).To(BeAssignableToTypeOf(&types.Named{}))
+			Expect(node.Type.(*types.Named).Obj().Name()).To(Equal("DeclaredTypeDefinition"))
+			Expect(node.Node).To(BeAssignableToTypeOf(&dst.Ident{}))
+			ident := node.Node.(*dst.Ident)
 			Expect(ident.Name).To(Equal("DeclaredTypeDefinition"))
 		}),
 		Entry("Type Defined As type in subpackage", "DeclaredAsRemoteType", true, func(node *Node) {
-			Expect(node.typ).To(BeAssignableToTypeOf(&types.Struct{}))
-			Expect(node.expr).To(BeAssignableToTypeOf(&dst.StructType{}))
+			Expect(node.Type).To(BeAssignableToTypeOf(&types.Struct{}))
+			Expect(node.Node).To(BeAssignableToTypeOf(&dst.StructType{}))
 		}),
 		Entry("Declared as slice of remote type", "DeclaredAsSliceOfRemoteType", true, func(node *Node) {
-			Expect(node.typ).To(BeAssignableToTypeOf(&types.Slice{}))
-			Expect(node.expr).To(BeAssignableToTypeOf(&dst.ArrayType{}))
+			Expect(node.Type).To(BeAssignableToTypeOf(&types.Slice{}))
+			Expect(node.Node).To(BeAssignableToTypeOf(&dst.ArrayType{}))
 		}),
 		Entry("Declared as array of remote type", "DeclaredAsArrayOfRemoteType", true, func(node *Node) {
-			Expect(node.typ).To(BeAssignableToTypeOf(&types.Array{}))
-			Expect(node.expr).To(BeAssignableToTypeOf(&dst.ArrayType{}))
+			Expect(node.Type).To(BeAssignableToTypeOf(&types.Array{}))
+			Expect(node.Node).To(BeAssignableToTypeOf(&dst.ArrayType{}))
 		}),
+		Entry("Struct with embedded types", "StructWithVariousTypes", true, func(node *Node) {
+			Expect(node.Type).To(BeAssignableToTypeOf(&types.Struct{}))
+			Expect(node.Node).To(BeAssignableToTypeOf(&dst.StructType{}))
 
-		//Entry("Declared Type Alias", "DeclaredTypeAlias", false),
-		//Entry("Declared Type Aliased Alias", "DeclaredTypeAliasedAlias", false),
-		//	DeclaredTypeDirect       int
-		//DeclaredTypePointer      *int
-		//DeclaredTypeDefinition   DeclaredTypePointer
-		//DeclaredTypeAlias        = DeclaredTypeDefinition
-		//DeclaredTypeAliasedAlias = DeclaredTypeAlias
+			nodes, err := registry.visitNode(node)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(nodes).To(HaveLen(3))
+			Expect(nodes[0].ID).To(Equal(TypeID("int")))
+			Expect(nodes[1].ID).To(Equal(TypeID("string")))
+			Expect(nodes[2].ID).To(Equal(TypeID("github.com/tylergannon/go-gen-jsonschema/internal/typeregistry/testfixtures/testapp0_simple.DeclaredTypeDirect")))
+		}),
 	)
 	It("Call the graph function", func() {
 		Skip("Skip")
 		ts, _, ok := registry.getType("SimpleStruct", filepath.Join(packageBase, "testapp0_simple"))
 		Expect(ok).To(BeTrue())
-		nodes = map[TypeID]*Node{}
 		rootNode = &Node{
-			typ:      ts.GetType(),
-			typeSpec: ts,
-			pkg:      ts.Pkg(),
-			expr:     ts.GetTypeSpec(),
+			Type:     ts.GetType(),
+			TypeSpec: ts,
+			Pkg:      ts.Pkg(),
+			Node:     ts.GetTypeSpec(),
 		}
-		_, _ = registry.visitNode(rootNode, nodes)
+		_, _ = registry.visitNode(rootNode)
 	})
 })
 

@@ -34,12 +34,12 @@ func (id TypeID) shorten(pkg *decorator.Package) TypeID {
 	if len(id) < 30 || strings.HasPrefix(string(id), "struct") {
 		return id
 	}
-	//s := string(id)
+	//s := string(ID)
 	rel, err := filepath.Rel(pkg.PkgPath, string(id))
 	if err != nil {
 		return id
 	}
-	//s = strings.ReplaceAll(s, pkg.PkgPath, "")
+	//s = strings.ReplaceAll(s, Pkg.PkgPath, "")
 	return TypeID(rel)
 }
 
@@ -153,7 +153,7 @@ func (d *UnionTypeDecl) ID() TypeID {
 func SetTypeAlternativeDecl(importMap ImportMap, expr dst.Expr) *UnionTypeDecl {
 	switch expr := expr.(type) {
 	case *dst.Ident:
-		//log.Printf("Name: %s, Path: %s, Obj: %v, %T", expr.Name, expr.Path, expr.Obj, expr.Obj)
+		//log.Printf("Name: %s, Path: %s, Obj: %v, %T", Node.Name, Node.Path, Node.Obj, Node.Obj)
 		return &UnionTypeDecl{
 			importMap:           importMap,
 			DestTypePackagePath: importMap[""],
