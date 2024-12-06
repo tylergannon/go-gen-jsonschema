@@ -5,7 +5,10 @@ import (
 	"github.com/dave/dst"
 	"github.com/dave/dst/decorator"
 	"go/types"
+	"hash/maphash"
 	"log"
+	"path/filepath"
+	"strings"
 )
 
 type Registry struct {
@@ -16,6 +19,29 @@ type Registry struct {
 }
 
 type TypeID string
+
+func (id TypeID) hash() TypeID {
+	var h maphash.Hash
+	_, _ = h.WriteString(string(id)) // Add string to the hash
+	v := fmt.Sprintf("%x", h.Sum64())
+	if len(v) > 16 {
+		v = v[:16]
+	}
+	return TypeID(v)
+}
+
+func (id TypeID) shorten(pkg *decorator.Package) TypeID {
+	if len(id) < 30 || strings.HasPrefix(string(id), "struct") {
+		return id
+	}
+	//s := string(id)
+	rel, err := filepath.Rel(pkg.PkgPath, string(id))
+	if err != nil {
+		return id
+	}
+	//s = strings.ReplaceAll(s, pkg.PkgPath, "")
+	return TypeID(rel)
+}
 
 type IdentifiableByType interface {
 	// ID returns a string name composed of package and type name.
@@ -31,11 +57,6 @@ func (r *Registry) getType(name string, pkgPath string) (*typeSpec, *UnionTypeDe
 
 	if ts, ok := r.typeMap[typeID]; ok {
 		return ts, r.unionTypes[typeID], true
-	}
-	for k, _ := range r.typeMap {
-		if string(typeID) == string(k) {
-			log.Printf("Found type %s in map", typeID)
-		}
 	}
 	return nil, nil, false
 }

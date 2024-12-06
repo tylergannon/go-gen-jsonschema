@@ -7,7 +7,6 @@ import (
 )
 
 type StructType struct {
-	typeregistry.TypeSpec
 	StructNode *dst.StructType
 	builder    *SchemaBuilder
 }

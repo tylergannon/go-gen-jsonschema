@@ -2,6 +2,8 @@ package typeregistry
 
 import (
 	"errors"
+	"fmt"
+	"github.com/dave/dst"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"go/types"
@@ -10,24 +12,109 @@ import (
 
 const packageBase = "github.com/tylergannon/go-gen-jsonschema/internal/typeregistry/testfixtures"
 
-//
-//var _ = Describe("scan", func() {
-//	var (
-//		pkgs     []*decorator.Package
-//		registry *Registry
-//	)
-//	BeforeEach(func() {
-//		var err error
-//		pkgs, err = loader.Load("./testfixtures/registrytestapp/...")
-//		Expect(err).NotTo(HaveOccurred())
-//		registry, err = NewRegistry(pkgs)
-//		Expect(err).NotTo(HaveOccurred())
-//	})
-//	It("Should all be all right ", func() {
-//		Expect(true)
-//		Expect(registry.unionTypes).To(HaveLen(2))
-//	})
-//})
+type nodesTest = func([]*Node)
+type nodeTest = func(*Node)
+
+var _ = Describe("Graphing", func() {
+
+	var (
+		registry *Registry
+		nodes    map[TypeID]*Node
+		rootNode *Node
+	)
+
+	BeforeEach(func() {
+		var err error
+		registry, err = NewRegistry(nil)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(registry.LoadAndScan("./testfixtures/testapp0_simple/...")).To(Succeed())
+	})
+	DescribeTable("Checking out the various types", func(typeName string, valid bool, opts ...any) {
+		fmt.Println("Beginning test case ", typeName)
+		ts, _, ok := registry.getType(typeName, filepath.Join(packageBase, "testapp0_simple"))
+		Expect(ok).To(BeTrue())
+		nodes = map[TypeID]*Node{}
+		rootNode = &Node{
+			typ:      ts.GetType(),
+			typeSpec: ts,
+			pkg:      ts.Pkg(),
+			expr:     ts.GetTypeSpec(),
+		}
+		nodes, err := registry.visitNode(rootNode, nodes)
+		if valid {
+			Expect(err).NotTo(HaveOccurred())
+			for _, opt := range opts {
+				if fn, ok := opt.(nodesTest); ok {
+					fn(nodes)
+				} else if fn, ok := opt.(nodeTest); ok {
+					Expect(nodes).To(HaveLen(1))
+					fn(nodes[0])
+				}
+			}
+		} else {
+			Expect(err).To(HaveOccurred())
+		}
+	},
+		Entry("Declared Type Direct", "DeclaredTypeDirect", true, func(node *Node) {
+			Expect(node.typ).To(BeAssignableToTypeOf(&types.Struct{}))
+			Expect(node.expr).To(BeAssignableToTypeOf(&dst.StructType{}))
+
+			next, err := registry.visitNode(node, nodes)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(next).To(HaveLen(2))
+		}),
+		Entry("Declared Type Pointer", "DeclaredTypePointer", true, func(node *Node) {
+			Expect(node.typ).To(BeAssignableToTypeOf(&types.Basic{}))
+			Expect(node.expr).To(BeAssignableToTypeOf(&dst.Ident{}))
+			ident := node.expr.(*dst.Ident)
+			Expect(ident.Name).To(Equal("int"))
+		}),
+		Entry("Declared Type Definition", "DeclaredTypeDefinition", true, func(node *Node) {
+			Expect(node.typ).To(BeAssignableToTypeOf(&types.Struct{}))
+			Expect(node.expr).To(BeAssignableToTypeOf(&dst.StructType{}))
+		}),
+		Entry("Type Defined As Pointer To Type (definition)", "DeclaredTypeAsPointer", true, func(node *Node) {
+			Expect(node.typ).To(BeAssignableToTypeOf(&types.Named{}))
+			Expect(node.typ.(*types.Named).Obj().Name()).To(Equal("DeclaredTypeDefinition"))
+			Expect(node.expr).To(BeAssignableToTypeOf(&dst.Ident{}))
+			ident := node.expr.(*dst.Ident)
+			Expect(ident.Name).To(Equal("DeclaredTypeDefinition"))
+		}),
+		Entry("Type Defined As type in subpackage", "DeclaredAsRemoteType", true, func(node *Node) {
+			Expect(node.typ).To(BeAssignableToTypeOf(&types.Struct{}))
+			Expect(node.expr).To(BeAssignableToTypeOf(&dst.StructType{}))
+		}),
+		Entry("Declared as slice of remote type", "DeclaredAsSliceOfRemoteType", true, func(node *Node) {
+			Expect(node.typ).To(BeAssignableToTypeOf(&types.Slice{}))
+			Expect(node.expr).To(BeAssignableToTypeOf(&dst.ArrayType{}))
+		}),
+		Entry("Declared as array of remote type", "DeclaredAsArrayOfRemoteType", true, func(node *Node) {
+			Expect(node.typ).To(BeAssignableToTypeOf(&types.Array{}))
+			Expect(node.expr).To(BeAssignableToTypeOf(&dst.ArrayType{}))
+		}),
+
+		Entry("Declared Type Alias", "DeclaredTypeAlias", false),
+		Entry("Declared Type Aliased Alias", "DeclaredTypeAliasedAlias", false),
+		//	DeclaredTypeDirect       int
+		//DeclaredTypePointer      *int
+		//DeclaredTypeDefinition   DeclaredTypePointer
+		//DeclaredTypeAlias        = DeclaredTypeDefinition
+		//DeclaredTypeAliasedAlias = DeclaredTypeAlias
+	)
+	It("Call the graph function", func() {
+		Skip("Skip")
+		ts, _, ok := registry.getType("SimpleStruct", filepath.Join(packageBase, "testapp0_simple"))
+		Expect(ok).To(BeTrue())
+		nodes = map[TypeID]*Node{}
+		rootNode = &Node{
+			typ:      ts.GetType(),
+			typeSpec: ts,
+			pkg:      ts.Pkg(),
+			expr:     ts.GetTypeSpec(),
+		}
+		_, _ = registry.visitNode(rootNode, nodes)
+	})
+})
 
 var _ = Describe("LoadAndValidate", func() {
 	var registry *Registry
@@ -38,6 +125,7 @@ var _ = Describe("LoadAndValidate", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(registry.LoadAndScan("./testfixtures/testapp0_simple/...")).To(Succeed())
 	})
+
 	DescribeTable("Struct Types", func(typeName string, countFields int, options ...any) {
 		ts, _, found := registry.getType(typeName, filepath.Join(packageBase, "testapp0_simple"))
 		Expect(found).To(BeTrue(), "item to be found, got %v", found)

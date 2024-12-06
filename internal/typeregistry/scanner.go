@@ -7,7 +7,6 @@ import (
 	"github.com/dave/dst/decorator"
 	"github.com/tylergannon/go-gen-jsonschema/internal/loader"
 	"go/token"
-	"log"
 )
 
 const (
@@ -179,7 +178,7 @@ func interpretUnionTypeAltArg(expr dst.Expr, importMap ImportMap) (alt TypeAlter
 
 func (r *Registry) registerTypeDecl(file *dst.File, pkg *decorator.Package, genDecl *dst.GenDecl) error {
 	for _, spec := range toTypeSpecs(genDecl.Specs) {
-		inspect("Scanned spec", spec)
+		//inspect("Scanned spec", spec)
 		ts := &typeSpec{
 			typeSpec: spec,
 			pkg:      pkg,
@@ -216,8 +215,8 @@ func toTypeSpecs(specs []dst.Spec) (ts []*dst.TypeSpec) {
 }
 
 func inspect(str string, item ...any) {
-	log.Printf("inspect %s: %T %v\n", str, item[0], item[0])
+	fmt.Printf("inspect %s: %T %v\n", str, item[0], item[0])
 	for i := 1; i < len(item); i++ {
-		log.Printf("     item[%d]: %T %v\n", i, item[i], item[i])
+		fmt.Printf("     item[%d]: %T %v\n", i, item[i], item[i])
 	}
 }
