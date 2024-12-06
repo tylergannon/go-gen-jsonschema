@@ -40,7 +40,7 @@ type Node struct {
 	typeSpec TypeSpec           // may be nil; only exists for top-level type decls.
 	children []*edge            // before leaving from the first visit, must be initialized to have length equal to number of child nodes
 	// The following are determined on the second visit.
-	resolvedType TypeID // update this after resolving the type
+	id TypeID // update this after resolving the type
 	//indexAtParent int                // the index where this Node should reflect its resolved type within `parent.children`.
 	state nodeState
 }
@@ -102,20 +102,40 @@ func (r *Registry) visitNode(node *Node, nodes map[TypeID]*Node) ([]*Node, error
 }
 
 func (r *Registry) visitStructTypeNode(node *Node, nodesMap map[TypeID]*Node) ([]*Node, error) {
-	//var (
-	//	structTyp  = assertType[*types.Struct](node.typ)
-	//	structDecl = assertType[*dst.StructType](node.expr)
-	//	nodes      []*Node
-	//)
-	//for i := 0; i < structTyp.NumFields(); i++ {
-	//	var (
-	//		field     = structTyp.Field(i)
-	//		fieldDecl = structDecl.Fields.List[i]
-	//	)
-	//	structtag.Parse()
-	//}
-	//_, _ = structTyp, structDecl
-	return nil, nil
+	var (
+		structTyp  = assertType[*types.Struct](node.typ)
+		structDecl = assertType[*dst.StructType](node.expr)
+		nodes      []*Node
+	)
+	for i := 0; i < structTyp.NumFields(); i++ {
+		var (
+			field     = structTyp.Field(i)
+			fieldDecl = structDecl.Fields.List[i]
+			conf, err = parseFieldConf(field, fieldDecl, node.pkg)
+			typeID    TypeID
+		)
+		if err != nil {
+			return nil, err
+		}
+		if conf.ignore() {
+			continue
+		}
+		if typeID, err = r.resolveType(field.Type(), fieldDecl.Type, node.pkg); err != nil {
+			return nil, err
+		}
+		nodes = append(nodes, &Node{
+			parent:   node,
+			typ:      field.Type(),
+			expr:     fieldDecl.Type,
+			pkg:      node.pkg,
+			typeSpec: nil,
+			children: nil,
+			id:       typeID,
+			state:    0,
+		})
+
+	}
+	return nodes, nil
 }
 
 // visitNamedTypeNode

@@ -93,8 +93,8 @@ func (r *Registry) resolveFields(t *types.Struct, ts *dst.StructType, pkg *decor
 				return 0, err
 			}
 			resolvedType = resolvedType.shorten(pkg)
-			//if len(resolvedType) > 200 {
-			//	resolvedType = resolvedType.hash()
+			//if len(id) > 200 {
+			//	id = id.hash()
 			//}
 			sb.WriteString(fmt.Sprintf("%s %s", f.fieldName, resolvedType))
 		}

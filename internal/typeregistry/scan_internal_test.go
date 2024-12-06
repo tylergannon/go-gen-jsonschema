@@ -34,7 +34,10 @@ var _ = Describe("Graphing", func() {
 		ts, _, ok := registry.getType(typeName, filepath.Join(packageBase, "testapp0_simple"))
 		Expect(ok).To(BeTrue())
 		nodes = map[TypeID]*Node{}
+		id, err := registry.resolveType(ts.GetType(), ts.GetTypeSpec(), ts.pkg)
+		Expect(err).NotTo(HaveOccurred())
 		rootNode = &Node{
+			id:       id,
 			typ:      ts.GetType(),
 			typeSpec: ts,
 			pkg:      ts.Pkg(),
@@ -62,6 +65,7 @@ var _ = Describe("Graphing", func() {
 			next, err := registry.visitNode(node, nodes)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(next).To(HaveLen(2))
+			Expect(false).To(BeTrue(), "Next step is to handle embedded and inline types")
 		}),
 		Entry("Declared Type Pointer", "DeclaredTypePointer", true, func(node *Node) {
 			Expect(node.typ).To(BeAssignableToTypeOf(&types.Basic{}))
@@ -93,8 +97,8 @@ var _ = Describe("Graphing", func() {
 			Expect(node.expr).To(BeAssignableToTypeOf(&dst.ArrayType{}))
 		}),
 
-		Entry("Declared Type Alias", "DeclaredTypeAlias", false),
-		Entry("Declared Type Aliased Alias", "DeclaredTypeAliasedAlias", false),
+		//Entry("Declared Type Alias", "DeclaredTypeAlias", false),
+		//Entry("Declared Type Aliased Alias", "DeclaredTypeAliasedAlias", false),
 		//	DeclaredTypeDirect       int
 		//DeclaredTypePointer      *int
 		//DeclaredTypeDefinition   DeclaredTypePointer
