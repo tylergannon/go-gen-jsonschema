@@ -52,6 +52,17 @@ func NewTypeID(pkgPath, typeName string) TypeID {
 	return TypeID(pkgPath + "." + typeName)
 }
 
+func (r *Registry) GetTypeByName(name, pkgPath string) (TypeSpec, bool) {
+	t, _, ok := r.getType(name, pkgPath)
+	if !ok {
+		fmt.Println("Not found: ", name, pkgPath)
+		for k := range r.typeMap {
+			fmt.Println(k)
+		}
+	}
+	return t, ok
+}
+
 func (r *Registry) getType(name string, pkgPath string) (*typeSpec, *UnionTypeDecl, bool) {
 	typeID := NewTypeID(pkgPath, name)
 

@@ -2,18 +2,29 @@ package builder
 
 import (
 	"encoding/json"
+	"path"
 	"testing"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
+const (
+	packageBase = "github.com/tylergannon/go-gen-jsonschema/internal/builder/testfixtures"
+)
+
+func mkPkgPath(pkgName string) string {
+	return path.Join(packageBase, pkgName)
+}
+
 func TestBuilder(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Builder Suite")
 }
 
-type literalMarshaler []byte
+type (
+	literalMarshaler []byte
+)
 
 func (l literalMarshaler) MarshalJSON() ([]byte, error) {
 	return l, nil

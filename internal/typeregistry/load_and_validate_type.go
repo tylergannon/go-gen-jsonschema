@@ -13,7 +13,9 @@ import (
 	"strings"
 )
 
-func (r *Registry) LoadAndValidateNamedType(namedType *types.Named) (TypeSpec, error) {
+//func (r *Registry) LoadAndValidate
+
+func (r *Registry) loadAndValidateNamedType(namedType *types.Named) (TypeSpec, error) {
 	typeName := namedType.Obj()
 
 	// Okay we should be able to find a type spec for the given type.
@@ -52,7 +54,7 @@ func (r *Registry) LoadAndValidateType(typ types.Type) (TypeSpec, error) {
 	case *types.Basic:
 		return resolveBasicType(t)
 	case *types.Named:
-		return r.LoadAndValidateNamedType(t)
+		return r.loadAndValidateNamedType(t)
 	case *types.Pointer:
 		return r.LoadAndValidateType(t.Elem())
 	case *types.Chan:

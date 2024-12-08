@@ -59,7 +59,7 @@ var _ = Describe("Graphing", func() {
 			Expect(graph.Nodes).NotTo(BeEmpty())
 
 			//for k, node := range graph.Nodes {
-			//log.Println(k, node.inbound)
+			//log.Println(k, node.Inbound)
 			//}
 		}),
 	)
@@ -172,7 +172,7 @@ var _ = Describe("LoadAndValidate", func() {
 		_type := ts.GetType()
 		namedType, ok := _type.(*types.Named)
 		Expect(ok).To(BeTrue(), "type is not a named type")
-		newTypeSpec, err := registry.LoadAndValidateNamedType(namedType)
+		newTypeSpec, err := registry.loadAndValidateNamedType(namedType)
 		Expect(err).NotTo(HaveOccurred())
 		structType, ok := newTypeSpec.(*NamedStructSpec)
 		Expect(ok).To(BeTrue(), "type is not a named type, but %T", newTypeSpec)
@@ -219,7 +219,7 @@ var _ = Describe("LoadAndValidate", func() {
 		_type := ts.GetType()
 		namedType, ok := _type.(*types.Named)
 		Expect(ok).To(BeTrue(), "type is not a named type")
-		_, err := registry.LoadAndValidateNamedType(namedType)
+		_, err := registry.loadAndValidateNamedType(namedType)
 		Expect(err).To(HaveOccurred())
 		Expect(errors.Is(err, ErrUnsupportedType)).To(BeTrue(), "expected unsupported type error, got %v", err)
 	},

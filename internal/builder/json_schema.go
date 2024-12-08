@@ -2,11 +2,19 @@ package builder
 
 import (
 	"encoding/json"
+	"fmt"
+	"go/types"
 	"strconv"
 	"strings"
 )
 
-type dataType string
+type (
+	dataType string
+)
+
+const (
+	defaultDefinitionsKey = "$defs"
+)
 
 const (
 	Object  dataType = "object"
@@ -132,7 +140,7 @@ func (j *jsonSchema) MarshalJSON() ([]byte, error) {
 
 	// "definitions"
 	if len(j.Definitions) > 0 {
-		var definitionsKey = "definitions"
+		var definitionsKey = defaultDefinitionsKey
 		if j.DefinitionsKey != "" {
 			definitionsKey = j.DefinitionsKey
 		}
@@ -211,7 +219,28 @@ func enumSchema[T ~int | ~string](description string, vals ...T) basicMarshaler 
 	return res
 }
 
-func erraySchema(items json.Marshaler, description string) basicMarshaler {
+func newBasicType(t *types.Basic) json.Marshaler {
+	var jsonSchemaDataTypeName string
+	switch t.Kind() {
+	case types.String:
+		jsonSchemaDataTypeName = "string"
+	case types.Bool:
+		jsonSchemaDataTypeName = "boolean"
+	case types.Int:
+		jsonSchemaDataTypeName = "integer"
+	case types.Float32, types.Float64:
+		jsonSchemaDataTypeName = "number"
+	case types.Int8, types.Int16, types.Int32, types.Int64, types.Uint, types.Uint8, types.Uint16, types.Uint32, types.Uint64, types.Uintptr:
+		jsonSchemaDataTypeName = "integer"
+	default:
+		panic(fmt.Sprintf("unknown type kind: %v", t.Kind()))
+	}
+	return basicMarshaler{
+		"type": jsonSchemaDataTypeName,
+	}
+}
+
+func arraySchema(items json.Marshaler, description string) basicMarshaler {
 	var res = basicMarshaler{
 		"type":  "array",
 		"items": items,

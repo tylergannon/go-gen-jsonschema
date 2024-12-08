@@ -18,7 +18,7 @@ type Node struct {
 	Pkg      *decorator.Package // the decorated package that this Node occurs in
 	TypeSpec TypeSpec           // may be nil; only exists for top-level type decls.
 	Children []TypeID           // before leaving from the first visit, must be initialized to have length equal to number of child nodes
-	inbound  int                // Number of edges with this node as destination
+	Inbound  int                // Number of edges with this node as destination
 	// The following are determined on the second visit.
 	ID TypeID // update this after resolving the type
 	//indexAtParent int                // the index where this Node should reflect its resolved type within `parent.Children`.
@@ -33,7 +33,7 @@ func countInbound(nodes map[TypeID]*Node) map[TypeID]*Node {
 		}
 	}
 	for id, n := range nodes {
-		n.inbound = counts[id]
+		n.Inbound = counts[id]
 	}
 	return nodes
 }
