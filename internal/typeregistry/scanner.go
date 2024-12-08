@@ -93,7 +93,7 @@ func (r *Registry) registerVarDecl(file *dst.File, pkg *decorator.Package, decl 
 		valueSpec := spec.(*dst.ValueSpec)
 		for _, val := range valueSpec.Values {
 			if callExpr, ok := val.(*dst.CallExpr); ok && isUnionTypeDecl(callExpr, importMap) {
-				// Node has been identified as a Union Type declaration.  Note the arguments.
+				// nodeImpl has been identified as a Union Type declaration.  Note the arguments.
 				if err := r.registerUnionTypeDecl(file, pkg, callExpr, importMap); err != nil {
 					return err
 				}

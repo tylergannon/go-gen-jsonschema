@@ -9,6 +9,10 @@ type (
 		Foo int
 		Bar string
 	}
+	StructWithVariousTypes struct {
+		DeclaredTypeDirect
+		Field2 DeclaredTypeDirect
+	}
 	DeclaredTypePointer *int
 	// DeclaredTypeDefinition documentation
 	DeclaredTypeDefinition      DeclaredTypeDirect
@@ -16,12 +20,8 @@ type (
 	DeclaredAsRemoteType        subpkg.Baz
 	DeclaredAsSliceOfRemoteType []subpkg.Baz
 	DeclaredAsArrayOfRemoteType [10]subpkg.Baz
-	StructWithVariousTypes      struct {
-		DeclaredTypeDirect
-		Field2 DeclaredTypeDirect
-	}
-	DeclaredTypeAlias        = DeclaredTypeDefinition
-	DeclaredTypeAliasedAlias = DeclaredTypeAlias
+	DeclaredTypeAlias           = DeclaredTypeDefinition
+	DeclaredTypeAliasedAlias    = DeclaredTypeAlias
 )
 
 func (def *DeclaredTypeDefinition) Func() int {

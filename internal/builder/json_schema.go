@@ -39,15 +39,21 @@ func (j jsonUnionType) MarshalJSON() ([]byte, error) {
 var _ json.Marshaler = jsonUnionType{}
 
 // An anyOf element
-func unionSchemaElement(alts ...json.Marshaler) json.Marshaler {
-	return basicMarshaler{
-		"anyOf": alts,
-	}
+//func unionSchemaElement(alts ...json.Marshaler) json.Marshaler {
+//	return basicMarshaler{
+//		"anyOf": alts,
+//	}
+//}
+
+type RefElement []byte
+
+func (r RefElement) MarshalJSON() ([]byte, error) {
+	return r, nil
 }
 
 // A ref into definitions
-func refElement(ref string) json.Marshaler {
-	return basicMarshaler{"$ref": ref}
+func refElement(ref string) RefElement {
+	return RefElement(fmt.Sprintf(`{"$ref": "%s"}`, ref))
 }
 
 type schemaProperty struct {
@@ -79,6 +85,8 @@ type jsonSchema struct {
 	DefinitionsKey string
 }
 
+var _ json.Marshaler = (*jsonSchema)(nil)
+
 func (j *jsonSchema) MarshalJSON() ([]byte, error) {
 	var b strings.Builder
 	b.WriteByte('{')
@@ -103,7 +111,7 @@ func (j *jsonSchema) MarshalJSON() ([]byte, error) {
 		for i, p := range j.Properties {
 			encProp, err := p.def.MarshalJSON()
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("failed to marshal property %s of type %T: %w", p.name, p.def, err)
 			}
 			b.WriteString(strconv.Quote(p.name))
 			b.WriteByte(':')
@@ -151,7 +159,7 @@ func (j *jsonSchema) MarshalJSON() ([]byte, error) {
 		for k, v := range j.Definitions {
 			encDef, err := v.MarshalJSON()
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("failed to marshal definition %s: %w", k, err)
 			}
 			b.WriteString(strconv.Quote(k))
 			b.WriteByte(':')
@@ -184,37 +192,32 @@ func (j *jsonSchema) MarshalJSON() ([]byte, error) {
 	return []byte(out), nil
 }
 
-func constSchema[T ~int | ~string | ~bool](val T, description string) basicMarshaler {
-	var schemaType dataType
-	if _, ok := any(val).(int); ok {
-		schemaType = "integer"
-	} else {
-		schemaType = "string"
-	}
+//func constSchema[T ~int | ~string | ~bool](val T, description string) basicMarshaler {
+//	var schemaType dataType
+//	if _, ok := any(val).(int); ok {
+//		schemaType = "integer"
+//	} else {
+//		schemaType = "string"
+//	}
+//
+//	res := basicMarshaler{
+//		"type":  schemaType,
+//		"const": val,
+//	}
+//	if description != "" {
+//		res["description"] = description
+//	}
+//	return res
+//}
 
+func stringEnum(description string, vals []string) basicMarshaler {
+	valsRaw, _ := json.Marshal(vals)
 	res := basicMarshaler{
-		"type":  schemaType,
-		"const": val,
+		"type": rawString(String),
+		"enum": json.RawMessage(valsRaw),
 	}
 	if description != "" {
-		res["description"] = description
-	}
-	return res
-}
-
-func enumSchema[T ~int | ~string](description string, vals ...T) basicMarshaler {
-	var schemaType dataType
-	if _, ok := any(vals[0]).(int); ok {
-		schemaType = "integer"
-	} else {
-		schemaType = "string"
-	}
-	res := basicMarshaler{
-		"type": schemaType,
-		"enum": vals,
-	}
-	if description != "" {
-		res["description"] = description
+		res["description"] = rawString(description)
 	}
 	return res
 }
@@ -236,47 +239,50 @@ func newBasicType(t *types.Basic) json.Marshaler {
 		panic(fmt.Sprintf("unknown type kind: %v", t.Kind()))
 	}
 	return basicMarshaler{
-		"type": jsonSchemaDataTypeName,
+		"type": rawString(jsonSchemaDataTypeName),
 	}
 }
 
 func arraySchema(items json.Marshaler, description string) basicMarshaler {
 	var res = basicMarshaler{
-		"type":  "array",
+		"type":  rawString("array"),
 		"items": items,
 	}
 	if description != "" {
-		res["description"] = description
+		res["description"] = rawString(description)
 	}
 	return res
 }
 
 func stringSchema(description string) basicMarshaler {
 	return basicMarshaler{
-		"type":        String,
-		"description": description,
+		"type":        rawString(String),
+		"description": rawString(description),
 	}
 }
 
 func boolSchema(description string) basicMarshaler {
 	return basicMarshaler{
-		"type":        Boolean,
-		"description": description,
+		"type":        rawString(Boolean),
+		"description": rawString(description),
 	}
 }
 
+func rawString[T ~string](s T) json.RawMessage {
+	return json.RawMessage(fmt.Sprintf(`"%s"`, s))
+}
 func intSchema(description string) basicMarshaler {
 	return basicMarshaler{
-		"type":        Integer,
-		"description": description,
+		"type":        rawString(Integer),
+		"description": rawString(description),
 	}
 }
 
-type basicMarshaler map[string]any
+type basicMarshaler map[string]json.Marshaler
 
 // MarshalJSON implements json.Marshaler.
 func (b basicMarshaler) MarshalJSON() ([]byte, error) {
-	return json.Marshal(map[string]any(b))
+	return json.Marshal(map[string]json.Marshaler(b))
 }
 
 var _ json.Marshaler = basicMarshaler{}

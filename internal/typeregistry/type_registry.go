@@ -1,6 +1,7 @@
 package typeregistry
 
 import (
+	"errors"
 	"fmt"
 	"github.com/dave/dst"
 	"github.com/dave/dst/decorator"
@@ -9,6 +10,10 @@ import (
 	"log"
 	"path/filepath"
 	"strings"
+)
+
+var (
+	ErrUnsupportedType = errors.New("unsupported type")
 )
 
 type Registry struct {
@@ -164,7 +169,7 @@ func (d *UnionTypeDecl) ID() TypeID {
 func SetTypeAlternativeDecl(importMap ImportMap, expr dst.Expr) *UnionTypeDecl {
 	switch expr := expr.(type) {
 	case *dst.Ident:
-		//log.Printf("Name: %s, Path: %s, Obj: %v, %T", Node.Name, Node.Path, Node.Obj, Node.Obj)
+		//log.Printf("Name: %s, Path: %s, Obj: %v, %T", nodeImpl.Name, nodeImpl.Path, nodeImpl.Obj, nodeImpl.Obj)
 		return &UnionTypeDecl{
 			importMap:           importMap,
 			DestTypePackagePath: importMap[""],
