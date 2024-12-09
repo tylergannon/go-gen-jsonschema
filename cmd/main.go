@@ -1,17 +1,23 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/tylergannon/go-gen-jsonschema/internal/schemabuilder"
+	"github.com/tylergannon/go-gen-jsonschema/internal/builder"
+	"github.com/tylergannon/go-gen-jsonschema/internal/loader"
+	"github.com/tylergannon/go-gen-jsonschema/internal/typeregistry"
 	"log"
+	"os"
 	"strings"
-
-	"golang.org/x/tools/go/packages"
 )
 
-// Command line flag for type names
-var typeNames = flag.String("type", "", "comma-separated list of type names")
+// Command line flags
+var (
+	typeNames = flag.String("type", "", "comma-separated list of type names")
+	pretty    = flag.Bool("pretty", false, "output JSON with indentation")
+	verbose   = flag.Bool("verbose", false, "print detailed processing information")
+)
 
 func main() {
 	flag.Parse()
@@ -21,13 +27,9 @@ func main() {
 	}
 
 	// Split type names into slice
-	_types := strings.Split(*typeNames, ",")
+	types := strings.Split(*typeNames, ",")
 
-	// Load the package
-	cfg := &packages.Config{
-		Mode: packages.NeedTypes | packages.NeedSyntax,
-	}
-	pkgs, err := packages.Load(cfg, ".")
+	pkgs, err := loader.Load(".")
 	if err != nil {
 		log.Fatalf("loading package: %v", err)
 	}
@@ -44,9 +46,41 @@ func main() {
 		log.Fatal("package contains errors")
 	}
 
-	fmt.Println("Here we go")
-
-	if err := schemabuilder.GenerateSchemas(pkg, _types); err != nil {
+	registry, err := typeregistry.NewRegistry(pkgs)
+	if err != nil {
 		log.Fatal(err)
+	}
+
+	for _, typeName := range types {
+		ts, ok := registry.GetTypeByName(typeName, pkg.PkgPath)
+		if !ok {
+			log.Fatalf("could not find type %q", typeName)
+		}
+
+		g, err := registry.GraphTypeForSchema(ts)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		schema := builder.New(g).Render()
+
+		var schemaBytes []byte
+		if *pretty {
+			schemaBytes, err = json.MarshalIndent(schema, "", "  ")
+		} else {
+			schemaBytes, err = json.Marshal(schema)
+		}
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		destFile := fmt.Sprintf("jsonschema_%s.json", typeName)
+		if err = os.WriteFile(destFile, schemaBytes, 0644); err != nil {
+			log.Fatal(err)
+		}
+
+		if *verbose {
+			fmt.Printf("Processed type: %s (package: %s), output file: %s\n", typeName, pkg.PkgPath, destFile)
+		}
 	}
 }

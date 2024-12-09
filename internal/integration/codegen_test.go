@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 )
 
-var cleanUp = false
+var cleanUp = true
 
 var _ = AfterSuite(func() {
 	if cleanUp {
@@ -56,16 +56,16 @@ var _ = Describe("Codegen", func() {
 		for _, fname := range files {
 			fpath := filepath.Clean(filepath.Join(tempDir, fname))
 			Expect(fpath).To(BeARegularFile(), fmt.Sprintf("Expected file %s to be created in %s", fname, tempDir))
-			//Expect(fpath).To(
-			//	testutils.MatchGoldenFile(),
-			//	fmt.Sprintf("Golden file %s in subpath %s", fpath, subpath),
-			//)
+			Expect(fpath).To(
+				testutils.MatchGoldenFile(".golden"),
+				//fmt.Sprintf("Golden file %s in subpath %s", fpath, subpath),
+			)
 		}
 	}
 
 	// Table-driven tests
 	DescribeTable("Codegen table tests",
 		CodegenTest,
-		Entry("Basic struct with no special types", "integration/fixtures/testapp1", "test1"),
+		Entry("Basic struct with no special types", "integration/fixtures/testapp1", "test1", "jsonschema_SimpleStruct.json"),
 	)
 })

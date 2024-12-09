@@ -1,6 +1,13 @@
 package testapp1
 
-//go:generate go run github.com/tylergannon/go-gen-jsonschema/cmd/ -type SimpleStruct
+import (
+	_ "github.com/dave/dst/decorator"
+	_ "github.com/tylergannon/go-gen-jsonschema"
+	_ "github.com/tylergannon/structtag"
+	_ "golang.org/x/tools/go/packages"
+)
+
+//go:generate go run github.com/tylergannon/go-gen-jsonschema/cmd/ -type SimpleStruct -pretty
 
 // Build this struct in order to really get a lot of meaning out of life.
 // It's really essential that you get all of this down.

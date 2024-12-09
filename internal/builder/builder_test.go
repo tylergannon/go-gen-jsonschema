@@ -59,7 +59,7 @@ var _ = DescribeTable("Struct Types", typeLoader("structs"),
 	Entry("Hotdog (enums)", "Hotdog", structs.HotDogSchema),
 )
 
-var _ = DescribeTable("Rendering basic types", typeLoader("basic", skipTest),
+var _ = DescribeTable("Rendering basic types", typeLoader("basic"),
 	Entry("Int type", "Foo", "{\"type\": \"integer\",\"description\": \"Foo is an integer\"}"),
 	Entry("Int ptr type", "FooPtr", "{\"type\": \"integer\",\"description\": \"FooPtr is a pointer to int\"}"),
 	Entry("String type", "Bar", "{\"type\": \"string\",\"description\": \"Bar is a string\"}"),

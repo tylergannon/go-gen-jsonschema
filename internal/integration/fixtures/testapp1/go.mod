@@ -2,12 +2,16 @@ module github.com/tylergannon/go-gen-jsonschema-testapp
 
 go 1.23.3
 
-require github.com/tylergannon/go-gen-jsonschema v0.0.0-unpublished
+require (
+	github.com/dave/dst v0.27.3
+	github.com/tylergannon/go-gen-jsonschema v0.0.0-00010101000000-000000000000
+	github.com/tylergannon/structtag v0.0.1
+	golang.org/x/tools v0.27.0
+)
 
 require (
 	golang.org/x/mod v0.22.0 // indirect
 	golang.org/x/sync v0.9.0 // indirect
-	golang.org/x/tools v0.27.0 // indirect
 )
 
 replace github.com/tylergannon/go-gen-jsonschema => ../../../../

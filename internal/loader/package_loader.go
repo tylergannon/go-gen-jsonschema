@@ -6,7 +6,7 @@ import (
 )
 
 var PackageLoadNeeds = packages.NeedDeps |
-	packages.NeedImports |
+	//packages.NeedImports |
 	packages.NeedModule |
 	packages.NeedName |
 	packages.NeedSyntax |

@@ -7,12 +7,20 @@ import (
 	"github.com/onsi/gomega/types"
 )
 
+const defaultExt = "lden"
+
 // MatchGoldenFile compares two files using `diff` for reporting differences.
-func MatchGoldenFile() types.GomegaMatcher {
-	return &goldenFileMatcher{}
+func MatchGoldenFile(ext ...string) types.GomegaMatcher {
+	if len(ext) == 0 {
+		ext = append(ext, defaultExt)
+	}
+	return &goldenFileMatcher{
+		extension: ext[0],
+	}
 }
 
 type goldenFileMatcher struct {
+	extension  string
 	actualFile string
 	diffOutput string
 }
@@ -24,7 +32,7 @@ func (g *goldenFileMatcher) Match(actual interface{}) (success bool, err error) 
 	}
 	g.actualFile = actualFile
 
-	expectedFile := actualFile + "lden"
+	expectedFile := actualFile + g.extension
 
 	// Run diff to check for differences
 	cmd := exec.Command("diff", "-u", g.actualFile, expectedFile)

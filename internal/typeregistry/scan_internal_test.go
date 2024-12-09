@@ -2,8 +2,10 @@ package typeregistry
 
 import (
 	"github.com/dave/dst"
+	"github.com/dave/dst/decorator"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/tylergannon/go-gen-jsonschema/internal/loader"
 	"go/types"
 	"path/filepath"
 )
@@ -137,7 +139,6 @@ var _ = Describe("Graphing", func() {
 		}),
 	)
 	It("Call the graph function", func() {
-		Skip("Skip")
 		ts, _, ok := registry.getType("SimpleStruct", filepath.Join(packageBase, "testapp0_simple"))
 		Expect(ok).To(BeTrue())
 		rootNode = NamedTypeNode{
@@ -149,5 +150,23 @@ var _ = Describe("Graphing", func() {
 			},
 		}
 		_, _ = registry.visitNode(rootNode)
+	})
+})
+
+var _ = Describe("Scan", func() {
+	var (
+		pkgs     []*decorator.Package
+		registry *Registry
+	)
+	BeforeEach(func() {
+		var err error
+		pkgs, err = loader.Load("./testfixtures/registrytestapp/...")
+		Expect(err).NotTo(HaveOccurred())
+		registry, err = NewRegistry(pkgs)
+		Expect(err).NotTo(HaveOccurred())
+	})
+	It("Should all be all right ", func() {
+		Expect(true)
+		Expect(registry.unionTypes).To(HaveLen(2))
 	})
 })
