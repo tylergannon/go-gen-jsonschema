@@ -9,12 +9,19 @@ import (
 	"strings"
 )
 
+const (
+	discriminatorPropName = "__type__"
+)
+
 func New(graph *typeregistry.SchemaGraph) *SchemaBuilder {
 	return &SchemaBuilder{
-		graph:          graph,
-		definitions:    definitionsMap{},
-		typeIDMap:      map[typeregistry.TypeID]string{},
-		definitionsKey: defaultDefinitionsKey,
+		graph:                 graph,
+		definitions:           definitionsMap{},
+		typeIDMap:             map[typeregistry.TypeID]string{},
+		definitionsKey:        defaultDefinitionsKey,
+		DiscriminatorPropName: discriminatorPropName,
+		discriminators:        map[string]bool{},
+		discriminated:         map[typeregistry.TypeID]string{},
 	}
 }
 
@@ -36,9 +43,23 @@ type SchemaBuilder struct {
 	// definitions holds the actual definitions object
 	definitions definitionsMap
 	// typeIDMap maps TypeIDs to the string key in the definitions.
-	typeIDMap      map[typeregistry.TypeID]string
-	definitionsKey string
+	typeIDMap             map[typeregistry.TypeID]string
+	definitionsKey        string
+	DiscriminatorPropName string
+	discriminators        map[string]bool
+	discriminated         map[typeregistry.TypeID]string
 }
+
+/*
+For rendering the json marshalers for types with alternatives.
+We only do that within the same package, right?
+No?
+I think that for now we need to make one file per type.  No other way.
+`jsonschema_marshaler_TypeName.go`
+
+First release: only support rendering it in subdirectories.
+Second release: support something for elsewhere
+*/
 
 func (b *SchemaBuilder) Render() json.Marshaler {
 	rootNode := b.renderNode(b.graph.RootNode)
@@ -117,8 +138,15 @@ func (b *SchemaBuilder) renderNode(node typeregistry.Node) json.Marshaler {
 		return newBasicType(n.BasicType())
 	case typeregistry.EnumTypeNode:
 		return newEnumType(n)
+	case typeregistry.NamedTypeWithAltsNode:
+		return b.renderTypeWithAlts(n)
 	case typeregistry.NamedTypeNode:
 		child := b.renderChildNode(n.UnderlyingTypeID())
+		if n.IsAlt {
+			if _, ok := child.(*jsonSchema); !ok {
+				panic(fmt.Sprintf("type alt %s must be a struct type", n.NamedType().Obj().String()))
+			}
+		}
 		switch chType := child.(type) {
 		case basicMarshaler:
 			if rawComments, err := json.Marshal(buildComments(n.TypeSpec.Decorations())); err != nil {
@@ -128,6 +156,20 @@ func (b *SchemaBuilder) renderNode(node typeregistry.Node) json.Marshaler {
 			}
 			return chType
 		case *jsonSchema:
+			if n.IsAlt {
+				discName := n.NamedType().Obj().Name()
+				if b.discriminators[discName] {
+					for i := 1; ; i++ {
+						if !b.discriminators[discName+strconv.Itoa(i)] {
+							discName = discName + strconv.Itoa(i)
+							break
+						}
+					}
+				}
+				b.discriminators[discName] = true
+				b.discriminated[n.ID()] = discName
+				chType.Properties = append(chType.Properties, schemaProperty{name: b.DiscriminatorPropName, def: constElement(discName)})
+			}
 			typeComments := buildComments(n.TypeSpec.Decorations())
 			if len(chType.Description) == 0 {
 				chType.Description = typeComments
@@ -227,4 +269,25 @@ func (b *SchemaBuilder) renderStructNode(node typeregistry.StructTypeNode) json.
 	schema.Description = sb.String()
 
 	return schema
+}
+
+// renderTypeWithAlts
+//  1. If there is only one child, just render that.
+//  2. Otherwise, it has to be given the discriminator const.
+//     In order to support this, we have to go back to the TypeRegistry.
+//     Named types with multiple alts have to set their type IDS in such a way that
+//     they won't be conflated with the same type as a non-alt.
+func (b *SchemaBuilder) renderTypeWithAlts(n typeregistry.NamedTypeWithAltsNode) json.Marshaler {
+	var (
+		alts jsonUnionType
+	)
+
+	for _, childID := range n.Children() {
+		if schema, ok := b.renderChildNode(childID).(*jsonSchema); ok {
+			alts = append(alts, schema)
+		} else {
+			panic("oh poopoo")
+		}
+	}
+	return alts
 }

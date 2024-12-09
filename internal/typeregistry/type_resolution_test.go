@@ -24,7 +24,7 @@ var _ = Describe("Type Resolution", func() {
 	})
 	When("Given a named type", func() {
 		It("returns the canonical name for that type", func() {
-			var ts, _, found = registry.getType("TrivialNamedType", pkgPath)
+			var ts, found = registry.getType("TrivialNamedType", pkgPath)
 			Expect(found).To(BeTrue())
 			actual, err := registry.resolveType(ts.GetType(), ts.typeSpec, ts.pkg)
 			Expect(err).NotTo(HaveOccurred())
@@ -44,7 +44,7 @@ var _ = Describe("Type Resolution", func() {
 
 	DescribeTable("Checking inline and complex types", func(typeName, expected string, success bool) {
 		var (
-			ts, _, found = registry.getType(typeName, pkgPath)
+			ts, found = registry.getType(typeName, pkgPath)
 		)
 		Expect(found).To(BeTrue(), fmt.Sprintf("type %s not found", typeName))
 		actual, err := registry.resolveType(ts.GetType().Underlying(), ts.typeSpec.Type, ts.pkg)

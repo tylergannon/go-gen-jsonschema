@@ -29,6 +29,7 @@ type Registry struct {
 	unionTypes map[TypeID]*UnionTypeDecl
 	imports    map[string]*decorator.Package
 	constants  map[TypeID][]EnumEntry
+	funcs      map[TypeID]*FuncEntry
 }
 
 type TypeID string
@@ -62,11 +63,17 @@ type IdentifiableByType interface {
 }
 
 func NewTypeID(pkgPath, typeName string) TypeID {
+	if typeName == "" {
+		panic("typeName is empty")
+	}
+	if pkgPath == "" {
+		panic("pkgPath is empty")
+	}
 	return TypeID(pkgPath + "." + typeName)
 }
 
 func (r *Registry) GetTypeByName(name, pkgPath string) (TypeSpec, bool) {
-	t, _, ok := r.getType(name, pkgPath)
+	t, ok := r.getType(name, pkgPath)
 	if !ok {
 		fmt.Println("Not found: ", name, pkgPath)
 		for k := range r.typeMap {
@@ -76,13 +83,45 @@ func (r *Registry) GetTypeByName(name, pkgPath string) (TypeSpec, bool) {
 	return t, ok
 }
 
-func (r *Registry) getType(name string, pkgPath string) (*typeSpec, *UnionTypeDecl, bool) {
+func (r *Registry) getType(name string, pkgPath string) (*typeSpec, bool) {
 	typeID := NewTypeID(pkgPath, name)
 
 	if ts, ok := r.typeMap[typeID]; ok {
-		return ts, r.unionTypes[typeID], true
+		if alt, ok := r.unionTypes[typeID]; ok && len(ts.alts) == 0 {
+			for _, typeAlt := range alt.Alternatives {
+				if err := r.LoadAndScan(typeAlt.ImportMap[""]); err != nil {
+					panic(err)
+				}
+				typeAltID := NewTypeID(typeAlt.ImportMap[""], typeAlt.FuncName)
+				funcEntry, ok := r.funcs[typeAltID]
+				if !ok {
+					fmt.Println("Look for it")
+					for t, f := range r.funcs {
+						fmt.Printf("%s: %s, %v\n", t, f.Func.Name(), f.FuncDecl.Recv)
+					}
+					panic("couldn't find func " + string(typeAltID))
+				}
+				pkgPath, name := funcEntry.ReceiverOrArgType()
+
+				if err := r.LoadAndScan(pkgPath); err != nil {
+					panic(err)
+				}
+				sourceTypeID := NewTypeID(pkgPath, name)
+
+				if altTS, ok := r.typeMap[sourceTypeID]; !ok {
+					panic("couldn't find type alt " + string(sourceTypeID) + " for func " + typeAlt.FuncName)
+				} else {
+					ts.alts = append(ts.alts, &AlternativeTypeSpec{
+						TypeSpec:       altTS,
+						ConversionFunc: typeAlt.FuncName,
+						Alias:          typeAlt.Alias,
+					})
+				}
+			}
+		}
+		return ts, true
 	}
-	return nil, nil, false
+	return nil, false
 }
 
 func (r *Registry) registerConstDecl(file *dst.File, pkg *decorator.Package, decl *dst.GenDecl) error {
@@ -150,6 +189,10 @@ func (b BasicType) ID() TypeID {
 	return TypeID(string(b))
 }
 
+func (b BasicType) Alternatives() []*AlternativeTypeSpec {
+	return nil
+}
+
 const (
 	BasicTypeString BasicType = "string"
 	BasicTypeInt    BasicType = "int"
@@ -178,13 +221,22 @@ type TypeSpec interface {
 	File() *dst.File
 	Decorations() *dst.NodeDecs
 	GetType() types.Type
+	Alternatives() []*AlternativeTypeSpec
+}
+
+type AlternativeTypeSpec struct {
+	TypeSpec       TypeSpec
+	ConversionFunc string
+	// DEPRECATED
+	Alias string
 }
 
 type TypeAlternative struct {
-	Alias    string
-	PkgPath  string
-	TypeName string
-	FuncName string
+	Alias     string
+	FuncName  string
+	ImportMap ImportMap
+	//StructPkg  string
+	//StructType string
 }
 
 type UnionTypeDecl struct {
@@ -224,6 +276,11 @@ type typeSpec struct {
 	pkg     *decorator.Package
 	genDecl *dst.GenDecl
 	file    *dst.File
+	alts    []*AlternativeTypeSpec
+}
+
+func (ts *typeSpec) Alternatives() []*AlternativeTypeSpec {
+	return ts.alts
 }
 
 func (ts *typeSpec) GetType() types.Type {

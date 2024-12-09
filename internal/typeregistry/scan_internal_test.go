@@ -29,7 +29,7 @@ var _ = Describe("Graphing", func() {
 		Expect(registry.LoadAndScan("./testfixtures/testapp0_simple/...")).To(Succeed())
 	})
 	DescribeTable("Building a type graph", func(typeName string, valid bool, opts ...any) {
-		ts, _, ok := registry.getType(typeName, filepath.Join(packageBase, "testapp0_simple"))
+		ts, ok := registry.getType(typeName, filepath.Join(packageBase, "testapp0_simple"))
 		Expect(ok).To(BeTrue())
 		graph, err := registry.GraphTypeForSchema(ts)
 		if valid {
@@ -64,7 +64,7 @@ var _ = Describe("Graphing", func() {
 	)
 
 	DescribeTable("Checking out the various types", func(typeName string, valid bool, opts ...any) {
-		ts, _, ok := registry.getType(typeName, filepath.Join(packageBase, "testapp0_simple"))
+		ts, ok := registry.getType(typeName, filepath.Join(packageBase, "testapp0_simple"))
 		Expect(ok).To(BeTrue())
 		id, err := registry.resolveType(ts.GetType(), ts.GetTypeSpec(), ts.pkg)
 		Expect(err).NotTo(HaveOccurred())
@@ -139,7 +139,7 @@ var _ = Describe("Graphing", func() {
 		}),
 	)
 	It("Call the graph function", func() {
-		ts, _, ok := registry.getType("SimpleStruct", filepath.Join(packageBase, "testapp0_simple"))
+		ts, ok := registry.getType("SimpleStruct", filepath.Join(packageBase, "testapp0_simple"))
 		Expect(ok).To(BeTrue())
 		rootNode = NamedTypeNode{
 			TypeSpec: ts,

@@ -54,6 +54,8 @@ const (
 	Years   TimeUnit = "years"
 )
 
+// TimeAgo reflects a relative time in the past, given in units of time
+// relative to the present time.
 type TimeAgo struct {
 	// Choose the unit of as given.
 	Unit TimeUnit `json:"unit"`
@@ -62,19 +64,21 @@ type TimeAgo struct {
 }
 
 func (t TimeAgo) ToTime() (LLMFriendlyTime, error) {
-	return LLMFriendlyTime(time.Now().Add(-toDuration(t.Unit, t.Quantity))), nil
+	return LLMFriendlyTime(time.Now().Add(-ToDuration(t.Unit, t.Quantity))), nil
 }
 
 type TimeFromNow struct {
-	Unit  TimeUnit `json:"unit"`
-	Value int      `json:"value"`
+	// Choose the unit of as given.
+	Unit TimeUnit `json:"unit"`
+	// Enter the number of the selected unit.
+	Value int `json:"value"`
 }
 
 func (t TimeFromNow) ToTime() (LLMFriendlyTime, error) {
-	return LLMFriendlyTime(time.Now().Add(toDuration(t.Unit, t.Value))), nil
+	return LLMFriendlyTime(time.Now().Add(ToDuration(t.Unit, t.Value))), nil
 }
 
-func toDuration(unit TimeUnit, value int) time.Duration {
+func ToDuration(unit TimeUnit, value int) time.Duration {
 	var dur time.Duration
 	switch unit {
 	case Minutes:

@@ -32,7 +32,7 @@ type jsonUnionType []*jsonSchema
 // MarshalJSON implements json.Marshaler.
 func (j jsonUnionType) MarshalJSON() ([]byte, error) {
 	toMarshal := map[string][]json.Marshaler{
-		"anyOf": mapSlice([]*jsonSchema(j), func(it *jsonSchema, _ int) json.Marshaler { return json.Marshaler(it) }),
+		"anyOf": mapSlice(j, func(it *jsonSchema, _ int) json.Marshaler { return json.Marshaler(it) }),
 	}
 	return json.Marshal(toMarshal)
 }
@@ -191,6 +191,11 @@ func (j *jsonSchema) MarshalJSON() ([]byte, error) {
 	}
 	out += "}"
 	return []byte(out), nil
+}
+
+func constElement[T ~int | ~string | ~bool](val T) basicMarshaler {
+	_val, _ := json.Marshal(val)
+	return basicMarshaler{"const": json.RawMessage(_val)}
 }
 
 //func constSchema[T ~int | ~string | ~bool](val T, description string) basicMarshaler {

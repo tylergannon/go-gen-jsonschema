@@ -28,6 +28,7 @@ type nodeInternal interface {
 
 type NamedTypeNode struct {
 	*nodeImpl
+	IsAlt    bool // Whether this particular type instance is intended as an alternate in a Union type
 	TypeSpec TypeSpec
 }
 
@@ -48,6 +49,10 @@ func (n NamedTypeNode) NamedType() *types.Named {
 
 func (n NamedTypeNode) TypeSpecNode() *dst.TypeSpec {
 	return n.dstNode.(*dst.TypeSpec)
+}
+
+type NamedTypeWithAltsNode struct {
+	NamedTypeNode
 }
 
 type StructTypeNode struct {
@@ -191,16 +196,8 @@ type SchemaGraph struct {
 func (r *Registry) GraphTypeForSchema(ts TypeSpec) (*SchemaGraph, error) {
 	var (
 		nodes    = map[TypeID]nodeInternal{}
-		rootNode = NamedTypeNode{
-			TypeSpec: ts,
-			nodeImpl: &nodeImpl{
-				typ:     ts.GetType(),
-				pkg:     ts.Pkg(),
-				dstNode: ts.GetTypeSpec(),
-				id:      NewTypeID(ts.Pkg().PkgPath, ts.GetType().(*types.Named).Obj().Name()),
-			},
-		}
-		stack = []nodeInternal{rootNode}
+		rootNode = r.buildNodeForTS(ts, false)
+		stack    = []nodeInternal{rootNode}
 	)
 
 	for i := 0; len(stack) > 0; i++ {
@@ -233,7 +230,7 @@ func (r *Registry) resolveTypeIdent(ident *dst.Ident, currPkgPath *decorator.Pac
 	if ident.Path == "" {
 		pkgPath = currPkgPath.PkgPath
 	}
-	ts, _, ok := r.getType(ident.Name, pkgPath)
+	ts, ok := r.getType(ident.Name, pkgPath)
 	if !ok {
 		return nil, fmt.Errorf("type identifier not found: %s", ident.Name)
 	}
@@ -252,6 +249,8 @@ func (r *Registry) visitNode(node nodeInternal) ([]nodeInternal, error) {
 	switch tn := node.(type) {
 	case NamedTypeNode:
 		return r.visitNamedTypeNode(tn)
+	case NamedTypeWithAltsNode:
+		return r.visitTypeWithAltsNode(tn)
 	case StructTypeNode:
 		var result []nodeInternal
 		if _temp, _err := r.visitStructTypeNode(tn); _err != nil {
@@ -283,6 +282,20 @@ func (r *Registry) visitNode(node nodeInternal) ([]nodeInternal, error) {
 
 		panic(fmt.Sprintf("unexpected node type: %T", node.Type()))
 	}
+}
+
+func (r *Registry) visitTypeWithAltsNode(node NamedTypeWithAltsNode) ([]nodeInternal, error) {
+	var result []nodeInternal
+	alts := node.TypeSpec.Alternatives()
+	if len(alts) == 1 {
+		result = append(result, r.buildNodeForTS(alts[0].TypeSpec, false))
+		return result, nil
+	}
+	for _, alt := range node.TypeSpec.Alternatives() {
+		result = append(result, r.buildNodeForTS(alt.TypeSpec, true))
+	}
+
+	return result, nil
 }
 
 func (r *Registry) visitArrayTypeNode(node SliceTypeNode) ([]nodeInternal, error) {
@@ -344,7 +357,7 @@ func (r *Registry) visitEmbeddedStructField(parent StructTypeNode, field *types.
 		return nil, fmt.Errorf("embedded fields must be named type at %s:%d:%d", pos.Filename, pos.Line, pos.Column)
 	} else if structType, ok = named.Underlying().(*types.Struct); !ok {
 		return nil, fmt.Errorf("expected struct type but found %T on field at %s:%d:%d", named.Underlying(), pos.Filename, pos.Line, pos.Column)
-	} else if ts, _, ok = r.getType(named.Obj().Name(), named.Obj().Pkg().Path()); !ok {
+	} else if ts, ok = r.getType(named.Obj().Name(), named.Obj().Pkg().Path()); !ok {
 		panic(fmt.Sprintf("did't find typespec for field defined at %s:%d:%d", pos.Filename, pos.Line, pos.Column))
 	} else if structNode, ok = ts.GetTypeSpec().Type.(*dst.StructType); !ok {
 		return nil, fmt.Errorf("expected ast node to be StructType but it was %T at %s:%d:%d", ts.GetTypeSpec().Type, pos.Filename, pos.Line, pos.Column)
@@ -388,7 +401,7 @@ func (r *Registry) visitStructFields(parent StructTypeNode, pkg *decorator.Packa
 			continue
 		}
 		if fType, ok := field.Type().(*types.Named); ok {
-			ts, _, _ = r.getType(fType.Obj().Name(), fType.Obj().Pkg().Path())
+			ts, _ = r.getType(fType.Obj().Name(), fType.Obj().Pkg().Path())
 			newNode.pkg = ts.Pkg()
 		}
 		if newNode.id, err = r.resolveType(field.Type(), fieldDecl.Type, parent.Pkg()); err != nil {
@@ -405,6 +418,28 @@ func (r *Registry) visitStructFields(parent StructTypeNode, pkg *decorator.Packa
 		})
 	}
 	return nodes, nil
+}
+
+func (r *Registry) buildNodeForTS(ts TypeSpec, isAlt bool) nodeInternal {
+	var id = ts.ID()
+	if isAlt {
+		id = TypeID(string(id) + "~")
+	}
+	node := NamedTypeNode{
+		TypeSpec: ts,
+		IsAlt:    isAlt,
+		nodeImpl: &nodeImpl{
+			typ:     ts.GetType(),
+			dstNode: ts.GetTypeSpec(),
+			pkg:     ts.Pkg(),
+			id:      id,
+		},
+	}
+
+	if len(ts.Alternatives()) > 0 {
+		return NamedTypeWithAltsNode{node}
+	}
+	return node
 }
 
 func (r *Registry) visitStructTypeNode(parent StructTypeNode) ([]StructFieldNode, error) {
@@ -500,7 +535,7 @@ func (r *Registry) visitNamedTypeNode(parent NamedTypeNode) ([]nodeInternal, err
 func (r *Registry) resolveNodeType(n *nodeImpl) nodeInternal {
 	switch t := n.typ.(type) {
 	case *types.Named:
-		if tsTemp, _, ok := r.getType(t.Obj().Name(), t.Obj().Pkg().Path()); !ok {
+		if tsTemp, ok := r.getType(t.Obj().Name(), t.Obj().Pkg().Path()); !ok {
 			panic("why I not find")
 		} else {
 			n.dstNode = tsTemp.typeSpec
@@ -508,6 +543,9 @@ func (r *Registry) resolveNodeType(n *nodeImpl) nodeInternal {
 			newNode := NamedTypeNode{TypeSpec: tsTemp, nodeImpl: n}
 			if entries, ok := r.constants[newNode.id]; ok && len(entries) > 0 {
 				return EnumTypeNode{newNode, entries}
+			}
+			if len(tsTemp.alts) > 0 {
+				return NamedTypeWithAltsNode{newNode}
 			}
 			return newNode
 		}
@@ -561,7 +599,7 @@ func (r *Registry) locateType(ident *dst.Ident, localPkg *decorator.Package) (Ty
 			return nil, fmt.Errorf("trying to locate type %v: %w", ident, err)
 		}
 	}
-	ts, _, ok := r.getType(ident.Name, path)
+	ts, ok := r.getType(ident.Name, path)
 	if !ok {
 		return nil, fmt.Errorf("type not found trying to locate %v", ident)
 	}

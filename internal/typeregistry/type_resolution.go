@@ -53,8 +53,11 @@ func (r *Registry) resolveTypeRecursive(t types.Type, ts dst.Node, pkg *decorato
 				return "", err
 			} else if structNode, ok := _typeSpec.GetTypeSpec().Type.(*dst.StructType); ok {
 				return r.resolveStructType(t, structNode, pkg, depth)
+			} else {
+				inspect("t is struct (dst is ident)", t, nodeType)
 			}
 		}
+
 		return r.resolveStructType(t, ts.(*dst.StructType), pkg, depth)
 	}
 	return "", fmt.Errorf("unsupported type %T: %w", t, ErrUnsupportedType)
@@ -92,7 +95,7 @@ func (r *Registry) resolveFields(t *types.Struct, ts *dst.StructType, pkg *decor
 			if err = r.LoadAndScan(f.Var.Pkg().Path()); err != nil {
 				return 0, err
 			}
-			_ts, _, ok := r.getType(f.Var.Name(), f.Var.Pkg().Path())
+			_ts, ok := r.getType(f.Var.Name(), f.Var.Pkg().Path())
 			if !ok {
 				return 0, fmt.Errorf("type %s not found in %s", f.Var.Name(), f.Var.Pkg().Path())
 			}

@@ -6,6 +6,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/tylergannon/go-gen-jsonschema/internal/builder/testfixtures/structs"
+	"github.com/tylergannon/go-gen-jsonschema/internal/builder/testfixtures/typealternatives"
 	"github.com/tylergannon/go-gen-jsonschema/internal/typeregistry"
 )
 
@@ -38,7 +39,7 @@ func typeLoader(pkg string, opts ...any) func(typename, expected string) {
 	return func(typeName, expected string) {
 		ts, ok := registry.GetTypeByName(typeName, pkgPath)
 
-		Expect(ok).To(BeTrue(), "type %s not found", typeName)
+		Expect(ok).To(BeTrue(), "type %s not found in pkg %s", typeName, pkgPath)
 		graph, err := registry.GraphTypeForSchema(ts)
 		Expect(err).NotTo(HaveOccurred(), fmt.Sprintf("failed to resolve graph for %s", typeName))
 
@@ -51,6 +52,10 @@ func typeLoader(pkg string, opts ...any) func(typename, expected string) {
 		Expect(data).To(MatchJSON(expected))
 	}
 }
+
+var _ = DescribeTable("Alts", typeLoader("typealternatives"),
+	Entry("LLMFriendlyTime", "TimedSomething", typealternatives.JSONSchemaTimedSomething),
+)
 
 var _ = DescribeTable("Struct Types", typeLoader("structs"),
 	Entry("Simple Struct Type", "StructWithBasicTypes", structs.StructWithBasicTypesSchema),

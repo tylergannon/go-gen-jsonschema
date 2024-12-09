@@ -7,6 +7,7 @@ import (
 	"github.com/dave/dst/decorator"
 	"github.com/tylergannon/go-gen-jsonschema/internal/loader"
 	"go/token"
+	"go/types"
 )
 
 const (
@@ -22,6 +23,7 @@ func NewRegistry(pkgs []*decorator.Package) (*Registry, error) {
 		unionTypes: map[TypeID]*UnionTypeDecl{},
 		imports:    map[string]*decorator.Package{},
 		constants:  map[TypeID][]EnumEntry{},
+		funcs:      map[TypeID]*FuncEntry{},
 	}
 	for _, pkg := range pkgs {
 		if err := registry.scan(pkg); err != nil {
@@ -58,39 +60,104 @@ func (r *Registry) scan(pkg *decorator.Package) error {
 	if r.packages[pkg.PkgPath] != nil {
 		return nil
 	}
+	funcs := map[TypeID]*FuncEntry{}
+
 	for _, file := range pkg.Syntax {
-		if err := r.scanFile(file, pkg); err != nil {
+		if funcsTemp, err := r.scanFile(file, pkg); err != nil {
 			return err
+		} else {
+			for id, funcDecl := range funcsTemp {
+				funcs[id] = funcDecl
+			}
 		}
 	}
+
 	r.packages[pkg.PkgPath] = pkg
-	for _, pkg := range pkg.Imports {
-		r.imports[pkg.PkgPath] = pkg
+
+	for _, obj := range pkg.TypesInfo.Defs {
+		if obj == nil {
+			continue
+		}
+
+		funcObj, ok := obj.(*types.Func)
+		if !ok {
+			continue
+		}
+		typeID := NewTypeID(pkg.PkgPath, funcNameFromTypes(funcObj))
+		if f, ok := funcs[typeID]; ok {
+			f.Func = funcObj
+			f.typeID = typeID
+			r.funcs[typeID] = f
+		}
 	}
 	return nil
 }
 
-func (r *Registry) scanFile(file *dst.File, pkg *decorator.Package) error {
-	importMap := NewImportMap(pkg.PkgPath, file.Imports)
-	for _, decl := range getTypeDecls(file) {
-		switch decl.Tok {
-		case token.CONST:
-			if err := r.registerConstDecl(file, pkg, decl); err != nil {
-				return fmt.Errorf("register const: %w", err)
-			}
-		case token.TYPE:
-			if err := r.registerTypeDecl(file, pkg, decl); err != nil {
-				return fmt.Errorf("registering type decl %v in file %s (Pkg %s): %w", decl, file.Name.Name, pkg.PkgPath, err)
-			}
-		case token.VAR:
-			if err := r.registerVarDecl(file, pkg, decl, importMap); err != nil {
-				return err
-			}
-		default:
-			panic("no implementation for token type " + decl.Tok.String())
+// funcNameFromDst returns the name of the function if the function takes no
+// receiver.  If it takes a receiver, the function will be namespaced with the
+// type name of the receiver.
+func funcNameFromDst(funcDecl *dst.FuncDecl) string {
+	if funcDecl.Recv != nil && len(funcDecl.Recv.List) > 0 {
+		if ident, ok := funcDecl.Recv.List[0].Type.(*dst.Ident); ok {
+			return ident.Name + "." + funcDecl.Name.Name
 		}
 	}
-	return nil
+	return funcDecl.Name.Name
+}
+
+func funcNameFromTypes(funcObj *types.Func) string {
+	sig, ok := funcObj.Type().(*types.Signature)
+	if !ok || sig.Recv() == nil {
+		return funcObj.Name()
+	}
+	t := sig.Recv().Type()
+	switch receiver := t.(type) {
+	case *types.Named:
+		return fmt.Sprintf("%s.%s", receiver.Obj().Name(), funcObj.Name())
+	case *types.Pointer:
+		var named = receiver.Elem().(*types.Named)
+		return fmt.Sprintf("*%s.%s", named.Obj().Name(), funcObj.Name())
+	default:
+		panic(fmt.Sprintf("unhandled receiver type: %T", receiver))
+	}
+
+}
+
+func (r *Registry) scanFile(file *dst.File, pkg *decorator.Package) (result map[TypeID]*FuncEntry, err error) {
+	var (
+		importMap = NewImportMap(pkg.PkgPath, file.Imports)
+	)
+	result = make(map[TypeID]*FuncEntry)
+
+	for _, _decl := range file.Decls {
+		switch decl := _decl.(type) {
+		case *dst.FuncDecl:
+			if isRelevantFunc(decl) {
+				typeID := NewTypeID(pkg.PkgPath, funcNameFromDst(decl))
+				result[typeID] = &FuncEntry{ImportMap: importMap, FuncDecl: decl, typeID: typeID}
+			}
+		case *dst.GenDecl:
+			switch decl.Tok {
+			case token.CONST:
+				if err := r.registerConstDecl(file, pkg, decl); err != nil {
+					return result, fmt.Errorf("register const: %w", err)
+				}
+			case token.TYPE:
+				if err := r.registerTypeDecl(file, pkg, decl); err != nil {
+					return result, fmt.Errorf("registering type decl %v in file %s (Pkg %s): %w", decl, file.Name.Name, pkg.PkgPath, err)
+				}
+			case token.VAR:
+				if err := r.registerVarDecl(file, pkg, decl, importMap); err != nil {
+					return result, err
+				}
+			default:
+				continue
+			}
+		}
+
+	}
+
+	return result, nil
 }
 
 func (r *Registry) registerVarDecl(file *dst.File, pkg *decorator.Package, decl *dst.GenDecl, importMap ImportMap) error {
@@ -129,7 +196,7 @@ func (r *Registry) registerUnionTypeDecl(file *dst.File, pkg *decorator.Package,
 	}
 	unionTypeDecl := SetTypeAlternativeDecl(importMap, indexExpr.Index)
 	for _, arg := range callExpr.Args {
-		alt, err := interpretUnionTypeAltArg(arg, importMap)
+		alt, err := r.interpretUnionTypeAltArg(arg, importMap)
 		if err != nil {
 			return err
 		}
@@ -144,7 +211,7 @@ func (r *Registry) registerUnionTypeDecl(file *dst.File, pkg *decorator.Package,
 
 var ErrInvalidUnionTypeArg = errors.New("invalid union type arg")
 
-func interpretUnionTypeAltArg(expr dst.Expr, importMap ImportMap) (alt TypeAlternative, err error) {
+func (r *Registry) interpretUnionTypeAltArg(expr dst.Expr, importMap ImportMap) (alt TypeAlternative, err error) {
 	callExpr, ok := expr.(*dst.CallExpr)
 	if !ok {
 		return alt, ErrInvalidUnionTypeArg
@@ -158,21 +225,19 @@ func interpretUnionTypeAltArg(expr dst.Expr, importMap ImportMap) (alt TypeAlter
 		return alt, ErrInvalidUnionTypeArg
 	}
 	alt.Alias = callExpr.Args[0].(*dst.BasicLit).Value
+	alt.Alias = alt.Alias[1 : len(alt.Alias)-1]
+	alt.ImportMap = importMap
 
 	switch typeArg := callExpr.Args[1].(type) {
 	case *dst.SelectorExpr:
+		// This is the case of a struct method whose receiver is the
+		// alternate type.
 		if ident, ok := typeArg.X.(*dst.Ident); ok {
-			alt.PkgPath = ident.Path
-			if alt.PkgPath == "" {
-				alt.PkgPath = importMap[""]
-			}
-			alt.TypeName = ident.Name
-			alt.FuncName = typeArg.Sel.Name
+			alt.FuncName = fmt.Sprintf("%s.%s", ident.Name, typeArg.Sel.Name)
 		} else {
 			return alt, ErrInvalidUnionTypeArg
 		}
 	case *dst.Ident:
-		alt.PkgPath = importMap[""]
 		alt.FuncName = typeArg.Name
 	default:
 		return alt, ErrInvalidUnionTypeArg
@@ -193,23 +258,6 @@ func (r *Registry) registerTypeDecl(file *dst.File, pkg *decorator.Package, genD
 		r.typeMap[ts.ID()] = ts
 	}
 	return nil
-}
-
-// getTypeDecls locates all GenDecl nodes for TYPE and VAR declarations
-func getTypeDecls(file *dst.File) (decls []*dst.GenDecl) {
-	var (
-		genDecl *dst.GenDecl
-		ok      bool
-	)
-	for _, decl := range file.Decls {
-		if genDecl, ok = decl.(*dst.GenDecl); !ok {
-			continue
-		}
-		if genDecl.Tok == token.TYPE || genDecl.Tok == token.VAR || genDecl.Tok == token.CONST {
-			decls = append(decls, genDecl)
-		}
-	}
-	return decls
 }
 
 func toTypeSpecs(specs []dst.Spec) (ts []*dst.TypeSpec) {
