@@ -1,5 +1,7 @@
 package structs
 
+import "github.com/tylergannon/go-gen-jsonschema/internal/builder/testfixtures/structs/enums"
+
 // StructWithBasicTypes is a struct with basic types
 type StructWithBasicTypes struct {
 	// Foo is an int
@@ -46,6 +48,23 @@ type StructWithNamedTypes struct {
 	Bar StructWithInline `json:"bar"`
 	// Baz is very cookie
 	Baz []StructWithInline `json:"baz"`
+}
+
+// Hotdog is a delectable treat that is enjoyed by Americans and lovers of
+// American cuisine the whole world over.
+type Hotdog struct {
+	// The length of the dog in inches
+	LengthInches int `json:"lengthInches"`
+	// Choose your favorite toppings
+	Toppings []struct {
+		// Choose from the available items
+		Item enums.HotdogTopping `json:"item"`
+		// how many scoops? (more if you really like it)
+		Scoops int `json:"scoops"`
+	} `json:"toppings"`
+
+	// what kind of dog will you choose?
+	Type enums.HotdogType `json:"type"`
 }
 
 const StructWithBasicTypesSchema = `
@@ -267,4 +286,60 @@ const StructWithNamedTypesSchema = `{
             "additionalProperties": false
         }
     }
+}`
+
+const HotDogSchema = `{
+    "description": "Hotdog is a delectable treat that is enjoyed by Americans and lovers of American cuisine the whole world over.",
+    "type": "object",
+    "properties": {
+        "lengthInches": {
+            "description": "The length of the dog in inches",
+            "type": "integer"
+        },
+        "toppings": {
+            "description": "Choose your favorite toppings",
+            "items": {
+                "description": "\n\n## **Properties**\n\n### item\n\nChoose from the available items\n\n### scoops\n\nhow many scoops? (more if you really like it)\n\n",
+                "type": "object",
+                "properties": {
+                    "item": {
+                        "description": "HotdogTopping is a string for hotdog toppings\n\n## Values\n\n### mustard\n\nBold and tangy zing.\n\n### ketchup\n\nSweet and bright.\n\n### mayonnaise\n\nRich and creamy.\n\n### relish\n\nCrisp, pickled crunch.\n\n### sauerkraut\n\nSharp, fermented bite.",
+                        "enum": [
+                            "mustard",
+                            "ketchup",
+                            "mayonnaise",
+                            "relish",
+                            "sauerkraut"
+                        ],
+                        "type": "string"
+                    },
+                    "scoops": {
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "item",
+                    "scoops"
+                ],
+                "additionalProperties": false
+            },
+            "type": "array"
+        },
+        "type": {
+            "description": "what kind of dog will you choose?",
+            "enum": [
+                "beef",
+                "chicken",
+                "turkey",
+                "veggie"
+            ],
+            "type": "string"
+        }
+    },
+    "required": [
+        "lengthInches",
+        "toppings",
+        "type"
+    ],
+    "additionalProperties": false
 }`

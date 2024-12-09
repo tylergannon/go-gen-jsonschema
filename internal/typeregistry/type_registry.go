@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/dave/dst"
 	"github.com/dave/dst/decorator"
+	"go/token"
 	"go/types"
 	"hash/maphash"
 	"log"
@@ -16,11 +17,18 @@ var (
 	ErrUnsupportedType = errors.New("unsupported type")
 )
 
+type EnumEntry struct {
+	Name        string
+	Value       string
+	Decorations *dst.NodeDecs
+}
+
 type Registry struct {
 	packages   map[string]*decorator.Package
 	typeMap    map[TypeID]*typeSpec
 	unionTypes map[TypeID]*UnionTypeDecl
 	imports    map[string]*decorator.Package
+	constants  map[TypeID][]EnumEntry
 }
 
 type TypeID string
@@ -75,6 +83,32 @@ func (r *Registry) getType(name string, pkgPath string) (*typeSpec, *UnionTypeDe
 		return ts, r.unionTypes[typeID], true
 	}
 	return nil, nil, false
+}
+
+func (r *Registry) registerConstDecl(file *dst.File, pkg *decorator.Package, decl *dst.GenDecl) error {
+	for _, spec := range decl.Specs {
+		v := spec.(*dst.ValueSpec)
+
+		typeIdent, ok := v.Type.(*dst.Ident)
+		if !ok {
+			continue
+		}
+		typeID := NewTypeID(pkg.PkgPath, typeIdent.Name)
+		name := v.Names[0].Name
+		value := v.Values[0]
+		lit, ok := value.(*dst.BasicLit)
+
+		if !ok || lit.Kind != token.STRING {
+			continue
+		}
+
+		r.constants[typeID] = append(r.constants[typeID], EnumEntry{
+			Name:        name,
+			Value:       strings.TrimSuffix(strings.TrimPrefix(lit.Value, "\""), "\""),
+			Decorations: v.Decorations(),
+		})
+	}
+	return nil
 }
 
 type (

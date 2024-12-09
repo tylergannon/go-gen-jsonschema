@@ -110,6 +110,11 @@ func (n SliceTypeNode) ElemNodeID() TypeID {
 	return n.children[0]
 }
 
+type EnumTypeNode struct {
+	NamedTypeNode
+	Entries []EnumEntry
+}
+
 type BasicTypeNode struct {
 	*nodeImpl
 }
@@ -261,7 +266,7 @@ func (r *Registry) visitNode(node nodeInternal) ([]nodeInternal, error) {
 		return r.visitSliceTypeNode(tn)
 	case StructFieldNode:
 		return []nodeInternal{tn.fieldType}, nil
-	case BasicTypeNode:
+	case BasicTypeNode, EnumTypeNode:
 		return nil, nil
 	}
 
@@ -500,7 +505,11 @@ func (r *Registry) resolveNodeType(n *nodeImpl) nodeInternal {
 		} else {
 			n.dstNode = tsTemp.typeSpec
 			n.typ = tsTemp.GetType()
-			return NamedTypeNode{TypeSpec: tsTemp, nodeImpl: n}
+			newNode := NamedTypeNode{TypeSpec: tsTemp, nodeImpl: n}
+			if entries, ok := r.constants[newNode.id]; ok && len(entries) > 0 {
+				return EnumTypeNode{newNode, entries}
+			}
+			return newNode
 		}
 	case *types.Slice, *types.Array:
 		return SliceTypeNode{n}

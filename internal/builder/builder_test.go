@@ -56,6 +56,7 @@ var _ = DescribeTable("Struct Types", typeLoader("structs"),
 	Entry("Simple Struct Type", "StructWithBasicTypes", structs.StructWithBasicTypesSchema),
 	Entry("Struct type with inline", "StructWithInline", structs.StructWithInlineSchema),
 	Entry("Struct type with named types", "StructWithNamedTypes", structs.StructWithNamedTypesSchema),
+	Entry("Hotdog (enums)", "Hotdog", structs.HotDogSchema),
 )
 
 var _ = DescribeTable("Rendering basic types", typeLoader("basic", skipTest),

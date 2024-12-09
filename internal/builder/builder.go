@@ -72,11 +72,23 @@ func (b *SchemaBuilder) renderChildNode(id typeregistry.TypeID) json.Marshaler {
 		panic(fmt.Sprintf("unknown child node %s", id))
 	}
 	var node = b.graph.Nodes[id]
-	if _, ok := node.(typeregistry.NamedTypeNode); !ok || node.Inbound() == 1 {
+	switch n := node.(type) {
+	case typeregistry.NamedTypeNode, typeregistry.EnumTypeNode:
+		if node.Inbound() == 1 {
+			return b.renderNode(node)
+		}
+	case typeregistry.BasicTypeNode:
+		return newBasicType(n.BasicType())
+	default:
 		return b.renderNode(node)
-	} else if basic, ok := node.(typeregistry.BasicTypeNode); ok {
-		return newBasicType(basic.BasicType())
 	}
+	//if _, ok := node.(typeregistry.NamedTypeNode); !ok || node.Inbound() == 1 {
+	//	return b.renderNode(node)
+	//} else if basic, ok := node.(typeregistry.BasicTypeNode); ok {
+	//	return newBasicType(basic.BasicType())
+	//} else if enum, ok := node.(typeregistry.EnumTypeNode); ok {
+	//	return newEnumType(enum)
+	//}
 
 	if _, found := b.typeIDMap[id]; !found {
 		// prevent infinite recursion by ensuring that the typeIDMap contains
@@ -103,6 +115,8 @@ func (b *SchemaBuilder) renderNode(node typeregistry.Node) json.Marshaler {
 	switch n := node.(type) {
 	case typeregistry.BasicTypeNode:
 		return newBasicType(n.BasicType())
+	case typeregistry.EnumTypeNode:
+		return newEnumType(n)
 	case typeregistry.NamedTypeNode:
 		child := b.renderChildNode(n.UnderlyingTypeID())
 		switch chType := child.(type) {
@@ -120,6 +134,10 @@ func (b *SchemaBuilder) renderNode(node typeregistry.Node) json.Marshaler {
 			} else {
 				chType.Description = typeComments + "\n\n" + chType.Description
 			}
+			return chType
+		case RefElement:
+			log.Println("Here we go")
+			log.Println(string(chType))
 			return chType
 		default:
 			inspect("Child Type", chType)

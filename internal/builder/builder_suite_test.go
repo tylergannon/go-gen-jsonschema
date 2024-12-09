@@ -81,7 +81,8 @@ var _ = Describe("jsonSchema", func() {
 
 	It("marshals with strict = false, no required, but definitions", func() {
 		s := jsonSchema{
-			Description: "Schema with definitions",
+			Description:    "Schema with definitions",
+			DefinitionsKey: "definitions",
 			Properties: []schemaProperty{
 				{name: "alpha", def: literalMarshaler(`{"type":"string"}`)},
 			},

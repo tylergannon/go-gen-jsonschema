@@ -3,6 +3,7 @@ package builder
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/tylergannon/go-gen-jsonschema/internal/typeregistry"
 	"go/types"
 	"strconv"
 	"strings"
@@ -220,6 +221,60 @@ func stringEnum(description string, vals []string) basicMarshaler {
 		res["description"] = rawString(description)
 	}
 	return res
+}
+
+func newEnumType(node typeregistry.EnumTypeNode) json.Marshaler {
+	var (
+		sb               = strings.Builder{}
+		values           = make([]string, len(node.Entries))
+		haveDescriptions bool
+		comments         = make([]string, len(node.Entries))
+	)
+	sb.WriteString(buildComments(node.NamedTypeNode.TypeSpec.Decorations()))
+
+	for i, val := range node.Entries {
+		if val.Decorations != nil {
+			comments[i] = strings.TrimSpace(strings.TrimPrefix(buildComments(val.Decorations), val.Name))
+		}
+		values[i] = val.Value
+		if len(comments[i]) > 0 {
+			haveDescriptions = true
+		}
+	}
+	if haveDescriptions && sb.Len() > 0 {
+		sb.WriteString("\n\n")
+	}
+	if haveDescriptions {
+		sb.WriteString("## Values\n\n")
+	}
+	written := 0
+	for i, val := range values {
+		if len(comments[i]) == 0 {
+			continue
+		}
+		if written > 0 {
+			sb.WriteString("\n\n")
+		}
+		written++
+		sb.WriteString("### ")
+		sb.WriteString(val)
+		sb.WriteString("\n\n")
+		sb.WriteString(comments[i])
+	}
+	var (
+		result = basicMarshaler{
+			"type": json.RawMessage(`"string"`),
+		}
+		valuesBytes, _ = json.Marshal(values)
+	)
+	result["enum"] = json.RawMessage(valuesBytes)
+	if sb.Len() > 0 {
+		var (
+			descriptionBytes, _ = json.Marshal(sb.String())
+		)
+		result["description"] = json.RawMessage(descriptionBytes)
+	}
+	return result
 }
 
 func newBasicType(t *types.Basic) json.Marshaler {

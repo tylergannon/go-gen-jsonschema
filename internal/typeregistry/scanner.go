@@ -21,6 +21,7 @@ func NewRegistry(pkgs []*decorator.Package) (*Registry, error) {
 		packages:   map[string]*decorator.Package{},
 		unionTypes: map[TypeID]*UnionTypeDecl{},
 		imports:    map[string]*decorator.Package{},
+		constants:  map[TypeID][]EnumEntry{},
 	}
 	for _, pkg := range pkgs {
 		if err := registry.scan(pkg); err != nil {
@@ -73,6 +74,10 @@ func (r *Registry) scanFile(file *dst.File, pkg *decorator.Package) error {
 	importMap := NewImportMap(pkg.PkgPath, file.Imports)
 	for _, decl := range getTypeDecls(file) {
 		switch decl.Tok {
+		case token.CONST:
+			if err := r.registerConstDecl(file, pkg, decl); err != nil {
+				return fmt.Errorf("register const: %w", err)
+			}
 		case token.TYPE:
 			if err := r.registerTypeDecl(file, pkg, decl); err != nil {
 				return fmt.Errorf("registering type decl %v in file %s (Pkg %s): %w", decl, file.Name.Name, pkg.PkgPath, err)
@@ -200,7 +205,7 @@ func getTypeDecls(file *dst.File) (decls []*dst.GenDecl) {
 		if genDecl, ok = decl.(*dst.GenDecl); !ok {
 			continue
 		}
-		if genDecl.Tok == token.TYPE || genDecl.Tok == token.VAR {
+		if genDecl.Tok == token.TYPE || genDecl.Tok == token.VAR || genDecl.Tok == token.CONST {
 			decls = append(decls, genDecl)
 		}
 	}
