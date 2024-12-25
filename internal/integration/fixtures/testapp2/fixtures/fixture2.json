@@ -1,0 +1,52 @@
+{
+  "name": "Akiko Shimizu",
+  "nicknames": [
+    "The Ghost Blade",
+    "Silent Storm",
+    "Aki"
+  ],
+  "location": "HallyuWood",
+  "alignment": "neutral",
+  "favoriteWeapons": [
+    "Katana",
+    "Crossbow",
+    "SodaStrawSpitballs",
+    "SnowballLauncher"
+  ],
+  "dateOfBirth": {
+    "__type__": "NearestDate",
+    "timeFrame": "Past",
+    "month": "March",
+    "dayOfMonth": 13
+  },
+  "backStory": "Born to a Korean martial arts master and a Japanese kendo champion, Akiko grew up straddling two worlds and mastering both traditional and unconventional fighting styles. After her parents' dojo was threatened by local criminals, she developed a unique fighting style combining deadly serious techniques with seemingly ridiculous weapons to confuse and defeat her opponents while maintaining a sense of humor about the violence.",
+  "importantDates": [
+    {
+      "when": {
+        "__type__": "TimeAgo",
+        "unit": "years",
+        "quantity": 15
+      },
+      "whatHappened": "Won her first martial arts tournament using only a soda straw and snowballs",
+      "withWhom": "Regional Youth Martial Arts Association"
+    },
+    {
+      "when": {
+        "__type__": "TimeAgo",
+        "unit": "years",
+        "quantity": 10
+      },
+      "whatHappened": "Successfully defended family dojo from yakuza takeover attempt",
+      "withWhom": "Local Yakuza Gang"
+    },
+    {
+      "when": {
+        "__type__": "TimeAgo",
+        "unit": "years",
+        "quantity": 5
+      },
+      "whatHappened": "Opened her own unconventional martial arts school",
+      "withWhom": "First class of students"
+    }
+  ]
+}

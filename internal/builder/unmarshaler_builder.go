@@ -22,18 +22,32 @@ func initialize() (err error) {
 
 type UnmarshalerBuilder struct {
 	*ImportMap
-	SchemaDir string
-	TypeNames []string
+	DiscriminatorPropName string
+	SchemaDir             string
+	TypeNames             []string
+	TypesWithAlts         []typeWithAlts
 }
 
-type Alt struct {
+func (b *UnmarshalerBuilder) HaveAlts() bool {
+	return len(b.TypesWithAlts) > 0
 }
 
-type HasAlt struct {
-	Alts []Alt
+type typeAlt struct {
+	Discriminator string
+	TypeName      string
+	FuncName      string
 }
 
-func RenderGoCode(fileName, schemaDir string, graphs []*typeregistry.SchemaGraph) error {
+type typeWithAlts struct {
+	TypeName string
+	Alts     []typeAlt
+}
+
+func RenderGoCode(
+	fileName, schemaDir string,
+	graphs []*typeregistry.SchemaGraph,
+	discriminatorMap *DiscriminatorMap,
+) error {
 	if outputTemplate == nil {
 		if err := initialize(); err != nil {
 			return err
@@ -46,12 +60,13 @@ func RenderGoCode(fileName, schemaDir string, graphs []*typeregistry.SchemaGraph
 	}
 	var (
 		importMap = NewImportMap(graphs[0].RootNode.Pkg())
-		altsMap   = map[typeregistry.TypeID]*typeregistry.NamedTypeWithAltsNode{}
+		altsMap   = map[typeregistry.TypeID]typeWithAlts{}
 	)
 
 	builder := &UnmarshalerBuilder{
-		ImportMap: importMap,
-		SchemaDir: schemaDir,
+		ImportMap:             importMap,
+		SchemaDir:             schemaDir,
+		DiscriminatorPropName: discriminatorPropName,
 	}
 
 	for _, graph := range graphs {
@@ -62,14 +77,33 @@ func RenderGoCode(fileName, schemaDir string, graphs []*typeregistry.SchemaGraph
 		}
 
 		for id, node := range graph.Nodes {
-			if alt, ok := node.(*typeregistry.NamedTypeWithAltsNode); ok {
-				for _, _alt := range alt.TypeSpec.Alternatives() {
+			if nodeWithAlts, ok := node.(typeregistry.NamedTypeWithAltsNode); ok {
+				var alts []typeAlt
+				for _, _alt := range nodeWithAlts.TypeSpec.Alternatives() {
 					importMap.AddPackage(_alt.TypeSpec.Pkg())
+					var (
+						alt   typeAlt
+						found bool
+					)
 
+					alt.FuncName = _alt.ConversionFunc
+					alt.Discriminator, found = discriminatorMap.GetAlias(typeregistry.TypeID(fmt.Sprintf("%s~", _alt.TypeSpec.ID())))
+					if !found {
+						return fmt.Errorf("discriminator not found for type alt %s", _alt.TypeSpec.ID())
+					}
+					alt.TypeName = importMap.PrefixExpr(_alt.TypeSpec.GetTypeSpec().Name.Name, _alt.TypeSpec.Pkg())
+					alts = append(alts, alt)
 				}
-				altsMap[id] = alt
+
+				altsMap[id] = typeWithAlts{
+					TypeName: nodeWithAlts.NamedType().Obj().Name(),
+					Alts:     alts,
+				}
 			}
 		}
+	}
+	for _, t := range altsMap {
+		builder.TypesWithAlts = append(builder.TypesWithAlts, t)
 	}
 	f, err := os.OpenFile(fileName, os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
