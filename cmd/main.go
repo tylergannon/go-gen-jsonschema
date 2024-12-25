@@ -9,6 +9,7 @@ import (
 	"github.com/tylergannon/go-gen-jsonschema/internal/typeregistry"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -17,6 +18,7 @@ var (
 	typeNames = flag.String("type", "", "comma-separated list of type names")
 	pretty    = flag.Bool("pretty", false, "output JSON with indentation")
 	verbose   = flag.Bool("verbose", false, "print detailed processing information")
+	subdir    = flag.String("subdir", "jsonschema", "subdirectory where to place schemas")
 )
 
 func main() {
@@ -51,6 +53,10 @@ func main() {
 		log.Fatal(err)
 	}
 
+	if err = os.MkdirAll(*subdir, 0755); err != nil {
+		log.Fatal(err)
+	}
+
 	for _, typeName := range types {
 		ts, ok := registry.GetTypeByName(typeName, pkg.PkgPath)
 		if !ok {
@@ -74,7 +80,7 @@ func main() {
 			log.Fatal(err)
 		}
 
-		destFile := fmt.Sprintf("jsonschema_%s.json", typeName)
+		destFile := filepath.Join(*subdir, fmt.Sprintf("%s.json", typeName))
 		if err = os.WriteFile(destFile, schemaBytes, 0644); err != nil {
 			log.Fatal(err)
 		}
