@@ -16,6 +16,7 @@ type Node interface {
 	DSTNode() dst.Node
 	Pkg() *decorator.Package
 	ID() TypeID
+	// Inbound is the count of edges into this node
 	Inbound() int
 }
 
