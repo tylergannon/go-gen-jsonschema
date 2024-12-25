@@ -119,25 +119,6 @@
   ],
   "additionalProperties": false,
   "$defs": {
-    "TimeUnit": {
-      "description": "Choose the unit of time given by the user.",
-      "enum": [
-        "minutes",
-        "hours",
-        "weeks",
-        "days",
-        "months",
-        "years"
-      ],
-      "type": "string"
-    },
-    "TimeFrame": {
-      "enum": [
-        "Past",
-        "Future"
-      ],
-      "type": "string"
-    },
     "LLMFriendlyTime": {
       "anyOf": [
         {
@@ -183,7 +164,7 @@
           "additionalProperties": false
         },
         {
-          "description": "ActualTime is for when the time reference can be explicitly tied to a specific year.  Examples: \"the beginning of 2004\" -\u003e \"2004-01-01\", \"Feb 14 2013\" -\u003e \"2013-02-14\"",
+          "description": "ActualTime is used when referencing a specific historical date that has already occurred or when the full date including year is explicitly known. Best for dates in the past or when you need to specify an exact year. Examples: 'January 1st, 2004', 'February 14th, 2013', 'July 4th, 1776'",
           "type": "object",
           "properties": {
             "dateTime": {
@@ -258,7 +239,7 @@
           "additionalProperties": false
         },
         {
-          "description": "\n\n\n\n## **Properties**\n\n### timeFrame\n\nspecifies whether the reference looks into the future or into the past.\n\n### dayOfMonth\n\nshould be 1 if not specified, otherwise the specific day of the month given by the user.\n\n",
+          "description": "NearestDate is used when referencing a calendar date (month and day) without a specific year, typically for recurring dates or future dates within the current year. Best for dates like 'March 13th', 'December 25th', or 'next April 1st'. The timeFrame property specifies whether it's looking into the past ('last March 13th') or future ('next March 13th').\n\n\n\n## **Properties**\n\n### timeFrame\n\nspecifies whether the reference looks into the future or into the past.\n\n### dayOfMonth\n\nshould be 1 if not specified, otherwise the specific day of the month given by the user.\n\n",
           "type": "object",
           "properties": {
             "timeFrame": {
@@ -298,6 +279,25 @@
           "additionalProperties": false
         }
       ]
+    },
+    "TimeFrame": {
+      "enum": [
+        "Past",
+        "Future"
+      ],
+      "type": "string"
+    },
+    "TimeUnit": {
+      "description": "Choose the unit of time given by the user.",
+      "enum": [
+        "minutes",
+        "hours",
+        "weeks",
+        "days",
+        "months",
+        "years"
+      ],
+      "type": "string"
     }
   }
 }

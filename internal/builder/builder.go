@@ -14,32 +14,37 @@ const (
 )
 
 type DiscriminatorMap struct {
-	discriminators map[string]bool
-	discriminated  map[typeregistry.TypeID]string
+	Discriminators map[string]bool
+	Discriminated  map[typeregistry.TypeID]string
 }
 
-func (m *DiscriminatorMap) GetAlias(n typeregistry.NamedTypeNode) string {
-	var discName, ok = m.discriminated[n.ID()]
+func (m *DiscriminatorMap) GetAlias(typ typeregistry.TypeID) (alias string, found bool) {
+	alias, found = m.Discriminated[typ]
+	return alias, found
+}
+
+func (m *DiscriminatorMap) MakeAlias(n typeregistry.NamedTypeNode) string {
+	var discName, ok = m.Discriminated[n.ID()]
 	if !ok {
 		discName = n.NamedType().Obj().Name()
-		if m.discriminators[discName] {
+		if m.Discriminators[discName] {
 			for i := 1; ; i++ {
-				if !m.discriminators[discName+strconv.Itoa(i)] {
+				if !m.Discriminators[discName+strconv.Itoa(i)] {
 					discName = discName + strconv.Itoa(i)
 					break
 				}
 			}
 		}
-		m.discriminators[discName] = true
-		m.discriminated[n.ID()] = discName
+		m.Discriminators[discName] = true
+		m.Discriminated[n.ID()] = discName
 	}
 	return discName
 }
 
 func NewDiscriminatorMap() *DiscriminatorMap {
 	return &DiscriminatorMap{
-		discriminators: make(map[string]bool),
-		discriminated:  make(map[typeregistry.TypeID]string),
+		Discriminators: make(map[string]bool),
+		Discriminated:  make(map[typeregistry.TypeID]string),
 	}
 }
 
@@ -189,7 +194,7 @@ func (b *SchemaBuilder) renderNode(node typeregistry.Node) json.Marshaler {
 					chType.Properties,
 					schemaProperty{
 						name: b.DiscriminatorPropName,
-						def:  constElement(b.discriminators.GetAlias(n)),
+						def:  constElement(b.discriminators.MakeAlias(n)),
 					},
 				)
 			}

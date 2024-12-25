@@ -94,5 +94,10 @@ func main() {
 			fmt.Printf("Processed type: %s (package: %s), output file: %s\n", typeName, pkg.PkgPath, destFile)
 		}
 	}
-	_ = builder.RenderGoCode("jsonschema_gen.go", *subdir, graphs)
+	err = builder.RenderGoCode("jsonschema_gen.go", *subdir, graphs, discriminators)
+	if err != nil {
+		poo, _ := json.MarshalIndent(discriminators, "", "  ")
+		fmt.Println(string(poo))
+		log.Fatal(err)
+	}
 }

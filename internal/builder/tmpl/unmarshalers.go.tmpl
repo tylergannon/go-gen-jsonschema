@@ -5,16 +5,62 @@ package {{ .ImportMap.LocalPkgName }}
 
 import (
 	"embed"
-    {{ range .ImportMap.ImportStatements }}
+    "encoding/json"
+    "errors"
+    "fmt"
+
+{{ range .ImportMap.ImportStatements }}
     {{ . }}
     {{- end -}}
 )
 
 //go:embed {{.SchemaDir}}
 var __jsonschemaImports embed.FS
-{{ $schemaDir := .SchemaDir }}
+{{ $schemaDir := .SchemaDir -}}
+{{ $discProp := .DiscriminatorPropName -}}
 {{ range .TypeNames }}
 func ({{.}}) Schema() ([]byte, error) {
 	return __jsonschemaImports.ReadFile("{{ $schemaDir }}/{{.}}.json")
 }
+{{ end }}
+
+{{ if .HaveAlts }}
+var errNoDiscriminator = errors.New("no discriminator {{$discProp}} provided")
+{{ end }}
+
+{{ range .TypesWithAlts }}
+func (it *{{.TypeName}}) UnmarshalJSON(bytes []byte) error {
+	var (
+		temp map[string]json.RawMessage
+		err error
+		discriminator string
+	)
+	if err = json.Unmarshal(bytes, &temp); err != nil {
+		return fmt.Errorf("data does not conform to map[string]json.RawMessage: %w", err)
+    }
+	if discTemp, ok := temp["{{$discProp}}"]; !ok {
+		return errNoDiscriminator
+    } else {
+		if err = json.Unmarshal(discTemp, &discriminator); err != nil {
+			return fmt.Errorf("discriminator value is not a string: %w", err)
+		}
+    }
+    switch discriminator {
+	{{ range .Alts }}
+    case "{{.Discriminator}}":
+		var __{{.Discriminator}} {{ .TypeName }}
+		err = json.Unmarshal(bytes, &__{{.Discriminator}})
+		if err != nil {
+			return fmt.Errorf("unmarshaling {{.Discriminator}}: %w", err)
+        }
+		*it, err = {{.FuncName}}(__{{.Discriminator}})
+	{{ end }}
+    default:
+	    return fmt.Errorf("unknown discriminator %s", discriminator)
+    }
+
+    return err
+}
+
+var _ json.Unmarshaler = (*{{.TypeName}})(nil)
 {{ end }}

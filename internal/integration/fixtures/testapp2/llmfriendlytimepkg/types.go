@@ -75,9 +75,10 @@ func ToDuration(unit TimeUnit, value int) time.Duration {
 	return dur
 }
 
-// ActualTime is for when the time reference can be explicitly tied to a
-// specific year.  Examples: "the beginning of 2004" -> "2004-01-01",
-// "Feb 14 2013" -> "2013-02-14"
+// ActualTime is used when referencing a specific historical date that has
+// already occurred or when the full date including year is explicitly known.
+// Best for dates in the past or when you need to specify an exact year.
+// Examples: 'January 1st, 2004', 'February 14th, 2013', 'July 4th, 1776'
 type ActualTime struct {
 	DateTime string `json:"dateTime"`
 }
@@ -129,6 +130,11 @@ const (
 	Future TimeFrame = "Future"
 )
 
+// NearestDate is used when referencing a calendar date (month and day) without
+// a specific year, typically for recurring dates or future dates within the
+// current year. Best for dates like 'March 13th', 'December 25th', or
+// 'next April 1st'. The timeFrame property specifies whether it's looking into
+// the past ('last March 13th') or future ('next March 13th').
 type NearestDate struct {
 	// TimeFrame specifies whether the reference looks into the future or
 	// into the past.

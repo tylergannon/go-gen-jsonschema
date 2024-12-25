@@ -40,13 +40,6 @@ func (j jsonUnionType) MarshalJSON() ([]byte, error) {
 
 var _ json.Marshaler = jsonUnionType{}
 
-// An anyOf element
-//func unionSchemaElement(alts ...json.Marshaler) json.Marshaler {
-//	return basicMarshaler{
-//		"anyOf": alts,
-//	}
-//}
-
 type RefElement []byte
 
 func (r RefElement) MarshalJSON() ([]byte, error) {
@@ -154,24 +147,17 @@ func (j *jsonSchema) MarshalJSON() ([]byte, error) {
 		if j.DefinitionsKey != "" {
 			definitionsKey = j.DefinitionsKey
 		}
-		b.WriteByte('"')
+		b.WriteRune('"')
 		b.WriteString(definitionsKey)
-		b.WriteString(`":{`)
-		i := 0
-		for k, v := range j.Definitions {
-			encDef, err := v.MarshalJSON()
-			if err != nil {
-				return nil, fmt.Errorf("failed to marshal definition %s: %w", k, err)
-			}
-			b.WriteString(strconv.Quote(k))
-			b.WriteByte(':')
-			b.Write(encDef)
-			if i < len(j.Definitions)-1 {
-				b.WriteByte(',')
-			}
-			i++
+		b.WriteRune('"')
+		b.WriteRune(':')
+		defs := basicMarshaler(j.Definitions)
+		defsData, err := json.Marshal(defs)
+		if err != nil {
+			return nil, err
 		}
-		b.WriteString(`},`)
+		b.Write(defsData)
+		b.WriteRune(',')
 	}
 
 	// If not strict, "additionalProperties" if set
@@ -197,36 +183,6 @@ func (j *jsonSchema) MarshalJSON() ([]byte, error) {
 func constElement[T ~int | ~string | ~bool](val T) basicMarshaler {
 	_val, _ := json.Marshal(val)
 	return basicMarshaler{"const": json.RawMessage(_val)}
-}
-
-//func constSchema[T ~int | ~string | ~bool](val T, description string) basicMarshaler {
-//	var schemaType dataType
-//	if _, ok := any(val).(int); ok {
-//		schemaType = "integer"
-//	} else {
-//		schemaType = "string"
-//	}
-//
-//	res := basicMarshaler{
-//		"type":  schemaType,
-//		"const": val,
-//	}
-//	if description != "" {
-//		res["description"] = description
-//	}
-//	return res
-//}
-
-func stringEnum(description string, vals []string) basicMarshaler {
-	valsRaw, _ := json.Marshal(vals)
-	res := basicMarshaler{
-		"type": rawString(String),
-		"enum": json.RawMessage(valsRaw),
-	}
-	if description != "" {
-		res["description"] = rawString(description)
-	}
-	return res
 }
 
 func newEnumType(node typeregistry.EnumTypeNode) json.Marshaler {
