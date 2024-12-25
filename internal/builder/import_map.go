@@ -17,6 +17,10 @@ type ImportMap struct {
 	}
 }
 
+func (m *ImportMap) LocalPkgName() string {
+	return m.localPackage.Name
+}
+
 func NewImportMap(localPackage *decorator.Package) *ImportMap {
 	return &ImportMap{localPackage: localPackage}
 }
