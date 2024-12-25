@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/tylergannon/go-gen-jsonschema/internal/typeregistry"
 	"go/types"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -342,7 +343,41 @@ type basicMarshaler map[string]json.Marshaler
 
 // MarshalJSON implements json.Marshaler.
 func (b basicMarshaler) MarshalJSON() ([]byte, error) {
-	return json.Marshal(map[string]json.Marshaler(b))
+	// Collect and sort keys
+	keys := make([]string, 0, len(b))
+	for k := range b {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	// Manually assemble the JSON object
+	var sb strings.Builder
+	sb.WriteByte('{')
+
+	for i, k := range keys {
+		// Add a comma if this is not the first item
+		if i != 0 {
+			sb.WriteByte(',')
+		}
+		// Marshal the key as a JSON string
+		keyData, err := json.Marshal(k)
+		if err != nil {
+			return nil, err
+		}
+		sb.Write(keyData)
+		sb.WriteByte(':')
+
+		// Marshal the value using each element's MarshalJSON
+		valData, err := b[k].MarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		sb.Write(valData)
+
+	}
+
+	sb.WriteByte('}')
+	return []byte(sb.String()), nil
 }
 
 var _ json.Marshaler = basicMarshaler{}

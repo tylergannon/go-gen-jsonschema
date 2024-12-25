@@ -35,7 +35,7 @@ func (g *goldenFileMatcher) Match(actual interface{}) (success bool, err error) 
 	expectedFile := actualFile + g.extension
 
 	// Run diff to check for differences
-	cmd := exec.Command("diff", "-u", g.actualFile, expectedFile)
+	cmd := exec.Command("diff", "-u", expectedFile, g.actualFile)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		// Non-zero exit code from diff indicates differences

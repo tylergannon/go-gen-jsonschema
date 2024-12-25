@@ -94,7 +94,7 @@ func (b *SchemaBuilder) renderChildNode(id typeregistry.TypeID) json.Marshaler {
 	}
 	var node = b.graph.Nodes[id]
 	switch n := node.(type) {
-	case typeregistry.NamedTypeNode, typeregistry.EnumTypeNode:
+	case typeregistry.NamedTypeNode, typeregistry.EnumTypeNode, typeregistry.NamedTypeWithAltsNode:
 		if node.Inbound() == 1 {
 			return b.renderNode(node)
 		}
@@ -197,6 +197,8 @@ func (b *SchemaBuilder) renderNode(node typeregistry.Node) json.Marshaler {
 	panic("render node ended unsatisfactorily")
 }
 
+const propertiesHeader = "\n\n## **Properties**\n\n"
+
 func (b *SchemaBuilder) renderStructNode(node typeregistry.StructTypeNode) json.Marshaler {
 	schema := &jsonSchema{
 		DefinitionsKey: b.definitionsKey,
@@ -227,7 +229,8 @@ func (b *SchemaBuilder) renderStructNode(node typeregistry.StructTypeNode) json.
 	sb := strings.Builder{}
 	sb.WriteString(buildComments(node.DSTNode().Decorations()))
 	if haveDescription {
-		sb.WriteString("\n\n## **Properties**\n\n")
+		var tempSB strings.Builder
+		tempSB.WriteString(propertiesHeader)
 		for _, field := range structFieldNodes {
 			description := buildComments(field.FieldConf.Field.Decorations())
 			if len(description) == 0 {
@@ -235,11 +238,14 @@ func (b *SchemaBuilder) renderStructNode(node typeregistry.StructTypeNode) json.
 			}
 			description = strings.TrimPrefix(description, field.FieldConf.Var.Name())
 			description = strings.TrimSpace(description)
-			sb.WriteString("### ")
-			sb.WriteString(field.FieldConf.FieldName)
-			sb.WriteString("\n\n")
-			sb.WriteString(description)
-			sb.WriteString("\n\n")
+			tempSB.WriteString("### ")
+			tempSB.WriteString(field.FieldConf.FieldName)
+			tempSB.WriteString("\n\n")
+			tempSB.WriteString(description)
+			tempSB.WriteString("\n\n")
+		}
+		if tempSB.Len() > len(propertiesHeader) {
+			sb.WriteString(tempSB.String())
 		}
 	} else {
 		for i, field := range structFieldNodes {
