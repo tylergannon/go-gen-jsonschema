@@ -1,10 +1,10 @@
-package testapp1
+package testapp2
 
 import (
 	_ "github.com/dave/dst/decorator"
 	_ "github.com/tylergannon/go-gen-jsonschema"
 	jsonschema "github.com/tylergannon/go-gen-jsonschema"
-	"github.com/tylergannon/go-gen-jsonschema-testapp/subpkg"
+	"github.com/tylergannon/go-gen-jsonschema-testapp/llmfriendlytimepkg"
 	_ "github.com/tylergannon/structtag"
 	_ "golang.org/x/tools/go/packages"
 	"time"
@@ -107,24 +107,24 @@ const (
 	LaserSword            Weapon = "LaserSword"            // Sci-fi melee weapon akin to a lightsaber.
 )
 
-func TimeAgoToLLMFriendlyTime(t subpkg.TimeAgo) (LLMFriendlyTime, error) {
-	return LLMFriendlyTime(time.Now().Add(-subpkg.ToDuration(t.Unit, t.Quantity))), nil
+func TimeAgoToLLMFriendlyTime(t llmfriendlytimepkg.TimeAgo) (LLMFriendlyTime, error) {
+	return LLMFriendlyTime(time.Now().Add(-llmfriendlytimepkg.ToDuration(t.Unit, t.Quantity))), nil
 }
 
-func FromNowToLLMFriendlyTime(t subpkg.TimeFromNow) (LLMFriendlyTime, error) {
-	return LLMFriendlyTime(time.Now().Add(subpkg.ToDuration(t.Unit, t.Value))), nil
+func FromNowToLLMFriendlyTime(t llmfriendlytimepkg.TimeFromNow) (LLMFriendlyTime, error) {
+	return LLMFriendlyTime(time.Now().Add(llmfriendlytimepkg.ToDuration(t.Unit, t.Value))), nil
 }
 
-func ActualTimeToLLMFriendlyTime(t subpkg.ActualTime) (LLMFriendlyTime, error) {
+func ActualTimeToLLMFriendlyTime(t llmfriendlytimepkg.ActualTime) (LLMFriendlyTime, error) {
 	_t, err := t.ToTime()
 	return LLMFriendlyTime(_t), err
 }
 
-func NowToLLMFriendlyTime(t subpkg.Now) (LLMFriendlyTime, error) {
+func NowToLLMFriendlyTime(t llmfriendlytimepkg.Now) (LLMFriendlyTime, error) {
 	_t, err := t.ToTime()
 	return LLMFriendlyTime(_t), err
 }
-func BeginningOfTimeToLLMFriendlyTime(t subpkg.BeginningOfTime) (LLMFriendlyTime, error) {
+func BeginningOfTimeToLLMFriendlyTime(t llmfriendlytimepkg.BeginningOfTime) (LLMFriendlyTime, error) {
 	_t, err := t.ToTime()
 	return LLMFriendlyTime(_t), err
 }
@@ -140,4 +140,6 @@ var _ = jsonschema.SetTypeAlternative[LLMFriendlyTime](
 	jsonschema.Alt("now", NowToLLMFriendlyTime),
 	// To reference all of history
 	jsonschema.Alt("beginningOfTime", BeginningOfTimeToLLMFriendlyTime),
+	jsonschema.Alt("nearestDay", NearestDayToTime),
+	jsonschema.Alt("nearestDate", NearestDateToTime),
 )
