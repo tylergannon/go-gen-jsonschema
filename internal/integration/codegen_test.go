@@ -66,7 +66,7 @@ var _ = Describe("Codegen", func() {
 	// Table-driven tests
 	DescribeTable("Codegen table tests",
 		CodegenTest,
-		Entry("Basic struct with no special types", "integration/fixtures/testapp1", "test1", "jsonschema_SimpleStruct.json"),
-		Entry("Complex struct with repeated types having alternatives", "integration/fixtures/testapp2", "test2", "jsonschema_MovieCharacter.json"),
+		Entry("Basic struct with no special types", "integration/fixtures/testapp1", "test1", "jsonschema/SimpleStruct.json"),
+		Entry("Complex struct with repeated types having alternatives", "integration/fixtures/testapp2", "test2", "jsonschema/MovieCharacter.json"),
 	)
 })

@@ -52,6 +52,9 @@ func (n NamedTypeNode) TypeSpecNode() *dst.TypeSpec {
 	return n.dstNode.(*dst.TypeSpec)
 }
 
+// NamedTypeWithAltsNode represents a NamedTypeNode that's specified according
+// to its alternative types.
+// The alternatives themselves are defined on the TypeSpec.Alternatives().
 type NamedTypeWithAltsNode struct {
 	NamedTypeNode
 }
