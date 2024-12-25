@@ -13,15 +13,44 @@ const (
 	discriminatorPropName = "__type__"
 )
 
-func New(graph *typeregistry.SchemaGraph) *SchemaBuilder {
+type DiscriminatorMap struct {
+	discriminators map[string]bool
+	discriminated  map[typeregistry.TypeID]string
+}
+
+func (m *DiscriminatorMap) GetAlias(n typeregistry.NamedTypeNode) string {
+	var discName, ok = m.discriminated[n.ID()]
+	if !ok {
+		discName = n.NamedType().Obj().Name()
+		if m.discriminators[discName] {
+			for i := 1; ; i++ {
+				if !m.discriminators[discName+strconv.Itoa(i)] {
+					discName = discName + strconv.Itoa(i)
+					break
+				}
+			}
+		}
+		m.discriminators[discName] = true
+		m.discriminated[n.ID()] = discName
+	}
+	return discName
+}
+
+func NewDiscriminatorMap() *DiscriminatorMap {
+	return &DiscriminatorMap{
+		discriminators: make(map[string]bool),
+		discriminated:  make(map[typeregistry.TypeID]string),
+	}
+}
+
+func New(graph *typeregistry.SchemaGraph, discriminators *DiscriminatorMap) *SchemaBuilder {
 	return &SchemaBuilder{
 		graph:                 graph,
 		definitions:           definitionsMap{},
 		typeIDMap:             map[typeregistry.TypeID]string{},
 		definitionsKey:        defaultDefinitionsKey,
 		DiscriminatorPropName: discriminatorPropName,
-		discriminators:        map[string]bool{},
-		discriminated:         map[typeregistry.TypeID]string{},
+		discriminators:        discriminators,
 	}
 }
 
@@ -46,8 +75,7 @@ type SchemaBuilder struct {
 	typeIDMap             map[typeregistry.TypeID]string
 	definitionsKey        string
 	DiscriminatorPropName string
-	discriminators        map[string]bool
-	discriminated         map[typeregistry.TypeID]string
+	discriminators        *DiscriminatorMap
 }
 
 /*
@@ -157,18 +185,13 @@ func (b *SchemaBuilder) renderNode(node typeregistry.Node) json.Marshaler {
 			return chType
 		case *jsonSchema:
 			if n.IsAlt {
-				discName := n.NamedType().Obj().Name()
-				if b.discriminators[discName] {
-					for i := 1; ; i++ {
-						if !b.discriminators[discName+strconv.Itoa(i)] {
-							discName = discName + strconv.Itoa(i)
-							break
-						}
-					}
-				}
-				b.discriminators[discName] = true
-				b.discriminated[n.ID()] = discName
-				chType.Properties = append(chType.Properties, schemaProperty{name: b.DiscriminatorPropName, def: constElement(discName)})
+				chType.Properties = append(
+					chType.Properties,
+					schemaProperty{
+						name: b.DiscriminatorPropName,
+						def:  constElement(b.discriminators.GetAlias(n)),
+					},
+				)
 			}
 			typeComments := buildComments(n.TypeSpec.Decorations())
 			if len(chType.Description) == 0 {

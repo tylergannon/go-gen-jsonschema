@@ -57,6 +57,9 @@ func main() {
 		log.Fatal(err)
 	}
 
+	var graphs []*typeregistry.SchemaGraph
+	discriminators := builder.NewDiscriminatorMap()
+
 	for _, typeName := range types {
 		ts, ok := registry.GetTypeByName(typeName, pkg.PkgPath)
 		if !ok {
@@ -68,7 +71,9 @@ func main() {
 			log.Fatal(err)
 		}
 
-		schema := builder.New(g).Render()
+		graphs = append(graphs, g)
+
+		schema := builder.New(g, discriminators).Render()
 
 		var schemaBytes []byte
 		if *pretty {
@@ -89,4 +94,5 @@ func main() {
 			fmt.Printf("Processed type: %s (package: %s), output file: %s\n", typeName, pkg.PkgPath, destFile)
 		}
 	}
+	_ = builder.RenderGoCode("jsonschema_gen.go", *subdir, graphs)
 }

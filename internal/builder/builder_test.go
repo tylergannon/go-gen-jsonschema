@@ -43,7 +43,7 @@ func typeLoader(pkg string, opts ...any) func(typename, expected string) {
 		graph, err := registry.GraphTypeForSchema(ts)
 		Expect(err).NotTo(HaveOccurred(), fmt.Sprintf("failed to resolve graph for %s", typeName))
 
-		b := New(graph)
+		b := New(graph, NewDiscriminatorMap())
 
 		result := b.Render()
 
