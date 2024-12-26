@@ -2,6 +2,7 @@ package testapp1
 
 import (
 	_ "github.com/dave/dst/decorator"
+	_ "github.com/santhosh-tekuri/jsonschema"
 	_ "github.com/tylergannon/go-gen-jsonschema"
 	_ "github.com/tylergannon/structtag"
 	_ "golang.org/x/tools/go/packages"

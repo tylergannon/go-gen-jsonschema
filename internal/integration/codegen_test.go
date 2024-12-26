@@ -79,5 +79,6 @@ var _ = Describe("Codegen", func() {
 		CodegenTest,
 		Entry("Basic struct with no special types", "integration/fixtures/testapp1", "test1", false, "jsonschema/SimpleStruct.json"),
 		Entry("Complex struct with repeated types having alternatives", "integration/fixtures/testapp2", "test2", true, "jsonschema/MovieCharacter.json"),
+		Entry("Complex struct with --validate AND repeated types having alternatives", "integration/fixtures/testapp3validate", "test3", false, "jsonschema/MovieCharacter.json"),
 	)
 })
