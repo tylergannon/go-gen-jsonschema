@@ -8,7 +8,7 @@ import (
 	_ "golang.org/x/tools/go/packages"
 )
 
-//go:generate go run github.com/tylergannon/go-gen-jsonschema/cmd/ -type SimpleStruct -pretty
+//go:generate go run github.com/tylergannon/go-gen-jsonschema/gen-jsonschema/ -type SimpleStruct -pretty
 
 // Build this struct in order to really get a lot of meaning out of life.
 // It's really essential that you get all of this down.

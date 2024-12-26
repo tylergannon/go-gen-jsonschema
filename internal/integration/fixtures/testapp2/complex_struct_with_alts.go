@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-//go:generate go run github.com/tylergannon/go-gen-jsonschema/cmd/ -type MovieCharacter -pretty
+//go:generate go run github.com/tylergannon/go-gen-jsonschema/gen-jsonschema/ -type MovieCharacter -pretty
 
 type (
 	LLMFriendlyTime time.Time

@@ -1,6 +1,6 @@
 package testapp0_simple
 
-//go:generate go run github.com/tylergannon/go-gen-jsonschema/cmd/ -type SimpleStruct
+//go:generate go run github.com/tylergannon/go-gen-jsonschema/gen-jsonschema/ -type SimpleStruct
 
 // Build this struct in order to really get a lot of meaning out of life.
 // It's really essential that you get all of this down.
