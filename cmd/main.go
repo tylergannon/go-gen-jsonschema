@@ -97,8 +97,10 @@ func main() {
 	}
 	err = builder.RenderGoCode("jsonschema_gen.go", *subdir, graphs, discriminators, *validate)
 	if err != nil {
-		poo, _ := json.MarshalIndent(discriminators, "", "  ")
-		fmt.Println(string(poo))
 		log.Fatal(err)
+	}
+	if *validate {
+		fmt.Println("Added validation code to unmarshaling functions. Be sure to add the following to your project:")
+		fmt.Println("go get ", builder.JSONSchemaValidationPackagePath)
 	}
 }

@@ -1,10 +1,10 @@
-package testapp2_test
+package testapp3validate_test
 
 import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	testapp2 "github.com/tylergannon/go-gen-jsonschema-testapp"
-	"github.com/tylergannon/go-gen-jsonschema-testapp/llmfriendlytimepkg"
+	"github.com/tylergannon/go-gen-jsonschema-testapp/llmfriendlytimepkg3"
 	"testing"
 	"time"
 )
@@ -19,9 +19,9 @@ var _ = Describe("NearestDate", func() {
 		It("should return next year's date if month/day has already passed this year", func() {
 			// Example: Suppose today is December 25, 2024. If we ask for Future January 1,
 			// it should return January 1, 2025.
-			nd := llmfriendlytimepkg.NearestDate{
-				TimeFrame:  llmfriendlytimepkg.Future,
-				Month:      llmfriendlytimepkg.January,
+			nd := llmfriendlytimepkg3.NearestDate{
+				TimeFrame:  llmfriendlytimepkg3.Future,
+				Month:      llmfriendlytimepkg3.January,
 				DayOfMonth: 1,
 			}
 
@@ -45,9 +45,9 @@ var _ = Describe("NearestDate", func() {
 
 	Context("when TimeFrame is Past", func() {
 		It("should return last year's date if month/day hasn't arrived yet this year", func() {
-			nd := llmfriendlytimepkg.NearestDate{
-				TimeFrame:  llmfriendlytimepkg.Past,
-				Month:      llmfriendlytimepkg.December,
+			nd := llmfriendlytimepkg3.NearestDate{
+				TimeFrame:  llmfriendlytimepkg3.Past,
+				Month:      llmfriendlytimepkg3.December,
 				DayOfMonth: 31,
 			}
 
@@ -64,9 +64,9 @@ var _ = Describe("NearestDay", func() {
 	Context("when TimeFrame is Future", func() {
 		It("should find the upcoming Friday", func() {
 			// freeze or note today's day
-			nd := llmfriendlytimepkg.NearestDay{
-				TimeFrame: llmfriendlytimepkg.Future,
-				DayOfWeek: llmfriendlytimepkg.Friday,
+			nd := llmfriendlytimepkg3.NearestDay{
+				TimeFrame: llmfriendlytimepkg3.Future,
+				DayOfWeek: llmfriendlytimepkg3.Friday,
 				Scale:     1,
 			}
 
@@ -79,9 +79,9 @@ var _ = Describe("NearestDay", func() {
 		})
 
 		It("should skip two weeks if Scale is 2", func() {
-			nd := llmfriendlytimepkg.NearestDay{
-				TimeFrame: llmfriendlytimepkg.Future,
-				DayOfWeek: llmfriendlytimepkg.Monday,
+			nd := llmfriendlytimepkg3.NearestDay{
+				TimeFrame: llmfriendlytimepkg3.Future,
+				DayOfWeek: llmfriendlytimepkg3.Monday,
 				Scale:     2,
 			}
 
@@ -96,9 +96,9 @@ var _ = Describe("NearestDay", func() {
 
 	Context("when TimeFrame is Past", func() {
 		It("should find the last Monday", func() {
-			nd := llmfriendlytimepkg.NearestDay{
-				TimeFrame: llmfriendlytimepkg.Past,
-				DayOfWeek: llmfriendlytimepkg.Monday,
+			nd := llmfriendlytimepkg3.NearestDay{
+				TimeFrame: llmfriendlytimepkg3.Past,
+				DayOfWeek: llmfriendlytimepkg3.Monday,
 				Scale:     1,
 			}
 

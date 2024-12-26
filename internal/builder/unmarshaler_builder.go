@@ -11,9 +11,10 @@ import (
 	"os"
 	"slices"
 	"text/template"
+	"unicode"
 )
 
-const schemaVerificationPackage = "github.com/santhosh-tekuri/jsonschema"
+const JSONSchemaValidationPackagePath = "github.com/santhosh-tekuri/jsonschema"
 
 //go:embed tmpl/unmarshalers.go.tmpl
 var unmarshalerTemplateData string
@@ -21,7 +22,13 @@ var unmarshalerTemplateData string
 var outputTemplate *template.Template
 
 func initialize() (err error) {
-	outputTemplate, err = template.New("unmarshalerTemplate").Parse(unmarshalerTemplateData)
+	outputTemplate, err = template.New("unmarshalerTemplate").Funcs(template.FuncMap{
+		"lower": func(s string) string {
+			r := []rune(s)
+			r[0] = unicode.ToLower(r[0])
+			return string(r)
+		},
+	}).Parse(unmarshalerTemplateData)
 	return err
 }
 
@@ -44,6 +51,9 @@ type UnmarshalerBuilder struct {
 	// unmarshaling logic for discriminating between different possibilities in
 	// a union type.
 	TypesWithAlts []typeWithAlts
+
+	// path prefix used for jsonschema package from santhosh-tekuri/jsonschema
+	JSONSchemaPrefix string
 }
 
 // TypesWithoutAlts is a convenience function for the template, when --validate
@@ -75,14 +85,14 @@ type typeAlt struct {
 type typeWithAlts struct {
 	TypeName string
 	Alts     []typeAlt
+	// HasSchema denotes whether this is a top-level type that is meant to be
+	// presented with a full schema.
+	// Used when generating validation code to determine whether to validate
+	// a given typeWithAlts
+	HasSchema bool
 }
 
 func RenderGoCode(fileName, schemaDir string, graphs []*typeregistry.SchemaGraph, discriminatorMap *DiscriminatorMap, validate bool) error {
-	if outputTemplate == nil {
-		if err := initialize(); err != nil {
-			return err
-		}
-	}
 	// all given graphs will be in the same root package so we
 	// use a single importMap
 	if len(graphs) == 0 {
@@ -93,32 +103,27 @@ func RenderGoCode(fileName, schemaDir string, graphs []*typeregistry.SchemaGraph
 		altsMap   = map[typeregistry.TypeID]typeWithAlts{}
 	)
 
-	if validate {
-		if pkg, err := loader.Load(schemaVerificationPackage); err != nil {
-			return fmt.Errorf("failed to load schema verification package %s: %w", schemaVerificationPackage, err)
-		} else if len(pkg) != 1 {
-			return fmt.Errorf("loaded package '%s' but got %d packages instead of 1", schemaVerificationPackage, len(pkg))
-		} else {
-			importMap.AddPackage(pkg[0])
-		}
-	}
-
 	builder := &UnmarshalerBuilder{
 		ImportMap:             importMap,
 		SchemaDir:             schemaDir,
 		DiscriminatorPropName: discriminatorPropName,
+		Validate:              validate,
 	}
-
 	for _, graph := range graphs {
 		if t, ok := graph.RootNode.Type().(*types.Named); !ok {
 			return fmt.Errorf("graph root %T is not a named type", graph.RootNode.Type())
 		} else {
 			builder.TypeNames = append(builder.TypeNames, t.Obj().Name())
 		}
+	}
 
+	for _, graph := range graphs {
 		for id, node := range graph.Nodes {
 			if nodeWithAlts, ok := node.(typeregistry.NamedTypeWithAltsNode); ok {
-				var alts []typeAlt
+				var (
+					alts     []typeAlt
+					typeName = nodeWithAlts.NamedType().Obj().Name()
+				)
 				for _, _alt := range nodeWithAlts.TypeSpec.Alternatives() {
 					importMap.AddPackage(_alt.TypeSpec.Pkg())
 					var (
@@ -136,8 +141,9 @@ func RenderGoCode(fileName, schemaDir string, graphs []*typeregistry.SchemaGraph
 				}
 
 				altsMap[id] = typeWithAlts{
-					TypeName: nodeWithAlts.NamedType().Obj().Name(),
-					Alts:     alts,
+					TypeName:  typeName,
+					Alts:      alts,
+					HasSchema: slices.Contains(builder.TypeNames, typeName),
 				}
 			}
 		}
@@ -148,6 +154,22 @@ func RenderGoCode(fileName, schemaDir string, graphs []*typeregistry.SchemaGraph
 	f, err := os.OpenFile(fileName, os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
 		return err
+	}
+	if validate {
+		if pkg, err := loader.Load(JSONSchemaValidationPackagePath); err != nil {
+			return fmt.Errorf("failed to load schema verification package %s: %w", JSONSchemaValidationPackagePath, err)
+		} else if len(pkg) != 1 {
+			return fmt.Errorf("loaded package '%s' but got %d packages instead of 1", JSONSchemaValidationPackagePath, len(pkg))
+		} else {
+			importMap.AddPackage(pkg[0])
+			builder.JSONSchemaPrefix = importMap.Alias(pkg[0])
+		}
+	}
+
+	if outputTemplate == nil {
+		if err = initialize(); err != nil {
+			return err
+		}
 	}
 	if err = outputTemplate.Execute(f, builder); err != nil {
 		return fmt.Errorf("template execute: %w", err)
