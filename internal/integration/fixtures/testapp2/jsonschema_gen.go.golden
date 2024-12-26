@@ -19,13 +19,14 @@ func (MovieCharacter) Schema() ([]byte, error) {
 
 var errNoDiscriminator = errors.New("no discriminator __type__ provided")
 
-func (it *LLMFriendlyTime) UnmarshalJSON(bytes []byte) error {
+func (it *LLMFriendlyTime) UnmarshalJSON(data []byte) error {
 	var (
 		temp          map[string]json.RawMessage
 		err           error
 		discriminator string
 	)
-	if err = json.Unmarshal(bytes, &temp); err != nil {
+
+	if err = json.Unmarshal(data, &temp); err != nil {
 		return fmt.Errorf("data does not conform to map[string]json.RawMessage: %w", err)
 	}
 	if discTemp, ok := temp["__type__"]; !ok {
@@ -39,7 +40,7 @@ func (it *LLMFriendlyTime) UnmarshalJSON(bytes []byte) error {
 
 	case "TimeAgo":
 		var __TimeAgo llmfriendlytimepkg.TimeAgo
-		err = json.Unmarshal(bytes, &__TimeAgo)
+		err = json.Unmarshal(data, &__TimeAgo)
 		if err != nil {
 			return fmt.Errorf("unmarshaling TimeAgo: %w", err)
 		}
@@ -47,7 +48,7 @@ func (it *LLMFriendlyTime) UnmarshalJSON(bytes []byte) error {
 
 	case "TimeFromNow":
 		var __TimeFromNow llmfriendlytimepkg.TimeFromNow
-		err = json.Unmarshal(bytes, &__TimeFromNow)
+		err = json.Unmarshal(data, &__TimeFromNow)
 		if err != nil {
 			return fmt.Errorf("unmarshaling TimeFromNow: %w", err)
 		}
@@ -55,7 +56,7 @@ func (it *LLMFriendlyTime) UnmarshalJSON(bytes []byte) error {
 
 	case "ActualTime":
 		var __ActualTime llmfriendlytimepkg.ActualTime
-		err = json.Unmarshal(bytes, &__ActualTime)
+		err = json.Unmarshal(data, &__ActualTime)
 		if err != nil {
 			return fmt.Errorf("unmarshaling ActualTime: %w", err)
 		}
@@ -63,7 +64,7 @@ func (it *LLMFriendlyTime) UnmarshalJSON(bytes []byte) error {
 
 	case "Now":
 		var __Now llmfriendlytimepkg.Now
-		err = json.Unmarshal(bytes, &__Now)
+		err = json.Unmarshal(data, &__Now)
 		if err != nil {
 			return fmt.Errorf("unmarshaling Now: %w", err)
 		}
@@ -71,7 +72,7 @@ func (it *LLMFriendlyTime) UnmarshalJSON(bytes []byte) error {
 
 	case "BeginningOfTime":
 		var __BeginningOfTime llmfriendlytimepkg.BeginningOfTime
-		err = json.Unmarshal(bytes, &__BeginningOfTime)
+		err = json.Unmarshal(data, &__BeginningOfTime)
 		if err != nil {
 			return fmt.Errorf("unmarshaling BeginningOfTime: %w", err)
 		}
@@ -79,7 +80,7 @@ func (it *LLMFriendlyTime) UnmarshalJSON(bytes []byte) error {
 
 	case "NearestDay":
 		var __NearestDay llmfriendlytimepkg.NearestDay
-		err = json.Unmarshal(bytes, &__NearestDay)
+		err = json.Unmarshal(data, &__NearestDay)
 		if err != nil {
 			return fmt.Errorf("unmarshaling NearestDay: %w", err)
 		}
@@ -87,7 +88,7 @@ func (it *LLMFriendlyTime) UnmarshalJSON(bytes []byte) error {
 
 	case "NearestDate":
 		var __NearestDate llmfriendlytimepkg.NearestDate
-		err = json.Unmarshal(bytes, &__NearestDate)
+		err = json.Unmarshal(data, &__NearestDate)
 		if err != nil {
 			return fmt.Errorf("unmarshaling NearestDate: %w", err)
 		}

@@ -4,10 +4,12 @@
 package {{ .ImportMap.LocalPkgName }}
 
 import (
+	"bytes"
 	"embed"
     "encoding/json"
     "errors"
     "fmt"
+	"io/fs"
 
 {{ range .ImportMap.ImportStatements }}
     {{ . }}
@@ -24,18 +26,59 @@ func ({{.}}) Schema() ([]byte, error) {
 }
 {{ end }}
 
+{{ $jsonSchemaPrefix := .JSONSchemaPrefix -}}
 {{ if .HaveAlts }}
 var errNoDiscriminator = errors.New("no discriminator {{$discProp}} provided")
 {{ end }}
+{{ if .Validate }}
+{{ range .TypesWithoutAlts }}
 
+var schemaValidatorFor{{.}}      *{{$jsonSchemaPrefix}}.Schema
+
+func (it *{{.}}) UnmarshalJSON(data []byte) error {
+	var err error
+	if schemaValidatorFor{{.}} == nil {
+		if schemaValidatorFor{{.}}, err = loadSchema("{{ $schemaDir }}/{{.}}.json"); err != nil {
+			return err
+		}
+	}
+	if err = schemaValidatorFor{{.}}.Validate(bytes.NewReader(data)); err != nil {
+		return fmt.Errorf("validation error: %w", err)
+	}
+	type Alias {{.}}
+	var temp Alias
+	if err = json.Unmarshal(data, &temp); err != nil {
+		return err
+	}
+	*it = {{.}}(temp)
+	return nil
+}
+
+var _ json.Unmarshaler = (*{{.}})(nil)
+{{ end }}
+{{ end }}
 {{ range .TypesWithAlts }}
-func (it *{{.TypeName}}) UnmarshalJSON(bytes []byte) error {
+
+{{ if .HasSchema }}
+var schemaValidatorFor{{.TypeName}}      *{{$jsonSchemaPrefix}}.Schema
+{{ end }}
+func (it *{{.TypeName}}) UnmarshalJSON(data []byte) error {
 	var (
 		temp map[string]json.RawMessage
 		err error
 		discriminator string
 	)
-	if err = json.Unmarshal(bytes, &temp); err != nil {
+	{{if .HasSchema}}
+	if schemaValidatorFor{{.TypeName}} == nil {
+		if schemaValidatorFor{{.TypeName}}, err = loadSchema("{{ $schemaDir }}/{{.TypeName}}.json"); err != nil {
+			return err
+		}
+	}
+	if err = schemaValidatorFor{{.TypeName}}.Validate(bytes.NewReader(data)); err != nil {
+		return fmt.Errorf("validation error: %w", err)
+	}
+	{{end}}
+	if err = json.Unmarshal(data, &temp); err != nil {
 		return fmt.Errorf("data does not conform to map[string]json.RawMessage: %w", err)
     }
 	if discTemp, ok := temp["{{$discProp}}"]; !ok {
@@ -49,7 +92,7 @@ func (it *{{.TypeName}}) UnmarshalJSON(bytes []byte) error {
 	{{ range .Alts }}
     case "{{.Discriminator}}":
 		var __{{.Discriminator}} {{ .TypeName }}
-		err = json.Unmarshal(bytes, &__{{.Discriminator}})
+		err = json.Unmarshal(data, &__{{.Discriminator}})
 		if err != nil {
 			return fmt.Errorf("unmarshaling {{.Discriminator}}: %w", err)
         }
@@ -64,3 +107,24 @@ func (it *{{.TypeName}}) UnmarshalJSON(bytes []byte) error {
 
 var _ json.Unmarshaler = (*{{.TypeName}})(nil)
 {{ end }}
+{{ if .Validate }}
+
+// loadSchema loads and compiles a json schema from the generated json schema
+// located at filePath, for use in validating schema prior to unmarshaling.
+func loadSchema(filePath string) (*{{.JSONSchemaPrefix}}.Schema, error) {
+	var (
+		schemaBytes fs.File
+		compiler    = {{.JSONSchemaPrefix}}.NewCompiler()
+	schema      *{{.JSONSchemaPrefix}}.Schema
+	err         error
+	)
+	if schemaBytes, err = __jsonschemaImports.Open(filePath); err != nil {
+		return nil, fmt.Errorf("loading schema document %s: %w", filePath, err)
+	} else if err = compiler.AddResource(filePath, schemaBytes); err != nil {
+		return nil, fmt.Errorf("adding schema resource for file %s: %w", filePath, err)
+	} else if schema, err = compiler.Compile(filePath); err != nil {
+		return nil, fmt.Errorf("compiling schema for file %s: %w", filePath, err)
+	}
+	return schema, nil
+}
+{{end}}

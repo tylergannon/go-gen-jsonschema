@@ -1,11 +1,11 @@
-package testapp2
+package testapp3validate
 
 import (
 	_ "github.com/dave/dst/decorator"
 	_ "github.com/santhosh-tekuri/jsonschema"
 	_ "github.com/tylergannon/go-gen-jsonschema"
 	jsonschema "github.com/tylergannon/go-gen-jsonschema"
-	"github.com/tylergannon/go-gen-jsonschema-testapp/llmfriendlytimepkg"
+	"github.com/tylergannon/go-gen-jsonschema-testapp/llmfriendlytimepkg3"
 	_ "github.com/tylergannon/structtag"
 	_ "golang.org/x/tools/go/packages"
 	"time"
@@ -108,24 +108,24 @@ const (
 	LaserSword            Weapon = "LaserSword"            // Sci-fi melee weapon akin to a lightsaber.
 )
 
-func TimeAgoToLLMFriendlyTime(t llmfriendlytimepkg.TimeAgo) (LLMFriendlyTime, error) {
-	return LLMFriendlyTime(time.Now().Add(-llmfriendlytimepkg.ToDuration(t.Unit, t.Quantity))), nil
+func TimeAgoToLLMFriendlyTime(t llmfriendlytimepkg3.TimeAgo) (LLMFriendlyTime, error) {
+	return LLMFriendlyTime(time.Now().Add(-llmfriendlytimepkg3.ToDuration(t.Unit, t.Quantity))), nil
 }
 
-func FromNowToLLMFriendlyTime(t llmfriendlytimepkg.TimeFromNow) (LLMFriendlyTime, error) {
-	return LLMFriendlyTime(time.Now().Add(llmfriendlytimepkg.ToDuration(t.Unit, t.Value))), nil
+func FromNowToLLMFriendlyTime(t llmfriendlytimepkg3.TimeFromNow) (LLMFriendlyTime, error) {
+	return LLMFriendlyTime(time.Now().Add(llmfriendlytimepkg3.ToDuration(t.Unit, t.Value))), nil
 }
 
-func ActualTimeToLLMFriendlyTime(t llmfriendlytimepkg.ActualTime) (LLMFriendlyTime, error) {
+func ActualTimeToLLMFriendlyTime(t llmfriendlytimepkg3.ActualTime) (LLMFriendlyTime, error) {
 	_t, err := t.ToTime()
 	return LLMFriendlyTime(_t), err
 }
 
-func NowToLLMFriendlyTime(t llmfriendlytimepkg.Now) (LLMFriendlyTime, error) {
+func NowToLLMFriendlyTime(t llmfriendlytimepkg3.Now) (LLMFriendlyTime, error) {
 	_t, err := t.ToTime()
 	return LLMFriendlyTime(_t), err
 }
-func BeginningOfTimeToLLMFriendlyTime(t llmfriendlytimepkg.BeginningOfTime) (LLMFriendlyTime, error) {
+func BeginningOfTimeToLLMFriendlyTime(t llmfriendlytimepkg3.BeginningOfTime) (LLMFriendlyTime, error) {
 	_t, err := t.ToTime()
 	return LLMFriendlyTime(_t), err
 }

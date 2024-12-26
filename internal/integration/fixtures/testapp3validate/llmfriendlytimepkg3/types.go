@@ -1,4 +1,4 @@
-package llmfriendlytimepkg
+package llmfriendlytimepkg3
 
 import (
 	"time"

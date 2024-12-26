@@ -1,66 +1,66 @@
-package testapp2
+package testapp3validate
 
 import (
 	"errors"
 	"fmt"
-	"github.com/tylergannon/go-gen-jsonschema-testapp/llmfriendlytimepkg"
+	"github.com/tylergannon/go-gen-jsonschema-testapp/llmfriendlytimepkg3"
 	"time"
 )
 
 // parseMonth converts our Month enum to a time.Month (1–12).
-func parseMonth(m llmfriendlytimepkg.Month) (time.Month, error) {
+func parseMonth(m llmfriendlytimepkg3.Month) (time.Month, error) {
 	switch m {
-	case llmfriendlytimepkg.January:
+	case llmfriendlytimepkg3.January:
 		return time.January, nil
-	case llmfriendlytimepkg.February:
+	case llmfriendlytimepkg3.February:
 		return time.February, nil
-	case llmfriendlytimepkg.March:
+	case llmfriendlytimepkg3.March:
 		return time.March, nil
-	case llmfriendlytimepkg.April:
+	case llmfriendlytimepkg3.April:
 		return time.April, nil
-	case llmfriendlytimepkg.May:
+	case llmfriendlytimepkg3.May:
 		return time.May, nil
-	case llmfriendlytimepkg.June:
+	case llmfriendlytimepkg3.June:
 		return time.June, nil
-	case llmfriendlytimepkg.July:
+	case llmfriendlytimepkg3.July:
 		return time.July, nil
-	case llmfriendlytimepkg.August:
+	case llmfriendlytimepkg3.August:
 		return time.August, nil
-	case llmfriendlytimepkg.September:
+	case llmfriendlytimepkg3.September:
 		return time.September, nil
-	case llmfriendlytimepkg.October:
+	case llmfriendlytimepkg3.October:
 		return time.October, nil
-	case llmfriendlytimepkg.November:
+	case llmfriendlytimepkg3.November:
 		return time.November, nil
-	case llmfriendlytimepkg.December:
+	case llmfriendlytimepkg3.December:
 		return time.December, nil
 	}
 	return time.January, fmt.Errorf("unknown month %q", m)
 }
 
 // parseDayOfWeek converts our DayOfWeek enum into time.Weekday (0=Sunday).
-func parseDayOfWeek(d llmfriendlytimepkg.DayOfWeek) (time.Weekday, error) {
+func parseDayOfWeek(d llmfriendlytimepkg3.DayOfWeek) (time.Weekday, error) {
 	switch d {
-	case llmfriendlytimepkg.Sunday:
+	case llmfriendlytimepkg3.Sunday:
 		return time.Sunday, nil
-	case llmfriendlytimepkg.Monday:
+	case llmfriendlytimepkg3.Monday:
 		return time.Monday, nil
-	case llmfriendlytimepkg.Tuesday:
+	case llmfriendlytimepkg3.Tuesday:
 		return time.Tuesday, nil
-	case llmfriendlytimepkg.Wednesday:
+	case llmfriendlytimepkg3.Wednesday:
 		return time.Wednesday, nil
-	case llmfriendlytimepkg.Thursday:
+	case llmfriendlytimepkg3.Thursday:
 		return time.Thursday, nil
-	case llmfriendlytimepkg.Friday:
+	case llmfriendlytimepkg3.Friday:
 		return time.Friday, nil
-	case llmfriendlytimepkg.Saturday:
+	case llmfriendlytimepkg3.Saturday:
 		return time.Saturday, nil
 	}
 	return time.Sunday, fmt.Errorf("unknown day of week %q", d)
 }
 
 // ToTime calculates the nearest date (month + day) in the future or past.
-func NearestDateToTime(nd llmfriendlytimepkg.NearestDate) (LLMFriendlyTime, error) {
+func NearestDateToTime(nd llmfriendlytimepkg3.NearestDate) (LLMFriendlyTime, error) {
 	now := time.Now()
 
 	// Resolve the month to time.Month
@@ -80,12 +80,12 @@ func NearestDateToTime(nd llmfriendlytimepkg.NearestDate) (LLMFriendlyTime, erro
 	candidate := time.Date(now.Year(), tmMonth, dayOfMonth, 0, 0, 0, 0, loc)
 
 	switch nd.TimeFrame {
-	case llmfriendlytimepkg.Future:
+	case llmfriendlytimepkg3.Future:
 		// If candidate is before or equal to 'now', move it to next year's occurrence
 		if !candidate.After(now) {
 			candidate = candidate.AddDate(1, 0, 0)
 		}
-	case llmfriendlytimepkg.Past:
+	case llmfriendlytimepkg3.Past:
 		// If candidate is after or equal to 'now', move it to last year's occurrence
 		if !candidate.Before(now) {
 			candidate = candidate.AddDate(-1, 0, 0)
@@ -99,7 +99,7 @@ func NearestDateToTime(nd llmfriendlytimepkg.NearestDate) (LLMFriendlyTime, erro
 
 // ToTime calculates the nearest day-of-week in the future or past.
 // The Scale indicates how many weeks to move.
-func NearestDayToTime(nd llmfriendlytimepkg.NearestDay) (LLMFriendlyTime, error) {
+func NearestDayToTime(nd llmfriendlytimepkg3.NearestDay) (LLMFriendlyTime, error) {
 	now := time.Now()
 
 	w, err := parseDayOfWeek(nd.DayOfWeek)
@@ -147,14 +147,14 @@ func NearestDayToTime(nd llmfriendlytimepkg.NearestDay) (LLMFriendlyTime, error)
 
 	var candidate time.Time
 	switch nd.TimeFrame {
-	case llmfriendlytimepkg.Future:
+	case llmfriendlytimepkg3.Future:
 		// Find the next occurrence
 		candidate = nextDayOfWeek(now, w)
 		// If Scale > 1, then skip that many additional weeks
 		if scale > 1 {
 			candidate = candidate.AddDate(0, 0, 7*(scale-1))
 		}
-	case llmfriendlytimepkg.Past:
+	case llmfriendlytimepkg3.Past:
 		// Find the last occurrence
 		candidate = prevDayOfWeek(now, w)
 		// If Scale > 1, go that many additional weeks back

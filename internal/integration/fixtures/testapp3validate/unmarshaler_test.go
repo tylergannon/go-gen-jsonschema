@@ -1,4 +1,4 @@
-package testapp2_test
+package testapp3validate_test
 
 import (
 	"embed"
