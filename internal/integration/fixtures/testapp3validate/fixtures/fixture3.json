@@ -1,0 +1,52 @@
+{
+  "name": "Raj Patel",
+  "nicknames": [
+    "The Tech Wizard",
+    "Circuit Breaker",
+    "The Bug"
+  ],
+  "location": "BollyWood",
+  "alignment": "good",
+  "favoriteWeapons": [
+    "LaserPointerBlinder",
+    "PlasmaCannon",
+    "GravityHammer",
+    "OceanEvaporatingLaser"
+  ],
+  "dateOfBirth": {
+    "__type__": "NearestDay",
+    "timeFrame": "Future",
+    "dayOfWeek": "Monday",
+    "scale": 7
+  },
+  "backStory": "A child prodigy in quantum computing, Raj discovered a way to manipulate gravity and energy fields through his experimental research. However, when his breakthrough caught the attention of various tech corporations seeking to weaponize his discoveries, he decided to use his inventions to protect other scientists from corporate exploitation, while maintaining his signature style of using over-the-top sci-fi weaponry.",
+  "importantDates": [
+    {
+      "when": {
+        "__type__": "TimeFromNow",
+        "unit": "months",
+        "value": 6
+      },
+      "whatHappened": "Successfully defends his first research facility from corporate raiders",
+      "withWhom": "TechCorp Industries"
+    },
+    {
+      "when": {
+        "__type__": "TimeFromNow",
+        "unit": "years",
+        "value": 1
+      },
+      "whatHappened": "Establishes the Free Science Foundation",
+      "withWhom": "Global Scientific Community"
+    },
+    {
+      "when": {
+        "__type__": "TimeFromNow",
+        "unit": "years",
+        "value": 2
+      },
+      "whatHappened": "Develops revolutionary clean energy technology",
+      "withWhom": "Independent Research Team"
+    }
+  ]
+}

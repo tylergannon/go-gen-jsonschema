@@ -18,6 +18,7 @@ var (
 	typeNames = flag.String("type", "", "comma-separated list of type names")
 	pretty    = flag.Bool("pretty", false, "output JSON with indentation")
 	verbose   = flag.Bool("verbose", false, "print detailed processing information")
+	validate  = flag.Bool("validate", false, "generate unmarshalers that validate against schema using santhosh-tekuri/jsonschema")
 	subdir    = flag.String("subdir", "jsonschema", "subdirectory where to place schemas")
 )
 
@@ -94,7 +95,7 @@ func main() {
 			fmt.Printf("Processed type: %s (package: %s), output file: %s\n", typeName, pkg.PkgPath, destFile)
 		}
 	}
-	err = builder.RenderGoCode("jsonschema_gen.go", *subdir, graphs, discriminators)
+	err = builder.RenderGoCode("jsonschema_gen.go", *subdir, graphs, discriminators, *validate)
 	if err != nil {
 		poo, _ := json.MarshalIndent(discriminators, "", "  ")
 		fmt.Println(string(poo))
