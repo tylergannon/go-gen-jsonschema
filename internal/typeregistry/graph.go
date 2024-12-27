@@ -405,7 +405,9 @@ func (r *Registry) visitStructFields(parent StructTypeNode, pkg *decorator.Packa
 			continue
 		}
 		if fType, ok := field.Type().(*types.Named); ok {
-			ts, _ = r.getType(fType.Obj().Name(), fType.Obj().Pkg().Path())
+			if ts, ok = r.getType(fType.Obj().Name(), fType.Obj().Pkg().Path()); !ok {
+				fmt.Printf("Didn't find type %s in package %s\n", fType.Obj().Name(), fType.Obj().Pkg().Path())
+			}
 			newNode.pkg = ts.Pkg()
 		}
 		if newNode.id, err = r.resolveType(field.Type(), fieldDecl.Type, parent.Pkg()); err != nil {

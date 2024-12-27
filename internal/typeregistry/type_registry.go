@@ -84,6 +84,12 @@ func (r *Registry) GetTypeByName(name, pkgPath string) (TypeSpec, bool) {
 }
 
 func (r *Registry) getType(name string, pkgPath string) (*typeSpec, bool) {
+	if r.packages[pkgPath] == nil {
+		if err := r.LoadAndScan(pkgPath); err != nil {
+			fmt.Println(err)
+			return nil, false
+		}
+	}
 	typeID := NewTypeID(pkgPath, name)
 
 	if ts, ok := r.typeMap[typeID]; ok {
@@ -313,6 +319,11 @@ func (ts *typeSpec) GetTypeSpec() *dst.TypeSpec {
 }
 
 func (ts *typeSpec) Pkg() *decorator.Package {
+	if ts == nil {
+		fmt.Println("ts is frikkin nil!")
+	} else if ts.pkg == nil {
+		inspect("ts", ts.typeSpec)
+	}
 	return ts.pkg
 }
 

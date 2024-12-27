@@ -191,11 +191,11 @@ func (b *SchemaBuilder) renderNode(node typeregistry.Node) json.Marshaler {
 		case *jsonSchema:
 			if n.IsAlt {
 				chType.Properties = append(
-					chType.Properties,
-					schemaProperty{
+					[]schemaProperty{{
 						name: b.DiscriminatorPropName,
 						def:  constElement(b.discriminators.MakeAlias(n)),
-					},
+					}},
+					chType.Properties...,
 				)
 			}
 			typeComments := buildComments(n.TypeSpec.Decorations())

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/tylergannon/go-gen-jsonschema/internal/typeregistry"
 	"go/types"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -182,7 +183,18 @@ func (j *jsonSchema) MarshalJSON() ([]byte, error) {
 
 func constElement[T ~int | ~string | ~bool](val T) basicMarshaler {
 	_val, _ := json.Marshal(val)
-	return basicMarshaler{"const": json.RawMessage(_val)}
+	it := basicMarshaler{"const": json.RawMessage(_val)}
+	var typ = reflect.TypeFor[T]()
+	if typ.Kind() == reflect.Bool {
+		it["type"] = json.RawMessage(`"boolean"`)
+	} else if typ.Kind() == reflect.String {
+		it["type"] = json.RawMessage(`"string"`)
+	} else if typ.Kind() == reflect.Int {
+		it["type"] = json.RawMessage(`"integer"`)
+	} else {
+		panic(fmt.Sprintf("unsupported type for const element %T", val))
+	}
+	return it
 }
 
 func newEnumType(node typeregistry.EnumTypeNode) json.Marshaler {

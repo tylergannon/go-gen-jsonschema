@@ -6,6 +6,7 @@ import (
 	_ "github.com/santhosh-tekuri/jsonschema" // just to ensure that `go mod tidy` won't delete this from our go.mod
 	"github.com/tylergannon/go-gen-jsonschema/internal/loader"
 	"github.com/tylergannon/go-gen-jsonschema/internal/typeregistry"
+	"go/token"
 	"go/types"
 	"log"
 	"os"
@@ -54,6 +55,9 @@ type UnmarshalerBuilder struct {
 
 	// path prefix used for jsonschema package from santhosh-tekuri/jsonschema
 	JSONSchemaPrefix string
+
+	// Unmarshaler Only
+	UnmarshalersOnly bool
 }
 
 // TypesWithoutAlts is a convenience function for the template, when --validate
@@ -92,7 +96,7 @@ type typeWithAlts struct {
 	HasSchema bool
 }
 
-func RenderGoCode(fileName, schemaDir string, graphs []*typeregistry.SchemaGraph, discriminatorMap *DiscriminatorMap, validate bool) error {
+func RenderGoCode(fileName, schemaDir string, graphs []*typeregistry.SchemaGraph, discriminatorMap *DiscriminatorMap, validate, unmarshalersOnly bool) error {
 	// all given graphs will be in the same root package so we
 	// use a single importMap
 	if len(graphs) == 0 {
@@ -108,6 +112,7 @@ func RenderGoCode(fileName, schemaDir string, graphs []*typeregistry.SchemaGraph
 		SchemaDir:             schemaDir,
 		DiscriminatorPropName: discriminatorPropName,
 		Validate:              validate,
+		UnmarshalersOnly:      unmarshalersOnly,
 	}
 	for _, graph := range graphs {
 		if t, ok := graph.RootNode.Type().(*types.Named); !ok {
@@ -121,9 +126,20 @@ func RenderGoCode(fileName, schemaDir string, graphs []*typeregistry.SchemaGraph
 		for id, node := range graph.Nodes {
 			if nodeWithAlts, ok := node.(typeregistry.NamedTypeWithAltsNode); ok {
 				var (
-					alts     []typeAlt
-					typeName = nodeWithAlts.NamedType().Obj().Name()
+					namedType = nodeWithAlts.NamedType()
+					alts      []typeAlt
+					typeName  = namedType.Obj().Name()
 				)
+				if importMap.localPackage.PkgPath != nodeWithAlts.Pkg().PkgPath {
+					//	this was defined in a different package.  Its unmarshaler should likewise have
+					// been defined already.
+					if hasPointerJSONUnmarshaler(namedType) {
+						//	okay, implemented.
+						continue
+					} else {
+						return fmt.Errorf("type %s defined in package %s has no unmarshaler.  quitting.", typeName, nodeWithAlts.Pkg().PkgPath)
+					}
+				}
 				for _, _alt := range nodeWithAlts.TypeSpec.Alternatives() {
 					importMap.AddPackage(_alt.TypeSpec.Pkg())
 					var (
@@ -178,4 +194,46 @@ func RenderGoCode(fileName, schemaDir string, graphs []*typeregistry.SchemaGraph
 		log.Fatalf("error running goimports (exit code %d): %v", exitCode, err)
 	}
 	return nil
+}
+
+// hasPointerJSONUnmarshaler reports whether the pointer to the given named type
+// implements json.Unmarshaler.
+//
+// That is, for a type T, we check whether *T implements:
+//
+//	UnmarshalJSON([]byte) error
+func hasPointerJSONUnmarshaler(named *types.Named) bool {
+	// Construct the UnmarshalJSON([]byte) error method signature.
+	//
+	//   func([]byte) error
+	//
+	// We need a parameter of type []byte and a result of type error.
+	byteSlice := types.NewSlice(types.Typ[types.Byte])
+	errorType := types.Universe.Lookup("error").Type()
+
+	// Create the method signature:  func([]byte) error
+	sig := types.NewSignatureType(
+		nil,
+		nil,
+		nil,
+		types.NewTuple(types.NewVar(token.NoPos, nil, "", byteSlice)), // parameters
+		types.NewTuple(types.NewVar(token.NoPos, nil, "", errorType)), // results
+		false,
+	)
+
+	// Create a Func that has the name "UnmarshalJSON" and that signature.
+	unmarshalerFunc := types.NewFunc(token.NoPos, nil, "UnmarshalJSON", sig)
+
+	// Create an interface that has just this one method.
+	unmarshalerIface := types.NewInterfaceType(
+		[]*types.Func{unmarshalerFunc},
+		nil,
+	)
+	unmarshalerIface.Complete() // finalize the interface
+
+	// Construct the pointer type to named (i.e., *named).
+	ptrToNamed := types.NewPointer(named)
+
+	// Finally, check if that pointer implements our interface.
+	return types.Implements(ptrToNamed, unmarshalerIface)
 }

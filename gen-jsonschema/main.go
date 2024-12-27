@@ -15,11 +15,12 @@ import (
 
 // Command line flags
 var (
-	typeNames = flag.String("type", "", "comma-separated list of type names")
-	pretty    = flag.Bool("pretty", false, "output JSON with indentation")
-	verbose   = flag.Bool("verbose", false, "print detailed processing information")
-	validate  = flag.Bool("validate", false, "generate unmarshalers that validate against schema using santhosh-tekuri/jsonschema")
-	subdir    = flag.String("subdir", "jsonschema", "subdirectory where to place schemas")
+	typeNames        = flag.String("type", "", "comma-separated list of type names")
+	pretty           = flag.Bool("pretty", false, "output JSON with indentation")
+	verbose          = flag.Bool("verbose", false, "print detailed processing information")
+	validate         = flag.Bool("validate", false, "generate unmarshalers that validate against schema using santhosh-tekuri/jsonschema")
+	subdir           = flag.String("subdir", "jsonschema", "subdirectory where to place schemas")
+	unmarshalersOnly = flag.Bool("unmarshalers-only", false, "only render the json.Unmarshaler implementation")
 )
 
 func main() {
@@ -87,15 +88,17 @@ func main() {
 		}
 
 		destFile := filepath.Join(*subdir, fmt.Sprintf("%s.json", typeName))
-		if err = os.WriteFile(destFile, schemaBytes, 0644); err != nil {
-			log.Fatal(err)
+		if !*unmarshalersOnly {
+			if err = os.WriteFile(destFile, schemaBytes, 0644); err != nil {
+				log.Fatal(err)
+			}
 		}
 
 		if *verbose {
 			fmt.Printf("Processed type: %s (package: %s), output file: %s\n", typeName, pkg.PkgPath, destFile)
 		}
 	}
-	err = builder.RenderGoCode("jsonschema_gen.go", *subdir, graphs, discriminators, *validate)
+	err = builder.RenderGoCode("jsonschema_gen.go", *subdir, graphs, discriminators, *validate, *unmarshalersOnly)
 	if err != nil {
 		log.Fatal(err)
 	}

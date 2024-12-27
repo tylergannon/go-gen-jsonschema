@@ -5,26 +5,31 @@ package {{ .ImportMap.LocalPkgName }}
 
 import (
 	"bytes"
-	"embed"
     "encoding/json"
     "errors"
     "fmt"
+	{{- if not .UnmarshalersOnly }}
+	"embed"
 	"io/fs"
+	{{ end }}
 
 {{ range .ImportMap.ImportStatements }}
     {{ . }}
     {{- end -}}
 )
-
-//go:embed {{.SchemaDir}}
-var __jsonschemaImports embed.FS
+{{ $validate := .Validate }}
 {{ $schemaDir := .SchemaDir -}}
 {{ $discProp := .DiscriminatorPropName -}}
+
+{{- if not .UnmarshalersOnly }}
+//go:embed {{.SchemaDir}}
+var __jsonschemaImports embed.FS
 {{ range .TypeNames }}
 func ({{.}}) Schema() ([]byte, error) {
 	return __jsonschemaImports.ReadFile("{{ $schemaDir }}/{{.}}.json")
 }
 {{ end }}
+{{ end -}}
 
 {{ $jsonSchemaPrefix := .JSONSchemaPrefix -}}
 {{ if .HaveAlts }}
@@ -59,7 +64,7 @@ var _ json.Unmarshaler = (*{{.}})(nil)
 {{ end }}
 {{ range .TypesWithAlts }}
 
-{{ if .HasSchema }}
+{{ if and $validate .HasSchema }}
 var schemaValidatorFor{{.TypeName}}      *{{$jsonSchemaPrefix}}.Schema
 {{ end }}
 func (it *{{.TypeName}}) UnmarshalJSON(data []byte) error {
@@ -68,7 +73,7 @@ func (it *{{.TypeName}}) UnmarshalJSON(data []byte) error {
 		err error
 		discriminator string
 	)
-	{{if .HasSchema}}
+	{{if and $validate .HasSchema}}
 	if schemaValidatorFor{{.TypeName}} == nil {
 		if schemaValidatorFor{{.TypeName}}, err = loadSchema("{{ $schemaDir }}/{{.TypeName}}.json"); err != nil {
 			return err
