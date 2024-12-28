@@ -237,14 +237,6 @@ type AlternativeTypeSpec struct {
 	Alias string
 }
 
-type TypeAlternative struct {
-	Alias     string
-	FuncName  string
-	ImportMap ImportMap
-	//StructPkg  string
-	//StructType string
-}
-
 type UnionTypeDecl struct {
 	importMap           ImportMap
 	DestTypePackagePath string
@@ -258,17 +250,21 @@ func (d *UnionTypeDecl) ID() TypeID {
 	return NewTypeID(d.DestTypePackagePath, d.DestTypeName)
 }
 
-func SetTypeAlternativeDecl(importMap ImportMap, expr dst.Expr) *UnionTypeDecl {
-	switch expr := expr.(type) {
+// SetTypeAlternativeDecl interprets the index expression for the identity of the
+// type alt.
+// TODO: I don't think we should be returning anything in the default case below.
+// anybody know why I did that?
+func SetTypeAlternativeDecl(importMap ImportMap, expr *dst.IndexExpr) *UnionTypeDecl {
+	switch index := expr.Index.(type) {
 	case *dst.Ident:
 		//log.Printf("Name: %s, Path: %s, Obj: %v, %T", nodeImpl.Name, nodeImpl.Path, nodeImpl.Obj, nodeImpl.Obj)
 		return &UnionTypeDecl{
 			importMap:           importMap,
 			DestTypePackagePath: importMap[""],
-			DestTypeName:        expr.Name,
+			DestTypeName:        index.Name,
 		}
 	default:
-		log.Printf("Expr: %T, %v", expr, expr)
+		log.Printf("Expr: %T, %v", index, index)
 	}
 	return &UnionTypeDecl{
 		importMap: importMap,

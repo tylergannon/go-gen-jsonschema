@@ -9,7 +9,7 @@ import (
 type ImportMap map[string]string
 
 func NewImportMap(localPackage string, imports []*dst.ImportSpec) ImportMap {
-	importMap := make(ImportMap)
+	importMap := make(ImportMap, len(imports)+1)
 	for _, importSpec := range imports {
 		var (
 			pkgPath = deQuote(importSpec.Path.Value)
