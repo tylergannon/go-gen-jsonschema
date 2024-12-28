@@ -61,3 +61,15 @@ type GrandChildStructRecursive struct {
 		Bar *int
 	}
 }
+
+type SomeInterface interface {
+	DoThings()
+}
+
+type StructWithInterfaceField struct {
+	IFace SomeInterface
+}
+
+type StructWithEmbeddedInterface struct {
+	SomeInterface
+}

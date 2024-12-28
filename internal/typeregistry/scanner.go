@@ -12,8 +12,14 @@ import (
 
 const (
 	JSONSchemaPackage = "github.com/tylergannon/go-gen-jsonschema"
-	UnionTypeFunc     = "SetTypeAlternative"
-	TypeAltFunc       = "Alt"
+	// UnionTypeFunc Used for denoting basic alts for a struct type.  These are special because each "type alt"
+	// needs to have a converter func that renders it into the destination type.
+	UnionTypeFunc = "SetTypeAlternative"
+	// ImplementationFunc denotes the list of acceptable implementations for an interface type.
+	// These are different from the "type alt" in that there is no conversion function.  By being
+	// an implementation of the denoted interface, they are directly assignable to that type.
+	ImplementationFunc = "SetImplementations"
+	TypeAltFunc        = "Alt"
 )
 
 func NewRegistry(pkgs []*decorator.Package) (*Registry, error) {

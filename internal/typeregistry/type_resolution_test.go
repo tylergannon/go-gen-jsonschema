@@ -42,7 +42,9 @@ var _ = Describe("Type Resolution", func() {
 		return fmt.Sprintf("%s.%s%s", pkgPath, typeName, indexer)
 	}
 
-	DescribeTable("Checking inline and complex types", func(typeName, expected string, success bool) {
+	type testFunc func(t TypeID, e error)
+
+	DescribeTable("Checking inline and complex types", func(typeName, expected string, success bool, tests ...testFunc) {
 		var (
 			ts, found = registry.getType(typeName, pkgPath)
 		)
@@ -53,6 +55,9 @@ var _ = Describe("Type Resolution", func() {
 			Expect(actual).To(Equal(TypeID(expected)))
 		} else {
 			Expect(err).To(HaveOccurred())
+		}
+		for _, test := range tests {
+			test(actual, err)
 		}
 	},
 		Entry("Basic type int", "TrivialNamedType", "int", true),
@@ -80,7 +85,16 @@ var _ = Describe("Type Resolution", func() {
 		Entry("Crazy Recursive", "ParentStruct", "struct {Inline struct {Bar int; Baz string; Coolio bool; Child ../testapp1_typeresolution.ChildStruct;}; Foobar ../testapp1_typeresolution.ParentStruct; Inline struct {Bar int; Bark string; Coolio bool; Foobar ../testapp1_typeresolution.ChildStruct; Inline struct {Bar int;};}; GoodKid ../testapp1_typeresolution.ChildStruct; BadKid ../testapp1_typeresolution.ChildStruct;}", true),
 
 		// Fail
-		Entry("Crazy struct with a channel in", "IllegalStructWithInlineAndNamedAllCrazy", "", false),
+		Entry("Crazy struct with a channel in", "IllegalStructWithInlineAndNamedAllCrazy", "", false, func(_ TypeID, e error) {
+			//Expect(e).To(HaveOccurred())
+			//fmt.Println(e)
+		}),
 		Entry("Crazy Recursive", "ParentStructRecursive", "", false),
+		Entry("Interface Type", "SomeInterface", "", false, func(_ TypeID, e error) {
+			Expect(e).To(HaveOccurred())
+			fmt.Println(e)
+		}),
+		Entry("Struct With Interface Field", "StructWithInterfaceField", "", false),
+		Entry("Struct With Embedded Interface", "StructWithEmbeddedInterface", "", false),
 	)
 })

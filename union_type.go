@@ -11,3 +11,7 @@ func SetTypeAlternative[T any](typeAlternatives ...TypeAlt[T]) UnionType {
 func Alt[T any, U any](name string, f func(t T) (U, error)) TypeAlt[U] {
 	return struct{}{}
 }
+
+func SetImplementations[T any](implementations ...T) UnionType {
+	return UnionType{}
+}
