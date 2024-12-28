@@ -2,6 +2,7 @@ package builder
 
 import (
 	_ "embed"
+	"errors"
 	"fmt"
 	_ "github.com/santhosh-tekuri/jsonschema" // just to ensure that `go mod tidy` won't delete this from our go.mod
 	"github.com/tylergannon/go-gen-jsonschema/internal/loader"
@@ -20,17 +21,14 @@ const JSONSchemaValidationPackagePath = "github.com/santhosh-tekuri/jsonschema"
 //go:embed tmpl/unmarshalers.go.tmpl
 var unmarshalerTemplateData string
 
-var outputTemplate *template.Template
-
-func initialize() (err error) {
-	outputTemplate, err = template.New("unmarshalerTemplate").Funcs(template.FuncMap{
+func initializeOutputTemplate() (outputTemplate *template.Template, err error) {
+	return template.New("unmarshalerTemplate").Funcs(template.FuncMap{
 		"lower": func(s string) string {
 			r := []rune(s)
 			r[0] = unicode.ToLower(r[0])
 			return string(r)
 		},
 	}).Parse(unmarshalerTemplateData)
-	return err
 }
 
 // UnmarshalerBuilder is the argument to the template
@@ -122,6 +120,17 @@ func RenderGoCode(fileName, schemaDir string, graphs []*typeregistry.SchemaGraph
 		}
 	}
 
+	// Perform validation if required
+	if validate {
+		var pkg, err = loader.Load(JSONSchemaValidationPackagePath)
+		if err != nil {
+			return fmt.Errorf("failed to load schema verification package %s: %w", JSONSchemaValidationPackagePath, err)
+		} else if len(pkg) != 1 {
+			return fmt.Errorf("loaded package '%s' but got %d packages instead of 1", JSONSchemaValidationPackagePath, len(pkg))
+		}
+		builder.ImportMap.AddPackage(pkg[0])
+		builder.JSONSchemaPrefix = builder.ImportMap.Alias(pkg[0])
+	}
 	for _, graph := range graphs {
 		for id, node := range graph.Nodes {
 			if nodeWithAlts, ok := node.(typeregistry.NamedTypeWithAltsNode); ok {
@@ -167,28 +176,8 @@ func RenderGoCode(fileName, schemaDir string, graphs []*typeregistry.SchemaGraph
 	for _, t := range altsMap {
 		builder.TypesWithAlts = append(builder.TypesWithAlts, t)
 	}
-	f, err := os.OpenFile(fileName, os.O_RDWR|os.O_CREATE, 0644)
-	if err != nil {
-		return err
-	}
-	if validate {
-		if pkg, err := loader.Load(JSONSchemaValidationPackagePath); err != nil {
-			return fmt.Errorf("failed to load schema verification package %s: %w", JSONSchemaValidationPackagePath, err)
-		} else if len(pkg) != 1 {
-			return fmt.Errorf("loaded package '%s' but got %d packages instead of 1", JSONSchemaValidationPackagePath, len(pkg))
-		} else {
-			importMap.AddPackage(pkg[0])
-			builder.JSONSchemaPrefix = importMap.Alias(pkg[0])
-		}
-	}
-
-	if outputTemplate == nil {
-		if err = initialize(); err != nil {
-			return err
-		}
-	}
-	if err = outputTemplate.Execute(f, builder); err != nil {
-		return fmt.Errorf("template execute: %w", err)
+	if err := writeTemplate(fileName, builder); err != nil {
+		log.Fatalf("failed to generate code: %v", err)
 	}
 	if exitCode, _, _, err := RunCommand("goimports", ".", "-w", fileName); err != nil || exitCode != 0 {
 		log.Fatalf("error running goimports (exit code %d): %v", exitCode, err)
@@ -236,4 +225,37 @@ func hasPointerJSONUnmarshaler(named *types.Named) bool {
 
 	// Finally, check if that pointer implements our interface.
 	return types.Implements(ptrToNamed, unmarshalerIface)
+}
+
+// writeTemplate accepts the configured UnmarshalerBuilder and writes the
+// unmarshaler file template to disk, taking care to flush the results prior
+// to exiting.
+func writeTemplate(fileName string, builder *UnmarshalerBuilder) error {
+	var (
+		tmpFileName    = fileName + ".tmp"
+		f, err         = os.OpenFile(tmpFileName, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+		outputTemplate *template.Template
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create temp file %s: %w", tmpFileName, err)
+	}
+	defer func() { // Ensure cleanup. Close file and delete temp file in case it's still present.
+		if cerr := f.Close(); cerr != nil && !errors.Is(cerr, os.ErrClosed) {
+			err = errors.Join(err, cerr)
+		}
+		if deleteErr := os.Remove(tmpFileName); deleteErr != nil && !errors.Is(deleteErr, os.ErrNotExist) {
+			err = errors.Join(err, deleteErr)
+		}
+	}()
+	// Initialize the output template if necessary
+	if outputTemplate, err = initializeOutputTemplate(); err != nil {
+		return fmt.Errorf("failed to initialize template: %w", err)
+	} else if err = outputTemplate.Execute(f, builder); err != nil {
+		return fmt.Errorf("template execute: %w", err)
+	} else if err = f.Sync(); err != nil {
+		return fmt.Errorf("failed to sync temp file %s: %w", tmpFileName, err)
+	} else if err = os.Rename(tmpFileName, fileName); err != nil {
+		return fmt.Errorf("failed to rename temp file %s to %s: %w", tmpFileName, fileName, err)
+	}
+	return err
 }
