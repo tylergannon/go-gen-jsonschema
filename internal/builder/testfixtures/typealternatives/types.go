@@ -50,111 +50,115 @@ var _ = jsonschema.SetTypeAlternative[LLMFriendlyTime](
 )
 
 const JSONSchemaTimedSomething = `{
-    "type": "object",
-    "properties": {
-        "time": {
+        "type": "object",
+        "properties": {
+          "time": {
             "anyOf": [
-                {
-                    "description": "TimeAgo reflects a relative time in the past, given in units of time relative to the present time.\n\n\n\n## **Properties**\n\n### unit\n\nChoose the unit of as given.\n\n### quantity\n\nEnter the number of the selected unit.\n\n",
-                    "type": "object",
-                    "properties": {
-                        "unit": {
-                            "$ref": "#/$defs/TimeUnit"
-                        },
-                        "quantity": {
-                            "type": "integer"
-                        },
-                        "__type__": {
-                            "const": "TimeAgo"
-                        }
-                    },
-                    "required": [
-                        "unit",
-                        "quantity",
-                        "__type__"
-                    ],
-                    "additionalProperties": false
+              {
+                "description": "TimeAgo reflects a relative time in the past, given in units of time relative to the present time.\n\n\n\n## **Properties**\n\n### unit\n\nChoose the unit of as given.\n\n### quantity\n\nEnter the number of the selected unit.\n\n",
+                "type": "object",
+                "properties": {
+                  "__type__": {
+                    "const": "TimeAgo",
+                    "type": "string"
+                  },
+                  "unit": {
+                    "$ref": "#/$defs/TimeUnit"
+                  },
+                  "quantity": {
+                    "type": "integer"
+                  }
                 },
-                {
-                    "description": "\n\n\n\n## **Properties**\n\n### unit\n\nChoose the unit of as given.\n\n### value\n\nEnter the number of the selected unit.\n\n",
-                    "type": "object",
-                    "properties": {
-                        "unit": {
-                            "$ref": "#/$defs/TimeUnit"
-                        },
-                        "value": {
-                            "type": "integer"
-                        },
-                        "__type__": {
-                            "const": "TimeFromNow"
-                        }
-                    },
-                    "required": [
-                        "unit",
-                        "value",
-                        "__type__"
-                    ],
-                    "additionalProperties": false
+                "required": [
+                  "__type__",
+                  "unit",
+                  "quantity"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "description": "\n\n\n\n## **Properties**\n\n### unit\n\nChoose the unit of as given.\n\n### value\n\nEnter the number of the selected unit.\n\n",
+                "type": "object",
+                "properties": {                                                                                                                                                                         "__type__": {
+                    "const": "TimeFromNow",
+                    "type": "string"
+                  },
+                  "unit": {
+                    "$ref": "#/$defs/TimeUnit"
+                  },
+                  "value": {
+                    "type": "integer"
+                  }
                 },
-                {
-                    "type": "object",
-                    "properties": {
-                        "dateTime": {
-                            "type": "string"
-                        },
-                        "__type__": {
-                            "const": "ActualTime"
-                        }
-                    },
-                    "required": [
-                        "dateTime",
-                        "__type__"
-                    ],
-                    "additionalProperties": false
+                "required": [
+                  "__type__",
+                  "unit",
+                  "value"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "__type__": {
+                    "const": "ActualTime",
+                    "type": "string"
+                  },
+                  "dateTime": {
+                    "type": "string"
+                  }
                 },
-                {
-                    "type": "object",
-                    "properties": {
-                        "__type__": {
-                            "const": "Now"
-                        }
-                    },
-                    "required": [
-                        "__type__"
-                    ],
-                    "additionalProperties": false
+                "required": [
+                  "__type__",
+                  "dateTime"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "__type__": {
+                    "const": "Now",
+                    "type": "string"
+                  }
                 },
-                {
-                    "type": "object",
-                    "properties": {
-                        "__type__": {
-                            "const": "BeginningOfTime"
-                        }
-                    },
-                    "required": [
-                        "__type__"
-                    ],
-                    "additionalProperties": false
-                }
+                "required": [
+                  "__type__"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "__type__": {
+                    "const": "BeginningOfTime",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "__type__"
+                ],
+                "additionalProperties": false
+              }
             ]
-        }
-    },
-    "required": [
-        "time"
-    ],
-    "additionalProperties": false,
-    "$defs": {
-        "TimeUnit": {
+          }
+        },
+        "required": [
+          "time"
+        ],
+        "additionalProperties": false,
+        "$defs": {
+          "TimeUnit": {
             "description": "Choose the unit of time given by the user.",
             "enum": [
-                "minutes",
-                "hours",
-                "weeks",
-                "days",
-                "months",
-                "years"
+              "minutes",
+              "hours",
+              "weeks",
+              "days",
+              "months",
+              "years"
             ],
             "type": "string"
+          }
         }
-    }
-}`
+      }`

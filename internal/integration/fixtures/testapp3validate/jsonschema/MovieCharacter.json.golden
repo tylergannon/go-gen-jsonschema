@@ -125,20 +125,21 @@
           "description": "TimeAgo reflects a relative time in the past, given in units of time relative to the present time.\n\n\n\n## **Properties**\n\n### unit\n\nChoose the unit of as given.\n\n### quantity\n\nEnter the number of the selected unit.\n\n",
           "type": "object",
           "properties": {
+            "__type__": {
+              "const": "TimeAgo",
+              "type": "string"
+            },
             "unit": {
               "$ref": "#/$defs/TimeUnit"
             },
             "quantity": {
               "type": "integer"
-            },
-            "__type__": {
-              "const": "TimeAgo"
             }
           },
           "required": [
+            "__type__",
             "unit",
-            "quantity",
-            "__type__"
+            "quantity"
           ],
           "additionalProperties": false
         },
@@ -146,20 +147,21 @@
           "description": "TimeFromNow represents a relative time in the future, and is given as a time unit and quantity, for instance \"7 weeks\" (from now).\n\n\n\n## **Properties**\n\n### unit\n\nChoose the unit of as given.\n\n### value\n\nEnter the number of the selected unit.\n\n",
           "type": "object",
           "properties": {
+            "__type__": {
+              "const": "TimeFromNow",
+              "type": "string"
+            },
             "unit": {
               "$ref": "#/$defs/TimeUnit"
             },
             "value": {
               "type": "integer"
-            },
-            "__type__": {
-              "const": "TimeFromNow"
             }
           },
           "required": [
+            "__type__",
             "unit",
-            "value",
-            "__type__"
+            "value"
           ],
           "additionalProperties": false
         },
@@ -167,15 +169,29 @@
           "description": "ActualTime is used when referencing a specific historical date that has already occurred or when the full date including year is explicitly known. Best for dates in the past or when you need to specify an exact year. Examples: 'January 1st, 2004', 'February 14th, 2013', 'July 4th, 1776'",
           "type": "object",
           "properties": {
-            "dateTime": {
+            "__type__": {
+              "const": "ActualTime",
               "type": "string"
             },
-            "__type__": {
-              "const": "ActualTime"
+            "dateTime": {
+              "type": "string"
             }
           },
           "required": [
-            "dateTime",
+            "__type__",
+            "dateTime"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "__type__": {
+              "const": "Now",
+              "type": "string"
+            }
+          },
+          "required": [
             "__type__"
           ],
           "additionalProperties": false
@@ -184,19 +200,8 @@
           "type": "object",
           "properties": {
             "__type__": {
-              "const": "Now"
-            }
-          },
-          "required": [
-            "__type__"
-          ],
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "properties": {
-            "__type__": {
-              "const": "BeginningOfTime"
+              "const": "BeginningOfTime",
+              "type": "string"
             }
           },
           "required": [
@@ -208,6 +213,10 @@
           "description": "NearestDay is selected when the user has specified a day of the week, such as last Friday or next Saturday, or two Wednesdays ago.\n\n\n\n## **Properties**\n\n### scale\n\nis the number of weeks to count. Normally it is one (1). In the example of \"two Wednesdays ago\" the scale is two (2).\n\n",
           "type": "object",
           "properties": {
+            "__type__": {
+              "const": "NearestDay",
+              "type": "string"
+            },
             "timeFrame": {
               "$ref": "#/$defs/TimeFrame"
             },
@@ -225,16 +234,13 @@
             },
             "scale": {
               "type": "integer"
-            },
-            "__type__": {
-              "const": "NearestDay"
             }
           },
           "required": [
+            "__type__",
             "timeFrame",
             "dayOfWeek",
-            "scale",
-            "__type__"
+            "scale"
           ],
           "additionalProperties": false
         },
@@ -242,6 +248,10 @@
           "description": "NearestDate is used when referencing a calendar date (month and day) without a specific year, typically for recurring dates or future dates within the current year. Best for dates like 'March 13th', 'December 25th', or 'next April 1st'. The timeFrame property specifies whether it's looking into the past ('last March 13th') or future ('next March 13th').\n\n\n\n## **Properties**\n\n### timeFrame\n\nspecifies whether the reference looks into the future or into the past.\n\n### dayOfMonth\n\nshould be 1 if not specified, otherwise the specific day of the month given by the user.\n\n",
           "type": "object",
           "properties": {
+            "__type__": {
+              "const": "NearestDate",
+              "type": "string"
+            },
             "timeFrame": {
               "$ref": "#/$defs/TimeFrame"
             },
@@ -265,16 +275,13 @@
             },
             "dayOfMonth": {
               "type": "integer"
-            },
-            "__type__": {
-              "const": "NearestDate"
             }
           },
           "required": [
+            "__type__",
             "timeFrame",
             "month",
-            "dayOfMonth",
-            "__type__"
+            "dayOfMonth"
           ],
           "additionalProperties": false
         }

@@ -67,20 +67,25 @@ func (fe *FuncEntry) isCandidateAltConverter() bool {
 	params := fe.FuncDecl.Type.Params
 	results := fe.FuncDecl.Type.Results
 
+	fmt.Println(fe.typeID)
 	if fe.FuncDecl.Recv == nil {
 		if len(params.List) != 1 {
+			fmt.Println("Not one")
 			return false
 		}
 	} else if _, ok := fe.FuncDecl.Recv.List[0].Type.(*dst.StarExpr); ok {
+		fmt.Println("Not two")
 		return false
 	} else if len(params.List) != 0 {
 		return false
 	}
 
 	if results == nil || len(results.List) != 2 {
+		fmt.Println("Not three")
 		return false
 	}
 	var ident, ok = results.List[1].Type.(*dst.Ident)
+	fmt.Printf("The ident is %v\n", ok && ident.Name == "error")
 	return ok && ident.Name == "error"
 }
 

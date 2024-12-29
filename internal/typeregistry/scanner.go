@@ -2,11 +2,12 @@ package typeregistry
 
 import (
 	"fmt"
+	"go/token"
+	"go/types"
+
 	"github.com/dave/dst"
 	"github.com/dave/dst/decorator"
 	"github.com/tylergannon/go-gen-jsonschema/internal/loader"
-	"go/token"
-	"go/types"
 )
 
 const (
@@ -91,6 +92,7 @@ func (r *Registry) scan(pkg *decorator.Package) error {
 		typeID := NewTypeID(pkg.PkgPath, funcNameFromTypes(funcObj))
 		if _, ok := funcs[typeID]; ok {
 			funcs[typeID].Func = funcObj
+			r.funcs[typeID] = funcs[typeID]
 		}
 	}
 	return nil
@@ -106,18 +108,15 @@ func funcNameFromTypes(funcObj *types.Func) string {
 	case *types.Named:
 		return fmt.Sprintf("%s.%s", receiver.Obj().Name(), funcObj.Name())
 	case *types.Pointer:
-		var named = receiver.Elem().(*types.Named)
+		named := receiver.Elem().(*types.Named)
 		return fmt.Sprintf("*%s.%s", named.Obj().Name(), funcObj.Name())
 	default:
 		panic(fmt.Sprintf("unhandled receiver type: %T", receiver))
 	}
-
 }
 
 func (r *Registry) scanFile(file *dst.File, pkg *decorator.Package) (result map[TypeID]*FuncEntry, err error) {
-	var (
-		importMap = NewImportMap(pkg.PkgPath, file.Imports)
-	)
+	importMap := NewImportMap(pkg.PkgPath, file.Imports)
 	result = make(map[TypeID]*FuncEntry)
 
 	for _, _decl := range file.Decls {
@@ -144,7 +143,6 @@ func (r *Registry) scanFile(file *dst.File, pkg *decorator.Package) (result map[
 				continue
 			}
 		}
-
 	}
 
 	return result, nil
@@ -154,7 +152,7 @@ func (r *Registry) registerVarDecl(file *dst.File, pkg *decorator.Package, decl 
 	for _, spec := range decl.Specs {
 		valueSpec := spec.(*dst.ValueSpec)
 		for _, val := range valueSpec.Values {
-			var callExpr, ok = val.(*dst.CallExpr)
+			callExpr, ok := val.(*dst.CallExpr)
 			if !ok {
 				continue
 			}
@@ -230,7 +228,7 @@ func (r *Registry) registerUnionTypeDecl(file *dst.File, pkg *decorator.Package,
 
 func (r *Registry) registerTypeDecl(file *dst.File, pkg *decorator.Package, genDecl *dst.GenDecl) error {
 	for _, spec := range toTypeSpecs(genDecl.Specs) {
-		//inspect("Scanned spec", spec)
+		// inspect("Scanned spec", spec)
 		ts := &typeSpec{
 			typeSpec: spec,
 			pkg:      pkg,
