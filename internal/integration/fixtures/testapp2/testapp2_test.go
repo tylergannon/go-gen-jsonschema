@@ -5,14 +5,8 @@ import (
 	. "github.com/onsi/gomega"
 	testapp2 "github.com/tylergannon/go-gen-jsonschema-testapp"
 	"github.com/tylergannon/go-gen-jsonschema-testapp/llmfriendlytimepkg"
-	"testing"
 	"time"
 )
-
-func TestTestapp2(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "Testapp2 Suite")
-}
 
 var _ = Describe("NearestDate", func() {
 	Context("when TimeFrame is Future", func() {

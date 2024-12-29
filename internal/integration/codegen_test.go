@@ -21,7 +21,8 @@ var _ = Describe("Codegen", func() {
 	// Function to assert successful command execution
 	var CmdSuccessAssertions = func(stdout, stderr string, exitCode int) {
 		Expect(stderr).To(BeEmpty())
-		//fmt.Println(stdout)
+		fmt.Println(GinkgoT().Name())
+		fmt.Println(stdout)
 		//Expect(stdout).NotTo(BeEmpty())
 		Expect(exitCode).To(Equal(0))
 	}
@@ -68,6 +69,9 @@ var _ = Describe("Codegen", func() {
 			)
 		}
 		if runGinkgo {
+			exitCode, stdout, stderr, err = testutils.RunCommand("ginkgo", tempDir, "bootstrap")
+			Expect(err).NotTo(HaveOccurred())
+			CmdSuccessAssertions(stdout, stderr, exitCode)
 			exitCode, stdout, stderr, err = testutils.RunCommand("ginkgo", tempDir, "./...")
 			Expect(err).NotTo(HaveOccurred())
 			CmdSuccessAssertions(stdout, stderr, exitCode)
