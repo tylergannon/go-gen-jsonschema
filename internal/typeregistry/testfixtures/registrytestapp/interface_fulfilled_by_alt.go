@@ -44,6 +44,7 @@ func (m *MyStruct3) SomeMethod() {}
 var _ MyInterface = &MyStruct3{}
 
 // Register all implementations of MyInterface
+// will result in a private function, func unmarshalMyInterfaceJSON(date []byte) (MyInterface, error)
 var _ = jsonschema.SetImplementations[MyInterface](
 	MyStruct1{},
 	&MyStruct2{},

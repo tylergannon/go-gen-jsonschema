@@ -24,12 +24,13 @@ const (
 
 func NewRegistry(pkgs []*decorator.Package) (*Registry, error) {
 	registry := &Registry{
-		typeMap:    map[TypeID]*typeSpec{},
-		packages:   map[string]*decorator.Package{},
-		unionTypes: map[TypeID]*UnionTypeDecl{},
-		imports:    map[string]*decorator.Package{},
-		constants:  map[TypeID][]EnumEntry{},
-		funcs:      map[TypeID]*FuncEntry{},
+		typeMap:        map[TypeID]*typeSpec{},
+		packages:       map[string]*decorator.Package{},
+		unionTypes:     map[TypeID]*UnionTypeDecl{},
+		interfaceTypes: map[TypeID]*InterfaceTypeDecl{},
+		imports:        map[string]*decorator.Package{},
+		constants:      map[TypeID][]EnumEntry{},
+		funcs:          map[TypeID]*FuncEntry{},
 	}
 	for _, pkg := range pkgs {
 		if err := registry.scan(pkg); err != nil {
@@ -164,7 +165,7 @@ func (r *Registry) registerVarDecl(file *dst.File, pkg *decorator.Package, decl 
 			case UnionTypeFunc:
 				err = r.registerUnionTypeDecl(file, pkg, callExpr, importMap)
 			case SetImplementationFunc:
-				panic("implementation not yet supported")
+				err = r.registerInterfaceDeclaration(file, pkg, callExpr, importMap)
 			}
 			// nodeImpl has been identified as a Union Type declaration.  Note the arguments.
 			if err != nil {
@@ -192,19 +193,8 @@ func isUnionTypeDecl(callExpr *dst.CallExpr, importMap ImportMap) (funcName stri
 	return "", false
 }
 
-//switch funcName {
-//case UnionTypeFunc:
-//	alt, err = r.interpretUnionTypeAltArg(arg, importMap)
-//case SetImplementationFunc:
-//	alt, err = r.interpretImplementationsArg(arg, importMap)
-//default:
-//	return errors.New("unhandled type alternative declaration")
-//}
-//if err != nil {
-//	return err
-//}
-
-// registerUnionTypeDecl
+// registerUnionTypeDecl is for registering a union type that converts to a
+// struct by means of conversion functions.
 func (r *Registry) registerUnionTypeDecl(file *dst.File, pkg *decorator.Package, callExpr *dst.CallExpr, importMap ImportMap) (err error) {
 	indexExpr, ok := callExpr.Fun.(*dst.IndexExpr)
 	if !ok {

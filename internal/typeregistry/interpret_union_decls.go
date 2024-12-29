@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/dave/dst"
+	"github.com/dave/dst/decorator"
 	"go/token"
 )
 
@@ -61,6 +62,38 @@ func (r *Registry) interpretUnionTypeAltArg(expr dst.Expr, importMap ImportMap) 
 	}
 
 	return alt, nil
+}
+
+// registerUnionTypeDecl is for registering a union type that converts to a
+// struct by means of conversion functions.
+func (r *Registry) registerInterfaceDeclaration(file *dst.File, pkg *decorator.Package, callExpr *dst.CallExpr, importMap ImportMap) (err error) {
+	indexExpr, ok := callExpr.Fun.(*dst.IndexExpr)
+	if !ok {
+		panic("that should not be")
+	}
+
+	unionTypeDecl := SetTypeAlternativeDecl(importMap, indexExpr)
+	if unionTypeDecl.DestTypeName == "" {
+		return fmt.Errorf("interpret union type declaration")
+	}
+	ifaceImpl := &InterfaceTypeDecl{
+		importMap:            unionTypeDecl.importMap,
+		InterfacePackagePath: unionTypeDecl.DestTypePackagePath,
+		InterfaceTypeName:    unionTypeDecl.DestTypeName,
+		File:                 file,
+		Pkg:                  pkg,
+	}
+
+	r.interfaceTypes[unionTypeDecl.ID()] = ifaceImpl
+
+	for _, arg := range callExpr.Args {
+		var alt InterfaceImpl
+		if alt, err = r.interpretImplementationsArg(arg, importMap); err != nil {
+			return err
+		}
+		ifaceImpl.Implementations = append(ifaceImpl.Implementations, alt)
+	}
+	return nil
 }
 
 // interpretImplementationsArg interprets a single argument to SetImplementations,

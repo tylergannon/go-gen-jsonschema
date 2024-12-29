@@ -23,12 +23,13 @@ type EnumEntry struct {
 }
 
 type Registry struct {
-	packages   map[string]*decorator.Package
-	typeMap    map[TypeID]*typeSpec
-	unionTypes map[TypeID]*UnionTypeDecl
-	imports    map[string]*decorator.Package
-	constants  map[TypeID][]EnumEntry
-	funcs      map[TypeID]*FuncEntry
+	packages       map[string]*decorator.Package
+	typeMap        map[TypeID]*typeSpec
+	unionTypes     map[TypeID]*UnionTypeDecl
+	interfaceTypes map[TypeID]*InterfaceTypeDecl
+	imports        map[string]*decorator.Package
+	constants      map[TypeID][]EnumEntry
+	funcs          map[TypeID]*FuncEntry
 }
 
 type TypeID string
@@ -72,6 +73,36 @@ func (r *Registry) GetTypeByName(name, pkgPath string) (TypeSpec, bool) {
 	return t, ok
 }
 
+func (r *Registry) loadUnionTypeAlternates(alt *UnionTypeDecl) (specs []*AlternativeTypeSpec) {
+	for _, typeAlt := range alt.Alternatives {
+		var altPkgPath, altTypeName string
+		if err := r.LoadAndScan(typeAlt.ImportMap[""]); err != nil {
+			panic(err)
+		}
+		conversionFuncTypeID := NewTypeID(typeAlt.ImportMap[""], typeAlt.ConversionFunc)
+		if funcEntry := r.funcs[conversionFuncTypeID]; funcEntry != nil {
+			altPkgPath, altTypeName = funcEntry.ReceiverOrArgType()
+		} else {
+			panic("couldn't find func " + string(conversionFuncTypeID))
+		}
+
+		if err := r.LoadAndScan(altPkgPath); err != nil {
+			panic(err)
+		}
+		sourceTypeID := NewTypeID(altPkgPath, altTypeName)
+
+		if altTS, ok := r.typeMap[sourceTypeID]; !ok {
+			panic("couldn't find type alt " + string(sourceTypeID) + " for func " + typeAlt.ConversionFunc)
+		} else {
+			specs = append(specs, &AlternativeTypeSpec{
+				TypeSpec:       altTS,
+				ConversionFunc: typeAlt.ConversionFunc,
+			})
+		}
+	}
+	return specs
+}
+
 func (r *Registry) getType(name string, pkgPath string) (*typeSpec, bool) {
 	if r.packages[pkgPath] == nil {
 		if err := r.LoadAndScan(pkgPath); err != nil {
@@ -82,33 +113,12 @@ func (r *Registry) getType(name string, pkgPath string) (*typeSpec, bool) {
 	typeID := NewTypeID(pkgPath, name)
 
 	if ts, ok := r.typeMap[typeID]; ok {
+		// If the requested type is known as a union type, load the type alternatives
+		// on the typeSpec.
 		if alt, ok := r.unionTypes[typeID]; ok && len(ts.alts) == 0 {
-			for _, typeAlt := range alt.Alternatives {
-				var altPkgPath, altTypeName string
-				if err := r.LoadAndScan(typeAlt.ImportMap[""]); err != nil {
-					panic(err)
-				}
-				conversionFuncTypeID := NewTypeID(typeAlt.ImportMap[""], typeAlt.ConversionFunc)
-				if funcEntry := r.funcs[conversionFuncTypeID]; funcEntry != nil {
-					altPkgPath, altTypeName = funcEntry.ReceiverOrArgType()
-				} else {
-					panic("couldn't find func " + string(conversionFuncTypeID))
-				}
-
-				if err := r.LoadAndScan(altPkgPath); err != nil {
-					panic(err)
-				}
-				sourceTypeID := NewTypeID(altPkgPath, altTypeName)
-
-				if altTS, ok := r.typeMap[sourceTypeID]; !ok {
-					panic("couldn't find type alt " + string(sourceTypeID) + " for func " + typeAlt.ConversionFunc)
-				} else {
-					ts.alts = append(ts.alts, &AlternativeTypeSpec{
-						TypeSpec:        altTS,
-						TypeAlternative: typeAlt,
-					})
-				}
-			}
+			ts.alts = r.loadUnionTypeAlternates(alt)
+		} else if iface, ok := r.interfaceTypes[typeID]; ok {
+			ts.alts = r.loadInterfaceImplementations(iface)
 		}
 		return ts, true
 	}
@@ -141,10 +151,33 @@ func (r *Registry) registerConstDecl(file *dst.File, pkg *decorator.Package, dec
 	return nil
 }
 
+func (r *Registry) loadInterfaceImplementations(iface *InterfaceTypeDecl) (specs []*AlternativeTypeSpec) {
+	for _, typeAlt := range iface.Implementations {
+		if err := r.LoadAndScan(typeAlt.PkgPath); err != nil {
+			panic(err)
+		}
+		sourceTypeID := NewTypeID(typeAlt.PkgPath, typeAlt.TypeName)
+
+		if altTS, ok := r.typeMap[sourceTypeID]; !ok {
+			panic("couldn't find interface implementation " + string(sourceTypeID) + " for interface " + iface.InterfaceTypeName)
+		} else {
+			specs = append(specs, &AlternativeTypeSpec{
+				TypeSpec:    altTS,
+				PointerType: typeAlt.IsPointer,
+			})
+		}
+	}
+	return specs
+}
+
 type (
 	BasicType   string
 	InvalidType string
 )
+
+func (BasicType) IsInterface() bool {
+	return false
+}
 
 func (b BasicType) GetType() types.Type {
 	//TODO implement me
@@ -213,11 +246,13 @@ type TypeSpec interface {
 	Decorations() *dst.NodeDecs
 	GetType() types.Type
 	Alternatives() []*AlternativeTypeSpec
+	IsInterface() bool
 }
 
 type AlternativeTypeSpec struct {
-	TypeSpec TypeSpec
-	TypeAlternative
+	TypeSpec       TypeSpec
+	ConversionFunc string
+	PointerType    bool
 }
 
 type UnionTypeDecl struct {
@@ -231,6 +266,19 @@ type UnionTypeDecl struct {
 
 func (d *UnionTypeDecl) ID() TypeID {
 	return NewTypeID(d.DestTypePackagePath, d.DestTypeName)
+}
+
+type InterfaceTypeDecl struct {
+	importMap            ImportMap
+	InterfacePackagePath string
+	InterfaceTypeName    string
+	Implementations      []InterfaceImpl
+	File                 *dst.File
+	Pkg                  *decorator.Package
+}
+
+func (d *InterfaceTypeDecl) ID() TypeID {
+	return NewTypeID(d.InterfacePackagePath, d.InterfaceTypeName)
 }
 
 // SetTypeAlternativeDecl interprets the index expression for the identity of the
@@ -270,6 +318,11 @@ func (ts *typeSpec) Alternatives() []*AlternativeTypeSpec {
 
 func (ts *typeSpec) GetType() types.Type {
 	return ts.pkg.Types.Scope().Lookup(ts.typeSpec.Name.Name).(*types.TypeName).Type()
+}
+
+func (ts *typeSpec) IsInterface() bool {
+	_, ok := ts.GetType().Underlying().(*types.Interface)
+	return ok
 }
 
 func (ts *typeSpec) Decorations() *dst.NodeDecs {
