@@ -12,10 +12,10 @@ var (
 )
 
 type TypeAlternative struct {
-	Alias         string    // unchanged
-	FuncName      string    // unchanged
-	ImportMap     ImportMap // unchanged
-	InterfaceImpl bool      // unchanged
+	Alias          string    // unchanged
+	ConversionFunc string    // unchanged
+	ImportMap      ImportMap // unchanged
+	InterfaceImpl  bool      // unchanged
 
 	// new fields for interface implementations
 	PackageName string
@@ -46,12 +46,12 @@ func (r *Registry) interpretUnionTypeAltArg(expr dst.Expr, importMap ImportMap) 
 		// This is the case of a struct method whose receiver is the
 		// alternate type.
 		if ident, ok := typeArg.X.(*dst.Ident); ok {
-			alt.FuncName = fmt.Sprintf("%s.%s", ident.Name, typeArg.Sel.Name)
+			alt.ConversionFunc = fmt.Sprintf("%s.%s", ident.Name, typeArg.Sel.Name)
 		} else {
 			return alt, ErrInvalidUnionTypeArg
 		}
 	case *dst.Ident:
-		alt.FuncName = typeArg.Name
+		alt.ConversionFunc = typeArg.Name
 	default:
 		return alt, ErrInvalidUnionTypeArg
 	}

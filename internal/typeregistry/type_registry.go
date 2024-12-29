@@ -98,7 +98,7 @@ func (r *Registry) getType(name string, pkgPath string) (*typeSpec, bool) {
 				if err := r.LoadAndScan(typeAlt.ImportMap[""]); err != nil {
 					panic(err)
 				}
-				typeAltID := NewTypeID(typeAlt.ImportMap[""], typeAlt.FuncName)
+				typeAltID := NewTypeID(typeAlt.ImportMap[""], typeAlt.ConversionFunc)
 				funcEntry, ok := r.funcs[typeAltID]
 				if !ok {
 					fmt.Println("Look for it")
@@ -115,11 +115,11 @@ func (r *Registry) getType(name string, pkgPath string) (*typeSpec, bool) {
 				sourceTypeID := NewTypeID(pkgPath, name)
 
 				if altTS, ok := r.typeMap[sourceTypeID]; !ok {
-					panic("couldn't find type alt " + string(sourceTypeID) + " for func " + typeAlt.FuncName)
+					panic("couldn't find type alt " + string(sourceTypeID) + " for func " + typeAlt.ConversionFunc)
 				} else {
 					ts.alts = append(ts.alts, &AlternativeTypeSpec{
 						TypeSpec:       altTS,
-						ConversionFunc: typeAlt.FuncName,
+						ConversionFunc: typeAlt.ConversionFunc,
 						Alias:          typeAlt.Alias,
 					})
 				}
