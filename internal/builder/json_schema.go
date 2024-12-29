@@ -283,28 +283,8 @@ func arraySchema(items json.Marshaler, description string) basicMarshaler {
 	return res
 }
 
-func stringSchema(description string) basicMarshaler {
-	return basicMarshaler{
-		"type":        rawString(String),
-		"description": rawString(description),
-	}
-}
-
-func boolSchema(description string) basicMarshaler {
-	return basicMarshaler{
-		"type":        rawString(Boolean),
-		"description": rawString(description),
-	}
-}
-
 func rawString[T ~string](s T) json.RawMessage {
 	return json.RawMessage(fmt.Sprintf(`"%s"`, s))
-}
-func intSchema(description string) basicMarshaler {
-	return basicMarshaler{
-		"type":        rawString(Integer),
-		"description": rawString(description),
-	}
 }
 
 type basicMarshaler map[string]json.Marshaler

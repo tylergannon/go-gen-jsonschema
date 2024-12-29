@@ -302,24 +302,6 @@ func (r *Registry) visitTypeWithAltsNode(node NamedTypeWithAltsNode) ([]nodeInte
 	return result, nil
 }
 
-func (r *Registry) visitArrayTypeNode(node SliceTypeNode) ([]nodeInternal, error) {
-	var (
-		t           = node.Type().(*types.Array)
-		ts          = node.DSTNode().(*dst.ArrayType)
-		typeID, err = r.resolveType(t.Elem(), ts.Elt, node.Pkg())
-	)
-	if err != nil {
-		return nil, err
-	}
-	return []nodeInternal{
-		r.resolveNodeType(&nodeImpl{
-			typ:     t.Elem(),
-			dstNode: ts.Elt,
-			pkg:     node.Pkg(),
-			id:      typeID,
-		}),
-	}, nil
-}
 func (r *Registry) visitSliceTypeNode(node SliceTypeNode) ([]nodeInternal, error) {
 	var (
 		t           = node.Type().(*types.Slice)
@@ -388,7 +370,9 @@ func (r *Registry) visitStructFields(parent StructTypeNode, pkg *decorator.Packa
 			}
 			continue
 		}
-		typ, expr, fpkg, err = r.dereferenceAndIdentify(field.Type(), fieldDecl.Type, pkg)
+		if typ, expr, fpkg, err = r.dereferenceAndIdentify(field.Type(), fieldDecl.Type, pkg); err != nil {
+			return nil, err
+		}
 		var (
 			newNode = &nodeImpl{
 				typ:     typ,
@@ -624,16 +608,6 @@ func assertType[T any](expr any) T {
 	} else {
 		return _expr
 	}
-}
-
-func assertNonPointer(typ types.Type, expr dst.Expr) (types.Type, dst.Expr) {
-	if _, ok := typ.(*types.Pointer); ok {
-		panic(fmt.Sprintf("type mismatch between %T and %T: %v", typ, expr, ErrUnsupportedType))
-	}
-	if _, ok := expr.(*dst.StarExpr); ok {
-		panic(fmt.Sprintf("type mismatch between %T and %T: %v", typ, expr, ErrUnsupportedType))
-	}
-	return typ, expr
 }
 
 type StructFieldConf struct {

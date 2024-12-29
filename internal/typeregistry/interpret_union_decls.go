@@ -18,13 +18,14 @@ type TypeAlternative struct {
 	Alias          string    // unchanged
 	ConversionFunc string    // unchanged
 	ImportMap      ImportMap // unchanged
+}
 
-	// new fields for interface implementations
-	InterfaceImpl bool // unchanged
-	PackageName   string
-	PkgPath       string
-	TypeName      string
-	IsPointer     bool
+type InterfaceImpl struct {
+	ImportMap   ImportMap // unchanged
+	PackageName string
+	PkgPath     string
+	TypeName    string
+	IsPointer   bool
 }
 
 func (r *Registry) interpretUnionTypeAltArg(expr dst.Expr, importMap ImportMap) (alt TypeAlternative, err error) {
@@ -67,10 +68,8 @@ func (r *Registry) interpretUnionTypeAltArg(expr dst.Expr, importMap ImportMap) 
 //
 // If the expression's type cannot be determined as a struct or pointer to a struct,
 // an error is returned.
-func (r *Registry) interpretImplementationsArg(expr dst.Expr, importMap ImportMap) (TypeAlternative, error) {
-	var alt TypeAlternative
-	alt.ImportMap = importMap
-	alt.InterfaceImpl = true // this marks that it came from SetImplementations
+func (r *Registry) interpretImplementationsArg(expr dst.Expr, importMap ImportMap) (impl InterfaceImpl, err error) {
+	impl.ImportMap = importMap
 
 	// We'll capture the final parse results
 	var (
@@ -84,58 +83,58 @@ func (r *Registry) interpretImplementationsArg(expr dst.Expr, importMap ImportMa
 		// e.Type is the type expression: e.g. "MyStruct" or "pkg.MyStruct"
 		pkgName, typeName, isPointer, _ = parseTypeExpr(e.Type)
 		if typeName == "" {
-			return alt, errors.New("could not parse composite literal type")
+			return impl, errors.New("could not parse composite literal type")
 		}
 
 	case *dst.UnaryExpr:
 		// Example: &MyStruct{}
 		if e.Op != token.AND {
-			return alt, fmt.Errorf("unhandled unary expression: %#v", e)
+			return impl, fmt.Errorf("unhandled unary expression: %#v", e)
 		}
 		compLit, ok := e.X.(*dst.CompositeLit)
 		if !ok {
-			return alt, errors.New("unhandled expression form after '&'")
+			return impl, errors.New("unhandled expression form after '&'")
 		}
 		// e.X.Type is the type expression
 		pkgName, typeName, isPointer, _ = parseTypeExpr(compLit.Type)
 		if typeName == "" {
-			return alt, errors.New("could not parse pointer composite literal type")
+			return impl, errors.New("could not parse pointer composite literal type")
 		}
-		isPointer = true
+		//isPointer = true
 
 	case *dst.CallExpr:
 		// Example: (*MyStruct)(nil)
 		// The Fun part is typically a ParenExpr(StarExpr(Ident))
 		parenExpr, ok := e.Fun.(*dst.ParenExpr)
 		if !ok {
-			return alt, errors.New("call expression was not a cast: missing paren expr")
+			return impl, errors.New("call expression was not a cast: missing paren expr")
 		}
 		starExpr, ok := parenExpr.X.(*dst.StarExpr)
 		if !ok {
-			return alt, errors.New("call expression was not a pointer cast: missing star expr")
+			return impl, errors.New("call expression was not a pointer cast: missing star expr")
 		}
 
 		pkgName, typeName, _, _ = parseTypeExpr(starExpr.X)
 		if typeName == "" {
-			return alt, errors.New("could not parse type in pointer cast")
+			return impl, errors.New("could not parse type in pointer cast")
 		}
 		isPointer = true
 
 	default:
-		return alt, fmt.Errorf("unhandled expression kind for interface impl: %T", expr)
+		return impl, fmt.Errorf("unhandled expression kind for interface impl: %T", expr)
 	}
 
 	if pkgName != "" {
 		var found bool
-		if alt.PkgPath, found = importMap[pkgName]; !found {
-			return alt, fmt.Errorf("unable to resolve path for package name %s for typeName %s", pkgName, typeName)
+		if impl.PkgPath, found = importMap[pkgName]; !found {
+			return impl, fmt.Errorf("unable to resolve path for package name %s for typeName %s", pkgName, typeName)
 		}
 	}
 
-	alt.PackageName = pkgName
-	alt.TypeName = typeName
-	alt.IsPointer = isPointer
-	return alt, nil
+	impl.PackageName = pkgName
+	impl.TypeName = typeName
+	impl.IsPointer = isPointer
+	return impl, nil
 }
 
 // parseTypeExpr is a small helper that drills into a dst.Expr to figure out

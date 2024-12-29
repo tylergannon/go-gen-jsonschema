@@ -1,7 +1,6 @@
 package typeregistry
 
 import (
-	"errors"
 	"fmt"
 	"github.com/dave/dst"
 	"github.com/dave/dst/decorator"
@@ -151,7 +150,7 @@ func (r *Registry) scanFile(file *dst.File, pkg *decorator.Package) (result map[
 	return result, nil
 }
 
-func (r *Registry) registerVarDecl(file *dst.File, pkg *decorator.Package, decl *dst.GenDecl, importMap ImportMap) error {
+func (r *Registry) registerVarDecl(file *dst.File, pkg *decorator.Package, decl *dst.GenDecl, importMap ImportMap) (err error) {
 	for _, spec := range decl.Specs {
 		valueSpec := spec.(*dst.ValueSpec)
 		for _, val := range valueSpec.Values {
@@ -163,8 +162,14 @@ func (r *Registry) registerVarDecl(file *dst.File, pkg *decorator.Package, decl 
 			if funcName, ok = isUnionTypeDecl(callExpr, importMap); !ok {
 				continue
 			}
+			switch funcName {
+			case UnionTypeFunc:
+				err = r.registerUnionTypeDecl(file, pkg, callExpr, importMap)
+			case SetImplementationFunc:
+				panic("implementation not yet supported")
+			}
 			// nodeImpl has been identified as a Union Type declaration.  Note the arguments.
-			if err := r.registerUnionTypeDecl(file, pkg, funcName, callExpr, importMap); err != nil {
+			if err != nil {
 				return err
 			}
 		}
@@ -189,8 +194,20 @@ func isUnionTypeDecl(callExpr *dst.CallExpr, importMap ImportMap) (funcName stri
 	return "", false
 }
 
+//switch funcName {
+//case UnionTypeFunc:
+//	alt, err = r.interpretUnionTypeAltArg(arg, importMap)
+//case SetImplementationFunc:
+//	alt, err = r.interpretImplementationsArg(arg, importMap)
+//default:
+//	return errors.New("unhandled type alternative declaration")
+//}
+//if err != nil {
+//	return err
+//}
+
 // registerUnionTypeDecl
-func (r *Registry) registerUnionTypeDecl(file *dst.File, pkg *decorator.Package, funcName string, callExpr *dst.CallExpr, importMap ImportMap) (err error) {
+func (r *Registry) registerUnionTypeDecl(file *dst.File, pkg *decorator.Package, callExpr *dst.CallExpr, importMap ImportMap) (err error) {
 	indexExpr, ok := callExpr.Fun.(*dst.IndexExpr)
 	if !ok {
 		panic("that should not be")
@@ -199,15 +216,7 @@ func (r *Registry) registerUnionTypeDecl(file *dst.File, pkg *decorator.Package,
 	unionTypeDecl := SetTypeAlternativeDecl(importMap, indexExpr)
 	for _, arg := range callExpr.Args {
 		var alt TypeAlternative
-		switch funcName {
-		case UnionTypeFunc:
-			alt, err = r.interpretUnionTypeAltArg(arg, importMap)
-		case SetImplementationFunc:
-			alt, err = r.interpretImplementationsArg(arg, importMap)
-		default:
-			return errors.New("unhandled type alternative declaration")
-		}
-		if err != nil {
+		if alt, err = r.interpretUnionTypeAltArg(arg, importMap); err != nil {
 			return err
 		}
 		unionTypeDecl.Alternatives = append(unionTypeDecl.Alternatives, alt)

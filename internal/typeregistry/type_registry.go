@@ -7,7 +7,6 @@ import (
 	"github.com/dave/dst/decorator"
 	"go/token"
 	"go/types"
-	"hash/maphash"
 	"log"
 	"path/filepath"
 	"strings"
@@ -33,16 +32,6 @@ type Registry struct {
 }
 
 type TypeID string
-
-func (id TypeID) hash() TypeID {
-	var h maphash.Hash
-	_, _ = h.WriteString(string(id)) // Add string to the hash
-	v := fmt.Sprintf("%x", h.Sum64())
-	if len(v) > 16 {
-		v = v[:16]
-	}
-	return TypeID(v)
-}
 
 func (id TypeID) shorten(pkg *decorator.Package) TypeID {
 	if len(id) < 30 || strings.HasPrefix(string(id), "struct") {
@@ -95,24 +84,21 @@ func (r *Registry) getType(name string, pkgPath string) (*typeSpec, bool) {
 	if ts, ok := r.typeMap[typeID]; ok {
 		if alt, ok := r.unionTypes[typeID]; ok && len(ts.alts) == 0 {
 			for _, typeAlt := range alt.Alternatives {
+				var altPkgPath, altTypeName string
 				if err := r.LoadAndScan(typeAlt.ImportMap[""]); err != nil {
 					panic(err)
 				}
-				typeAltID := NewTypeID(typeAlt.ImportMap[""], typeAlt.ConversionFunc)
-				funcEntry, ok := r.funcs[typeAltID]
-				if !ok {
-					fmt.Println("Look for it")
-					for t, f := range r.funcs {
-						fmt.Printf("%s: %s, %v\n", t, f.Func.Name(), f.FuncDecl.Recv)
-					}
-					panic("couldn't find func " + string(typeAltID))
+				conversionFuncTypeID := NewTypeID(typeAlt.ImportMap[""], typeAlt.ConversionFunc)
+				if funcEntry := r.funcs[conversionFuncTypeID]; funcEntry != nil {
+					altPkgPath, altTypeName = funcEntry.ReceiverOrArgType()
+				} else {
+					panic("couldn't find func " + string(conversionFuncTypeID))
 				}
-				pkgPath, name := funcEntry.ReceiverOrArgType()
 
-				if err := r.LoadAndScan(pkgPath); err != nil {
+				if err := r.LoadAndScan(altPkgPath); err != nil {
 					panic(err)
 				}
-				sourceTypeID := NewTypeID(pkgPath, name)
+				sourceTypeID := NewTypeID(altPkgPath, altTypeName)
 
 				if altTS, ok := r.typeMap[sourceTypeID]; !ok {
 					panic("couldn't find type alt " + string(sourceTypeID) + " for func " + typeAlt.ConversionFunc)
@@ -326,21 +312,4 @@ func (ts *typeSpec) GenDecl() *dst.GenDecl {
 
 func (ts *typeSpec) File() *dst.File {
 	return ts.file
-}
-
-func resolveBasicType(t *types.Basic) (BasicType, error) {
-	switch t.Kind() {
-	case types.String:
-		return BasicTypeString, nil
-	case types.Bool:
-		return BasicTypeBool, nil
-	case types.Int:
-		return BasicTypeInt, nil
-	case types.Float32, types.Float64:
-		return BasicTypeFloat, nil
-	case types.Int8, types.Int16, types.Int32, types.Int64, types.Uint, types.Uint8, types.Uint16, types.Uint32, types.Uint64, types.Uintptr:
-		return BasicTypeInt, nil
-	default:
-		return BasicTypeString, fmt.Errorf("unsupported type %v", t.Kind())
-	}
 }
