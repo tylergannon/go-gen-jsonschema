@@ -3,9 +3,11 @@ package typeregistry
 import (
 	"fmt"
 	"github.com/dave/dst"
+	"github.com/dave/dst/decorator"
 	"go/types"
 )
 
+// FuncEntry holds function declaration information for functions specifically
 type FuncEntry struct {
 	*types.Func
 	*dst.FuncDecl
@@ -53,4 +55,43 @@ func (fe *FuncEntry) ReceiverOrArgType() (pkgPath, typeName string) {
 		typeName = t.Sel.Name
 	}
 	return fe.ImportMap[importAlias], typeName
+}
+
+func NewFuncEntry(decl *dst.FuncDecl, pkg *decorator.Package, importMap ImportMap) *FuncEntry {
+	typeID := NewTypeID(pkg.PkgPath, funcNameFromDst(decl))
+	return &FuncEntry{ImportMap: importMap, FuncDecl: decl, typeID: typeID}
+}
+
+func (fe *FuncEntry) isCandidateAltConverter() bool {
+	// Check function arguments
+	params := fe.FuncDecl.Type.Params
+	results := fe.FuncDecl.Type.Results
+
+	if fe.FuncDecl.Recv == nil {
+		if len(params.List) != 1 {
+			return false
+		}
+	} else if _, ok := fe.FuncDecl.Recv.List[0].Type.(*dst.StarExpr); ok {
+		return false
+	} else if len(params.List) != 0 {
+		return false
+	}
+
+	if results == nil || len(results.List) != 2 {
+		return false
+	}
+	var ident, ok = results.List[1].Type.(*dst.Ident)
+	return ok && ident.Name == "error"
+}
+
+// funcNameFromDst returns the name of the function if the function takes no
+// receiver.  If it takes a receiver, the function will be namespaced with the
+// type name of the receiver.
+func funcNameFromDst(funcDecl *dst.FuncDecl) string {
+	if funcDecl.Recv != nil && len(funcDecl.Recv.List) > 0 {
+		if ident, ok := funcDecl.Recv.List[0].Type.(*dst.Ident); ok {
+			return ident.Name + "." + funcDecl.Name.Name
+		}
+	}
+	return funcDecl.Name.Name
 }

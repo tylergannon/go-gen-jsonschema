@@ -445,6 +445,7 @@ func (r *Registry) buildNodeForTS(ts TypeSpec, isAlt bool) nodeInternal {
 	if len(ts.Alternatives()) > 0 {
 		return NamedTypeWithAltsNode{node}
 	}
+
 	return node
 }
 

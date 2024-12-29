@@ -118,9 +118,8 @@ func (r *Registry) getType(name string, pkgPath string) (*typeSpec, bool) {
 					panic("couldn't find type alt " + string(sourceTypeID) + " for func " + typeAlt.ConversionFunc)
 				} else {
 					ts.alts = append(ts.alts, &AlternativeTypeSpec{
-						TypeSpec:       altTS,
-						ConversionFunc: typeAlt.ConversionFunc,
-						Alias:          typeAlt.Alias,
+						TypeSpec:        altTS,
+						TypeAlternative: typeAlt,
 					})
 				}
 			}
@@ -231,10 +230,8 @@ type TypeSpec interface {
 }
 
 type AlternativeTypeSpec struct {
-	TypeSpec       TypeSpec
-	ConversionFunc string
-	// DEPRECATED
-	Alias string
+	TypeSpec TypeSpec
+	TypeAlternative
 }
 
 type UnionTypeDecl struct {

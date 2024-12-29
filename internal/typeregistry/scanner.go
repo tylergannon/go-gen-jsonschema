@@ -90,25 +90,11 @@ func (r *Registry) scan(pkg *decorator.Package) error {
 			continue
 		}
 		typeID := NewTypeID(pkg.PkgPath, funcNameFromTypes(funcObj))
-		if f, ok := funcs[typeID]; ok {
-			f.Func = funcObj
-			f.typeID = typeID
-			r.funcs[typeID] = f
+		if _, ok := funcs[typeID]; ok {
+			funcs[typeID].Func = funcObj
 		}
 	}
 	return nil
-}
-
-// funcNameFromDst returns the name of the function if the function takes no
-// receiver.  If it takes a receiver, the function will be namespaced with the
-// type name of the receiver.
-func funcNameFromDst(funcDecl *dst.FuncDecl) string {
-	if funcDecl.Recv != nil && len(funcDecl.Recv.List) > 0 {
-		if ident, ok := funcDecl.Recv.List[0].Type.(*dst.Ident); ok {
-			return ident.Name + "." + funcDecl.Name.Name
-		}
-	}
-	return funcDecl.Name.Name
 }
 
 func funcNameFromTypes(funcObj *types.Func) string {
@@ -138,9 +124,8 @@ func (r *Registry) scanFile(file *dst.File, pkg *decorator.Package) (result map[
 	for _, _decl := range file.Decls {
 		switch decl := _decl.(type) {
 		case *dst.FuncDecl:
-			if isRelevantFunc(decl) {
-				typeID := NewTypeID(pkg.PkgPath, funcNameFromDst(decl))
-				result[typeID] = &FuncEntry{ImportMap: importMap, FuncDecl: decl, typeID: typeID}
+			if entry := NewFuncEntry(decl, pkg, importMap); entry.isCandidateAltConverter() {
+				result[entry.typeID] = entry
 			}
 		case *dst.GenDecl:
 			switch decl.Tok {

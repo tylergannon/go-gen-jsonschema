@@ -101,7 +101,7 @@ func (it *{{.TypeName}}) UnmarshalJSON(data []byte) error {
 		if err != nil {
 			return fmt.Errorf("unmarshaling {{.Discriminator}}: %w", err)
         }
-		*it, err = {{.FuncName}}(__{{.Discriminator}})
+		*it, err = {{.ConversionFunc}}(__{{.Discriminator}})
 	{{ end }}
     default:
 	    return fmt.Errorf("unknown discriminator %s", discriminator)

@@ -11,17 +11,20 @@ var (
 	ErrInvalidUnionTypeArg = errors.New("invalid union type arg")
 )
 
+// TypeAlternative is overloaded.
+// It covers two cases with basically different fields.
+// The first case is when a conversion function is used to change
 type TypeAlternative struct {
 	Alias          string    // unchanged
 	ConversionFunc string    // unchanged
 	ImportMap      ImportMap // unchanged
-	InterfaceImpl  bool      // unchanged
 
 	// new fields for interface implementations
-	PackageName string
-	PkgPath     string
-	TypeName    string
-	IsPointer   bool
+	InterfaceImpl bool // unchanged
+	PackageName   string
+	PkgPath       string
+	TypeName      string
+	IsPointer     bool
 }
 
 func (r *Registry) interpretUnionTypeAltArg(expr dst.Expr, importMap ImportMap) (alt TypeAlternative, err error) {

@@ -81,7 +81,7 @@ func (b *UnmarshalerBuilder) HaveAlts() bool {
 type typeAlt struct {
 	Discriminator string
 	TypeName      string
-	FuncName      string
+	*typeregistry.AlternativeTypeSpec
 }
 
 type typeWithAlts struct {
@@ -152,11 +152,10 @@ func RenderGoCode(fileName, schemaDir string, graphs []*typeregistry.SchemaGraph
 				for _, _alt := range nodeWithAlts.TypeSpec.Alternatives() {
 					importMap.AddPackage(_alt.TypeSpec.Pkg())
 					var (
-						alt   typeAlt
+						alt   = typeAlt{AlternativeTypeSpec: _alt}
 						found bool
 					)
 
-					alt.FuncName = _alt.ConversionFunc
 					alt.Discriminator, found = discriminatorMap.GetAlias(typeregistry.TypeID(fmt.Sprintf("%s~", _alt.TypeSpec.ID())))
 					if !found {
 						return fmt.Errorf("discriminator not found for type alt %s", _alt.TypeSpec.ID())
