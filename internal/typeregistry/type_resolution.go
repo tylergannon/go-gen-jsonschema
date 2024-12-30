@@ -9,7 +9,10 @@ import (
 	"strings"
 )
 
-const maxRecursionDepth = 500
+const (
+	maxRecursionDepth   = 500
+	embeddedTypeArticle = "https://github.com/tylergannon/go-gen-jsonschema?tab=readme-ov-file#embedded-types"
+)
 
 var errRecursionDepthExceeded = errors.New("recursion depth exceeded (this probably means circular embedded pointer types)")
 
@@ -107,11 +110,13 @@ func (r *Registry) resolveFields(t *types.Struct, ts *dst.StructType, pkg *decor
 			}
 			embeddedType, ok := named.Underlying().(*types.Struct)
 			if !ok {
-				return 0, fmt.Errorf("illegal embed type %T %s", _ts.GetType(), f.PositionString())
+				fmt.Println(_ts.ID())
+
+				return 0, fmt.Errorf("unsupported embed type %v %s -- see %s", _ts.typeSpec.Name, f.PositionString(), embeddedTypeArticle)
 			}
 			embeddedStructNode, ok := _ts.typeSpec.Type.(*dst.StructType)
 			if !ok {
-				return 0, fmt.Errorf("illegal embed found struct type but wrong node %T %s", _ts.typeSpec.Type, f.PositionString())
+				return 0, fmt.Errorf("unsupported embed found struct type but wrong node %T %s", _ts.typeSpec.Type, f.PositionString())
 			}
 			if cntFields, err = r.resolveFields(embeddedType, embeddedStructNode, _ts.pkg, cntFields, sb, depth); err != nil {
 				return 0, err
