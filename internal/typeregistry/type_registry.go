@@ -273,8 +273,8 @@ type InterfaceTypeDecl struct {
 	InterfacePackagePath string
 	InterfaceTypeName    string
 	Implementations      []InterfaceImpl
-	File                 *dst.File
-	Pkg                  *decorator.Package
+	File                 *dst.File          `json:"-"`
+	Pkg                  *decorator.Package `json:"-"`
 }
 
 func (d *InterfaceTypeDecl) ID() TypeID {

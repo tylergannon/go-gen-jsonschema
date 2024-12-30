@@ -238,7 +238,7 @@ func toTypeSpecs(specs []dst.Spec) (ts []*dst.TypeSpec) {
 }
 
 func inspect(str string, item ...any) {
-	fmt.Printf("inspect %s: %T %v\n", str, item[0], item[0])
+	fmt.Printf("\ninspect %s: %T %v\n", str, item[0], item[0])
 	for i := 1; i < len(item); i++ {
 		fmt.Printf("     item[%d]: %T %v\n", i, item[i], item[i])
 	}

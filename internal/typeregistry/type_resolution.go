@@ -46,6 +46,8 @@ func (r *Registry) resolveTypeRecursive(t types.Type, ts dst.Node, pkg *decorato
 			return TypeID(fmt.Sprintf("%s[%s]", inner, lit.Value)), err
 		}
 		panic(fmt.Sprintf("unhandled array len type: %T", arrayT.Len))
+	case *types.Interface:
+		return NewTypeID(pkg.PkgPath, strings.TrimSpace(t.String())), nil
 	case *types.Struct:
 		switch nodeType := ts.(type) {
 		case *dst.Ident:

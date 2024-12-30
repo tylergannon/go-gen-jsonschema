@@ -90,11 +90,8 @@ var _ = Describe("Type Resolution", func() {
 			//fmt.Println(e)
 		}),
 		Entry("Crazy Recursive", "ParentStructRecursive", "", false),
-		Entry("Interface Type", "SomeInterface", "", false, func(_ TypeID, e error) {
-			Expect(e).To(HaveOccurred())
-			fmt.Println(e)
-		}),
-		Entry("Struct With Interface Field", "StructWithInterfaceField", "", false),
-		Entry("Struct With Embedded Interface", "StructWithEmbeddedInterface", "", false),
+		FEntry("Interface Type", "SomeInterface", "github.com/tylergannon/go-gen-jsonschema/internal/typeregistry/testfixtures/testapp1_typeresolution.interface{DoThings()}", true),
+		Entry("Struct With Interface Field", "StructWithInterfaceField", "struct {IFace ../testapp1_typeresolution.SomeInterface;}", true),
+		Entry("Struct With Embedded Interface", "StructWithEmbeddedInterface", "", true),
 	)
 })

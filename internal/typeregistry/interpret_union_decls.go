@@ -22,8 +22,8 @@ type TypeAlternative struct {
 }
 
 type InterfaceImpl struct {
-	ImportMap   ImportMap // unchanged
-	PackageName string
+	ImportMap   ImportMap `json:"-"`
+	PackageName string    `json:"pkgName,omitempty"`
 	PkgPath     string
 	TypeName    string
 	IsPointer   bool
@@ -93,6 +93,7 @@ func (r *Registry) registerInterfaceDeclaration(file *dst.File, pkg *decorator.P
 		}
 		ifaceImpl.Implementations = append(ifaceImpl.Implementations, alt)
 	}
+	r.interfaceTypes[ifaceImpl.ID()] = ifaceImpl
 	return nil
 }
 
@@ -109,12 +110,17 @@ func (r *Registry) interpretImplementationsArg(expr dst.Expr, importMap ImportMa
 		pkgName   string
 		typeName  string
 		isPointer bool
+		pkgPath   string
+		found     bool
 	)
 
 	switch e := expr.(type) {
 	case *dst.CompositeLit:
 		// e.Type is the type expression: e.g. "MyStruct" or "pkg.MyStruct"
 		pkgName, typeName, isPointer, _ = parseTypeExpr(e.Type)
+		if pkgName, pkgPath, found = importMap.locate(pkgName); !found {
+			return impl, fmt.Errorf("package not found on expr %v", e)
+		}
 		if typeName == "" {
 			return impl, errors.New("could not parse composite literal type")
 		}
@@ -129,11 +135,14 @@ func (r *Registry) interpretImplementationsArg(expr dst.Expr, importMap ImportMa
 			return impl, errors.New("unhandled expression form after '&'")
 		}
 		// e.X.Type is the type expression
-		pkgName, typeName, isPointer, _ = parseTypeExpr(compLit.Type)
+		pkgName, typeName, _, _ = parseTypeExpr(compLit.Type)
+		if pkgName, pkgPath, found = importMap.locate(pkgName); !found {
+			return impl, fmt.Errorf("package not found on expr %v", e)
+		}
 		if typeName == "" {
 			return impl, errors.New("could not parse pointer composite literal type")
 		}
-		//isPointer = true
+		isPointer = true
 
 	case *dst.CallExpr:
 		// Example: (*MyStruct)(nil)
@@ -152,19 +161,20 @@ func (r *Registry) interpretImplementationsArg(expr dst.Expr, importMap ImportMa
 			return impl, errors.New("could not parse type in pointer cast")
 		}
 		isPointer = true
+		if pkgName, pkgPath, found = importMap.locate(pkgName); !found {
+			return impl, fmt.Errorf("package not found on expr %v", e)
+		}
 
 	default:
 		return impl, fmt.Errorf("unhandled expression kind for interface impl: %T", expr)
 	}
 
-	if pkgName != "" {
-		var found bool
-		if impl.PkgPath, found = importMap[pkgName]; !found {
-			return impl, fmt.Errorf("unable to resolve path for package name %s for typeName %s", pkgName, typeName)
-		}
+	if impl.PkgPath, found = importMap[pkgName]; !found {
+		return impl, fmt.Errorf("unable to resolve path for package name %s for typeName %s", pkgName, typeName)
 	}
 
 	impl.PackageName = pkgName
+	impl.PkgPath = pkgPath
 	impl.TypeName = typeName
 	impl.IsPointer = isPointer
 	return impl, nil
@@ -179,7 +189,7 @@ func parseTypeExpr(expr dst.Expr) (pkgName, typeName string, isPointer bool, err
 	switch typ := expr.(type) {
 	case *dst.Ident:
 		// e.g. "MyStruct"
-		pkgName = ""
+		pkgName = typ.Path
 		typeName = typ.Name
 		isPointer = false
 	case *dst.SelectorExpr:

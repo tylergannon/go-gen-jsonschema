@@ -27,6 +27,15 @@ func NewImportMap(localPackage string, imports []*dst.ImportSpec) ImportMap {
 	return importMap
 }
 
+func (m ImportMap) locate(s string) (alias, pkgPath string, ok bool) {
+	for name, _path := range m {
+		if s == name || s == _path {
+			return name, _path, true
+		}
+	}
+	return "", "", false
+}
+
 func deQuote(s string) string {
 	s = strings.TrimSuffix(s, "\"")
 	s = strings.TrimPrefix(s, "\"")

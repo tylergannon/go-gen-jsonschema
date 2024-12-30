@@ -1,4 +1,4 @@
-package registrytestapp
+package testapp1_typeresolution
 
 import (
 	jsonschema "github.com/tylergannon/go-gen-jsonschema"

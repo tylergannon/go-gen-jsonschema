@@ -5,22 +5,32 @@ type priv interface {
 	SomeMethod()
 }
 
-// MyStruct1 represents an entity with a coolness factor.
-type MyStruct1 struct {
+// NestedStruct1 represents an entity with a coolness factor.
+type NestedStruct1 struct {
 	// Coolness indicates how cool the entity is on a scale of 1-100.
 	Coolness int `json:"coolness"`
 }
 
-func (m MyStruct1) SomeMethod() {}
+func (m NestedStruct1) SomeMethod() {}
 
-var _ priv = MyStruct1{}
+var _ priv = NestedStruct1{}
 
-// MyStruct2 represents an entity with a unique name.
-type MyStruct2 struct {
+// NestedStruct2 represents an entity with a unique name.
+type NestedStruct2 struct {
 	// Name is the unique name of the entity.
 	Name string `json:"name"`
 }
 
-func (m *MyStruct2) SomeMethod() {}
+func (m *NestedStruct2) SomeMethod() {}
 
-var _ priv = &MyStruct2{}
+var _ priv = &NestedStruct2{}
+
+// NestedStruct3 represents an entity with a unique name.
+type NestedStruct3 struct {
+	// Name is the unique name of the entity.
+	Name string `json:"name"`
+}
+
+func (m *NestedStruct3) SomeMethod() {}
+
+var _ priv = &NestedStruct3{}

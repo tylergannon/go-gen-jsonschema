@@ -1,5 +1,7 @@
 package testapp1_typeresolution
 
+import jsonschema "github.com/tylergannon/go-gen-jsonschema"
+
 type ParentStruct struct {
 	Inline struct {
 		Bar    *int
@@ -73,3 +75,9 @@ type StructWithInterfaceField struct {
 type StructWithEmbeddedInterface struct {
 	SomeInterface
 }
+
+type SomeInterface1 struct{}
+
+func (SomeInterface1) DoThings() {}
+
+var _ = jsonschema.SetImplementations[SomeInterface](SomeInterface1{})
