@@ -11,6 +11,7 @@ import (
 type FuncEntry struct {
 	*types.Func
 	*dst.FuncDecl
+	file      *dst.File
 	typeID    TypeID
 	ImportMap ImportMap
 }
@@ -57,9 +58,9 @@ func (fe *FuncEntry) ReceiverOrArgType() (pkgPath, typeName string) {
 	return fe.ImportMap[importAlias], typeName
 }
 
-func NewFuncEntry(decl *dst.FuncDecl, pkg *decorator.Package, importMap ImportMap) *FuncEntry {
+func NewFuncEntry(decl *dst.FuncDecl, pkg *decorator.Package, file *dst.File, importMap ImportMap) *FuncEntry {
 	typeID := NewTypeID(pkg.PkgPath, funcNameFromDst(decl))
-	return &FuncEntry{ImportMap: importMap, FuncDecl: decl, typeID: typeID}
+	return &FuncEntry{ImportMap: importMap, FuncDecl: decl, typeID: typeID, file: file}
 }
 
 func (fe *FuncEntry) isCandidateAltConverter() bool {
@@ -94,4 +95,73 @@ func funcNameFromDst(funcDecl *dst.FuncDecl) string {
 		}
 	}
 	return funcDecl.Name.Name
+}
+
+func (fe *FuncEntry) IsUnmarshalJSON() (typeName, pkgPath string, yesItIs bool) {
+	// 1. The function must be named "UnmarshalJSON".
+	if fe.Func.Name() != "UnmarshalJSON" {
+		return "", "", false
+	}
+
+	sig, ok := fe.Func.Type().(*types.Signature)
+	if !ok {
+		return "", "", false
+	}
+
+	// 2. Exactly one parameter of type []byte.
+	params := sig.Params()
+	if params.Len() != 1 {
+		return "", "", false
+	}
+
+	paramType := params.At(0).Type()
+	sliceType, ok := paramType.(*types.Slice)
+	if !ok {
+		return "", "", false
+	}
+	elemType := sliceType.Elem()
+	// `[]byte` is actually `[]uint8` in go/types
+	if basic, ok := elemType.(*types.Basic); !ok || basic.Kind() != types.Byte {
+		return "", "", false
+	}
+
+	// 3. Exactly one result, of type error.
+	results := sig.Results()
+	if results.Len() != 1 {
+		return "", "", false
+	}
+	resultType := results.At(0).Type()
+	// The standard "error" type is checked by string match or using IsError check:
+	// if resultType.String() != "error" { ... }
+	// or we can do a more robust check as below:
+	if !types.Implements(types.NewPointer(resultType), types.Universe.Lookup("error").Type().Underlying().(*types.Interface)) &&
+		!types.Implements(resultType, types.Universe.Lookup("error").Type().Underlying().(*types.Interface)) {
+		return "", "", false
+	}
+
+	// 4. The receiver must be a method, so extract the receiver’s type.
+	recv := sig.Recv()
+	if recv == nil {
+		return "", "", false
+	}
+	recvType := recv.Type()
+
+	// If the receiver is a pointer type, unwrap it to get the Named type.
+	if ptr, ok := recvType.(*types.Pointer); ok {
+		recvType = ptr.Elem()
+	}
+
+	// Now recvType should (typically) be a *types.Named
+	named, ok := recvType.(*types.Named)
+	if !ok {
+		return "", "", false
+	}
+
+	// Extract type name and package path
+	typeName = named.Obj().Name()
+	if named.Obj().Pkg() != nil {
+		pkgPath = named.Obj().Pkg().Path()
+	}
+
+	return typeName, pkgPath, true
 }

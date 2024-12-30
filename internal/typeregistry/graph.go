@@ -52,6 +52,11 @@ func (n NamedTypeNode) TypeSpecNode() *dst.TypeSpec {
 	return n.dstNode.(*dst.TypeSpec)
 }
 
+type InterfaceTypeNode struct {
+	NamedTypeNode
+	Implementations []InterfaceImpl
+}
+
 // NamedTypeWithAltsNode represents a NamedTypeNode that's specified according
 // to its alternative types.
 // The alternatives themselves are defined on the TypeSpec.Alternatives().
@@ -202,6 +207,7 @@ func (r *Registry) GraphTypeForSchema(ts TypeSpec) (*SchemaGraph, error) {
 		nodes    = map[TypeID]nodeInternal{}
 		rootNode = r.buildNodeForTS(ts, false)
 		stack    = []nodeInternal{rootNode}
+		parents  = map[nodeInternal]nodeInternal{}
 	)
 
 	for i := 0; len(stack) > 0; i++ {
@@ -218,7 +224,15 @@ func (r *Registry) GraphTypeForSchema(ts TypeSpec) (*SchemaGraph, error) {
 		if nodesTemp, err := r.visitNode(node); err != nil {
 			return nil, err
 		} else {
+			if iface, ok := node.(*InterfaceTypeNode); ok {
+				// assert parent node must be a StructField, and its grand. parent
+				// must be a named type.
+				// And *that* named type must be given an unmarshaler.  Meaning,
+				// the type must be in the local package or else it must already
+				// have an unmarshaler function.
+			}
 			for _, nodeTemp := range nodesTemp {
+				parents[nodeTemp] = node
 				node.addChild(nodeTemp.ID())
 				if _, ok := nodes[nodeTemp.ID()]; !ok {
 					stack = append(stack, nodeTemp)
@@ -255,6 +269,8 @@ func (r *Registry) visitNode(node nodeInternal) ([]nodeInternal, error) {
 		return r.visitNamedTypeNode(tn)
 	case NamedTypeWithAltsNode:
 		return r.visitTypeWithAltsNode(tn)
+	case InterfaceTypeNode:
+		return r.visitInterfaceTypeNode(tn)
 	case StructTypeNode:
 		var result []nodeInternal
 		if _temp, _err := r.visitStructTypeNode(tn); _err != nil {
@@ -297,6 +313,20 @@ func (r *Registry) visitTypeWithAltsNode(node NamedTypeWithAltsNode) ([]nodeInte
 	}
 	for _, alt := range node.TypeSpec.Alternatives() {
 		result = append(result, r.buildNodeForTS(alt.TypeSpec, true))
+	}
+
+	return result, nil
+}
+
+func (r *Registry) visitInterfaceTypeNode(node InterfaceTypeNode) ([]nodeInternal, error) {
+	var result []nodeInternal
+
+	for _, alt := range node.Implementations {
+		if ts, ok := r.getType(alt.TypeName, alt.PkgPath); !ok {
+			return nil, fmt.Errorf("type identifier not found: %s", alt.TypeName)
+		} else {
+			result = append(result, r.buildNodeForTS(ts, true))
+		}
 	}
 
 	return result, nil
@@ -424,6 +454,13 @@ func (r *Registry) buildNodeForTS(ts TypeSpec, isAlt bool) nodeInternal {
 			pkg:     ts.Pkg(),
 			id:      id,
 		},
+	}
+
+	if iface, ok := r.interfaceTypes[ts.ID()]; ok {
+		return InterfaceTypeNode{
+			NamedTypeNode:   node,
+			Implementations: iface.Implementations,
+		}
 	}
 
 	if len(ts.Alternatives()) > 0 {

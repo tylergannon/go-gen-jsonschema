@@ -7,7 +7,6 @@ import (
 	_ "github.com/santhosh-tekuri/jsonschema" // just to ensure that `go mod tidy` won't delete this from our go.mod
 	"github.com/tylergannon/go-gen-jsonschema/internal/loader"
 	"github.com/tylergannon/go-gen-jsonschema/internal/typeregistry"
-	"go/token"
 	"go/types"
 	"log"
 	"os"
@@ -84,9 +83,22 @@ type typeAlt struct {
 	*typeregistry.AlternativeTypeSpec
 }
 
+type InterfaceImpl struct {
+	Discriminator string
+	TypeName      string
+	PrefixedName  string
+}
+
+type Interface struct {
+	TypeName     string
+	PrefixedName string
+	FuncName     string
+}
+
 type typeWithAlts struct {
 	TypeName string
 	Alts     []typeAlt
+
 	// HasSchema denotes whether this is a top-level type that is meant to be
 	// presented with a full schema.
 	// Used when generating validation code to determine whether to validate
@@ -104,6 +116,8 @@ func RenderGoCode(fileName, schemaDir string, graphs []*typeregistry.SchemaGraph
 		importMap = NewImportMap(graphs[0].RootNode.Pkg())
 		altsMap   = map[typeregistry.TypeID]typeWithAlts{}
 	)
+	// Need to get a hold of a list of the fields that are interface types,
+	// and their functions.
 
 	builder := &UnmarshalerBuilder{
 		ImportMap:             importMap,
@@ -142,7 +156,7 @@ func RenderGoCode(fileName, schemaDir string, graphs []*typeregistry.SchemaGraph
 				if importMap.localPackage.PkgPath != nodeWithAlts.Pkg().PkgPath {
 					//	this was defined in a different package.  Its unmarshaler should likewise have
 					// been defined already.
-					if hasPointerJSONUnmarshaler(namedType) {
+					if typeregistry.HasPointerJSONUnmarshaler(namedType) {
 						//	okay, implemented.
 						continue
 					} else {
@@ -182,48 +196,6 @@ func RenderGoCode(fileName, schemaDir string, graphs []*typeregistry.SchemaGraph
 		log.Fatalf("error running goimports (exit code %d): %v", exitCode, err)
 	}
 	return nil
-}
-
-// hasPointerJSONUnmarshaler reports whether the pointer to the given named type
-// implements json.Unmarshaler.
-//
-// That is, for a type T, we check whether *T implements:
-//
-//	UnmarshalJSON([]byte) error
-func hasPointerJSONUnmarshaler(named *types.Named) bool {
-	// Construct the UnmarshalJSON([]byte) error method signature.
-	//
-	//   func([]byte) error
-	//
-	// We need a parameter of type []byte and a result of type error.
-	byteSlice := types.NewSlice(types.Typ[types.Byte])
-	errorType := types.Universe.Lookup("error").Type()
-
-	// Create the method signature:  func([]byte) error
-	sig := types.NewSignatureType(
-		nil,
-		nil,
-		nil,
-		types.NewTuple(types.NewVar(token.NoPos, nil, "", byteSlice)), // parameters
-		types.NewTuple(types.NewVar(token.NoPos, nil, "", errorType)), // results
-		false,
-	)
-
-	// Create a Func that has the name "UnmarshalJSON" and that signature.
-	unmarshalerFunc := types.NewFunc(token.NoPos, nil, "UnmarshalJSON", sig)
-
-	// Create an interface that has just this one method.
-	unmarshalerIface := types.NewInterfaceType(
-		[]*types.Func{unmarshalerFunc},
-		nil,
-	)
-	unmarshalerIface.Complete() // finalize the interface
-
-	// Construct the pointer type to named (i.e., *named).
-	ptrToNamed := types.NewPointer(named)
-
-	// Finally, check if that pointer implements our interface.
-	return types.Implements(ptrToNamed, unmarshalerIface)
 }
 
 // writeTemplate accepts the configured UnmarshalerBuilder and writes the

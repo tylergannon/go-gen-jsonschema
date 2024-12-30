@@ -123,8 +123,10 @@ func (r *Registry) scanFile(file *dst.File, pkg *decorator.Package) (result map[
 	for _, _decl := range file.Decls {
 		switch decl := _decl.(type) {
 		case *dst.FuncDecl:
-			if entry := NewFuncEntry(decl, pkg, importMap); entry.isCandidateAltConverter() {
+			if entry := NewFuncEntry(decl, pkg, file, importMap); entry.isCandidateAltConverter() {
 				result[entry.typeID] = entry
+			} else if typeName, pkgPath, ok := entry.IsUnmarshalJSON(); ok {
+				r.unmarshalers[NewTypeID(pkgPath, typeName)] = entry
 			}
 		case *dst.GenDecl:
 			switch decl.Tok {

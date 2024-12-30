@@ -30,6 +30,7 @@ type Registry struct {
 	imports        map[string]*decorator.Package
 	constants      map[TypeID][]EnumEntry
 	funcs          map[TypeID]*FuncEntry
+	unmarshalers   map[TypeID]*FuncEntry
 }
 
 type TypeID string

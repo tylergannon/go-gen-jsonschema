@@ -172,7 +172,9 @@ func (b *SchemaBuilder) renderNode(node typeregistry.Node) json.Marshaler {
 	case typeregistry.EnumTypeNode:
 		return newEnumType(n)
 	case typeregistry.NamedTypeWithAltsNode:
-		return b.renderTypeWithAlts(n)
+		return b.renderUnionType(n)
+	case typeregistry.InterfaceTypeNode:
+		return b.renderUnionType(n)
 	case typeregistry.NamedTypeNode:
 		child := b.renderChildNode(n.UnderlyingTypeID())
 		if n.IsAlt {
@@ -305,13 +307,13 @@ func (b *SchemaBuilder) renderStructNode(node typeregistry.StructTypeNode) json.
 	return schema
 }
 
-// renderTypeWithAlts
+// renderUnionType
 //  1. If there is only one child, just render that.
 //  2. Otherwise, it has to be given the discriminator const.
 //     In order to support this, we have to go back to the TypeRegistry.
 //     Named types with multiple alts have to set their type IDS in such a way that
 //     they won't be conflated with the same type as a non-alt.
-func (b *SchemaBuilder) renderTypeWithAlts(n typeregistry.NamedTypeWithAltsNode) json.Marshaler {
+func (b *SchemaBuilder) renderUnionType(n interface{ Children() []typeregistry.TypeID }) json.Marshaler {
 	var (
 		alts jsonUnionType
 	)
