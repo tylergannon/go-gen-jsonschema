@@ -138,6 +138,38 @@ func ToDuration(unit TimeUnit, value int) time.Duration {
 
 ```
 
+### Embedded Types
+
+go-gen-jsonschema supports embedded **struct types** in struct definitions.
+The following is valid:
+
+```go
+type EmbeddedStruct struct {
+   Field1 string `json:"f1"`
+}
+
+type ParentStruct struct {
+    EmbeddedStruct
+    // ... 
+}
+```
+
+Other types will produce an error.  For example the following will not work:
+
+```go
+type EmbeddedInterface interface {
+   Field1() string`
+}
+
+type ParentStruct struct {
+    EmbeddedInterface 
+    // ... 
+}
+```
+
+This is because the handling of how to unmarshal that is ambiguous.
+
+
 ### Declare the union types
 
 In this example we use struct methods to provide the conversion, but you can
