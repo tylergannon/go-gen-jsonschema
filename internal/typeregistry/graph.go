@@ -207,7 +207,7 @@ func (r *Registry) GraphTypeForSchema(ts TypeSpec) (*SchemaGraph, error) {
 		nodes    = map[TypeID]nodeInternal{}
 		rootNode = r.buildNodeForTS(ts, false)
 		stack    = []nodeInternal{rootNode}
-		parents  = map[nodeInternal]nodeInternal{}
+		parents  = map[TypeID]nodeInternal{}
 	)
 
 	for i := 0; len(stack) > 0; i++ {
@@ -230,9 +230,10 @@ func (r *Registry) GraphTypeForSchema(ts TypeSpec) (*SchemaGraph, error) {
 				// And *that* named type must be given an unmarshaler.  Meaning,
 				// the type must be in the local package or else it must already
 				// have an unmarshaler function.
+				_ = iface
 			}
 			for _, nodeTemp := range nodesTemp {
-				parents[nodeTemp] = node
+				parents[nodeTemp.ID()] = node
 				node.addChild(nodeTemp.ID())
 				if _, ok := nodes[nodeTemp.ID()]; !ok {
 					stack = append(stack, nodeTemp)

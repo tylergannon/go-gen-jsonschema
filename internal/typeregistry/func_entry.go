@@ -98,6 +98,12 @@ func funcNameFromDst(funcDecl *dst.FuncDecl) string {
 }
 
 func (fe *FuncEntry) IsUnmarshalJSON() (typeName, pkgPath string, yesItIs bool) {
+	if fe == nil {
+		panic("nil function")
+	} else if fe.Func == nil {
+		inspect("func", fe.typeID)
+		panic("func is nil")
+	}
 	// 1. The function must be named "UnmarshalJSON".
 	if fe.Func.Name() != "UnmarshalJSON" {
 		return "", "", false

@@ -67,19 +67,25 @@ func (r *Registry) scan(pkg *decorator.Package) error {
 	if r.packages[pkg.PkgPath] != nil {
 		return nil
 	}
-	funcs := map[TypeID]*FuncEntry{}
+	funcTypes := findAllFuncsInPkg(pkg)
 
 	for _, file := range pkg.Syntax {
-		if funcsTemp, err := r.scanFile(file, pkg); err != nil {
+		if funcsTemp, err := r.scanFile(file, funcTypes, pkg); err != nil {
 			return err
 		} else {
 			for id, funcDecl := range funcsTemp {
-				funcs[id] = funcDecl
+				r.funcs[id] = funcDecl
 			}
 		}
 	}
 
 	r.packages[pkg.PkgPath] = pkg
+
+	return nil
+}
+
+func findAllFuncsInPkg(pkg *decorator.Package) map[TypeID]*types.Func {
+	funcs := map[TypeID]*types.Func{}
 
 	for _, obj := range pkg.TypesInfo.Defs {
 		if obj == nil {
@@ -91,12 +97,9 @@ func (r *Registry) scan(pkg *decorator.Package) error {
 			continue
 		}
 		typeID := NewTypeID(pkg.PkgPath, funcNameFromTypes(funcObj))
-		if _, ok := funcs[typeID]; ok {
-			funcs[typeID].Func = funcObj
-			r.funcs[typeID] = funcs[typeID]
-		}
+		funcs[typeID] = funcObj
 	}
-	return nil
+	return funcs
 }
 
 func funcNameFromTypes(funcObj *types.Func) string {
@@ -116,14 +119,20 @@ func funcNameFromTypes(funcObj *types.Func) string {
 	}
 }
 
-func (r *Registry) scanFile(file *dst.File, pkg *decorator.Package) (result map[TypeID]*FuncEntry, err error) {
+func (r *Registry) scanFile(file *dst.File, funcTypes map[TypeID]*types.Func, pkg *decorator.Package) (result map[TypeID]*FuncEntry, err error) {
 	importMap := NewImportMap(pkg.PkgPath, file.Imports)
 	result = make(map[TypeID]*FuncEntry)
 
 	for _, _decl := range file.Decls {
 		switch decl := _decl.(type) {
 		case *dst.FuncDecl:
-			if entry := NewFuncEntry(decl, pkg, file, importMap); entry.isCandidateAltConverter() {
+			var entry = NewFuncEntry(decl, pkg, file, importMap)
+			if typesFunc, ok := funcTypes[entry.typeID]; ok {
+				entry.Func = typesFunc
+			} else {
+				continue // not sure why this would ever happen; just keeping the logic the same for now.
+			}
+			if entry.isCandidateAltConverter() {
 				result[entry.typeID] = entry
 			} else if typeName, pkgPath, ok := entry.IsUnmarshalJSON(); ok {
 				r.unmarshalers[NewTypeID(pkgPath, typeName)] = entry
