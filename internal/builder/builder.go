@@ -128,9 +128,7 @@ func (b *SchemaBuilder) renderChildNode(id typeregistry.TypeID) json.Marshaler {
 	var node = b.graph.Nodes[id]
 	switch n := node.(type) {
 	case typeregistry.NamedTypeNode, typeregistry.EnumTypeNode, typeregistry.NamedTypeWithAltsNode:
-		if node.Inbound() == 1 {
-			return b.renderNode(node)
-		}
+		return b.renderNode(node)
 	case typeregistry.BasicTypeNode:
 		return newBasicType(n.BasicType())
 	default:
@@ -143,18 +141,17 @@ func (b *SchemaBuilder) renderChildNode(id typeregistry.TypeID) json.Marshaler {
 	//} else if enum, ok := node.(typeregistry.EnumTypeNode); ok {
 	//	return newEnumType(enum)
 	//}
-
-	if _, found := b.typeIDMap[id]; !found {
-		// prevent infinite recursion by ensuring that the typeIDMap contains
-		// this node's ID.  Therefore a cyclic reference will terminate when
-		// it reaches here.
-		parts := strings.Split(string(id), ".")
-		name := b.definitions.findNewName(parts[len(parts)-1])
-		b.typeIDMap[id] = name
-		b.definitions[name] = b.renderNode(node)
-	}
-	var ref = b.typeIDMap[id]
-	return refElement(fmt.Sprintf("#/%s/%s", b.definitionsKey, ref))
+	//if _, found := b.typeIDMap[id]; !found {
+	//	// prevent infinite recursion by ensuring that the typeIDMap contains
+	//	// this node's ID.  Therefore a cyclic reference will terminate when
+	//	// it reaches here.
+	//	parts := strings.Split(string(id), ".")
+	//	name := b.definitions.findNewName(parts[len(parts)-1])
+	//	b.typeIDMap[id] = name
+	//	b.definitions[name] = b.renderNode(node)
+	//}
+	//var ref = b.typeIDMap[id]
+	//return refElement(fmt.Sprintf("#/%s/%s", b.definitionsKey, ref))
 }
 
 func inspect(str string, item ...any) {
