@@ -1,13 +1,29 @@
 package jsonschema
 
-type UnionType struct{}
+import "encoding/json"
 
-type TypeAlt[T any] struct{}
+type (
+	SchemaMarker struct{}
 
-func SetTypeAlternative[T any](typeAlternatives ...TypeAlt[T]) UnionType {
-	return UnionType{}
+	InterfaceImpl       struct{}
+	SchemaFunction      func() (json.RawMessage, error)
+	SchemaMethod[T any] func(T) (json.RawMessage, error)
+)
+
+// NewJSONSchemaBuilder registers a function as being a stub that should be
+// implemented with a proper json schema and, as needed, unmarshaler functionality.
+func NewJSONSchemaBuilder[T any](f func() (f SchemaFunction)) SchemaMarker {
+	return SchemaMarker{}
 }
 
-func Alt[T any, U any](name string, f func(t T) (U, error)) TypeAlt[U] {
-	return struct{}{}
+// NewJSONSchemaMethod registers a struct method as a stub that will be implemented
+// with a proper json schema and, as needed, unmarshaler functionality.
+func NewJSONSchemaMethod[T any](f SchemaMethod[T]) SchemaMarker {
+	return SchemaMarker{}
+}
+
+// NewInterfaceImpl marks the arguments as possible implementations for the
+// interface type given in the type argument.
+func NewInterfaceImpl[T any](implementations ...T) InterfaceImpl {
+	return InterfaceImpl{}
 }

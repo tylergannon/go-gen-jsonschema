@@ -2,7 +2,7 @@ package registrytestapp
 
 import (
 	jsonschema "github.com/tylergannon/go-gen-jsonschema"
-	"github.com/tylergannon/go-gen-jsonschema/internal/typeregistry/testfixtures/registrytestapp/subpkg"
+	"github.com/tylergannon/go-gen-jsonschema/internal/scanner/testfixtures/registrytestapp/subpkg"
 	"time"
 )
 
