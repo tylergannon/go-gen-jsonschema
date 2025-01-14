@@ -17,11 +17,9 @@ type (
 
 // NewJSONSchemaBuilder registers a function as being a stub that should be
 // implemented with a proper json schema and, as needed, unmarshaler functionality.
-func NewJSONSchemaBuilder[T any](func() (f SchemaFunction)) SchemaMarker {
+func NewJSONSchemaBuilder[T any](SchemaFunction) SchemaMarker {
 	return SchemaMarker{}
 }
-
-// Need a type that can be a
 
 // NewJSONSchemaMethod registers a struct method as a stub that will be implemented
 // with a proper json schema and, as needed, unmarshaler functionality.

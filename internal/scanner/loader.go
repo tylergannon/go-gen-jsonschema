@@ -2,7 +2,9 @@ package scanner
 
 import "golang.org/x/tools/go/packages"
 
-var PackageLoadNeeds = packages.NeedDeps |
+const BuildTag = "jsonschema"
+
+const PackageLoadNeeds = packages.NeedDeps |
 	packages.NeedModule |
 	packages.NeedName |
 	packages.NeedSyntax |
@@ -12,8 +14,9 @@ var PackageLoadNeeds = packages.NeedDeps |
 	packages.NeedFiles
 
 var DefaultPackageCfg = &packages.Config{
-	Mode:  PackageLoadNeeds,
-	Tests: false,
+	Mode:       PackageLoadNeeds,
+	Tests:      false,
+	BuildFlags: []string{"-tags=" + BuildTag},
 }
 
 func Load(path string) ([]*packages.Package, error) {

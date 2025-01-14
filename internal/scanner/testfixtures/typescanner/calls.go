@@ -1,70 +1,34 @@
+//go:build jsonschema
+// +build jsonschema
+
 package typescanner
 
-import "github.com/tylergannon/go-gen-jsonschema/internal/scanner/testfixtures/typescanner/scannersubpkg"
-
-var (
-	_ = LocalFuncOneTypeArg(1)
-
-	_ = LocalFuncOneTypeArg[scannersubpkg.Type001](scannersubpkg.Type001{})
-
-	_ = LocalFuncTwoTypeArg[
-		scannersubpkg.Type001, scannersubpkg.Type002
-	]()
-
-	_ = LocalFuncThreeTypeArg(1, 2, "")
-
-	_ = LocalFuncThreeTypeArg[
-		scannersubpkg.Type001, scannersubpkg.Type002, scannersubpkg.Type003
-	](
-		scannersubpkg.Type001{},
-		scannersubpkg.Type002{},
-		scannersubpkg.Type003{},
-	)
-
-	_ = scannersubpkg.RemoteFuncOneTypeArg("")
-
-	_ = scannersubpkg.RemoteFuncOneTypeArg[
-		scannersubpkg.Type001
-	](
-		scannersubpkg.Type001{},
-	)
+import (
+	"encoding/json"
+	jsonschema "github.com/tylergannon/go-gen-jsonschema"
 )
 
+func (TypeForSchemaMethod) Schema() (json.RawMessage, error) {
+	panic("not implemented")
+}
+
+func (*PointerTypeForSchemaMethod) Schema() (json.RawMessage, error) {
+	panic("not implemented")
+}
+
+func TypeSchema() (json.RawMessage, error) {
+	panic("not implemented")
+}
+
+func TypeSchema2() (json.RawMessage, error) {
+	panic("not implemented")
+}
+
 var (
-	_ = scannersubpkg.RemoteFuncTwoTypeArg[
-		scannersubpkg.Type001,
-		scannersubpkg.Type002,
-	]()
-
-	_ = scannersubpkg.RemoteFuncThreeTypeArg[
-		scannersubpkg.Type001,
-		scannersubpkg.Type002,
-		scannersubpkg.Type003,
-	](
-		scannersubpkg.Type001{},
-		scannersubpkg.Type002{},
-		scannersubpkg.Type003{},
-	)
-
-	_ = scannersubpkg.RemoteFuncThreeTypeArg(
-		scannersubpkg.Type001{},
-		scannersubpkg.Type002{},
-		scannersubpkg.Type003{},
-	)
-
-	_ = scannersubpkg.RemoteFuncThreeTypeArg[
-		*scannersubpkg.Type001,
-		*scannersubpkg.Type002,
-		*scannersubpkg.Type003,
-	](
-		&scannersubpkg.Type001{},
-		(*scannersubpkg.Type002)(nil),
-		(*scannersubpkg.Type003)(nil),
-	)
-
-	_ = scannersubpkg.RemoteFuncThreeTypeArg(
-		&scannersubpkg.Type001{},
-		(*scannersubpkg.Type002)(nil),
-		(*scannersubpkg.Type003)(nil),
-	)
+	_ = jsonschema.NewJSONSchemaMethod(TypeForSchemaMethod.Schema)
+	_ = jsonschema.NewJSONSchemaMethod((*PointerTypeForSchemaMethod).Schema)
+	_ = jsonschema.NewJSONSchemaBuilder[TypeForSchemaFunction](TypeSchema)
+	_ = jsonschema.NewJSONSchemaBuilder[*PointerTypeForSchemaFunction](TypeSchema2)
+	_ = jsonschema.NewInterfaceImpl[MarkerInterface](Type001{}, Type002{}, &Type003{}, (*Type004)(nil))
+	_ = jsonschema.NewEnumType[NiceEnumType]()
 )

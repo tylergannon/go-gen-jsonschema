@@ -4,48 +4,41 @@ import (
 	"fmt"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/tylergannon/go-gen-jsonschema/internal/importmap"
 	"github.com/tylergannon/go-gen-jsonschema/internal/scanner"
 	"go/ast"
 	"go/token"
 	"path/filepath"
 )
 
-type MyType struct {
-	InlineStructField struct {
-		ArrayOfInlineStruct []struct {
-			FooField string
-		}
-	}
+type fileSpecs struct {
+	importMap importmap.ImportMap
+	specs     []ast.Spec
 }
 
-func LoadDecls(path, fileName string, tok token.Token) []ast.Spec {
-	fmt.Println("Looking for decls ", tok)
-	var result []ast.Spec
+func LoadDecls(path, fileName string, tok token.Token) []fileSpecs {
+	var result []fileSpecs
 	pkgs, err := scanner.Load(path)
 	Expect(err).NotTo(HaveOccurred())
 	for _, pkg := range pkgs {
-		fmt.Println(pkg.PkgPath)
 		for _, file := range pkg.Syntax {
 			var pos = pkg.Fset.Position(file.Pos())
-			fmt.Println(pos.Filename)
 			if filepath.Base(pos.Filename) != fileName {
-				fmt.Println("Nope", filepath.Base(pos.Filename), fileName)
 				continue
-			} else {
-				fmt.Println("Equals", filepath.Base(pos.Filename), fileName)
 			}
-			fmt.Println("Has Decls ", len(file.Decls))
+			var fileSpec fileSpecs
 			for _, decl := range file.Decls {
 				genDecl, ok := decl.(*ast.GenDecl)
 				if !ok || genDecl.Tok != tok {
-					fmt.Println("Nope", genDecl.Tok, pos.Filename)
 					continue
 				}
-				fmt.Println("Found items ", len(genDecl.Specs))
 				for _, spec := range genDecl.Specs {
-					fmt.Printf("spec %+v\n", spec)
-					result = append(result, spec)
+					fileSpec.specs = append(fileSpec.specs, spec)
 				}
+			}
+			if len(fileSpec.specs) > 0 {
+				fileSpec.importMap = importmap.New(file.Imports)
+				result = append(result, fileSpec)
 			}
 		}
 	}
@@ -53,14 +46,23 @@ func LoadDecls(path, fileName string, tok token.Token) []ast.Spec {
 }
 
 var _ = Describe("FuncCallParser", func() {
-	var specs []ast.Spec
+	var specs []fileSpecs
 	BeforeEach(func() {
 		specs = LoadDecls("./testfixtures/typescanner", "calls.go", token.VAR)
-		Expect(specs).To(HaveLen(12))
+		Expect(specs).To(HaveLen(1))
+		Expect(specs[0].specs).To(HaveLen(6))
 	})
+
 	It("Figures them all out", func() {
-		for _, spec := range specs {
-			fmt.Println(spec)
+		for _, fileSpec := range specs {
+			_, ok := fileSpec.importMap.GetGenJSONPrefix()
+			if !ok {
+				fmt.Println("No gen json prefix on file")
+				continue
+			}
+			for _, spec := range fileSpec.specs {
+				scanner.ParseValueExprForMarkerFunctionCall(spec.(*ast.ValueSpec), fileSpec.importMap)
+			}
 		}
 	})
 })
@@ -75,7 +77,7 @@ func loadPackage() {
 			pos := pkg.Fset.Position(file.Pos())
 			fmt.Printf("## Begin file: %s\n", pos.Filename)
 			//for i, comment := range file.Comments {
-			//	fmt.Printf("Comment %s:%d: %s\n", file.Name, i, comment.Text())
+			//	fmt.Printf("Comment %s:%d: %s\n", file.TypeName, i, comment.Text())
 			//}
 			for _, decl := range file.Decls {
 				if genDecl, ok := decl.(*ast.GenDecl); ok {
