@@ -28,7 +28,9 @@ var (
 	](
 		scannersubpkg.Type001{},
 	)
+)
 
+var (
 	_ = scannersubpkg.RemoteFuncTwoTypeArg[
 		scannersubpkg.Type001,
 		scannersubpkg.Type002,
@@ -43,6 +45,7 @@ var (
 		scannersubpkg.Type002{},
 		scannersubpkg.Type003{},
 	)
+
 	_ = scannersubpkg.RemoteFuncThreeTypeArg(
 		scannersubpkg.Type001{},
 		scannersubpkg.Type002{},

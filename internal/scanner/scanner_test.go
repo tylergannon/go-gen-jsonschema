@@ -19,25 +19,33 @@ type MyType struct {
 }
 
 func LoadDecls(path, fileName string, tok token.Token) []ast.Spec {
+	fmt.Println("Looking for decls ", tok)
 	var result []ast.Spec
 	pkgs, err := scanner.Load(path)
-	Expect(err).ToNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 	for _, pkg := range pkgs {
+		fmt.Println(pkg.PkgPath)
 		for _, file := range pkg.Syntax {
-			pos := pkg.Fset.Position(file.Pos())
+			var pos = pkg.Fset.Position(file.Pos())
+			fmt.Println(pos.Filename)
 			if filepath.Base(pos.Filename) != fileName {
+				fmt.Println("Nope", filepath.Base(pos.Filename), fileName)
 				continue
+			} else {
+				fmt.Println("Equals", filepath.Base(pos.Filename), fileName)
 			}
+			fmt.Println("Has Decls ", len(file.Decls))
 			for _, decl := range file.Decls {
 				genDecl, ok := decl.(*ast.GenDecl)
 				if !ok || genDecl.Tok != tok {
+					fmt.Println("Nope", genDecl.Tok, pos.Filename)
 					continue
 				}
 				fmt.Println("Found items ", len(genDecl.Specs))
 				for _, spec := range genDecl.Specs {
 					fmt.Printf("spec %+v\n", spec)
+					result = append(result, spec)
 				}
-				result = append(result, genDecl.Specs...)
 			}
 		}
 	}
