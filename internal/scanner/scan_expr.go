@@ -19,7 +19,7 @@ type (
 
 const (
 	MarkerFuncNewJSONSchemaBuilder MarkerFunction = "NewJSONSchemaBuilder" // NewJSONSchemaBuilder
-	MarkerFuncNewJSONSchemaMethod  MarkerFunction = "NewJSONSChemaMethod"  // NewJSONSchemaMethod
+	MarkerFuncNewJSONSchemaMethod  MarkerFunction = "NewJSONSchemaMethod"  // NewJSONSchemaMethod
 	MarkerFuncNewInterfaceImpl     MarkerFunction = "NewInterfaceImpl"     // NewInterfaceImpl
 	MarkerFuncNewEnumType          MarkerFunction = "NewEnumType"          // NewEnumType
 )
@@ -92,22 +92,20 @@ func ParseValueExprForMarkerFunctionCall(e *ast.ValueSpec, importMap importmap.I
 		}
 		id := parseFuncFromExpr(ce.Fun, importMap)
 		if id.PkgPath != importmap.SchemaPackagePath {
+			fmt.Println("Not path", id)
 			continue
 		}
 		switch MarkerFunction(id.TypeName) {
 		case MarkerFuncNewJSONSchemaBuilder, MarkerFuncNewJSONSchemaMethod, MarkerFuncNewInterfaceImpl, MarkerFuncNewEnumType:
 		default:
+			fmt.Println("Unsupported MarkerFunction", id.TypeName)
 			continue
 		}
-		newCall := MarkerFunctionCall{
+		results = append(results, MarkerFunctionCall{
 			Function:     MarkerFunction(id.TypeName),
 			Arguments:    ce.Args,
 			TypeArgument: parseTypeArguments(ce.Fun, importMap),
-		}
-		fmt.Println(newCall)
-		_ = newCall
-
-		// look for calls to the marker functions.
+		})
 	}
 	return results
 }
@@ -138,7 +136,6 @@ func parseFuncFromExpr(e ast.Expr, importMap importmap.ImportMap) TypeID {
 		typeID.Indirection = Pointer
 		return typeID
 	}
-	fmt.Printf("FuncExpr -- %T %#v\n", e, e)
 	return TypeID{}
 }
 
@@ -151,10 +148,5 @@ func parseTypeArguments(e ast.Expr, importMap importmap.ImportMap) *TypeID {
 	}
 	typeID := parseFuncFromExpr(expr, importMap)
 
-	printItAll(expr)
-
 	return &typeID
-}
-func printItAll(it any) {
-	fmt.Printf("%T %#v\n", it, it)
 }

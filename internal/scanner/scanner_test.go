@@ -45,25 +45,70 @@ func LoadDecls(path, fileName string, tok token.Token) []fileSpecs {
 	return result
 }
 
-var _ = Describe("FuncCallParser", func() {
-	var specs []fileSpecs
-	BeforeEach(func() {
+var _ = Describe("FuncCallParser", Ordered, func() {
+	var (
+		specs []fileSpecs
+		calls []scanner.MarkerFunctionCall
+	)
+	BeforeAll(func() {
 		specs = LoadDecls("./testfixtures/typescanner", "calls.go", token.VAR)
 		Expect(specs).To(HaveLen(1))
 		Expect(specs[0].specs).To(HaveLen(6))
 	})
 
 	It("Figures them all out", func() {
-		for _, fileSpec := range specs {
-			_, ok := fileSpec.importMap.GetGenJSONPrefix()
-			if !ok {
-				fmt.Println("No gen json prefix on file")
-				continue
-			}
-			for _, spec := range fileSpec.specs {
-				scanner.ParseValueExprForMarkerFunctionCall(spec.(*ast.ValueSpec), fileSpec.importMap)
-			}
+		for _, spec := range specs[0].specs {
+			_calls := scanner.ParseValueExprForMarkerFunctionCall(spec.(*ast.ValueSpec), specs[0].importMap)
+			calls = append(calls, _calls...)
 		}
+		Expect(calls).To(HaveLen(6))
+	})
+	It("Call number 1", func() {
+		_call := scanner.ParseValueExprForMarkerFunctionCall(specs[0].specs[0].(*ast.ValueSpec), specs[0].importMap)[0]
+		Expect(_call.Function).To(Equal(scanner.MarkerFuncNewJSONSchemaMethod))
+		Expect(_call.Arguments).To(HaveLen(1))
+		Expect(_call.TypeArgument).To(BeNil())
+	})
+	It("Call number 2", func() {
+		_call := scanner.ParseValueExprForMarkerFunctionCall(specs[0].specs[1].(*ast.ValueSpec), specs[0].importMap)[0]
+		Expect(_call.Function).To(Equal(scanner.MarkerFuncNewJSONSchemaMethod))
+		Expect(_call.Arguments).To(HaveLen(1))
+		Expect(_call.TypeArgument).To(BeNil())
+	})
+	It("Call number 3", func() {
+		_call := scanner.ParseValueExprForMarkerFunctionCall(specs[0].specs[2].(*ast.ValueSpec), specs[0].importMap)[0]
+		Expect(_call.Function).To(Equal(scanner.MarkerFuncNewJSONSchemaBuilder))
+		Expect(_call.Arguments).To(HaveLen(1))
+		Expect(_call.TypeArgument).NotTo(BeNil())
+		Expect(_call.TypeArgument.TypeName).To(Equal("TypeForSchemaFunction"))
+		Expect(_call.TypeArgument.DeclaredLocally).To(BeTrue())
+	})
+	It("Call number 4", func() {
+		_call := scanner.ParseValueExprForMarkerFunctionCall(specs[0].specs[3].(*ast.ValueSpec), specs[0].importMap)[0]
+		Expect(_call.Function).To(Equal(scanner.MarkerFuncNewJSONSchemaBuilder))
+		Expect(_call.Arguments).To(HaveLen(1))
+		Expect(_call.TypeArgument).NotTo(BeNil())
+		Expect(_call.TypeArgument.TypeName).To(Equal("PointerTypeForSchemaFunction"))
+		Expect(_call.TypeArgument.Indirection).To(Equal(scanner.Pointer))
+		Expect(_call.TypeArgument.DeclaredLocally).To(BeTrue())
+	})
+	It("Call number 5", func() {
+		_call := scanner.ParseValueExprForMarkerFunctionCall(specs[0].specs[4].(*ast.ValueSpec), specs[0].importMap)[0]
+		Expect(_call.Function).To(Equal(scanner.MarkerFuncNewInterfaceImpl))
+		Expect(_call.Arguments).To(HaveLen(4))
+		Expect(_call.TypeArgument).NotTo(BeNil())
+		Expect(_call.TypeArgument.TypeName).To(Equal("MarkerInterface"))
+		Expect(_call.TypeArgument.Indirection).To(Equal(scanner.NormalConcrete))
+		Expect(_call.TypeArgument.DeclaredLocally).To(BeTrue())
+	})
+	It("Call number 6", func() {
+		_call := scanner.ParseValueExprForMarkerFunctionCall(specs[0].specs[5].(*ast.ValueSpec), specs[0].importMap)[0]
+		Expect(_call.Function).To(Equal(scanner.MarkerFuncNewEnumType))
+		Expect(_call.Arguments).To(HaveLen(0))
+		Expect(_call.TypeArgument).NotTo(BeNil())
+		Expect(_call.TypeArgument.TypeName).To(Equal("NiceEnumType"))
+		Expect(_call.TypeArgument.Indirection).To(Equal(scanner.NormalConcrete))
+		Expect(_call.TypeArgument.DeclaredLocally).To(BeTrue())
 	})
 })
 
