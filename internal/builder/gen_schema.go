@@ -46,7 +46,7 @@ func (s SchemaBuilder) mapType(t scanner.TypeID, seen map[scanner.TypeID]bool) e
 	if err != nil {
 		return err
 	}
-	scanResult.ConcreteTypes
+	_ = scanResult
 
 	if _, ok := seen[t]; ok {
 
