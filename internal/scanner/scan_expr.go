@@ -1,9 +1,11 @@
 package scanner
 
 import (
+	"errors"
 	"fmt"
 	"github.com/tylergannon/go-gen-jsonschema/internal/importmap"
 	"go/ast"
+	"go/token"
 	"strings"
 )
 
@@ -58,6 +60,8 @@ type (
 		// If present, denote the type argument here.
 		TypeArgument *TypeID
 		Arguments    []ast.Expr
+		fset         *token.FileSet
+		importMap    importmap.ImportMap
 	}
 )
 
@@ -83,7 +87,7 @@ func (t TypeID) String() string {
 	return fmt.Sprintf("%s%s.%s", ptr, pkgPath, t.TypeName)
 }
 
-func ParseValueExprForMarkerFunctionCall(e *ast.ValueSpec, importMap importmap.ImportMap) []MarkerFunctionCall {
+func ParseValueExprForMarkerFunctionCall(e *ast.ValueSpec, importMap importmap.ImportMap, fset *token.FileSet) []MarkerFunctionCall {
 	var results []MarkerFunctionCall
 	for _, arg := range e.Values {
 		ce, ok := arg.(*ast.CallExpr)
@@ -105,6 +109,8 @@ func ParseValueExprForMarkerFunctionCall(e *ast.ValueSpec, importMap importmap.I
 			Function:     MarkerFunction(id.TypeName),
 			Arguments:    ce.Args,
 			TypeArgument: parseTypeArguments(ce.Fun, importMap),
+			fset:         fset,
+			importMap:    importMap,
 		})
 	}
 	return results
@@ -149,4 +155,56 @@ func parseTypeArguments(e ast.Expr, importMap importmap.ImportMap) *TypeID {
 	typeID := parseFuncFromExpr(expr, importMap)
 
 	return &typeID
+}
+
+func (m MarkerFunctionCall) ParseTypesFromArgs(foo ...bool) ([]TypeID, error) {
+	var p bool
+	if len(foo) > 0 {
+		p = foo[0]
+	}
+	return parseFuncCallForTypes(m.Arguments, m.importMap, m.fset, p)
+}
+
+func parseFuncCallForTypes(args []ast.Expr, importMap importmap.ImportMap, fset *token.FileSet, p bool) ([]TypeID, error) {
+	var results []TypeID
+
+	for _, arg := range args {
+		pos := fset.Position(arg.Pos())
+		if typeID, err := parseLitForType(arg, importMap); err != nil {
+			pos = fset.Position(arg.Pos())
+			return nil, fmt.Errorf("unsupported arg at %s: %w", pos, err)
+		} else {
+			results = append(results, typeID)
+		}
+	}
+
+	return results, nil
+}
+
+func parseLitForType(expr ast.Expr, importMap importmap.ImportMap) (TypeID, error) {
+	switch t := expr.(type) {
+	case *ast.CompositeLit:
+		return parseFuncFromExpr(t.Type, importMap), nil
+	case *ast.UnaryExpr:
+		if t.Op != token.AND {
+			return TypeID{}, errors.New("unary expression op must be &")
+		}
+		lit, ok := t.X.(*ast.CompositeLit)
+		if !ok {
+			return TypeID{}, fmt.Errorf("unary expression type expects composite literal but was %T", t.X)
+		}
+		answer := parseFuncFromExpr(lit.Type, importMap)
+		answer.Indirection = Pointer
+
+		return answer, nil
+	case *ast.CallExpr:
+		p, ok := t.Fun.(*ast.ParenExpr)
+		if !ok {
+			return TypeID{}, fmt.Errorf("CallExpr fun must be ParenExpr, got %T", t.Fun)
+		}
+		return parseFuncFromExpr(p.X, importMap), nil
+	default:
+		fmt.Printf("Unrecognized -- %T %#v\n", expr, expr)
+		return TypeID{}, fmt.Errorf("Unrecognized -- %T %#v\n", expr, expr)
+	}
 }
