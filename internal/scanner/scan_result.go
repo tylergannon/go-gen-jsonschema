@@ -106,6 +106,34 @@ const (
 )
 
 type (
+	TypeDecls struct {
+		Pkg  *packages.Package
+		File *ast.File
+
+		Decl  *ast.GenDecl
+		Specs []*ast.TypeSpec
+	}
+
+	VarDecls struct {
+		Pkg   *packages.Package
+		File  *ast.File
+		Decl  *ast.GenDecl
+		Specs []*ast.ValueSpec
+	}
+
+	FuncDecl struct {
+		Pkg  *packages.Package
+		File *ast.File
+		Decl *ast.FuncDecl
+	}
+
+	ConstDecls struct {
+		Pkg   *packages.Package
+		File  *ast.File
+		Decl  *ast.GenDecl
+		Specs []*ast.ValueSpec
+	}
+
 	FuncType       int
 	schemaFuncInfo struct {
 		FuncType FuncType
@@ -177,14 +205,60 @@ func DecodeFuncCall(callExpr *ast.CallExpr) (Marker, bool) {
 	return nil, false
 }
 
-func ReadFuncNameAndTypeArgs(callExpr *ast.CallExpr) (id TypeID, typeArgs []ast.Expr, err error) {
-	
-	switch expr := callExpr.Fun.(type) {
-	case *ast.SelectorExpr:
-		fmt.Printf("SelectorExpr -- %T, %v, %v\n", expr.X, expr.X, expr.Sel)
-	case *ast.IndexExpr:
-		fmt.Printf("IndexExpr -- %T, %v, %v\n", expr.X, expr.X, expr.Index)
+func LoadPackage(pkg *packages.Package) {
+	var (
+		constDecls []ConstDecls
+		typeDecls  []TypeDecls
+		varDecls   []VarDecls
+		funcDecls  []FuncDecl
+	)
+	for _, file := range pkg.Syntax {
+		for _, decl := range file.Decls {
+			switch _decl := decl.(type) {
+			case *ast.FuncDecl:
+				funcDecls = append(funcDecls, FuncDecl{
+					Pkg:  pkg,
+					File: file,
+					Decl: _decl,
+				})
+			case *ast.GenDecl:
+				switch _decl.Tok {
+				case token.TYPE:
+					var specs []*ast.TypeSpec
+					for _, spec := range _decl.Specs {
+						specs = append(specs, spec.(*ast.TypeSpec))
+					}
+					typeDecls = append(typeDecls, TypeDecls{
+						Pkg:   pkg,
+						File:  file,
+						Decl:  _decl,
+						Specs: specs,
+					})
+				case token.CONST:
+					var values []*ast.ValueSpec
+					for _, spec := range _decl.Specs {
+						values = append(values, spec.(*ast.ValueSpec))
+					}
+					constDecls = append(constDecls, ConstDecls{
+						Pkg:   pkg,
+						File:  file,
+						Decl:  _decl,
+						Specs: values,
+					})
+				case token.VAR:
+					var specs []*ast.ValueSpec
+					for _, spec := range _decl.Specs {
+						specs = append(specs, spec.(*ast.ValueSpec))
+					}
+					varDecls = append(varDecls, VarDecls{
+						Pkg:   pkg,
+						File:  file,
+						Decl:  _decl,
+						Specs: specs,
+					})
+				default:
+				}
+			}
+		}
 	}
-	return
-
 }

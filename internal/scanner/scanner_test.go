@@ -24,6 +24,7 @@ func LoadDecls(path, fileName string, tok token.Token) []fileSpecs {
 	pkgs, err := scanner.Load(path)
 	Expect(err).NotTo(HaveOccurred())
 	for _, pkg := range pkgs {
+		scanner.LoadPackage(pkg)
 		for _, file := range pkg.Syntax {
 			var pos = pkg.Fset.Position(file.Pos())
 			if filepath.Base(pos.Filename) != fileName {
