@@ -6,6 +6,7 @@ import (
 	"github.com/tylergannon/go-gen-jsonschema/internal/importmap"
 	"go/ast"
 	"go/token"
+	"golang.org/x/tools/go/packages"
 	"strings"
 )
 
@@ -55,13 +56,14 @@ type (
 	// MarkerFunctionCall denotes a call to one of the marker functions, found
 	// in the scanned source code.
 	MarkerFunctionCall struct {
+		Pkg      *packages.Package
 		Function MarkerFunction
 		// Our function calls need either zero or one type argument.
 		// If present, denote the type argument here.
 		TypeArgument *TypeID
 		Arguments    []ast.Expr
-		fset         *token.FileSet
-		importMap    importmap.ImportMap
+		File         *ast.File
+		Position     token.Position
 	}
 )
 
@@ -87,14 +89,14 @@ func (t TypeID) String() string {
 	return fmt.Sprintf("%s%s.%s", ptr, pkgPath, t.TypeName)
 }
 
-func ParseValueExprForMarkerFunctionCall(e *ast.ValueSpec, importMap importmap.ImportMap, fset *token.FileSet) []MarkerFunctionCall {
+func ParseValueExprForMarkerFunctionCall(e *ast.ValueSpec, file *ast.File, pkg *packages.Package) []MarkerFunctionCall {
 	var results []MarkerFunctionCall
 	for _, arg := range e.Values {
 		ce, ok := arg.(*ast.CallExpr)
 		if !ok {
 			continue
 		}
-		id := parseFuncFromExpr(ce.Fun, importMap)
+		id := parseFuncFromExpr(ce.Fun, file.Imports)
 		if id.PkgPath != importmap.SchemaPackagePath {
 			fmt.Println("Not path", id)
 			continue
@@ -106,11 +108,12 @@ func ParseValueExprForMarkerFunctionCall(e *ast.ValueSpec, importMap importmap.I
 			continue
 		}
 		results = append(results, MarkerFunctionCall{
+			Pkg:          pkg,
 			Function:     MarkerFunction(id.TypeName),
 			Arguments:    ce.Args,
-			TypeArgument: parseTypeArguments(ce.Fun, importMap),
-			fset:         fset,
-			importMap:    importMap,
+			TypeArgument: parseTypeArguments(ce.Fun, file.Imports),
+			File:         file,
+			Position:     pkg.Fset.Position(e.Pos()),
 		})
 	}
 	return results
@@ -162,7 +165,19 @@ func (m MarkerFunctionCall) ParseTypesFromArgs(foo ...bool) ([]TypeID, error) {
 	if len(foo) > 0 {
 		p = foo[0]
 	}
-	return parseFuncCallForTypes(m.Arguments, m.importMap, m.fset, p)
+	return parseFuncCallForTypes(m.Arguments, m.File.Imports, m.Pkg.Fset, p)
+}
+
+func (m MarkerFunctionCall) ParseSchemaMethod() (SchemaMethod, error) {
+	if len(m.Arguments) != 1 {
+		err := fmt.Errorf("Schema Method expects one argument but got %d, at %s", len(m.Arguments), m.Position)
+		return SchemaMethod{}, err
+	}
+	switch expr := m.Arguments[0].(type) {
+	default:
+		fmt.Printf("%T %#v", expr, expr)
+	}
+	return SchemaMethod{}, nil
 }
 
 func parseFuncCallForTypes(args []ast.Expr, importMap importmap.ImportMap, fset *token.FileSet, p bool) ([]TypeID, error) {

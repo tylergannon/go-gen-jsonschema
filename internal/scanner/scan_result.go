@@ -2,6 +2,7 @@ package scanner
 
 import (
 	"fmt"
+	"github.com/tylergannon/go-gen-jsonschema/internal/importmap"
 	"go/ast"
 	"go/token"
 	"golang.org/x/tools/go/packages"
@@ -33,6 +34,7 @@ type TypeDecl struct {
 
 type InterfaceTypeInfo struct {
 	typeInfo
+	Implementations []TypeID
 }
 
 // AliasTypeInfo
@@ -60,7 +62,6 @@ type typeInfo struct {
 	Identity *ast.Ident
 	TypeInfo ast.Expr
 	File     *ast.File
-	FileSet  *token.FileSet
 	Pkg      *packages.Package
 	Decl     *TypeDecl
 }
@@ -134,16 +135,11 @@ type (
 		Specs []*ast.ValueSpec
 	}
 
-	FuncType       int
-	schemaFuncInfo struct {
-		FuncType FuncType
+	FuncType     int
+	SchemaMethod struct {
+		Receiver TypeID
 		FuncName string
-	}
-	ifaceImplInfo struct {
-		// PkgPath is empty string to denote the local package
-		PkgPath  string
-		TypeName string
-		Pointer  bool
+		MarkerFunctionCall
 	}
 	// ifaceImplementations represents an interface type and its allowed types.
 	// Error in the event that the loader encounters TypeName referenced on any
@@ -151,18 +147,19 @@ type (
 	// That is to say, in order for an interface implementations to work,
 	// all supported references to it must be in the local package.
 	ifaceImplementations struct {
-		PkgPath  string
-		TypeName string
-		Impls    []ifaceImplInfo
+		Pkg    *packages.Package
+		File   *ast.File
+		TypeID TypeID
+		Impls  []TypeID
 	}
 
 	constDecl struct {
-		TypeName string
-		Values   []*ast.BasicLit
+		TypeID TypeID
+		Values []*ast.BasicLit
 	}
 )
 
-func (s schemaFuncInfo) markerType() MarkerKind {
+func (s SchemaMethod) markerType() MarkerKind {
 	return MarkerKindSchema
 }
 
@@ -181,7 +178,7 @@ type Marker interface {
 
 var (
 	_ Marker = ifaceImplementations{}
-	_ Marker = schemaFuncInfo{}
+	_ Marker = SchemaMethod{}
 	_ Marker = constDecl{}
 )
 
@@ -205,18 +202,77 @@ func DecodeFuncCall(callExpr *ast.CallExpr) (Marker, bool) {
 	return nil, false
 }
 
-func LoadPackage(pkg *packages.Package) {
+func (v VarDecls) importMap() importmap.ImportMap {
+	return v.File.Imports
+}
+
+type VarDeclSet []VarDecls
+
+func (vd VarDeclSet) MarkerFuncs() []MarkerFunctionCall {
+	var result []MarkerFunctionCall
+	for _, decl := range vd {
+		for _, spec := range decl.Specs {
+			result = append(
+				result,
+				ParseValueExprForMarkerFunctionCall(spec, decl.File, decl.Pkg)...,
+			)
+		}
+	}
+	return result
+}
+
+type decls struct {
+	constDecls []ConstDecls
+	typeDecls  []TypeDecls
+	varDecls   VarDeclSet
+	funcDecls  []FuncDecl
+}
+
+func LoadPackage(pkg *packages.Package) error {
+	// Needs to discover:
+	// 1. Enum (Const) Values
+	// 2. Supported Interfaces
+	// 3. Types to render
 	var (
-		constDecls []ConstDecls
-		typeDecls  []TypeDecls
-		varDecls   []VarDecls
-		funcDecls  []FuncDecl
+		_decls      = loadPkgDecls(pkg)
+		markerCalls = _decls.varDecls.MarkerFuncs()
+		enums       = map[string]constDecl{}
+		interfaces  []ifaceImplementations
+	)
+	for _, decl := range markerCalls {
+		switch decl.Function {
+		case MarkerFuncNewEnumType:
+			enums[decl.TypeArgument.TypeName] = constDecl{
+				TypeID: *decl.TypeArgument,
+			}
+		case MarkerFuncNewInterfaceImpl:
+			var (
+				err   error
+				iface = ifaceImplementations{
+					TypeID: *decl.TypeArgument,
+				}
+			)
+			if iface.Impls, err = decl.ParseTypesFromArgs(); err != nil {
+				return err
+			}
+			interfaces = append(interfaces, iface)
+		case MarkerFuncNewJSONSchemaMethod:
+		default:
+			return fmt.Errorf("unsupported marker function: %s", decl.Function)
+		}
+	}
+	return nil
+}
+
+func loadPkgDecls(pkg *packages.Package) *decls {
+	var (
+		_decls decls
 	)
 	for _, file := range pkg.Syntax {
 		for _, decl := range file.Decls {
 			switch _decl := decl.(type) {
 			case *ast.FuncDecl:
-				funcDecls = append(funcDecls, FuncDecl{
+				_decls.funcDecls = append(_decls.funcDecls, FuncDecl{
 					Pkg:  pkg,
 					File: file,
 					Decl: _decl,
@@ -228,7 +284,7 @@ func LoadPackage(pkg *packages.Package) {
 					for _, spec := range _decl.Specs {
 						specs = append(specs, spec.(*ast.TypeSpec))
 					}
-					typeDecls = append(typeDecls, TypeDecls{
+					_decls.typeDecls = append(_decls.typeDecls, TypeDecls{
 						Pkg:   pkg,
 						File:  file,
 						Decl:  _decl,
@@ -239,7 +295,7 @@ func LoadPackage(pkg *packages.Package) {
 					for _, spec := range _decl.Specs {
 						values = append(values, spec.(*ast.ValueSpec))
 					}
-					constDecls = append(constDecls, ConstDecls{
+					_decls.constDecls = append(_decls.constDecls, ConstDecls{
 						Pkg:   pkg,
 						File:  file,
 						Decl:  _decl,
@@ -250,7 +306,7 @@ func LoadPackage(pkg *packages.Package) {
 					for _, spec := range _decl.Specs {
 						specs = append(specs, spec.(*ast.ValueSpec))
 					}
-					varDecls = append(varDecls, VarDecls{
+					_decls.varDecls = append(_decls.varDecls, VarDecls{
 						Pkg:   pkg,
 						File:  file,
 						Decl:  _decl,
@@ -261,4 +317,5 @@ func LoadPackage(pkg *packages.Package) {
 			}
 		}
 	}
+	return &_decls
 }
