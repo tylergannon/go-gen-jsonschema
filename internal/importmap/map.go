@@ -1,7 +1,7 @@
 package importmap
 
 import (
-	"go/ast"
+	"github.com/dave/dst"
 	"path/filepath"
 	"strings"
 )
@@ -11,11 +11,7 @@ const (
 	schemaPackagePrefix = "jsonschema"
 )
 
-type ImportMap []*ast.ImportSpec
-
-func New(imports []*ast.ImportSpec) ImportMap {
-	return imports
-}
+type ImportMap []*dst.ImportSpec
 
 func (m ImportMap) GetPackageForPrefix(prefix string) (string, bool) {
 	for _, spec := range m {
