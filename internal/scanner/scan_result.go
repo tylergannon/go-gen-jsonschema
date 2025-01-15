@@ -13,12 +13,6 @@ type PackageScanner interface {
 	Scan(*packages.Package) (ScanResult, error)
 }
 
-// ScanResult aggregates the important details from a single package:
-// 1) All the (named, as in GenDecl) type declarations
-// 2) All the const decls (filtered by which ones are marked)
-// 3) All the interface implementations (filtered by which ones are marked)
-// 4)
-
 // TypeDecl refers to the
 type TypeDecl struct {
 	Node  *ast.DeclStmt

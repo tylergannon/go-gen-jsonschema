@@ -1,145 +1,113 @@
+// go run main.go <file.go> <typeName> <newDocComment>
 package main
 
 import (
-	"bufio"
 	"bytes"
-	"flag"
 	"fmt"
-	"io"
-	"log"
-	"os"
-	"strings"
-
 	"go/ast"
-	"go/parser"
 	"go/printer"
 	"go/token"
+	"log"
+	"os"
+	"path/filepath"
+	"strings"
 
-	"golang.org/x/tools/imports"
+	"golang.org/x/tools/go/packages"
 )
 
 func main() {
-	// Define our flags
-	inFile := flag.String("in", "", "Input file name (optional; uses stdin if not set)")
-	typeName := flag.String("type-name", "", "Name of the type whose doc comment will be updated (required)")
-	fieldName := flag.String("field-name", "", "Name of the struct field whose doc comment will be updated (optional)")
-	flag.Parse()
-
-	// The new doc comment text is expected as the first (and only) trailing argument
-	if len(flag.Args()) != 1 {
-		log.Fatalf("Usage: %s [flags] 'new doc comment text...'\n", os.Args[0])
-	}
-	newDocRaw := flag.Args()[0]
-
-	if *typeName == "" {
-		log.Fatal("--type-name is required")
+	if len(os.Args) < 4 {
+		log.Fatalf("Usage: %s <file.go> <typeName> <newComment>", os.Args[0])
 	}
 
-	// Read the input file or stdin
-	var srcBytes []byte
-	var err error
-	if *inFile != "" {
-		srcBytes, err = os.ReadFile(*inFile)
-		if err != nil {
-			log.Fatalf("Could not read file %s: %v", *inFile, err)
-		}
-	} else {
-		// Read from stdin
-		reader := bufio.NewReader(os.Stdin)
-		srcBytes, err = io.ReadAll(reader)
-		if err != nil {
-			log.Fatalf("Failed to read stdin: %v", err)
-		}
-	}
+	fileName := os.Args[1]
+	typeName := os.Args[2]
+	newComment := os.Args[3]
 
-	// Parse the Go file with comments
-	fset := token.NewFileSet()
-	astFile, err := parser.ParseFile(fset, "", srcBytes, parser.ParseComments)
+	// Load the single Go file using packages.
+	// The pattern "file=<path>" is a special form recognized by go/packages.
+	cfg := &packages.Config{
+		Mode: packages.NeedSyntax | packages.NeedFiles,
+	}
+	directory := "./" + filepath.Dir(fileName)
+	fmt.Printf("directory: %s\n", directory)
+	pkgs, err := packages.Load(cfg, directory)
 	if err != nil {
-		log.Fatalf("Error parsing Go file: %v", err)
+		log.Fatalf("failed to load package for file %q: %v", fileName, err)
+	}
+	if len(pkgs) == 0 {
+		log.Fatalf("no packages found for file %q", fileName)
 	}
 
-	// Update the doc comment
-	if err := updateDocComment(astFile, *typeName, *fieldName, newDocRaw); err != nil {
-		log.Fatalf("Error updating doc comment: %v", err)
+	fmt.Printf("Found %d packages ==> %s\n", len(pkgs), pkgs[0].PkgPath)
+
+	// Typically, pkgs[0] is the package containing our file.
+	// We'll iterate over all syntax files in that package to find the matching file.
+	var fileAST *ast.File
+	var fset = pkgs[0].Fset
+
+	for _, f := range pkgs[0].Syntax {
+		fname := filepath.Base(fset.Position(f.Pos()).Filename)
+		fmt.Println(fname)
+		if fname == filepath.Base(fileName) {
+			fileAST = f
+			break
+		}
+	}
+	if fileAST == nil {
+		log.Fatalf("file %q not found in loaded package(s)", fileName)
 	}
 
-	// Write the AST back to source code
-	var buf bytes.Buffer
-	if err := printer.Fprint(&buf, fset, astFile); err != nil {
-		log.Fatalf("Error printing AST: %v", err)
-	}
-
-	// Format the code (like goimports/gofmt)
-	formatted, err := imports.Process("", buf.Bytes(), &imports.Options{
-		Comments:   true,
-		FormatOnly: true, // only format, no import reordering
+	// Walk the AST, find the TypeSpec for 'typeName'.
+	found := false
+	ast.Inspect(fileAST, func(n ast.Node) bool {
+		ts, ok := n.(*ast.TypeSpec)
+		if !ok {
+			return true
+		}
+		if ts.Name != nil && ts.Name.Name == typeName {
+			// Replace (or set) the doc comment on this TypeSpec
+			found = true
+			ts.Doc = buildCommentGroup(ts.Pos(), newComment)
+			fmt.Printf("found type %q in file %q, and new comment is\n%v\n", ts.Name.Name, fileName, ts.Doc)
+			return false // We can stop searching once found.
+		}
+		return true
 	})
-	if err != nil {
-		log.Fatalf("Error formatting code: %v", err)
+
+	if !found {
+		log.Printf("warning: type %q not found in file %q\n", typeName, fileName)
+		// We'll still print out the file as-is,
+		// but you may want to handle this differently in your real tool.
 	}
 
-	// Output to stdout
-	os.Stdout.Write(formatted)
+	// Emit the modified file to stdout.
+	var buf bytes.Buffer
+	// Use printer.Fprint (rather than e.g. format.Source)
+	// so we preserve the original layout & spacing as much as possible.
+	if err := printer.Fprint(&buf, fset, fileAST); err != nil {
+		log.Fatalf("failed to print AST: %v", err)
+	}
+
+	fmt.Println(buf.String())
 }
 
-// updateDocComment finds a type by name and optionally a struct field
-// by name, then replaces the doc comment with the given newDoc string.
-func updateDocComment(file *ast.File, typeName, fieldName, newDoc string) error {
-	for _, decl := range file.Decls {
-		genDecl, ok := decl.(*ast.GenDecl)
-		if !ok || genDecl.Tok != token.TYPE {
-			continue
-		}
-		for _, spec := range genDecl.Specs {
-			typeSpec, ok := spec.(*ast.TypeSpec)
-			if !ok {
-				continue
-			}
-			if typeSpec.Name.Name == typeName {
-				// If no field name is specified, just update the type's doc
-				if fieldName == "" {
-					updateCommentGroup(&genDecl.Doc, newDoc)
-					return nil
-				}
+// buildCommentGroup creates a *ast.CommentGroup containing the user-provided doc comment.
+//
+// For simplicity, we attach a single-line "// ... " comment.  If you'd like multi-line
+// comment blocks or multiple comment lines, you could adapt accordingly.
+func buildCommentGroup(pos token.Pos, commentText string) *ast.CommentGroup {
+	// Ensure commentText starts with "// " to conform to typical doc styles.
+	if !strings.HasPrefix(strings.TrimSpace(commentText), "//") {
+		commentText = "// " + commentText
+	}
 
-				// Otherwise, we assume it's a struct type
-				structType, ok := typeSpec.Type.(*ast.StructType)
-				if !ok {
-					return fmt.Errorf("type %q is not a struct, but --field-name was provided", typeName)
-				}
-				// Update the doc comment for the given field
-				for _, field := range structType.Fields.List {
-					for _, fieldIdent := range field.Names {
-						if fieldIdent.Name == fieldName {
-							updateCommentGroup(&field.Doc, newDoc)
-							return nil
-						}
-					}
-				}
-				// If we got here, we didn't find the field
-				return fmt.Errorf("could not find field %q in type %q", fieldName, typeName)
-			}
-		}
+	return &ast.CommentGroup{
+		List: []*ast.Comment{
+			{
+				Slash: pos - 1, // Usually place the slash just before the type spec's position
+				Text:  commentText,
+			},
+		},
 	}
-	return fmt.Errorf("could not find type %q in the file", typeName)
-}
-
-// updateCommentGroup replaces a comment group with the given multi-line text.
-// Each line in newDoc becomes a separate //-style comment line.
-func updateCommentGroup(cg **ast.CommentGroup, newDoc string) {
-	if *cg == nil {
-		*cg = &ast.CommentGroup{}
-	}
-	lines := strings.Split(newDoc, "\n")
-	commentList := make([]*ast.Comment, 0, len(lines))
-	for _, line := range lines {
-		// Trim to avoid weird leading spaces or possible trailing \n
-		line = strings.TrimSpace(line)
-		// Prefix with "// "
-		commentList = append(commentList, &ast.Comment{
-			Text: "// " + line,
-		})
-	}
-	(*cg).List = commentList
 }
