@@ -37,6 +37,8 @@ var (
 var (
 	_ = jsonschema.NewJSONSchemaBuilder[scannersubpkg.TypeForSchemaFunction](TypeSchema)
 	_ = jsonschema.NewJSONSchemaBuilder[*scannersubpkg.PointerTypeForSchemaFunction](TypeSchema2)
+
 	_ = jsonschema.NewInterfaceImpl[scannersubpkg.MarkerInterface](scannersubpkg.Type001{}, scannersubpkg.Type002{}, &scannersubpkg.Type003{}, (*scannersubpkg.Type004)(nil))
+
 	_ = jsonschema.NewEnumType[scannersubpkg.NiceEnumType]()
 )
