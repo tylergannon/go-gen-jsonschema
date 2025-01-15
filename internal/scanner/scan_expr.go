@@ -75,6 +75,12 @@ func (m MarkerFunctionCall) String() string {
 	return fmt.Sprintf("%s %s Args{%s}", m.Function, m.TypeArgument, strings.Join(args, ","))
 }
 
+func (t TypeID) Concrete() TypeID {
+	var newTypeID = t
+	t.Indirection = NormalConcrete
+	return newTypeID
+}
+
 func (t TypeID) String() string {
 	var (
 		ptr     string
