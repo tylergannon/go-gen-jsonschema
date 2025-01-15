@@ -263,18 +263,18 @@ func LoadPackage(pkg *decorator.Package) (ScanResult, error) {
 			}
 			interfaces[iface.TypeID.TypeName] = iface
 			for _, impl := range iface.Impls {
-				concreteTypes[impl] = true
+				concreteTypes[impl.Concrete()] = true
 			}
 		case MarkerFuncNewJSONSchemaMethod:
 			method, err := decl.ParseSchemaMethod()
-			concreteTypes[method.Receiver] = true
+			concreteTypes[method.Receiver.Concrete()] = true
 			if err != nil {
 				return ScanResult{}, err
 			}
 			schemaMethods = append(schemaMethods, method)
 		case MarkerFuncNewJSONSchemaBuilder:
 			method, err := decl.ParseSchemaFunc()
-			concreteTypes[method.Receiver] = true
+			concreteTypes[method.Receiver.Concrete()] = true
 			if err != nil {
 				return ScanResult{}, err
 			}
