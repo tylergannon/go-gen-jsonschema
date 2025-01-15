@@ -1,8 +1,9 @@
-package schema
+package builder
 
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/tylergannon/go-gen-jsonschema/internal/scanner"
 	"strconv"
 	"strings"
 )
@@ -15,6 +16,7 @@ type (
 	JSONSchema interface {
 		json.Marshaler
 		jsonSchemaMarker()
+		TypeID() scanner.TypeID
 	}
 
 	schemaNode interface {
@@ -33,9 +35,10 @@ type (
 	// ObjectNode represents an object schema.
 	// Discriminator: always non-empty, but only used when included in a union (anyOf).
 	ObjectNode struct {
-		Desc          string       `json:"description,omitempty"`
-		Properties    []ObjectProp `json:"properties,omitempty"`
-		Discriminator string       `json:"-"`
+		Desc          string         `json:"description,omitempty"`
+		Properties    []ObjectProp   `json:"properties,omitempty"`
+		Discriminator string         `json:"-"`
+		TypeID_       scanner.TypeID `json:"-"`
 	}
 
 	// PropertyNode is a scalar property (string, int, bool).
@@ -43,21 +46,24 @@ type (
 	//   - `Enum` is an array of allowable values.
 	//   - If both `Const` and `Enum` are set, the field effectively has a single valid value (the `Const`) plus whatever is in `Enum`—though that’s unusual in practice.
 	PropertyNode[T ~int | ~string | ~bool] struct {
-		Desc  string `json:"description,omitempty"`
-		Enum  []T    `json:"enum,omitempty"`
-		Const T      `json:"const,omitempty"`
-		Typ   string `json:"type,omitempty"`
+		Desc    string         `json:"description,omitempty"`
+		Enum    []T            `json:"enum,omitempty"`
+		Const   T              `json:"const,omitempty"`
+		Typ     string         `json:"type,omitempty"`
+		TypeID_ scanner.TypeID `json:"-"`
 	}
 
 	ArrayNode struct {
-		Desc  string     `json:"description,omitempty"`
-		Items JSONSchema `json:"items,omitempty"`
+		Desc    string         `json:"description,omitempty"`
+		Items   JSONSchema     `json:"items,omitempty"`
+		TypeID_ scanner.TypeID `json:"-"`
 	}
 
 	// UnionTypeNode means `{"anyOf": [ <object1-with-discriminator>, ... ]}`.
 	UnionTypeNode struct {
 		DiscriminatorPropName string
 		Options               []ObjectNode
+		TypeID_               scanner.TypeID `json:"-"`
 	}
 )
 
@@ -75,6 +81,8 @@ var (
 //---------------------------------------------------------------------
 // ObjectNode
 //---------------------------------------------------------------------
+
+func (o ObjectNode) TypeID() scanner.TypeID { return o.TypeID_ }
 
 func (o ObjectNode) Type() string {
 	return "object"
@@ -145,6 +153,8 @@ func (o ObjectNode) MarshalJSON() ([]byte, error) {
 //---------------------------------------------------------------------
 // PropertyNode[T]
 //---------------------------------------------------------------------
+
+func (p PropertyNode[T]) TypeID() scanner.TypeID { return p.TypeID_ }
 
 func (p PropertyNode[T]) Type() string {
 	return p.Typ
@@ -220,6 +230,8 @@ func toJSONValue[T ~int | ~string | ~bool](v T) (string, bool) {
 // ArrayNode
 //---------------------------------------------------------------------
 
+func (a ArrayNode) TypeID() scanner.TypeID { return a.TypeID_ }
+
 func (a ArrayNode) Type() string {
 	return "array"
 }
@@ -267,6 +279,8 @@ func (a ArrayNode) MarshalJSON() ([]byte, error) {
 //---------------------------------------------------------------------
 // UnionTypeNode (anyOf)
 //---------------------------------------------------------------------
+
+func (u UnionTypeNode) TypeID() scanner.TypeID { return u.TypeID_ }
 
 func (u UnionTypeNode) jsonSchemaMarker() {}
 
