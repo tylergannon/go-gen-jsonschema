@@ -24,7 +24,8 @@ func LoadDecls(path, fileName string, tok token.Token) []fileSpecs {
 	pkgs, err := scanner.Load(path)
 	Expect(err).NotTo(HaveOccurred())
 	for _, pkg := range pkgs {
-		scanner.LoadPackage(pkg)
+		_, err := scanner.LoadPackage(pkg)
+		Expect(err).NotTo(HaveOccurred())
 		for _, file := range pkg.Syntax {
 			var pos = pkg.Fset.Position(file.Pos())
 			if filepath.Base(pos.Filename) != fileName {
@@ -74,12 +75,27 @@ var _ = Describe("FuncCallParser", Ordered, func() {
 		Expect(_call.Function).To(Equal(scanner.MarkerFuncNewJSONSchemaMethod))
 		Expect(_call.Arguments).To(HaveLen(1))
 		Expect(_call.TypeArgument).To(BeNil())
+
+		schemaMethod, err := _call.ParseSchemaMethod()
+
+		Expect(err).NotTo(HaveOccurred())
+		Expect(schemaMethod.FuncName).To(Equal("Schema"))
+		Expect(schemaMethod.Receiver.Indirection).To(Equal(scanner.NormalConcrete))
+		Expect(schemaMethod.Receiver.DeclaredLocally).To(BeTrue())
+		Expect(schemaMethod.Receiver.TypeName).To(Equal("TypeForSchemaMethod"))
 	})
 	It("Call number 2", func() {
 		_call := scanner.ParseValueExprForMarkerFunctionCall(specs[0].specs[1].(*ast.ValueSpec), specs[0].file, specs[0].pkg)[0]
 		Expect(_call.Function).To(Equal(scanner.MarkerFuncNewJSONSchemaMethod))
 		Expect(_call.Arguments).To(HaveLen(1))
 		Expect(_call.TypeArgument).To(BeNil())
+		schemaMethod, err := _call.ParseSchemaMethod()
+
+		Expect(err).NotTo(HaveOccurred())
+		Expect(schemaMethod.FuncName).To(Equal("Schema"))
+		Expect(schemaMethod.Receiver.Indirection).To(Equal(scanner.Pointer))
+		Expect(schemaMethod.Receiver.DeclaredLocally).To(BeTrue())
+		Expect(schemaMethod.Receiver.TypeName).To(Equal("PointerTypeForSchemaMethod"))
 	})
 	It("Call number 3", func() {
 		_call := scanner.ParseValueExprForMarkerFunctionCall(specs[0].specs[2].(*ast.ValueSpec), specs[0].file, specs[0].pkg)[0]

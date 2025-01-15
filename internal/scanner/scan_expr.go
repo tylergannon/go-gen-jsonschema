@@ -168,14 +168,67 @@ func (m MarkerFunctionCall) ParseTypesFromArgs(foo ...bool) ([]TypeID, error) {
 	return parseFuncCallForTypes(m.Arguments, m.File.Imports, m.Pkg.Fset, p)
 }
 
+func unwrapSchemaMethodReceiver(expr ast.Expr, pkg *packages.Package, importMap importmap.ImportMap) (TypeID, error) {
+	switch t := expr.(type) {
+	case *ast.Ident:
+		return TypeID{DeclaredLocally: true, TypeName: t.Name}, nil
+	case *ast.SelectorExpr:
+		xIdent, ok := t.X.(*ast.Ident)
+		if !ok {
+			pos := pkg.Fset.Position(t.X.Pos())
+			return TypeID{}, fmt.Errorf("expected identifier, got (%T) %s at %s", t.X, t.X, pos.String())
+		}
+		pkgPath, ok := importMap.GetPackageForPrefix(xIdent.Name)
+		if !ok {
+			pos := pkg.Fset.Position(t.X.Pos())
+			return TypeID{}, fmt.Errorf("couldn't find package for %s at %s", xIdent.Name, pos)
+		}
+		return TypeID{PkgPath: pkgPath, TypeName: t.Sel.Name}, nil
+	case *ast.ParenExpr:
+		return unwrapSchemaMethodReceiver(t.X, pkg, importMap)
+	case *ast.StarExpr:
+		typeID, err := unwrapSchemaMethodReceiver(t.X, pkg, importMap)
+		if err != nil {
+			return TypeID{}, err
+		}
+		typeID.Indirection = Pointer
+		return typeID, nil
+	default:
+		pos := pkg.Fset.Position(t.Pos())
+		return TypeID{}, fmt.Errorf("unrecognized schema method receiver expression at %s", pos)
+	}
+}
+
+func (m MarkerFunctionCall) ParseSchemaFunc() (SchemaFunction, error) {
+	if m.TypeArgument == nil {
+		return SchemaFunction{}, fmt.Errorf("expected a type argument to denote schema func at %s", m.Position)
+	}
+	return SchemaFunction{
+		MarkerCall: m,
+		Receiver:   *m.TypeArgument,
+		FuncName:   m.Arguments[0].(*ast.Ident).Name,
+	}, nil
+}
+
 func (m MarkerFunctionCall) ParseSchemaMethod() (SchemaMethod, error) {
 	if len(m.Arguments) != 1 {
-		err := fmt.Errorf("Schema Method expects one argument but got %d, at %s", len(m.Arguments), m.Position)
+		err := fmt.Errorf("schema Method expects one argument but got %d, at %s", len(m.Arguments), m.Position)
 		return SchemaMethod{}, err
 	}
 	switch expr := m.Arguments[0].(type) {
+	// Must be a selector expression, in which X is either an Ident or a ParenExpr with a StarExpr to an Ident.
+	case *ast.SelectorExpr:
+		receiver, err := unwrapSchemaMethodReceiver(expr.X, m.Pkg, m.File.Imports)
+		if err != nil {
+			return SchemaMethod{}, err
+		}
+		return SchemaMethod{
+			Receiver:   receiver,
+			FuncName:   expr.Sel.Name,
+			MarkerCall: m,
+		}, nil
 	default:
-		fmt.Printf("%T %#v", expr, expr)
+		fmt.Printf("ArgBoo --> %T %#v", expr, expr)
 	}
 	return SchemaMethod{}, nil
 }

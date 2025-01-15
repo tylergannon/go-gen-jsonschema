@@ -5,6 +5,7 @@ import (
 	"github.com/tylergannon/go-gen-jsonschema/internal/importmap"
 	"go/ast"
 	"go/token"
+	"go/types"
 	"golang.org/x/tools/go/packages"
 )
 
@@ -17,11 +18,6 @@ type PackageScanner interface {
 // 2) All the const decls (filtered by which ones are marked)
 // 3) All the interface implementations (filtered by which ones are marked)
 // 4)
-type ScanResult struct {
-	Pkg       *packages.Package
-	TypeDecls []TypeDecl
-	Constants []constDecl
-}
 
 // TypeDecl refers to the
 type TypeDecl struct {
@@ -100,12 +96,6 @@ func (t typeInfo) GetPkg() *packages.Package {
 	return t.Pkg
 }
 
-const (
-	normalFunc FuncType = iota
-	concreteReceiver
-	pointerReceiver
-)
-
 type (
 	TypeDecls struct {
 		Pkg  *packages.Package
@@ -135,12 +125,12 @@ type (
 		Specs []*ast.ValueSpec
 	}
 
-	FuncType     int
 	SchemaMethod struct {
-		Receiver TypeID
-		FuncName string
-		MarkerFunctionCall
+		Receiver   TypeID
+		FuncName   string
+		MarkerCall MarkerFunctionCall
 	}
+	SchemaFunction SchemaMethod
 	// ifaceImplementations represents an interface type and its allowed types.
 	// Error in the event that the loader encounters TypeName referenced on any
 	// types declared outside of this package.
@@ -153,9 +143,25 @@ type (
 		Impls  []TypeID
 	}
 
-	constDecl struct {
-		TypeID TypeID
-		Values []*ast.BasicLit
+	enumVal struct {
+		GenDecl *ast.GenDecl
+		Decl    *ast.ValueSpec
+	}
+
+	NamedTypeSpec struct {
+		NamedType *types.Named
+		TypeSpec  *ast.TypeSpec
+		File      *ast.File
+		Pkg       *packages.Package
+	}
+
+	enumSet struct {
+		GenDecl  *ast.GenDecl
+		TypeSpec *ast.TypeSpec
+		Pkg      *packages.Package
+		File     *ast.File
+		TypeID   TypeID
+		Values   []enumVal
 	}
 )
 
@@ -163,7 +169,7 @@ func (s SchemaMethod) markerType() MarkerKind {
 	return MarkerKindSchema
 }
 
-func (c constDecl) markerType() MarkerKind {
+func (c enumSet) markerType() MarkerKind {
 	return MarkerKindEnum
 }
 
@@ -179,7 +185,7 @@ type Marker interface {
 var (
 	_ Marker = ifaceImplementations{}
 	_ Marker = SchemaMethod{}
-	_ Marker = constDecl{}
+	_ Marker = enumSet{}
 )
 
 // MarkerKind enumerates the four categories of markers we have.
@@ -190,17 +196,6 @@ const (
 	MarkerKindInterface MarkerKind = "InterfaceImpl"
 	MarkerKindSchema    MarkerKind = "Schema"
 )
-
-func DecodeFuncCall(callExpr *ast.CallExpr) (Marker, bool) {
-
-	switch expr := callExpr.Fun.(type) {
-	case *ast.SelectorExpr:
-		fmt.Printf("SelectorExpr -- %T, %v, %v\n", expr.X, expr.X, expr.Sel)
-	case *ast.IndexExpr:
-		fmt.Printf("IndexExpr -- %T, %v, %v\n", expr.X, expr.X, expr.Index)
-	}
-	return nil, false
-}
 
 func (v VarDecls) importMap() importmap.ImportMap {
 	return v.File.Imports
@@ -228,21 +223,37 @@ type decls struct {
 	funcDecls  []FuncDecl
 }
 
-func LoadPackage(pkg *packages.Package) error {
+type ScanResult struct {
+	Pkg             *packages.Package
+	Constants       map[string]*enumSet
+	MarkerCalls     []MarkerFunctionCall
+	Interfaces      map[string]ifaceImplementations
+	ConcreteTypes   map[TypeID]bool
+	SchemaMethods   []SchemaMethod
+	SchemaFuncs     []SchemaFunction
+	LocalNamedTypes map[string]NamedTypeSpec
+}
+
+func LoadPackage(pkg *packages.Package) (ScanResult, error) {
 	// Needs to discover:
 	// 1. Enum (Const) Values
 	// 2. Supported Interfaces
 	// 3. Types to render
 	var (
-		_decls      = loadPkgDecls(pkg)
-		markerCalls = _decls.varDecls.MarkerFuncs()
-		enums       = map[string]constDecl{}
-		interfaces  []ifaceImplementations
+		_decls          = loadPkgDecls(pkg)
+		markerCalls     = _decls.varDecls.MarkerFuncs()
+		enums           = map[string]*enumSet{}
+		interfaces      = map[string]ifaceImplementations{}
+		concreteTypes   = map[TypeID]bool{}
+		schemaMethods   []SchemaMethod
+		schemaFuncs     []SchemaFunction
+		localNamedTypes = map[string]NamedTypeSpec{}
 	)
 	for _, decl := range markerCalls {
 		switch decl.Function {
 		case MarkerFuncNewEnumType:
-			enums[decl.TypeArgument.TypeName] = constDecl{
+			enums[decl.TypeArgument.TypeName] = &enumSet{
+				Pkg:    decl.Pkg,
 				TypeID: *decl.TypeArgument,
 			}
 		case MarkerFuncNewInterfaceImpl:
@@ -253,15 +264,80 @@ func LoadPackage(pkg *packages.Package) error {
 				}
 			)
 			if iface.Impls, err = decl.ParseTypesFromArgs(); err != nil {
-				return err
+				return ScanResult{}, err
 			}
-			interfaces = append(interfaces, iface)
+			interfaces[iface.TypeID.TypeName] = iface
+			for _, impl := range iface.Impls {
+				concreteTypes[impl] = true
+			}
 		case MarkerFuncNewJSONSchemaMethod:
+			method, err := decl.ParseSchemaMethod()
+			concreteTypes[method.Receiver] = true
+			if err != nil {
+				return ScanResult{}, err
+			}
+			schemaMethods = append(schemaMethods, method)
+		case MarkerFuncNewJSONSchemaBuilder:
+			method, err := decl.ParseSchemaFunc()
+			concreteTypes[method.Receiver] = true
+			if err != nil {
+				return ScanResult{}, err
+			}
+			schemaFuncs = append(schemaFuncs, method)
+
 		default:
-			return fmt.Errorf("unsupported marker function: %s", decl.Function)
+			return ScanResult{}, fmt.Errorf("unsupported marker function: %s", decl.Function)
 		}
 	}
-	return nil
+	for _, _typeDecl := range _decls.typeDecls {
+		for _, spec := range _typeDecl.Specs {
+			var (
+				typeID = TypeID{DeclaredLocally: true, TypeName: spec.Name.Name}
+			)
+			if iface, ok := interfaces[typeID.TypeName]; ok {
+				iface.Pkg = pkg
+				iface.File = _typeDecl.File
+				interfaces[typeID.TypeName] = iface
+			} else if enum, ok := enums[typeID.TypeName]; ok {
+				enum.GenDecl = _typeDecl.Decl
+				enum.TypeSpec = spec
+				enum.File = _typeDecl.File
+			} else {
+				var t = NamedTypeSpec{
+					TypeSpec: spec,
+					File:     _typeDecl.File,
+					Pkg:      _typeDecl.Pkg,
+				}
+				if t.NamedType, ok = findNamedType(_typeDecl.Pkg, spec.Name.Name); !ok {
+					pos := _typeDecl.Pkg.Fset.Position(spec.Pos())
+					return ScanResult{}, fmt.Errorf("unable to load named type for %s declared at %s", spec.Name.Name, pos)
+				}
+				localNamedTypes[typeID.TypeName] = t
+			}
+		}
+	}
+	// Find all locally defined enum values
+	for _, _constDecl := range _decls.constDecls {
+		for _, spec := range _constDecl.Specs {
+			if spec.Type == nil {
+				continue
+			}
+			if ident, ok := spec.Type.(*ast.Ident); ok && enums[ident.Name] != nil {
+				enums[ident.Name].Values = append(enums[ident.Name].Values, enumVal{GenDecl: _constDecl.Decl, Decl: spec})
+			}
+		}
+
+	}
+	return ScanResult{
+		Pkg:             pkg,
+		Constants:       enums,
+		MarkerCalls:     markerCalls,
+		Interfaces:      interfaces,
+		ConcreteTypes:   concreteTypes,
+		SchemaMethods:   schemaMethods,
+		SchemaFuncs:     schemaFuncs,
+		LocalNamedTypes: localNamedTypes,
+	}, nil
 }
 
 func loadPkgDecls(pkg *packages.Package) *decls {
@@ -318,4 +394,29 @@ func loadPkgDecls(pkg *packages.Package) *decls {
 		}
 	}
 	return &_decls
+}
+
+func findNamedType(pkg *packages.Package, typeName string) (*types.Named, bool) {
+	// Get the package's scope
+	scope := pkg.Types.Scope()
+
+	// Lookup the type by name
+	obj := scope.Lookup(typeName)
+	if obj == nil {
+		return nil, false // Type not found
+	}
+
+	// Ensure the object is a TypeName
+	typeNameObj, ok := obj.(*types.TypeName)
+	if !ok {
+		return nil, false // Not a named type
+	}
+
+	// Assert the type to *types.Named
+	named, ok := typeNameObj.Type().(*types.Named)
+	if !ok {
+		return nil, false // Not a named type
+	}
+
+	return named, true
 }
