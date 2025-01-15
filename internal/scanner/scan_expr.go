@@ -3,10 +3,10 @@ package scanner
 import (
 	"errors"
 	"fmt"
+	"github.com/dave/dst"
+	"github.com/dave/dst/decorator"
 	"github.com/tylergannon/go-gen-jsonschema/internal/importmap"
-	"go/ast"
 	"go/token"
-	"golang.org/x/tools/go/packages"
 	"strings"
 )
 
@@ -56,13 +56,13 @@ type (
 	// MarkerFunctionCall denotes a call to one of the marker functions, found
 	// in the scanned source code.
 	MarkerFunctionCall struct {
-		Pkg      *packages.Package
+		Pkg      *decorator.Package
 		Function MarkerFunction
 		// Our function calls need either zero or one type argument.
 		// If present, denote the type argument here.
 		TypeArgument *TypeID
-		Arguments    []ast.Expr
-		File         *ast.File
+		Arguments    []dst.Expr
+		File         *dst.File
 		Position     token.Position
 	}
 )
@@ -89,10 +89,10 @@ func (t TypeID) String() string {
 	return fmt.Sprintf("%s%s.%s", ptr, pkgPath, t.TypeName)
 }
 
-func ParseValueExprForMarkerFunctionCall(e *ast.ValueSpec, file *ast.File, pkg *packages.Package) []MarkerFunctionCall {
+func ParseValueExprForMarkerFunctionCall(e *dst.ValueSpec, file *dst.File, pkg *decorator.Package) []MarkerFunctionCall {
 	var results []MarkerFunctionCall
 	for _, arg := range e.Values {
-		ce, ok := arg.(*ast.CallExpr)
+		ce, ok := arg.(*dst.CallExpr)
 		if !ok {
 			continue
 		}
@@ -113,34 +113,38 @@ func ParseValueExprForMarkerFunctionCall(e *ast.ValueSpec, file *ast.File, pkg *
 			Arguments:    ce.Args,
 			TypeArgument: parseTypeArguments(ce.Fun, file.Imports),
 			File:         file,
-			Position:     pkg.Fset.Position(e.Pos()),
+			Position:     nodePosition(pkg, e),
 		})
 	}
 	return results
 }
 
-func parseFuncFromExpr(e ast.Expr, importMap importmap.ImportMap) TypeID {
+func parseFuncFromExpr(e dst.Expr, importMap importmap.ImportMap) TypeID {
 	var (
 		ok     bool
 		typeID TypeID
 	)
 	switch t := e.(type) {
-	case *ast.SelectorExpr:
-		var xIdent *ast.Ident
-		xIdent, ok = t.X.(*ast.Ident)
+	case *dst.SelectorExpr:
+		var xIdent *dst.Ident
+		xIdent, ok = t.X.(*dst.Ident)
 		if !ok {
 			return typeID
 		}
 		typeID.PkgPath, _ = importMap.GetPackageForPrefix(xIdent.Name)
 		typeID.TypeName = t.Sel.Name
 		return typeID
-	case *ast.IndexExpr:
+	case *dst.IndexExpr:
 		return parseFuncFromExpr(t.X, importMap)
-	case *ast.Ident:
-		typeID.DeclaredLocally = true
+	case *dst.Ident:
+		if t.Path == "" {
+			typeID.DeclaredLocally = true
+		} else {
+			typeID.PkgPath = t.Path
+		}
 		typeID.TypeName = t.Name
 		return typeID
-	case *ast.StarExpr:
+	case *dst.StarExpr:
 		typeID = parseFuncFromExpr(t.X, importMap)
 		typeID.Indirection = Pointer
 		return typeID
@@ -148,9 +152,9 @@ func parseFuncFromExpr(e ast.Expr, importMap importmap.ImportMap) TypeID {
 	return TypeID{}
 }
 
-func parseTypeArguments(e ast.Expr, importMap importmap.ImportMap) *TypeID {
-	var expr ast.Expr
-	if idxExpr, ok := e.(*ast.IndexExpr); ok {
+func parseTypeArguments(e dst.Expr, importMap importmap.ImportMap) *TypeID {
+	var expr dst.Expr
+	if idxExpr, ok := e.(*dst.IndexExpr); ok {
 		expr = idxExpr.Index
 	} else {
 		return nil
@@ -165,28 +169,29 @@ func (m MarkerFunctionCall) ParseTypesFromArgs(foo ...bool) ([]TypeID, error) {
 	if len(foo) > 0 {
 		p = foo[0]
 	}
-	return parseFuncCallForTypes(m.Arguments, m.File.Imports, m.Pkg.Fset, p)
+	return parseFuncCallForTypes(m.Arguments, m.File.Imports, m.Pkg, p)
 }
 
-func unwrapSchemaMethodReceiver(expr ast.Expr, pkg *packages.Package, importMap importmap.ImportMap) (TypeID, error) {
+func unwrapSchemaMethodReceiver(expr dst.Expr, pkg *decorator.Package, importMap importmap.ImportMap) (TypeID, error) {
 	switch t := expr.(type) {
-	case *ast.Ident:
+	case *dst.Ident:
 		return TypeID{DeclaredLocally: true, TypeName: t.Name}, nil
-	case *ast.SelectorExpr:
-		xIdent, ok := t.X.(*ast.Ident)
+	case *dst.SelectorExpr:
+		xIdent, ok := t.X.(*dst.Ident)
 		if !ok {
-			pos := pkg.Fset.Position(t.X.Pos())
+
+			pos := pkg.Fset.Position(pkg.Decorator.Map.Ast.Nodes[t.X].Pos())
 			return TypeID{}, fmt.Errorf("expected identifier, got (%T) %s at %s", t.X, t.X, pos.String())
 		}
 		pkgPath, ok := importMap.GetPackageForPrefix(xIdent.Name)
 		if !ok {
-			pos := pkg.Fset.Position(t.X.Pos())
+			pos := pkg.Fset.Position(pkg.Decorator.Map.Ast.Nodes[t.X].Pos())
 			return TypeID{}, fmt.Errorf("couldn't find package for %s at %s", xIdent.Name, pos)
 		}
 		return TypeID{PkgPath: pkgPath, TypeName: t.Sel.Name}, nil
-	case *ast.ParenExpr:
+	case *dst.ParenExpr:
 		return unwrapSchemaMethodReceiver(t.X, pkg, importMap)
-	case *ast.StarExpr:
+	case *dst.StarExpr:
 		typeID, err := unwrapSchemaMethodReceiver(t.X, pkg, importMap)
 		if err != nil {
 			return TypeID{}, err
@@ -194,9 +199,17 @@ func unwrapSchemaMethodReceiver(expr ast.Expr, pkg *packages.Package, importMap 
 		typeID.Indirection = Pointer
 		return typeID, nil
 	default:
-		pos := pkg.Fset.Position(t.Pos())
+		pos := nodePosition(pkg, t)
 		return TypeID{}, fmt.Errorf("unrecognized schema method receiver expression at %s", pos)
 	}
+}
+
+func nodePos(pkg *decorator.Package, node dst.Node) token.Pos {
+	return pkg.Decorator.Map.Ast.Nodes[node].Pos()
+}
+
+func nodePosition(pkg *decorator.Package, node dst.Node) token.Position {
+	return pkg.Fset.Position(nodePos(pkg, node))
 }
 
 func (m MarkerFunctionCall) ParseSchemaFunc() (SchemaFunction, error) {
@@ -206,7 +219,7 @@ func (m MarkerFunctionCall) ParseSchemaFunc() (SchemaFunction, error) {
 	return SchemaFunction{
 		MarkerCall: m,
 		Receiver:   *m.TypeArgument,
-		FuncName:   m.Arguments[0].(*ast.Ident).Name,
+		FuncName:   m.Arguments[0].(*dst.Ident).Name,
 	}, nil
 }
 
@@ -217,7 +230,7 @@ func (m MarkerFunctionCall) ParseSchemaMethod() (SchemaMethod, error) {
 	}
 	switch expr := m.Arguments[0].(type) {
 	// Must be a selector expression, in which X is either an Ident or a ParenExpr with a StarExpr to an Ident.
-	case *ast.SelectorExpr:
+	case *dst.SelectorExpr:
 		receiver, err := unwrapSchemaMethodReceiver(expr.X, m.Pkg, m.File.Imports)
 		if err != nil {
 			return SchemaMethod{}, err
@@ -233,13 +246,13 @@ func (m MarkerFunctionCall) ParseSchemaMethod() (SchemaMethod, error) {
 	return SchemaMethod{}, nil
 }
 
-func parseFuncCallForTypes(args []ast.Expr, importMap importmap.ImportMap, fset *token.FileSet, p bool) ([]TypeID, error) {
+func parseFuncCallForTypes(args []dst.Expr, importMap importmap.ImportMap, pkg *decorator.Package, p bool) ([]TypeID, error) {
 	var results []TypeID
 
 	for _, arg := range args {
-		pos := fset.Position(arg.Pos())
+
+		pos := pkg.Fset.Position(pkg.Decorator.Map.Ast.Nodes[arg].Pos())
 		if typeID, err := parseLitForType(arg, importMap); err != nil {
-			pos = fset.Position(arg.Pos())
 			return nil, fmt.Errorf("unsupported arg at %s: %w", pos, err)
 		} else {
 			results = append(results, typeID)
@@ -249,15 +262,15 @@ func parseFuncCallForTypes(args []ast.Expr, importMap importmap.ImportMap, fset 
 	return results, nil
 }
 
-func parseLitForType(expr ast.Expr, importMap importmap.ImportMap) (TypeID, error) {
+func parseLitForType(expr dst.Expr, importMap importmap.ImportMap) (TypeID, error) {
 	switch t := expr.(type) {
-	case *ast.CompositeLit:
+	case *dst.CompositeLit:
 		return parseFuncFromExpr(t.Type, importMap), nil
-	case *ast.UnaryExpr:
+	case *dst.UnaryExpr:
 		if t.Op != token.AND {
 			return TypeID{}, errors.New("unary expression op must be &")
 		}
-		lit, ok := t.X.(*ast.CompositeLit)
+		lit, ok := t.X.(*dst.CompositeLit)
 		if !ok {
 			return TypeID{}, fmt.Errorf("unary expression type expects composite literal but was %T", t.X)
 		}
@@ -265,8 +278,8 @@ func parseLitForType(expr ast.Expr, importMap importmap.ImportMap) (TypeID, erro
 		answer.Indirection = Pointer
 
 		return answer, nil
-	case *ast.CallExpr:
-		p, ok := t.Fun.(*ast.ParenExpr)
+	case *dst.CallExpr:
+		p, ok := t.Fun.(*dst.ParenExpr)
 		if !ok {
 			return TypeID{}, fmt.Errorf("CallExpr fun must be ParenExpr, got %T", t.Fun)
 		}

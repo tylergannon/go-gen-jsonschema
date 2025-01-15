@@ -1,6 +1,9 @@
 package scanner
 
-import "golang.org/x/tools/go/packages"
+import (
+	"github.com/dave/dst/decorator"
+	"golang.org/x/tools/go/packages"
+)
 
 const BuildTag = "jsonschema"
 
@@ -19,6 +22,6 @@ var DefaultPackageCfg = &packages.Config{
 	BuildFlags: []string{"-tags=" + BuildTag},
 }
 
-func Load(path string) ([]*packages.Package, error) {
-	return packages.Load(DefaultPackageCfg, path)
+func Load(path string) ([]*decorator.Package, error) {
+	return decorator.Load(DefaultPackageCfg, path)
 }

@@ -2,8 +2,9 @@ package scanner
 
 import (
 	"fmt"
+	"github.com/dave/dst"
+	"github.com/dave/dst/decorator"
 	"github.com/tylergannon/go-gen-jsonschema/internal/importmap"
-	"go/ast"
 	"go/token"
 	"go/types"
 	"golang.org/x/tools/go/packages"
@@ -15,9 +16,9 @@ type PackageScanner interface {
 
 // TypeDecl refers to the
 type TypeDecl struct {
-	Node  *ast.DeclStmt
+	Node  *dst.DeclStmt
 	Pkg   *packages.Package
-	File  *ast.File
+	File  *dst.File
 	Pos   token.Pos
 	Decls []TypeInfo
 }
@@ -49,9 +50,9 @@ type DefinitionTypeInfo struct {
 var _ TypeInfo = InterfaceTypeInfo{}
 
 type typeInfo struct {
-	Identity *ast.Ident
-	TypeInfo ast.Expr
-	File     *ast.File
+	Identity *dst.Ident
+	TypeInfo dst.Expr
+	File     *dst.File
 	Pkg      *packages.Package
 	Decl     *TypeDecl
 }
@@ -59,8 +60,8 @@ type typeInfo struct {
 type TypeInfo interface {
 	GetTypeName() string
 	GetPkgPath() string
-	GetTypeInfo() ast.Expr
-	GetFile() *ast.File
+	GetTypeInfo() dst.Expr
+	GetFile() *dst.File
 	GetPkg() *packages.Package
 	GetDecl() *TypeDecl
 }
@@ -78,11 +79,11 @@ func (t typeInfo) GetPkgPath() string {
 	return t.Pkg.PkgPath
 }
 
-func (t typeInfo) GetTypeInfo() ast.Expr {
+func (t typeInfo) GetTypeInfo() dst.Expr {
 	return t.TypeInfo
 }
 
-func (t typeInfo) GetFile() *ast.File {
+func (t typeInfo) GetFile() *dst.File {
 	return t.File
 }
 
@@ -92,31 +93,31 @@ func (t typeInfo) GetPkg() *packages.Package {
 
 type (
 	TypeDecls struct {
-		Pkg  *packages.Package
-		File *ast.File
+		Pkg  *decorator.Package
+		File *dst.File
 
-		Decl  *ast.GenDecl
-		Specs []*ast.TypeSpec
+		Decl  *dst.GenDecl
+		Specs []*dst.TypeSpec
 	}
 
 	VarDecls struct {
-		Pkg   *packages.Package
-		File  *ast.File
-		Decl  *ast.GenDecl
-		Specs []*ast.ValueSpec
+		Pkg   *decorator.Package
+		File  *dst.File
+		Decl  *dst.GenDecl
+		Specs []*dst.ValueSpec
 	}
 
 	FuncDecl struct {
-		Pkg  *packages.Package
-		File *ast.File
-		Decl *ast.FuncDecl
+		Pkg  *decorator.Package
+		File *dst.File
+		Decl *dst.FuncDecl
 	}
 
 	ConstDecls struct {
-		Pkg   *packages.Package
-		File  *ast.File
-		Decl  *ast.GenDecl
-		Specs []*ast.ValueSpec
+		Pkg   *decorator.Package
+		File  *dst.File
+		Decl  *dst.GenDecl
+		Specs []*dst.ValueSpec
 	}
 
 	SchemaMethod struct {
@@ -131,29 +132,29 @@ type (
 	// That is to say, in order for an interface implementations to work,
 	// all supported references to it must be in the local package.
 	ifaceImplementations struct {
-		Pkg    *packages.Package
-		File   *ast.File
+		Pkg    *decorator.Package
+		File   *dst.File
 		TypeID TypeID
 		Impls  []TypeID
 	}
 
 	enumVal struct {
-		GenDecl *ast.GenDecl
-		Decl    *ast.ValueSpec
+		GenDecl *dst.GenDecl
+		Decl    *dst.ValueSpec
 	}
 
 	NamedTypeSpec struct {
 		NamedType *types.Named
-		TypeSpec  *ast.TypeSpec
-		File      *ast.File
-		Pkg       *packages.Package
+		TypeSpec  *dst.TypeSpec
+		File      *dst.File
+		Pkg       *decorator.Package
 	}
 
 	enumSet struct {
-		GenDecl  *ast.GenDecl
-		TypeSpec *ast.TypeSpec
-		Pkg      *packages.Package
-		File     *ast.File
+		GenDecl  *dst.GenDecl
+		TypeSpec *dst.TypeSpec
+		Pkg      *decorator.Package
+		File     *dst.File
 		TypeID   TypeID
 		Values   []enumVal
 	}
@@ -218,7 +219,7 @@ type decls struct {
 }
 
 type ScanResult struct {
-	Pkg             *packages.Package
+	Pkg             *decorator.Package
 	Constants       map[string]*enumSet
 	MarkerCalls     []MarkerFunctionCall
 	Interfaces      map[string]ifaceImplementations
@@ -228,7 +229,7 @@ type ScanResult struct {
 	LocalNamedTypes map[string]NamedTypeSpec
 }
 
-func LoadPackage(pkg *packages.Package) (ScanResult, error) {
+func LoadPackage(pkg *decorator.Package) (ScanResult, error) {
 	// Needs to discover:
 	// 1. Enum (Const) Values
 	// 2. Supported Interfaces
@@ -303,7 +304,7 @@ func LoadPackage(pkg *packages.Package) (ScanResult, error) {
 					Pkg:      _typeDecl.Pkg,
 				}
 				if t.NamedType, ok = findNamedType(_typeDecl.Pkg, spec.Name.Name); !ok {
-					pos := _typeDecl.Pkg.Fset.Position(spec.Pos())
+					pos := nodePosition(_typeDecl.Pkg, spec)
 					return ScanResult{}, fmt.Errorf("unable to load named type for %s declared at %s", spec.Name.Name, pos)
 				}
 				localNamedTypes[typeID.TypeName] = t
@@ -316,7 +317,7 @@ func LoadPackage(pkg *packages.Package) (ScanResult, error) {
 			if spec.Type == nil {
 				continue
 			}
-			if ident, ok := spec.Type.(*ast.Ident); ok && enums[ident.Name] != nil {
+			if ident, ok := spec.Type.(*dst.Ident); ok && enums[ident.Name] != nil {
 				enums[ident.Name].Values = append(enums[ident.Name].Values, enumVal{GenDecl: _constDecl.Decl, Decl: spec})
 			}
 		}
@@ -334,25 +335,25 @@ func LoadPackage(pkg *packages.Package) (ScanResult, error) {
 	}, nil
 }
 
-func loadPkgDecls(pkg *packages.Package) *decls {
+func loadPkgDecls(pkg *decorator.Package) *decls {
 	var (
 		_decls decls
 	)
 	for _, file := range pkg.Syntax {
 		for _, decl := range file.Decls {
 			switch _decl := decl.(type) {
-			case *ast.FuncDecl:
+			case *dst.FuncDecl:
 				_decls.funcDecls = append(_decls.funcDecls, FuncDecl{
 					Pkg:  pkg,
 					File: file,
 					Decl: _decl,
 				})
-			case *ast.GenDecl:
+			case *dst.GenDecl:
 				switch _decl.Tok {
 				case token.TYPE:
-					var specs []*ast.TypeSpec
+					var specs []*dst.TypeSpec
 					for _, spec := range _decl.Specs {
-						specs = append(specs, spec.(*ast.TypeSpec))
+						specs = append(specs, spec.(*dst.TypeSpec))
 					}
 					_decls.typeDecls = append(_decls.typeDecls, TypeDecls{
 						Pkg:   pkg,
@@ -361,9 +362,9 @@ func loadPkgDecls(pkg *packages.Package) *decls {
 						Specs: specs,
 					})
 				case token.CONST:
-					var values []*ast.ValueSpec
+					var values []*dst.ValueSpec
 					for _, spec := range _decl.Specs {
-						values = append(values, spec.(*ast.ValueSpec))
+						values = append(values, spec.(*dst.ValueSpec))
 					}
 					_decls.constDecls = append(_decls.constDecls, ConstDecls{
 						Pkg:   pkg,
@@ -372,9 +373,9 @@ func loadPkgDecls(pkg *packages.Package) *decls {
 						Specs: values,
 					})
 				case token.VAR:
-					var specs []*ast.ValueSpec
+					var specs []*dst.ValueSpec
 					for _, spec := range _decl.Specs {
-						specs = append(specs, spec.(*ast.ValueSpec))
+						specs = append(specs, spec.(*dst.ValueSpec))
 					}
 					_decls.varDecls = append(_decls.varDecls, VarDecls{
 						Pkg:   pkg,
@@ -390,7 +391,7 @@ func loadPkgDecls(pkg *packages.Package) *decls {
 	return &_decls
 }
 
-func findNamedType(pkg *packages.Package, typeName string) (*types.Named, bool) {
+func findNamedType(pkg *decorator.Package, typeName string) (*types.Named, bool) {
 	// Get the package's scope
 	scope := pkg.Types.Scope()
 
