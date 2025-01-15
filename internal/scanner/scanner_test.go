@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 )
 
+const subpkg = "github.com/tylergannon/go-gen-jsonschema/internal/scanner/testfixtures/typescanner/scannersubpkg"
+
 type fileSpecs struct {
 	importMap importmap.ImportMap
 	specs     []ast.Spec
@@ -53,7 +55,7 @@ var _ = Describe("FuncCallParser", Ordered, func() {
 	BeforeAll(func() {
 		specs = LoadDecls("./testfixtures/typescanner", "calls.go", token.VAR)
 		Expect(specs).To(HaveLen(1))
-		Expect(specs[0].specs).To(HaveLen(6))
+		Expect(specs[0].specs).To(HaveLen(10))
 	})
 
 	It("Figures them all out", func() {
@@ -61,7 +63,7 @@ var _ = Describe("FuncCallParser", Ordered, func() {
 			_calls := scanner.ParseValueExprForMarkerFunctionCall(spec.(*ast.ValueSpec), specs[0].importMap)
 			calls = append(calls, _calls...)
 		}
-		Expect(calls).To(HaveLen(6))
+		Expect(calls).To(HaveLen(10))
 	})
 	It("Call number 1", func() {
 		_call := scanner.ParseValueExprForMarkerFunctionCall(specs[0].specs[0].(*ast.ValueSpec), specs[0].importMap)[0]
@@ -92,6 +94,7 @@ var _ = Describe("FuncCallParser", Ordered, func() {
 		Expect(_call.TypeArgument.Indirection).To(Equal(scanner.Pointer))
 		Expect(_call.TypeArgument.DeclaredLocally).To(BeTrue())
 	})
+
 	It("Call number 5", func() {
 		_call := scanner.ParseValueExprForMarkerFunctionCall(specs[0].specs[4].(*ast.ValueSpec), specs[0].importMap)[0]
 		Expect(_call.Function).To(Equal(scanner.MarkerFuncNewInterfaceImpl))
@@ -109,6 +112,50 @@ var _ = Describe("FuncCallParser", Ordered, func() {
 		Expect(_call.TypeArgument.TypeName).To(Equal("NiceEnumType"))
 		Expect(_call.TypeArgument.Indirection).To(Equal(scanner.NormalConcrete))
 		Expect(_call.TypeArgument.DeclaredLocally).To(BeTrue())
+	})
+
+	It("Call number 7", func() {
+		_call := scanner.ParseValueExprForMarkerFunctionCall(specs[0].specs[6].(*ast.ValueSpec), specs[0].importMap)[0]
+		Expect(_call.Function).To(Equal(scanner.MarkerFuncNewJSONSchemaBuilder))
+		Expect(_call.Arguments).To(HaveLen(1))
+		Expect(_call.TypeArgument).NotTo(BeNil())
+		Expect(_call.TypeArgument.TypeName).To(Equal("TypeForSchemaFunction"))
+		Expect(_call.TypeArgument.Indirection).To(Equal(scanner.NormalConcrete))
+		Expect(_call.TypeArgument.DeclaredLocally).To(BeFalse())
+		Expect(_call.TypeArgument.PkgPath).To(Equal(subpkg))
+	})
+
+	It("Call number 8", func() {
+		_call := scanner.ParseValueExprForMarkerFunctionCall(specs[0].specs[7].(*ast.ValueSpec), specs[0].importMap)[0]
+		Expect(_call.Function).To(Equal(scanner.MarkerFuncNewJSONSchemaBuilder))
+		Expect(_call.Arguments).To(HaveLen(1))
+		Expect(_call.TypeArgument).NotTo(BeNil())
+		Expect(_call.TypeArgument.TypeName).To(Equal("PointerTypeForSchemaFunction"))
+		Expect(_call.TypeArgument.Indirection).To(Equal(scanner.Pointer))
+		Expect(_call.TypeArgument.DeclaredLocally).To(BeFalse())
+		Expect(_call.TypeArgument.PkgPath).To(Equal(subpkg))
+	})
+
+	It("Call number 9", func() {
+		_call := scanner.ParseValueExprForMarkerFunctionCall(specs[0].specs[8].(*ast.ValueSpec), specs[0].importMap)[0]
+		Expect(_call.Function).To(Equal(scanner.MarkerFuncNewInterfaceImpl))
+		Expect(_call.Arguments).To(HaveLen(4))
+		Expect(_call.TypeArgument).NotTo(BeNil())
+		Expect(_call.TypeArgument.TypeName).To(Equal("MarkerInterface"))
+		Expect(_call.TypeArgument.Indirection).To(Equal(scanner.NormalConcrete))
+		Expect(_call.TypeArgument.DeclaredLocally).To(BeFalse())
+		Expect(_call.TypeArgument.PkgPath).To(Equal(subpkg))
+	})
+
+	It("Call number 10", func() {
+		_call := scanner.ParseValueExprForMarkerFunctionCall(specs[0].specs[9].(*ast.ValueSpec), specs[0].importMap)[0]
+		Expect(_call.Function).To(Equal(scanner.MarkerFuncNewEnumType))
+		Expect(_call.Arguments).To(HaveLen(0))
+		Expect(_call.TypeArgument).NotTo(BeNil())
+		Expect(_call.TypeArgument.TypeName).To(Equal("NiceEnumType"))
+		Expect(_call.TypeArgument.Indirection).To(Equal(scanner.NormalConcrete))
+		Expect(_call.TypeArgument.DeclaredLocally).To(BeFalse())
+		Expect(_call.TypeArgument.PkgPath).To(Equal(subpkg))
 	})
 })
 

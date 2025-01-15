@@ -6,6 +6,7 @@ package typescanner
 import (
 	"encoding/json"
 	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+	"github.com/tylergannon/go-gen-jsonschema/internal/scanner/testfixtures/typescanner/scannersubpkg"
 )
 
 func (TypeForSchemaMethod) Schema() (json.RawMessage, error) {
@@ -31,4 +32,11 @@ var (
 	_ = jsonschema.NewJSONSchemaBuilder[*PointerTypeForSchemaFunction](TypeSchema2)
 	_ = jsonschema.NewInterfaceImpl[MarkerInterface](Type001{}, Type002{}, &Type003{}, (*Type004)(nil))
 	_ = jsonschema.NewEnumType[NiceEnumType]()
+)
+
+var (
+	_ = jsonschema.NewJSONSchemaBuilder[scannersubpkg.TypeForSchemaFunction](TypeSchema)
+	_ = jsonschema.NewJSONSchemaBuilder[*scannersubpkg.PointerTypeForSchemaFunction](TypeSchema2)
+	_ = jsonschema.NewInterfaceImpl[scannersubpkg.MarkerInterface](scannersubpkg.Type001{}, scannersubpkg.Type002{}, &scannersubpkg.Type003{}, (*scannersubpkg.Type004)(nil))
+	_ = jsonschema.NewEnumType[scannersubpkg.NiceEnumType]()
 )
