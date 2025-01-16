@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-func buildComments(decs *dst.NodeDecs) string {
+func BuildComments(decs *dst.NodeDecs) string {
 	return formatComments(appendDecorations(clipCommentsString(decs.Start), clipCommentsString(decs.End)))
 }
 

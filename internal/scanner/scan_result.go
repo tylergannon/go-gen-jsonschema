@@ -169,9 +169,9 @@ type (
 
 func (n NamedTypeSpec) GetDescription() string {
 	if len(n.TypeSpec.Decorations().Start.All()) > 0 {
-		return buildComments(n.TypeSpec.Decorations())
+		return BuildComments(n.TypeSpec.Decorations())
 	} else if len(n.GenDecl.Specs) == 1 && len(n.GenDecl.Decs.Start.All()) > 0 {
-		return buildComments(n.GenDecl.Decorations())
+		return BuildComments(n.GenDecl.Decorations())
 	}
 	return ""
 }
@@ -318,7 +318,7 @@ func LoadPackage(pkg *decorator.Package) (ScanResult, error) {
 				iface.Pkg = pkg
 				iface.File = _typeDecl.File
 				interfaces[typeID.TypeName] = iface
-			} else if enum, ok := enums[typeID]; ok {
+			} else if enum, ok := enums[typeID.Concrete().Localize(pkg.PkgPath)]; ok {
 				enum.GenDecl = _typeDecl.Decl
 				enum.TypeSpec = spec
 				enum.File = _typeDecl.File
