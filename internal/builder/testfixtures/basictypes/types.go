@@ -7,6 +7,13 @@ import (
 )
 
 // TypeInItsOwnDecl is an integer type that is the only item in its GenDecl
+//
+// ```go
+// var foo = 1
+// ```
+//
+// this should be squashed into a single line.
+// Along with this.
 type TypeInItsOwnDecl int
 
 type (
