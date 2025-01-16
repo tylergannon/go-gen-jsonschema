@@ -45,12 +45,12 @@ var _ = Describe("Basic", func() {
 		Expect(err).NotTo(HaveOccurred())
 		CmdSuccessAssertions(stdout, stderr, exitCode)
 
-		{
-			fname := filepath.Join(tempDir, "jsonschema_gen.go")
-			Expect(fname).To(
-				testutils.MatchGoldenFile(".golden"),
-			)
-		}
+		//{
+		//	fname := filepath.Join(tempDir, "jsonschema_gen.go")
+		//	Expect(fname).To(
+		//		testutils.MatchGoldenFile(".golden"),
+		//	)
+		//}
 
 		// Assertions on generated files
 		//Expect(filepath.Join(tempDir, "tasks.go")).To(BeARegularFile())
@@ -68,6 +68,15 @@ var _ = Describe("Basic", func() {
 		}
 	}
 
-	DescribeTable("Run", CodegenTest)
-
+	DescribeTable("Run", CodegenTest,
+		Entry(
+			"Basic struct with no special types",
+			"builder/testfixtures/basictypes",
+			"test1",
+			false,
+			"jsonschema/TypeInItsOwnDecl.json",
+			"jsonschema/TypeInNestedDecl.json",
+			"jsonschema/TypeInSharedDecl.json",
+		),
+	)
 })

@@ -144,12 +144,17 @@ type (
 		Decl    *dst.ValueSpec
 	}
 
+	AnyTypeSpec struct {
+		Spec dst.Expr
+		File *dst.File
+		Pkg  *decorator.Package
+	}
+
 	NamedTypeSpec struct {
 		NamedType *types.Named
 		GenDecl   *dst.GenDecl
 		TypeSpec  *dst.TypeSpec
-		File      *dst.File
-		Pkg       *decorator.Package
+		AnyTypeSpec
 	}
 
 	EnumSet struct {
@@ -161,6 +166,15 @@ type (
 		Values   []enumVal
 	}
 )
+
+func (n NamedTypeSpec) GetDescription() string {
+	if len(n.TypeSpec.Decorations().Start.All()) > 0 {
+		return buildComments(n.TypeSpec.Decorations())
+	} else if len(n.GenDecl.Specs) == 1 && len(n.GenDecl.Decs.Start.All()) > 0 {
+		return buildComments(n.GenDecl.Decorations())
+	}
+	return ""
+}
 
 func (s SchemaMethod) markerType() MarkerKind {
 	return MarkerKindSchema
@@ -304,8 +318,11 @@ func LoadPackage(pkg *decorator.Package) (ScanResult, error) {
 				var t = NamedTypeSpec{
 					GenDecl:  _typeDecl.Decl,
 					TypeSpec: spec,
-					File:     _typeDecl.File,
-					Pkg:      _typeDecl.Pkg,
+					AnyTypeSpec: AnyTypeSpec{
+						File: _typeDecl.File,
+						Pkg:  _typeDecl.Pkg,
+						Spec: spec.Type,
+					},
 				}
 				if t.NamedType, ok = findNamedType(_typeDecl.Pkg, spec.Name.Name); !ok {
 					pos := NodePosition(_typeDecl.Pkg, spec)
@@ -397,6 +414,10 @@ func loadPkgDecls(pkg *decorator.Package) *decls {
 
 func (n NamedTypeSpec) Position() token.Position {
 	return NodePosition(n.Pkg, n.TypeSpec)
+}
+
+func (a AnyTypeSpec) Position() token.Position {
+	return NodePosition(a.Pkg, a.Spec)
 }
 
 func findNamedType(pkg *decorator.Package, typeName string) (*types.Named, bool) {
