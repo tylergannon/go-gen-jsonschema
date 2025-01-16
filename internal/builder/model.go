@@ -22,6 +22,7 @@ type (
 	schemaNode interface {
 		Type() string
 		Description() string
+		SetDescription(desc string)
 		JSONSchema
 	}
 
@@ -99,6 +100,10 @@ func (o ObjectNode) Description() string {
 
 func (o ObjectNode) jsonSchemaMarker() {}
 
+func (o ObjectNode) SetDescription(s string) {
+	o.Desc = s
+}
+
 // MarshalJSON for an ObjectNode does NOT embed the Discriminator property
 // unless it's included in a UnionTypeNode.
 func (o ObjectNode) MarshalJSON() ([]byte, error) {
@@ -171,6 +176,10 @@ func (p PropertyNode[T]) Description() string {
 
 func (p PropertyNode[T]) jsonSchemaMarker() {}
 
+func (p PropertyNode[T]) SetDescription(s string) {
+	p.Desc = s
+}
+
 // Sample order: type -> description -> const -> enum
 func (p PropertyNode[T]) MarshalJSON() ([]byte, error) {
 	var sb strings.Builder
@@ -236,10 +245,12 @@ func toJSONValue[T ~int | ~string | ~bool | float64 | float32](v *T) (string, bo
 	}
 }
 
-//---------------------------------------------------------------------
+// ---------------------------------------------------------------------
 // ArrayNode
-//---------------------------------------------------------------------
-
+// ---------------------------------------------------------------------
+func (a ArrayNode) SetDescription(s string) {
+	a.Desc = s
+}
 func (a ArrayNode) TypeID() scanner.TypeID { return a.TypeID_ }
 
 func (a ArrayNode) Type() string {

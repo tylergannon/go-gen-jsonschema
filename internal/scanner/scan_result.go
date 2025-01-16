@@ -176,6 +176,14 @@ func (n NamedTypeSpec) GetDescription() string {
 	return ""
 }
 
+func (a AnyTypeSpec) Derive(spec dst.Expr) AnyTypeSpec {
+	return AnyTypeSpec{
+		Spec: spec,
+		File: a.File,
+		Pkg:  a.Pkg,
+	}
+}
+
 func (s SchemaMethod) markerType() MarkerKind {
 	return MarkerKindSchema
 }

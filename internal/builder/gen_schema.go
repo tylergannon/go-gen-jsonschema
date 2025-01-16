@@ -14,7 +14,7 @@ import (
 	"strings"
 )
 
-const maxNestingDepth = 5
+const maxNestingDepth = 100 // This is not the JSON Schema nesting depth but recursion depth...
 const defaultSubdir = "jsonschema"
 
 type seenTypes []scanner.TypeID
@@ -199,12 +199,46 @@ func (s SchemaBuilder) renderSchema(typeID scanner.TypeID, anyTypeSpec scanner.A
 		case "float32", "float64":
 			return PropertyNode[float64]{Desc: description, Typ: "number", TypeID_: typeID}, nil
 		default:
-			// Handle any other types or unexpected cases
-			fmt.Println(node.Name, node.Path)
+			// Means it is another named type.
+			// Find it.
+			newType := scanner.TypeID{TypeName: node.Name, PkgPath: node.Path}
+			if newType.PkgPath == "" {
+				newType.PkgPath = typeID.PkgPath
+			}
+			if err := s.mapType(newType, seen.See(typeID)); err != nil {
+				return nil, err
+			}
+			if schema, ok := s.Schemas[newType]; !ok {
+				panic("mapType apparently didn't map the type! " + newType.String())
+			} else {
+				if description == "" {
+					return schema, nil
+				}
+				if _schemaNode, ok := schema.(schemaNode); !ok {
+					return schema, nil
+				} else {
+					_schemaNode.SetDescription(description)
+					return schema, nil
+				}
+			}
 		}
 		return nil, errors.New("Please finish me")
+	case *dst.StarExpr:
+		return s.renderSchema(typeID, anyTypeSpec.Derive(node.X), description, seen)
+	case *dst.ArrayType:
+		var (
+			err    error
+			schema = ArrayNode{
+				Desc:    description,
+				TypeID_: typeID,
+			}
+		)
+		if schema.Items, err = s.renderSchema(typeID, anyTypeSpec.Derive(node.Elt), description, seen); err != nil {
+			return nil, err
+		}
+		return schema, nil
 	default:
-		fmt.Printf("Node mapper found unrecognied node type %s at %s\n", anyTypeSpec.Spec, anyTypeSpec.Position())
+		fmt.Printf("Node mapper found unrecognized node type %s (%T) at %s\n", anyTypeSpec.Spec, anyTypeSpec.Spec, anyTypeSpec.Position())
 		return nil, errors.New("unhandled node type")
 	}
 
