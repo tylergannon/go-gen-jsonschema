@@ -1,0 +1,22 @@
+{{/* gotype:github.com/tylergannon/go-gen-jsonschema/gen-jsonschema.configArg*/ -}}
+//go:build {{.BuildTag}}
+// +build {{.BuildTag}}
+
+package {{.PkgName}}
+
+import (
+    "encoding/json"
+    jsonschema "github.com/tylergannon/go-gen-jsonschema"
+)
+{{ range .Methods }}
+func ({{.TypeName}}) {{.MethodName}}() (json.RawMessage, error) {
+    panic("not implemented")
+}
+{{ end }}
+
+
+var (
+	{{ range .Methods -}}
+    _ = jsonschema.NewJSONSchemaMethod({{.TypeName}}.{{.MethodName}})
+	{{ end -}}
+)

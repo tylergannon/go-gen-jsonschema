@@ -119,7 +119,7 @@ func ParseValueExprForMarkerFunctionCall(e *dst.ValueSpec, file *dst.File, pkg *
 			Arguments:    ce.Args,
 			TypeArgument: parseTypeArguments(ce.Fun, file.Imports),
 			File:         file,
-			Position:     nodePosition(pkg, e),
+			Position:     NodePosition(pkg, e),
 		})
 	}
 	return results
@@ -205,7 +205,7 @@ func unwrapSchemaMethodReceiver(expr dst.Expr, pkg *decorator.Package, importMap
 		typeID.Indirection = Pointer
 		return typeID, nil
 	default:
-		pos := nodePosition(pkg, t)
+		pos := NodePosition(pkg, t)
 		return TypeID{}, fmt.Errorf("unrecognized schema method receiver expression at %s", pos)
 	}
 }
@@ -214,7 +214,7 @@ func nodePos(pkg *decorator.Package, node dst.Node) token.Pos {
 	return pkg.Decorator.Map.Ast.Nodes[node].Pos()
 }
 
-func nodePosition(pkg *decorator.Package, node dst.Node) token.Position {
+func NodePosition(pkg *decorator.Package, node dst.Node) token.Position {
 	return pkg.Fset.Position(nodePos(pkg, node))
 }
 

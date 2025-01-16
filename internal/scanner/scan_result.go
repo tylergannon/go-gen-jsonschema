@@ -126,16 +126,17 @@ type (
 		MarkerCall MarkerFunctionCall
 	}
 	SchemaFunction SchemaMethod
-	// ifaceImplementations represents an interface type and its allowed types.
+	// IfaceImplementations represents an interface type and its allowed types.
 	// Error in the event that the loader encounters TypeName referenced on any
 	// types declared outside of this package.
 	// That is to say, in order for an interface implementations to work,
 	// all supported references to it must be in the local package.
-	ifaceImplementations struct {
-		Pkg    *decorator.Package
-		File   *dst.File
-		TypeID TypeID
-		Impls  []TypeID
+	IfaceImplementations struct {
+		Pkg      *decorator.Package
+		File     *dst.File
+		TypeID   TypeID
+		Impls    []TypeID
+		Position token.Position
 	}
 
 	enumVal struct {
@@ -145,12 +146,13 @@ type (
 
 	NamedTypeSpec struct {
 		NamedType *types.Named
+		GenDecl   *dst.GenDecl
 		TypeSpec  *dst.TypeSpec
 		File      *dst.File
 		Pkg       *decorator.Package
 	}
 
-	enumSet struct {
+	EnumSet struct {
 		GenDecl  *dst.GenDecl
 		TypeSpec *dst.TypeSpec
 		Pkg      *decorator.Package
@@ -164,11 +166,11 @@ func (s SchemaMethod) markerType() MarkerKind {
 	return MarkerKindSchema
 }
 
-func (c enumSet) markerType() MarkerKind {
+func (c EnumSet) markerType() MarkerKind {
 	return MarkerKindEnum
 }
 
-func (i ifaceImplementations) markerType() MarkerKind {
+func (i IfaceImplementations) markerType() MarkerKind {
 	return MarkerKindInterface
 }
 
@@ -178,9 +180,9 @@ type Marker interface {
 }
 
 var (
-	_ Marker = ifaceImplementations{}
+	_ Marker = IfaceImplementations{}
 	_ Marker = SchemaMethod{}
-	_ Marker = enumSet{}
+	_ Marker = EnumSet{}
 )
 
 // MarkerKind enumerates the four categories of markers we have.
@@ -220,9 +222,9 @@ type decls struct {
 
 type ScanResult struct {
 	Pkg             *decorator.Package
-	Constants       map[string]*enumSet
+	Constants       map[string]*EnumSet
 	MarkerCalls     []MarkerFunctionCall
-	Interfaces      map[string]ifaceImplementations
+	Interfaces      map[string]IfaceImplementations
 	ConcreteTypes   map[TypeID]bool
 	SchemaMethods   []SchemaMethod
 	SchemaFuncs     []SchemaFunction
@@ -237,8 +239,8 @@ func LoadPackage(pkg *decorator.Package) (ScanResult, error) {
 	var (
 		_decls          = loadPkgDecls(pkg)
 		markerCalls     = _decls.varDecls.MarkerFuncs()
-		enums           = map[string]*enumSet{}
-		interfaces      = map[string]ifaceImplementations{}
+		enums           = map[string]*EnumSet{}
+		interfaces      = map[string]IfaceImplementations{}
 		concreteTypes   = map[TypeID]bool{}
 		schemaMethods   []SchemaMethod
 		schemaFuncs     []SchemaFunction
@@ -247,15 +249,16 @@ func LoadPackage(pkg *decorator.Package) (ScanResult, error) {
 	for _, decl := range markerCalls {
 		switch decl.Function {
 		case MarkerFuncNewEnumType:
-			enums[decl.TypeArgument.TypeName] = &enumSet{
+			enums[decl.TypeArgument.TypeName] = &EnumSet{
 				Pkg:    decl.Pkg,
 				TypeID: *decl.TypeArgument,
 			}
 		case MarkerFuncNewInterfaceImpl:
 			var (
 				err   error
-				iface = ifaceImplementations{
-					TypeID: *decl.TypeArgument,
+				iface = IfaceImplementations{
+					TypeID:   *decl.TypeArgument,
+					Position: decl.Position,
 				}
 			)
 			if iface.Impls, err = decl.ParseTypesFromArgs(); err != nil {
@@ -299,12 +302,13 @@ func LoadPackage(pkg *decorator.Package) (ScanResult, error) {
 				enum.File = _typeDecl.File
 			} else {
 				var t = NamedTypeSpec{
+					GenDecl:  _typeDecl.Decl,
 					TypeSpec: spec,
 					File:     _typeDecl.File,
 					Pkg:      _typeDecl.Pkg,
 				}
 				if t.NamedType, ok = findNamedType(_typeDecl.Pkg, spec.Name.Name); !ok {
-					pos := nodePosition(_typeDecl.Pkg, spec)
+					pos := NodePosition(_typeDecl.Pkg, spec)
 					return ScanResult{}, fmt.Errorf("unable to load named type for %s declared at %s", spec.Name.Name, pos)
 				}
 				localNamedTypes[typeID.TypeName] = t
@@ -389,6 +393,10 @@ func loadPkgDecls(pkg *decorator.Package) *decls {
 		}
 	}
 	return &_decls
+}
+
+func (n NamedTypeSpec) Position() token.Position {
+	return NodePosition(n.Pkg, n.TypeSpec)
 }
 
 func findNamedType(pkg *decorator.Package, typeName string) (*types.Named, bool) {
