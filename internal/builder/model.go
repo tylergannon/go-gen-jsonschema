@@ -241,7 +241,7 @@ func toJSONValue[T ~int | ~string | ~bool | float64 | float32](v *T) (string, bo
 	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
 		return fmt.Sprintf("%d", u), true
 	default:
-		panic(fmt.Sprintf("unknown type %T", any(u)))
+		panic(fmt.Sprintf("unknown type to make into JSON value %T %#v", u, u))
 	}
 }
 

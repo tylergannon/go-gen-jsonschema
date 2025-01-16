@@ -1,0 +1,13 @@
+{
+  "type": "array",
+  "description": "SliceOfPointerToRemoteEnum is a slice of pointers to the remote enum type",
+  "items": {
+    "type": "string",
+    "enum": [
+      "val1",
+      "val2",
+      "val3",
+      "val4"
+    ]
+  }
+}
