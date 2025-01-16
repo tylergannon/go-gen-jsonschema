@@ -244,7 +244,7 @@ type decls struct {
 
 type ScanResult struct {
 	Pkg             *decorator.Package
-	Constants       map[string]*EnumSet
+	Constants       map[TypeID]*EnumSet
 	MarkerCalls     []MarkerFunctionCall
 	Interfaces      map[string]IfaceImplementations
 	ConcreteTypes   map[TypeID]bool
@@ -261,7 +261,7 @@ func LoadPackage(pkg *decorator.Package) (ScanResult, error) {
 	var (
 		_decls          = loadPkgDecls(pkg)
 		markerCalls     = _decls.varDecls.MarkerFuncs()
-		enums           = map[string]*EnumSet{}
+		enums           = map[TypeID]*EnumSet{}
 		interfaces      = map[string]IfaceImplementations{}
 		concreteTypes   = map[TypeID]bool{}
 		schemaMethods   []SchemaMethod
@@ -271,9 +271,9 @@ func LoadPackage(pkg *decorator.Package) (ScanResult, error) {
 	for _, decl := range markerCalls {
 		switch decl.Function {
 		case MarkerFuncNewEnumType:
-			enums[decl.TypeArgument.TypeName] = &EnumSet{
+			enums[decl.TypeArgument.Localize(pkg.PkgPath)] = &EnumSet{
 				Pkg:    decl.Pkg,
-				TypeID: *decl.TypeArgument,
+				TypeID: decl.TypeArgument.Localize(pkg.PkgPath),
 			}
 		case MarkerFuncNewInterfaceImpl:
 			var (
@@ -318,7 +318,7 @@ func LoadPackage(pkg *decorator.Package) (ScanResult, error) {
 				iface.Pkg = pkg
 				iface.File = _typeDecl.File
 				interfaces[typeID.TypeName] = iface
-			} else if enum, ok := enums[typeID.TypeName]; ok {
+			} else if enum, ok := enums[typeID]; ok {
 				enum.GenDecl = _typeDecl.Decl
 				enum.TypeSpec = spec
 				enum.File = _typeDecl.File
@@ -346,9 +346,18 @@ func LoadPackage(pkg *decorator.Package) (ScanResult, error) {
 			if spec.Type == nil {
 				continue
 			}
-			if ident, ok := spec.Type.(*dst.Ident); ok && enums[ident.Name] != nil {
-				enums[ident.Name].Values = append(enums[ident.Name].Values, enumVal{GenDecl: _constDecl.Decl, Decl: spec})
+			if ident, ok := spec.Type.(*dst.Ident); ok {
+				typeID := TypeID{TypeName: ident.Name}
+				if ident.Path == "" {
+					typeID.PkgPath = pkg.PkgPath
+				} else {
+					typeID.PkgPath = ident.Path
+				}
+				enums[typeID].Values = append(enums[typeID].Values, enumVal{GenDecl: _constDecl.Decl, Decl: spec})
 			}
+			//if ident, ok := spec.Type.(*dst.Ident); ok && enums[ident.Name] != nil {
+			//	enums[ident.Name].Values = append(enums[ident.Name].Values, enumVal{GenDecl: _constDecl.Decl, Decl: spec})
+			//}
 		}
 
 	}

@@ -28,15 +28,15 @@ func (s seenTypes) See(t scanner.TypeID) seenTypes {
 }
 
 func New(pkg *decorator.Package) (SchemaBuilder, error) {
-	var builder = SchemaBuilder{
-		LocalPkg: pkg,
-		Packages: map[string]scanner.ScanResult{},
-		Schemas:  map[scanner.TypeID]JSONSchema{},
-		Subdir:   defaultSubdir,
-	}
 	data, err := scanner.LoadPackage(pkg)
 	if err != nil {
-		return builder, err
+		return SchemaBuilder{}, err
+	}
+	var builder = SchemaBuilder{
+		LocalPkg: pkg,
+		Packages: map[string]scanner.ScanResult{pkg.PkgPath: data},
+		schemas:  map[scanner.TypeID]JSONSchema{},
+		Subdir:   defaultSubdir,
 	}
 	for _, m := range data.SchemaMethods {
 		if err = builder.mapType(m.Receiver, seenTypes{}); err != nil {
@@ -55,9 +55,18 @@ func New(pkg *decorator.Package) (SchemaBuilder, error) {
 type SchemaBuilder struct {
 	LocalPkg *decorator.Package
 	Packages map[string]scanner.ScanResult
-	Schemas  map[scanner.TypeID]JSONSchema
+	schemas  map[scanner.TypeID]JSONSchema
 	Subdir   string
 	Pretty   bool
+}
+
+func (s SchemaBuilder) GetSchema(t scanner.TypeID) (schema JSONSchema, ok bool) {
+	schema, ok = s.schemas[t.Concrete().Localize(s.LocalPkg.PkgPath)]
+	return
+}
+
+func (s SchemaBuilder) AddSchema(t scanner.TypeID, schema JSONSchema) {
+	s.schemas[t.Concrete().Localize(s.LocalPkg.PkgPath)] = schema
 }
 
 // loadScanResult gets the scan result associated with the given scanner.TypeID
@@ -104,7 +113,10 @@ func (s SchemaBuilder) mapInterface(iface scanner.IfaceImplementations, seen see
 		if err := s.mapType(opt, seen); err != nil {
 			return err
 		}
-		optSchema := s.Schemas[opt]
+		optSchema, ok := s.GetSchema(opt)
+		if !ok {
+			return fmt.Errorf("type %s is not a known schema", opt)
+		}
 		obj, ok := optSchema.(ObjectNode)
 		if !ok {
 			pos, err := s.find(obj.TypeID_)
@@ -116,7 +128,7 @@ func (s SchemaBuilder) mapInterface(iface scanner.IfaceImplementations, seen see
 		}
 		node.Options = append(node.Options, obj)
 	}
-	s.Schemas[iface.TypeID] = node
+	s.AddSchema(iface.TypeID, node)
 	return nil
 }
 
@@ -133,7 +145,7 @@ func (s SchemaBuilder) mapEnumType(enum *scanner.EnumSet, seen seenTypes) error 
 	for _, opt := range enum.Values {
 		propType.Enum = append(propType.Enum, strings.Trim(opt.Decl.Values[0].(*dst.BasicLit).Value, "\""))
 	}
-	s.Schemas[enum.TypeID] = propType
+	s.AddSchema(enum.TypeID, propType)
 	return nil
 }
 
@@ -147,7 +159,7 @@ func (s SchemaBuilder) mapType(t scanner.TypeID, seen seenTypes) error {
 		if err = s.mapInterface(iface, seen); err != nil {
 			return err
 		}
-	} else if enum, ok := scanResult.Constants[t.TypeName]; ok {
+	} else if enum, ok := scanResult.Constants[t.Concrete().Localize(scanResult.Pkg.PkgPath)]; ok {
 		if err = s.mapEnumType(enum, seen); err != nil {
 			return err
 		}
@@ -181,7 +193,7 @@ func (s SchemaBuilder) mapNamedType(t scanner.TypeID, seen seenTypes) error {
 	if schema, err := s.renderSchema(t, typeSpec.AnyTypeSpec, typeSpec.GetDescription(), seen); err != nil {
 		return err
 	} else {
-		s.Schemas[t.Concrete()] = schema
+		s.AddSchema(t, schema)
 	}
 	return nil
 }
@@ -204,11 +216,13 @@ func (s SchemaBuilder) renderSchema(typeID scanner.TypeID, anyTypeSpec scanner.A
 			newType := scanner.TypeID{TypeName: node.Name, PkgPath: node.Path}
 			if newType.PkgPath == "" {
 				newType.PkgPath = typeID.PkgPath
+				newType.DeclaredLocally = typeID.DeclaredLocally
 			}
+			newType = newType.Localize(s.LocalPkg.PkgPath)
 			if err := s.mapType(newType, seen.See(typeID)); err != nil {
 				return nil, err
 			}
-			if schema, ok := s.Schemas[newType]; !ok {
+			if schema, ok := s.GetSchema(newType); !ok {
 				panic("mapType apparently didn't map the type! " + newType.String())
 			} else {
 				if description == "" {
@@ -260,8 +274,8 @@ func (s SchemaBuilder) writeSchema(t scanner.TypeID, targetDir string) (err erro
 	defer file.Close()
 	encoder := json.NewEncoder(file)
 	var schema json.Marshaler
-	if schema, ok = s.Schemas[t.Concrete()]; !ok {
-		return fmt.Errorf("unknown type %s", t.TypeName)
+	if schema, ok = s.GetSchema(t); !ok {
+		return fmt.Errorf("unknown type %s", t)
 	}
 	if s.Pretty {
 		encoder.SetIndent("", "  ")
@@ -281,7 +295,7 @@ func (s SchemaBuilder) RenderSchemas() (err error) {
 		return fmt.Errorf("could not create subdir %s: %w", targetDir, err)
 	}
 	for _, method := range localScan.SchemaMethods {
-		if err = s.writeSchema(method.Receiver, targetDir); err != nil {
+		if err = s.writeSchema(method.Receiver.Localize(s.LocalPkg.PkgPath), targetDir); err != nil {
 			return err
 		}
 	}
