@@ -12,6 +12,7 @@ import (
 )
 
 const maxNestingDepth = 5
+const defaultSubdir = "jsonschema"
 
 type seenTypes []scanner.TypeID
 
@@ -28,6 +29,7 @@ func New(pkg *decorator.Package) (SchemaBuilder, error) {
 		LocalPkg: pkg,
 		Packages: map[string]scanner.ScanResult{},
 		Schemas:  map[scanner.TypeID]JSONSchema{},
+		Subdir:   defaultSubdir,
 	}
 	data, err := scanner.LoadPackage(pkg)
 	if err != nil {
@@ -51,6 +53,8 @@ type SchemaBuilder struct {
 	LocalPkg *decorator.Package
 	Packages map[string]scanner.ScanResult
 	Schemas  map[scanner.TypeID]JSONSchema
+	Subdir   string
+	Pretty   bool
 }
 
 // loadScanResult gets the scan result associated with the given scanner.TypeID
@@ -173,9 +177,12 @@ func (s SchemaBuilder) mapNamedType(t scanner.TypeID, seen seenTypes) error {
 	}
 	switch node := typeSpec.TypeSpec.Type.(type) {
 	default:
-
-		fmt.Printf("Unrecognized node %T %#v type %s at %s\n", node, node, t.TypeName, typeSpec.Position())
+		fmt.Printf("Node mapper found unrecognied node type %T %s at %s\n", node, t.TypeName, typeSpec.Position())
 		return errors.New("unhandled node type")
 	}
 	//return nil
+}
+
+func (s SchemaBuilder) RenderSchemas() error {
+	panic("not yet implemented")
 }

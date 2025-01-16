@@ -18,8 +18,12 @@ import (
 var configTmplContents string
 
 func main() {
-	// Check for --help without a subcommand
-	if len(os.Args) < 2 || (os.Args[1][0] == '-' && os.Args[1] == "--help") {
+
+	if len(os.Args) == 1 {
+		handleGen(1)
+		return
+	}
+	if os.Args[1] == "-h" || os.Args[1] == "--help" {
 		printGlobalHelp()
 		return
 	}
@@ -30,13 +34,11 @@ func main() {
 	// Switch on the subcommand
 	switch subcommand {
 	case "gen":
-		handleGen()
+		handleGen(2)
 	case "new":
 		handleNew()
 	default:
-		fmt.Printf("Unknown subcommand: %s\n\n", subcommand)
-		printGlobalHelp()
-		os.Exit(1)
+		handleGen(1)
 	}
 }
 
@@ -50,10 +52,24 @@ func printGlobalHelp() {
 	fmt.Println("\nRun '[subcommand] --help' for more details.")
 }
 
-func handleGen() {
+func handleGen(firstArg int) {
 	// Define the --pretty flag
-	genCmd := flag.NewFlagSet("gen", flag.ExitOnError)
-	pretty := genCmd.Bool("pretty", false, "Enable pretty output")
+	var (
+		genCmd = flag.NewFlagSet("gen", flag.ExitOnError)
+		pretty = genCmd.Bool("pretty", false, "Enable pretty output")
+		target = genCmd.String("target", "", "Path to target package (default to local wd)")
+		err    error
+	)
+
+	if *target == "" {
+		if *target, err = os.Getwd(); err != nil {
+			log.Fatal(err)
+		}
+	} else if st, err := os.Stat(*target); err != nil {
+		log.Fatal(err)
+	} else if !st.IsDir() {
+		log.Fatalf("%s is not a directory", *target)
+	}
 
 	// Check if --help was requested
 	if len(os.Args) > 2 && os.Args[2] == "--help" {
@@ -62,15 +78,13 @@ func handleGen() {
 		genCmd.PrintDefaults()
 		return
 	}
+	genCmd.Parse(os.Args[firstArg:])
 
-	// Parse flags for the "gen" subcommand
-	genCmd.Parse(os.Args[2:])
-
-	// Use the flag value
-	if *pretty {
-		fmt.Println("Pretty output is enabled.")
-	} else {
-		fmt.Println("Pretty output is disabled.")
+	if err = builder.Run(builder.BuilderArgs{
+		TargetDir: *target,
+		Pretty:    *pretty,
+	}); err != nil {
+		log.Fatal(err)
 	}
 }
 
