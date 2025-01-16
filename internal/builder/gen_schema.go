@@ -142,8 +142,48 @@ func (s SchemaBuilder) mapEnumType(enum *scanner.EnumSet, seen seenTypes) error 
 		TypeID_: enum.TypeID,
 		Typ:     "string",
 	}
+	var (
+		sb            strings.Builder
+		countComments int
+	)
+
 	for _, opt := range enum.Values {
-		propType.Enum = append(propType.Enum, strings.Trim(opt.Decl.Values[0].(*dst.BasicLit).Value, "\""))
+		var (
+			newValue = strings.Trim(opt.Decl.Values[0].(*dst.BasicLit).Value, "\"")
+			comment  string
+		)
+		if comment = scanner.BuildComments(opt.Decl.Decorations()); len(comment) == 0 {
+			if len(opt.GenDecl.Specs) == 1 {
+				comment = scanner.BuildComments(opt.GenDecl.Decorations())
+			}
+		}
+		if len(comment) > 0 {
+			if countComments > 0 {
+				sb.WriteString("\n\n")
+			}
+			countComments++
+			sb.WriteString(newValue)
+			sb.WriteString(": \n")
+			sb.WriteString(comment)
+		}
+		propType.Enum = append(propType.Enum, newValue)
+	}
+	if enum.TypeSpec == nil {
+		panic("oh heck")
+	}
+
+	var comment = scanner.BuildComments(enum.TypeSpec.Decorations())
+	if len(comment) == 0 && len(enum.GenDecl.Specs) == 1 {
+		comment = scanner.BuildComments(enum.GenDecl.Decorations())
+	}
+	if len(comment) > 0 {
+		if sb.Len() > 0 {
+			propType.Desc = comment + "\n\n" + sb.String()
+		} else {
+			propType.Desc = comment
+		}
+	} else if sb.Len() > 0 {
+		propType.Desc = sb.String()
 	}
 	s.AddSchema(enum.TypeID, propType)
 	return nil
