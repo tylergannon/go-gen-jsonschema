@@ -54,8 +54,22 @@ func printGlobalHelp() {
 
 func handleGen(firstArg int) {
 	// Define the --pretty flag
-	genCmd := flag.NewFlagSet("gen", flag.ExitOnError)
-	pretty := genCmd.Bool("pretty", false, "Enable pretty output")
+	var (
+		genCmd = flag.NewFlagSet("gen", flag.ExitOnError)
+		pretty = genCmd.Bool("pretty", false, "Enable pretty output")
+		target = genCmd.String("target", "", "Path to target package (default to local wd)")
+		err    error
+	)
+
+	if *target == "" {
+		if *target, err = os.Getwd(); err != nil {
+			log.Fatal(err)
+		}
+	} else if st, err := os.Stat(*target); err != nil {
+		log.Fatal(err)
+	} else if !st.IsDir() {
+		log.Fatalf("%s is not a directory", *target)
+	}
 
 	// Check if --help was requested
 	if len(os.Args) > 2 && os.Args[2] == "--help" {
@@ -66,11 +80,11 @@ func handleGen(firstArg int) {
 	}
 	genCmd.Parse(os.Args[firstArg:])
 
-	// Use the flag value
-	if *pretty {
-		fmt.Println("Pretty output is enabled.")
-	} else {
-		fmt.Println("Pretty output is disabled.")
+	if err = builder.Run(builder.BuilderArgs{
+		TargetDir: *target,
+		Pretty:    *pretty,
+	}); err != nil {
+		log.Fatal(err)
 	}
 }
 
