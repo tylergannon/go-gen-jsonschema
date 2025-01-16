@@ -18,8 +18,12 @@ import (
 var configTmplContents string
 
 func main() {
-	// Check for --help without a subcommand
-	if len(os.Args) < 2 || (os.Args[1][0] == '-' && os.Args[1] == "--help") {
+
+	if len(os.Args) == 1 {
+		handleGen(1)
+		return
+	}
+	if os.Args[1] == "-h" || os.Args[1] == "--help" {
 		printGlobalHelp()
 		return
 	}
@@ -30,13 +34,11 @@ func main() {
 	// Switch on the subcommand
 	switch subcommand {
 	case "gen":
-		handleGen()
+		handleGen(2)
 	case "new":
 		handleNew()
 	default:
-		fmt.Printf("Unknown subcommand: %s\n\n", subcommand)
-		printGlobalHelp()
-		os.Exit(1)
+		handleGen(1)
 	}
 }
 
@@ -50,7 +52,7 @@ func printGlobalHelp() {
 	fmt.Println("\nRun '[subcommand] --help' for more details.")
 }
 
-func handleGen() {
+func handleGen(firstArg int) {
 	// Define the --pretty flag
 	genCmd := flag.NewFlagSet("gen", flag.ExitOnError)
 	pretty := genCmd.Bool("pretty", false, "Enable pretty output")
@@ -62,9 +64,7 @@ func handleGen() {
 		genCmd.PrintDefaults()
 		return
 	}
-
-	// Parse flags for the "gen" subcommand
-	genCmd.Parse(os.Args[2:])
+	genCmd.Parse(os.Args[firstArg:])
 
 	// Use the flag value
 	if *pretty {
