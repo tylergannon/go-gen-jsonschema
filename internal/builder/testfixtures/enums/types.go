@@ -26,7 +26,7 @@ const EnumVal4 EnumType = "val4"
 type SliceOfEnumType []EnumType
 
 // SliceOfRemoteEnumType is a slice of the remote enum type
-type SliceOfRemoteEnumType []enumsremote.EnumType
+type SliceOfRemoteEnumType []enumsremote.RemoteEnumType
 
 // SliceOfPointerToRemoteEnum is a slice of pointers to the remote enum type
-type SliceOfPointerToRemoteEnum []*enumsremote.EnumType
+type SliceOfPointerToRemoteEnum []*enumsremote.RemoteEnumType

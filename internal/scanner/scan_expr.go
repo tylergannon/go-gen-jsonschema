@@ -81,6 +81,18 @@ func (t TypeID) Concrete() TypeID {
 	return newTypeID
 }
 
+func (t TypeID) Localize(localPkgPath string) TypeID {
+	if t.DeclaredLocally {
+		return TypeID{
+			PkgPath:         localPkgPath,
+			TypeName:        t.TypeName,
+			DeclaredLocally: false,
+			Indirection:     t.Indirection,
+		}
+	}
+	return t
+}
+
 func (t TypeID) String() string {
 	var (
 		ptr     string
@@ -91,6 +103,9 @@ func (t TypeID) String() string {
 	}
 	if pkgPath == "" {
 		pkgPath = "<local>"
+		if !t.DeclaredLocally {
+			panic("mismatch declaredLocally / pkgPath")
+		}
 	}
 	return fmt.Sprintf("%s%s.%s", ptr, pkgPath, t.TypeName)
 }

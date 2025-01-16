@@ -6,7 +6,6 @@ package basictypes
 import (
 	"encoding/json"
 	jsonschema "github.com/tylergannon/go-gen-jsonschema"
-	"github.com/tylergannon/go-gen-jsonschema/internal/builder/testfixtures/enums/enumsremote"
 )
 
 func (EnumType) Schema() (json.RawMessage, error) {
@@ -31,5 +30,4 @@ var (
 	_ = jsonschema.NewJSONSchemaMethod(SliceOfRemoteEnumType.Schema)
 	_ = jsonschema.NewJSONSchemaMethod(SliceOfPointerToRemoteEnum.Schema)
 	_ = jsonschema.NewEnumType[EnumType]()
-	_ = jsonschema.NewEnumType[enumsremote.EnumType]()
 )

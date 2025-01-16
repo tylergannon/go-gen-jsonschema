@@ -1,0 +1,13 @@
+{
+  "type": "array",
+  "description": "SliceOfEnumType is a slice of the enums.",
+  "items": {
+    "type": "string",
+    "enum": [
+      "val1",
+      "val2",
+      "val3",
+      "val4"
+    ]
+  }
+}
