@@ -45,12 +45,17 @@ type (
 	//   - `Const` is an exact value that the field must match.
 	//   - `Enum` is an array of allowable values.
 	//   - If both `Const` and `Enum` are set, the field effectively has a single valid value (the `Const`) plus whatever is in `Enum`—though that’s unusual in practice.
-	PropertyNode[T ~int | ~string | ~bool] struct {
+	PropertyNode[T ~int | ~string | ~bool | float32 | float64] struct {
 		Desc    string         `json:"description,omitempty"`
 		Enum    []T            `json:"enum,omitempty"`
-		Const   T              `json:"const,omitempty"`
+		Const   *T             `json:"const,omitempty"`
 		Typ     string         `json:"type,omitempty"`
 		TypeID_ scanner.TypeID `json:"-"`
+	}
+
+	ConstNode[T ~int | ~string | ~bool | float32 | float64] struct {
+		PropertyNode[T]
+		Const T `json:"const"`
 	}
 
 	ArrayNode struct {
@@ -200,7 +205,7 @@ func (p PropertyNode[T]) MarshalJSON() ([]byte, error) {
 			if i > 0 {
 				sb.WriteByte(',')
 			}
-			strVal, _ := toJSONValue(val)
+			strVal, _ := toJSONValue(&val)
 			sb.WriteString(strVal)
 		}
 		sb.WriteByte(']')
@@ -212,17 +217,22 @@ func (p PropertyNode[T]) MarshalJSON() ([]byte, error) {
 
 // toJSONValue returns a JSON literal for a T (~int|~string|~bool).
 // Also returns a bool indicating if we consider this a “valid” value (always true here).
-func toJSONValue[T ~int | ~string | ~bool](v T) (string, bool) {
-	switch any(v).(type) {
+func toJSONValue[T ~int | ~string | ~bool | float64 | float32](v *T) (string, bool) {
+	if v == nil {
+		return "", false
+	}
+	var val = *v
+	switch u := any(val).(type) {
 	case string:
 		// JSON-escape the string
-		b, _ := json.Marshal(any(v).(string))
+		b, _ := json.Marshal(any(u).(string))
 		return string(b), true
 	case bool:
-		return strconv.FormatBool(any(v).(bool)), true
+		return strconv.FormatBool(any(u).(bool)), true
+	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
+		return fmt.Sprintf("%d", u), true
 	default:
-		// int
-		return fmt.Sprintf("%d", v), true
+		panic(fmt.Sprintf("unknown type %T", any(u)))
 	}
 }
 
@@ -330,7 +340,7 @@ func prependDiscriminator(o ObjectNode, discPropName string) ObjectNode {
 		Name: discPropName,
 		Schema: PropertyNode[string]{
 			Typ:   "string",
-			Const: o.Discriminator, // the type name
+			Const: &o.Discriminator, // the type name
 		},
 		Optional: false, // must be required
 	}

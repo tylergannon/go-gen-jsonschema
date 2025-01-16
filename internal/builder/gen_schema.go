@@ -1,12 +1,15 @@
 package builder
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/dave/dst"
 	"github.com/dave/dst/decorator"
 	"github.com/tylergannon/go-gen-jsonschema/internal/scanner"
 	"go/token"
+	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 )
@@ -175,14 +178,78 @@ func (s SchemaBuilder) mapNamedType(t scanner.TypeID, seen seenTypes) error {
 	if seen.Seen(t) {
 		return fmt.Errorf("circular dependency found for type %s at %s", t.TypeName, typeSpec.Position())
 	}
-	switch node := typeSpec.TypeSpec.Type.(type) {
-	default:
-		fmt.Printf("Node mapper found unrecognied node type %T %s at %s\n", node, t.TypeName, typeSpec.Position())
-		return errors.New("unhandled node type")
+	if schema, err := s.renderSchema(t, typeSpec.AnyTypeSpec, typeSpec.GetDescription(), seen); err != nil {
+		return err
+	} else {
+		s.Schemas[t.Concrete()] = schema
 	}
-	//return nil
+	return nil
 }
 
-func (s SchemaBuilder) RenderSchemas() error {
-	panic("not yet implemented")
+func (s SchemaBuilder) renderSchema(typeID scanner.TypeID, anyTypeSpec scanner.AnyTypeSpec, description string, seen seenTypes) (JSONSchema, error) {
+	switch node := anyTypeSpec.Spec.(type) {
+	case *dst.Ident:
+		switch node.Name {
+		case "int", "int8", "int16", "int32", "int64", "uint", "uint8", "uint16", "uint32", "uint64":
+			return PropertyNode[int]{Desc: description, Typ: "integer", TypeID_: typeID}, nil
+		case "string":
+			return PropertyNode[string]{Desc: description, Typ: "string", TypeID_: typeID}, nil
+		case "bool":
+			return PropertyNode[bool]{Desc: description, Typ: "boolean", TypeID_: typeID}, nil
+		case "float32", "float64":
+			return PropertyNode[float64]{Desc: description, Typ: "number", TypeID_: typeID}, nil
+		default:
+			// Handle any other types or unexpected cases
+			fmt.Println(node.Name, node.Path)
+		}
+		return nil, errors.New("Please finish me")
+	default:
+		fmt.Printf("Node mapper found unrecognied node type %s at %s\n", anyTypeSpec.Spec, anyTypeSpec.Position())
+		return nil, errors.New("unhandled node type")
+	}
+
+}
+
+func (s SchemaBuilder) localScan() scanner.ScanResult {
+	return s.Packages[s.LocalPkg.PkgPath]
+}
+
+func (s SchemaBuilder) writeSchema(t scanner.TypeID, targetDir string) (err error) {
+	var (
+		file     *os.File
+		ok       bool
+		filePath = filepath.Join(targetDir, fmt.Sprintf("%s.json", t.TypeName))
+	)
+	if file, err = os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644); err != nil {
+		return fmt.Errorf("could not open file %s: %w", filePath, err)
+	}
+	defer file.Close()
+	encoder := json.NewEncoder(file)
+	var schema json.Marshaler
+	if schema, ok = s.Schemas[t.Concrete()]; !ok {
+		return fmt.Errorf("unknown type %s", t.TypeName)
+	}
+	if s.Pretty {
+		encoder.SetIndent("", "  ")
+	}
+	if err = encoder.Encode(schema); err != nil {
+		return fmt.Errorf("could not encode schema: %w", err)
+	}
+	return nil
+}
+
+func (s SchemaBuilder) RenderSchemas() (err error) {
+	var (
+		localScan = s.localScan()
+		targetDir = filepath.Join(s.LocalPkg.Dir, s.Subdir)
+	)
+	if err = os.MkdirAll(targetDir, 0755); err != nil {
+		return fmt.Errorf("could not create subdir %s: %w", targetDir, err)
+	}
+	for _, method := range localScan.SchemaMethods {
+		if err = s.writeSchema(method.Receiver, targetDir); err != nil {
+			return err
+		}
+	}
+	return nil
 }
