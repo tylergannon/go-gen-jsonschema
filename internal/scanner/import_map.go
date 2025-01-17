@@ -1,4 +1,4 @@
-package syntax
+package scanner
 
 import (
 	"github.com/dave/dst"

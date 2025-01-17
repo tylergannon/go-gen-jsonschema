@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/dave/dst"
 	"github.com/dave/dst/decorator"
-	"github.com/tylergannon/go-gen-jsonschema/internal/syntax"
 	"go/token"
 	"strings"
 )
@@ -60,7 +59,7 @@ func ParseValueExprForMarkerFunctionCall(e *dst.ValueSpec, file *dst.File, pkg *
 			continue
 		}
 		id := parseFuncFromExpr(ce.Fun, file.Imports)
-		if id.PkgPath != syntax.SchemaPackagePath {
+		if id.PkgPath != SchemaPackagePath {
 			fmt.Println("Not path", id)
 			continue
 		}
@@ -82,7 +81,7 @@ func ParseValueExprForMarkerFunctionCall(e *dst.ValueSpec, file *dst.File, pkg *
 	return results
 }
 
-func parseFuncFromExpr(e dst.Expr, importMap syntax.ImportMap) TypeID {
+func parseFuncFromExpr(e dst.Expr, importMap ImportMap) TypeID {
 	var (
 		ok     bool
 		typeID TypeID
@@ -115,7 +114,7 @@ func parseFuncFromExpr(e dst.Expr, importMap syntax.ImportMap) TypeID {
 	return TypeID{}
 }
 
-func parseTypeArguments(e dst.Expr, importMap syntax.ImportMap) *TypeID {
+func parseTypeArguments(e dst.Expr, importMap ImportMap) *TypeID {
 	var expr dst.Expr
 	if idxExpr, ok := e.(*dst.IndexExpr); ok {
 		expr = idxExpr.Index
@@ -135,7 +134,7 @@ func (m MarkerFunctionCall) ParseTypesFromArgs(foo ...bool) ([]TypeID, error) {
 	return parseFuncCallForTypes(m.Arguments, m.File.Imports, m.Pkg, p)
 }
 
-func unwrapSchemaMethodReceiver(expr dst.Expr, pkg *decorator.Package, importMap syntax.ImportMap) (TypeID, error) {
+func unwrapSchemaMethodReceiver(expr dst.Expr, pkg *decorator.Package, importMap ImportMap) (TypeID, error) {
 	switch t := expr.(type) {
 	case *dst.Ident:
 		return TypeID{DeclaredLocally: true, TypeName: t.Name}, nil
@@ -209,7 +208,7 @@ func (m MarkerFunctionCall) ParseSchemaMethod() (SchemaMethod, error) {
 	return SchemaMethod{}, nil
 }
 
-func parseFuncCallForTypes(args []dst.Expr, importMap syntax.ImportMap, pkg *decorator.Package, p bool) ([]TypeID, error) {
+func parseFuncCallForTypes(args []dst.Expr, importMap ImportMap, pkg *decorator.Package, p bool) ([]TypeID, error) {
 	var results []TypeID
 
 	for _, arg := range args {
@@ -225,7 +224,7 @@ func parseFuncCallForTypes(args []dst.Expr, importMap syntax.ImportMap, pkg *dec
 	return results, nil
 }
 
-func parseLitForType(expr dst.Expr, importMap syntax.ImportMap) (TypeID, error) {
+func parseLitForType(expr dst.Expr, importMap ImportMap) (TypeID, error) {
 	switch t := expr.(type) {
 	case *dst.CompositeLit:
 		return parseFuncFromExpr(t.Type, importMap), nil
