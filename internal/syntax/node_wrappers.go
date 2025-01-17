@@ -28,6 +28,7 @@ type (
 
 	Expr interface {
 		Node
+		NewExpr(expr dst.Expr) Expr
 		Expr() dst.Expr
 	}
 
@@ -53,6 +54,10 @@ type (
 		STNode[*dst.GenDecl]
 	}
 )
+
+func (s STExpr[T]) NewExpr(expr dst.Expr) Expr {
+	return NewExpr(expr, s.pkg, s.file)
+}
 
 func buildComments(node dst.Node, genDecl *dst.GenDecl) string {
 	var comments = BuildComments(node.Decorations())

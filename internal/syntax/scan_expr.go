@@ -58,7 +58,7 @@ func ParseValueExprForMarkerFunctionCall(e ValueSpec) []MarkerFunctionCall {
 		if !ok {
 			continue
 		}
-		id := parseFuncFromExpr(ce.Fun, e.Imports(), e.Pkg())
+		id := parseFuncFromExpr(NewExpr(ce.Fun, e.pkg, e.file))
 		if id.PkgPath != SchemaPackagePath {
 			fmt.Println("Not path", id)
 			continue
@@ -81,33 +81,33 @@ func ParseValueExprForMarkerFunctionCall(e ValueSpec) []MarkerFunctionCall {
 	return results
 }
 
-func parseFuncFromExpr(e dst.Expr, importMap ImportMap, pkg *decorator.Package) TypeID {
+func parseFuncFromExpr(e Expr) TypeID {
 	var (
 		ok     bool
 		typeID TypeID
 	)
-	switch t := e.(type) {
+	switch t := e.Expr().(type) {
 	case *dst.SelectorExpr:
 		var xIdent *dst.Ident
 		xIdent, ok = t.X.(*dst.Ident)
 		if !ok {
 			return typeID
 		}
-		typeID.PkgPath, _ = importMap.GetPackageForPrefix(xIdent.Name)
+		typeID.PkgPath, _ = e.Imports().GetPackageForPrefix(xIdent.Name)
 		typeID.TypeName = t.Sel.Name
 		return typeID
 	case *dst.IndexExpr:
-		return parseFuncFromExpr(t.X, importMap, pkg)
+		return parseFuncFromExpr(e.NewExpr(t.X))
 	case *dst.Ident:
 		if t.Path == "" {
-			typeID.PkgPath = pkg.PkgPath
+			typeID.PkgPath = e.Pkg().PkgPath
 		} else {
 			typeID.PkgPath = t.Path
 		}
 		typeID.TypeName = t.Name
 		return typeID
 	case *dst.StarExpr:
-		typeID = parseFuncFromExpr(t.X, importMap, pkg)
+		typeID = parseFuncFromExpr(e.NewExpr(t.X))
 		typeID.Indirection = Pointer
 		return typeID
 	}
@@ -121,7 +121,7 @@ func parseTypeArguments(e dst.Expr, pkg *decorator.Package, importMap ImportMap)
 	} else {
 		return nil
 	}
-	typeID := parseFuncFromExpr(expr, importMap, pkg)
+	typeID := parseFuncFromExpr(NewExpr(expr, pkg, nil))
 
 	return &typeID
 }
@@ -227,7 +227,7 @@ func parseFuncCallForTypes(args []dst.Expr, importMap ImportMap, pkg *decorator.
 func parseLitForType(expr dst.Expr, pkg *decorator.Package, importMap ImportMap) (TypeID, error) {
 	switch t := expr.(type) {
 	case *dst.CompositeLit:
-		return parseFuncFromExpr(t.Type, importMap, pkg), nil
+		return parseFuncFromExpr(NewExpr(t.Type, pkg, nil)), nil
 	case *dst.UnaryExpr:
 		if t.Op != token.AND {
 			return TypeID{}, errors.New("unary expression op must be &")
@@ -236,7 +236,7 @@ func parseLitForType(expr dst.Expr, pkg *decorator.Package, importMap ImportMap)
 		if !ok {
 			return TypeID{}, fmt.Errorf("unary expression type expects composite literal but was %T", t.X)
 		}
-		answer := parseFuncFromExpr(lit.Type, importMap, pkg)
+		answer := parseFuncFromExpr(NewExpr(lit.Type, pkg, nil))
 		answer.Indirection = Pointer
 
 		return answer, nil
@@ -245,7 +245,7 @@ func parseLitForType(expr dst.Expr, pkg *decorator.Package, importMap ImportMap)
 		if !ok {
 			return TypeID{}, fmt.Errorf("CallExpr fun must be ParenExpr, got %T", t.Fun)
 		}
-		return parseFuncFromExpr(p.X, importMap, pkg), nil
+		return parseFuncFromExpr(NewExpr(p.X, pkg, nil)), nil
 	default:
 		fmt.Printf("Unrecognized -- %T %#v\n", expr, expr)
 		return TypeID{}, fmt.Errorf("Unrecognized -- %T %#v\n", expr, expr)
