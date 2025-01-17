@@ -116,16 +116,16 @@ func (s SchemaBuilder) find(t syntax.TypeID) (token.Position, error) {
 }
 
 func (s SchemaBuilder) mapInterface(iface syntax.IfaceImplementations, seen seenTypes) error {
-	if seen.Seen(iface.TypeID) {
-		return fmt.Errorf("circular dependency found for type %s, defined at %s", iface.TypeID, iface.Position)
+	if seen.Seen(iface.TypeSpec.ID()) {
+		return fmt.Errorf("circular dependency found for type %s, defined at %s", iface.TypeSpec.ID(), iface.TypeSpec.Position())
 	}
-	seen = seen.See(iface.TypeID)
+	seen = seen.See(iface.TypeSpec.ID())
 	if err := s.checkSeen(seen); err != nil {
 		return err
 	}
 
 	node := UnionTypeNode{
-		TypeID_: iface.TypeID,
+		TypeID_: iface.TypeSpec.ID(),
 	}
 	for _, opt := range iface.Impls {
 		if err := s.mapType(opt, seen); err != nil {
@@ -146,7 +146,7 @@ func (s SchemaBuilder) mapInterface(iface syntax.IfaceImplementations, seen seen
 		}
 		node.Options = append(node.Options, obj)
 	}
-	s.AddSchema(iface.TypeID, node)
+	s.AddSchema(iface.TypeSpec.ID(), node)
 	return nil
 }
 

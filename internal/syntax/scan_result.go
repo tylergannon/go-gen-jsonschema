@@ -124,11 +124,8 @@ type (
 	// That is to say, in order for an interface implementations to work,
 	// all supported references to it must be in the local package.
 	IfaceImplementations struct {
-		Pkg      *decorator.Package
-		File     *dst.File
-		TypeID   TypeID
+		TypeSpec TypeSpec
 		Impls    []TypeID
-		Position token.Position
 	}
 
 	NamedTypeSpec struct {
@@ -216,6 +213,10 @@ type ScanResult struct {
 	LocalNamedTypes map[string]NamedTypeSpec
 }
 
+/**
+ * Need a way to map out all the types in one go.  The structures here don't seem to do it.
+ */
+
 func LoadPackage(pkg *decorator.Package) (ScanResult, error) {
 	// Needs to discover:
 	// 1. Enum (Const) Values
@@ -238,15 +239,12 @@ func LoadPackage(pkg *decorator.Package) (ScanResult, error) {
 		case MarkerFuncNewInterfaceImpl:
 			var (
 				err   error
-				iface = IfaceImplementations{
-					TypeID:   decl.MustTypeArgument(),
-					Position: decl.CallExpr.Position(),
-				}
+				iface = IfaceImplementations{}
 			)
 			if iface.Impls, err = decl.ParseTypesFromArgs(); err != nil {
 				return ScanResult{}, err
 			}
-			interfaces[iface.TypeID.TypeName] = iface
+			interfaces[decl.MustTypeArgument().TypeName] = iface
 			for _, impl := range iface.Impls {
 				concreteTypes[impl.Concrete()] = true
 			}
@@ -269,14 +267,14 @@ func LoadPackage(pkg *decorator.Package) (ScanResult, error) {
 			return ScanResult{}, fmt.Errorf("unsupported marker function: %s", decl.CallExpr.MustIdentifyFunc())
 		}
 	}
+
 	for _, _typeDecl := range _decls.typeDecls {
 		for _, spec := range _typeDecl.Specs {
 			var (
 				typeID = TypeID{PkgPath: pkg.PkgPath, TypeName: spec.Name.Name}
 			)
 			if iface, ok := interfaces[typeID.TypeName]; ok {
-				iface.Pkg = pkg
-				iface.File = _typeDecl.File
+				iface.TypeSpec = NewTypeSpec(_typeDecl.Decl, spec, _typeDecl.Pkg, _typeDecl.File)
 				interfaces[typeID.TypeName] = iface
 			} else if enum, ok := enums[typeID.Concrete()]; ok {
 				enum.TypeSpec = NewTypeSpec(_typeDecl.Decl, spec, _typeDecl.Pkg, _typeDecl.File)
