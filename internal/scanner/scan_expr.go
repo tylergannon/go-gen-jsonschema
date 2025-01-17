@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"github.com/dave/dst"
 	"github.com/dave/dst/decorator"
-	"github.com/tylergannon/go-gen-jsonschema/internal/importmap"
+	"github.com/tylergannon/go-gen-jsonschema/internal/common"
+	"github.com/tylergannon/go-gen-jsonschema/internal/syntax"
 	"go/token"
 	"strings"
 )
@@ -13,7 +14,6 @@ import (
 type (
 	// Indirection labels a TypeID to tell whether the indicated type is a
 	// concrete instance of a named type, a pointer to it, etc.
-	Indirection int
 
 	// MarkerFunction is an enum that labels a marker function call to denote
 	// which function was called.
@@ -27,31 +27,9 @@ const (
 	MarkerFuncNewEnumType          MarkerFunction = "NewEnumType"          // NewEnumType
 )
 
-const (
-	// NormalConcrete The type named on the TypeID is just the basic or named type.
-	NormalConcrete Indirection = iota
-	// Pointer It's a pointer to the basic or named type.
-	Pointer
-	// SliceOfConcrete means the type is a slice of some named type or basic type.
-	// NOTE: hypothetical.  not currently supported.
-	SliceOfConcrete
-	// SliceOfPointer means the type is a slice of pointer to a named or basic type.
-	// NOTE: hypothetical.  not currently supported.
-	SliceOfPointer
-)
-
 // TypeID is our structured representation of a type. It can represent named types,
 // pointers, slices, arrays, and generics—plus marks invalid or disallowed types.
 type (
-	TypeID struct {
-		// May be empty string if there is no package info available, meaning the type
-		// is defined in the current package from where it's referenced.
-		PkgPath  string
-		TypeName string
-		// MUST be set to true if the PkgPath is empty.
-		DeclaredLocally bool
-		Indirection     Indirection
-	}
 
 	// MarkerFunctionCall denotes a call to one of the marker functions, found
 	// in the scanned source code.
@@ -60,7 +38,7 @@ type (
 		Function MarkerFunction
 		// Our function calls need either zero or one type argument.
 		// If present, denote the type argument here.
-		TypeArgument *TypeID
+		TypeArgument *common.TypeID
 		Arguments    []dst.Expr
 		File         *dst.File
 		Position     token.Position
@@ -75,41 +53,6 @@ func (m MarkerFunctionCall) String() string {
 	return fmt.Sprintf("%s %s Args{%s}", m.Function, m.TypeArgument, strings.Join(args, ","))
 }
 
-func (t TypeID) Concrete() TypeID {
-	var newTypeID = t
-	t.Indirection = NormalConcrete
-	return newTypeID
-}
-
-func (t TypeID) Localize(localPkgPath string) TypeID {
-	if t.DeclaredLocally {
-		return TypeID{
-			PkgPath:         localPkgPath,
-			TypeName:        t.TypeName,
-			DeclaredLocally: false,
-			Indirection:     t.Indirection,
-		}
-	}
-	return t
-}
-
-func (t TypeID) String() string {
-	var (
-		ptr     string
-		pkgPath = t.PkgPath
-	)
-	if t.Indirection == Pointer {
-		ptr = "*"
-	}
-	if pkgPath == "" {
-		pkgPath = "<local>"
-		if !t.DeclaredLocally {
-			panic("mismatch declaredLocally / pkgPath")
-		}
-	}
-	return fmt.Sprintf("%s%s.%s", ptr, pkgPath, t.TypeName)
-}
-
 func ParseValueExprForMarkerFunctionCall(e *dst.ValueSpec, file *dst.File, pkg *decorator.Package) []MarkerFunctionCall {
 	var results []MarkerFunctionCall
 	for _, arg := range e.Values {
@@ -118,7 +61,7 @@ func ParseValueExprForMarkerFunctionCall(e *dst.ValueSpec, file *dst.File, pkg *
 			continue
 		}
 		id := parseFuncFromExpr(ce.Fun, file.Imports)
-		if id.PkgPath != importmap.SchemaPackagePath {
+		if id.PkgPath != syntax.SchemaPackagePath {
 			fmt.Println("Not path", id)
 			continue
 		}
@@ -140,10 +83,10 @@ func ParseValueExprForMarkerFunctionCall(e *dst.ValueSpec, file *dst.File, pkg *
 	return results
 }
 
-func parseFuncFromExpr(e dst.Expr, importMap importmap.ImportMap) TypeID {
+func parseFuncFromExpr(e dst.Expr, importMap syntax.ImportMap) common.TypeID {
 	var (
 		ok     bool
-		typeID TypeID
+		typeID common.TypeID
 	)
 	switch t := e.(type) {
 	case *dst.SelectorExpr:
@@ -167,13 +110,13 @@ func parseFuncFromExpr(e dst.Expr, importMap importmap.ImportMap) TypeID {
 		return typeID
 	case *dst.StarExpr:
 		typeID = parseFuncFromExpr(t.X, importMap)
-		typeID.Indirection = Pointer
+		typeID.Indirection = common.Pointer
 		return typeID
 	}
-	return TypeID{}
+	return common.TypeID{}
 }
 
-func parseTypeArguments(e dst.Expr, importMap importmap.ImportMap) *TypeID {
+func parseTypeArguments(e dst.Expr, importMap syntax.ImportMap) *common.TypeID {
 	var expr dst.Expr
 	if idxExpr, ok := e.(*dst.IndexExpr); ok {
 		expr = idxExpr.Index
@@ -185,7 +128,7 @@ func parseTypeArguments(e dst.Expr, importMap importmap.ImportMap) *TypeID {
 	return &typeID
 }
 
-func (m MarkerFunctionCall) ParseTypesFromArgs(foo ...bool) ([]TypeID, error) {
+func (m MarkerFunctionCall) ParseTypesFromArgs(foo ...bool) ([]common.TypeID, error) {
 	var p bool
 	if len(foo) > 0 {
 		p = foo[0]
@@ -193,35 +136,35 @@ func (m MarkerFunctionCall) ParseTypesFromArgs(foo ...bool) ([]TypeID, error) {
 	return parseFuncCallForTypes(m.Arguments, m.File.Imports, m.Pkg, p)
 }
 
-func unwrapSchemaMethodReceiver(expr dst.Expr, pkg *decorator.Package, importMap importmap.ImportMap) (TypeID, error) {
+func unwrapSchemaMethodReceiver(expr dst.Expr, pkg *decorator.Package, importMap syntax.ImportMap) (common.TypeID, error) {
 	switch t := expr.(type) {
 	case *dst.Ident:
-		return TypeID{DeclaredLocally: true, TypeName: t.Name}, nil
+		return common.TypeID{DeclaredLocally: true, TypeName: t.Name}, nil
 	case *dst.SelectorExpr:
 		xIdent, ok := t.X.(*dst.Ident)
 		if !ok {
 
 			pos := pkg.Fset.Position(pkg.Decorator.Map.Ast.Nodes[t.X].Pos())
-			return TypeID{}, fmt.Errorf("expected identifier, got (%T) %s at %s", t.X, t.X, pos.String())
+			return common.TypeID{}, fmt.Errorf("expected identifier, got (%T) %s at %s", t.X, t.X, pos.String())
 		}
 		pkgPath, ok := importMap.GetPackageForPrefix(xIdent.Name)
 		if !ok {
 			pos := pkg.Fset.Position(pkg.Decorator.Map.Ast.Nodes[t.X].Pos())
-			return TypeID{}, fmt.Errorf("couldn't find package for %s at %s", xIdent.Name, pos)
+			return common.TypeID{}, fmt.Errorf("couldn't find package for %s at %s", xIdent.Name, pos)
 		}
-		return TypeID{PkgPath: pkgPath, TypeName: t.Sel.Name}, nil
+		return common.TypeID{PkgPath: pkgPath, TypeName: t.Sel.Name}, nil
 	case *dst.ParenExpr:
 		return unwrapSchemaMethodReceiver(t.X, pkg, importMap)
 	case *dst.StarExpr:
 		typeID, err := unwrapSchemaMethodReceiver(t.X, pkg, importMap)
 		if err != nil {
-			return TypeID{}, err
+			return common.TypeID{}, err
 		}
-		typeID.Indirection = Pointer
+		typeID.Indirection = common.Pointer
 		return typeID, nil
 	default:
 		pos := NodePosition(pkg, t)
-		return TypeID{}, fmt.Errorf("unrecognized schema method receiver expression at %s", pos)
+		return common.TypeID{}, fmt.Errorf("unrecognized schema method receiver expression at %s", pos)
 	}
 }
 
@@ -267,8 +210,8 @@ func (m MarkerFunctionCall) ParseSchemaMethod() (SchemaMethod, error) {
 	return SchemaMethod{}, nil
 }
 
-func parseFuncCallForTypes(args []dst.Expr, importMap importmap.ImportMap, pkg *decorator.Package, p bool) ([]TypeID, error) {
-	var results []TypeID
+func parseFuncCallForTypes(args []dst.Expr, importMap syntax.ImportMap, pkg *decorator.Package, p bool) ([]common.TypeID, error) {
+	var results []common.TypeID
 
 	for _, arg := range args {
 
@@ -283,30 +226,30 @@ func parseFuncCallForTypes(args []dst.Expr, importMap importmap.ImportMap, pkg *
 	return results, nil
 }
 
-func parseLitForType(expr dst.Expr, importMap importmap.ImportMap) (TypeID, error) {
+func parseLitForType(expr dst.Expr, importMap syntax.ImportMap) (common.TypeID, error) {
 	switch t := expr.(type) {
 	case *dst.CompositeLit:
 		return parseFuncFromExpr(t.Type, importMap), nil
 	case *dst.UnaryExpr:
 		if t.Op != token.AND {
-			return TypeID{}, errors.New("unary expression op must be &")
+			return common.TypeID{}, errors.New("unary expression op must be &")
 		}
 		lit, ok := t.X.(*dst.CompositeLit)
 		if !ok {
-			return TypeID{}, fmt.Errorf("unary expression type expects composite literal but was %T", t.X)
+			return common.TypeID{}, fmt.Errorf("unary expression type expects composite literal but was %T", t.X)
 		}
 		answer := parseFuncFromExpr(lit.Type, importMap)
-		answer.Indirection = Pointer
+		answer.Indirection = common.Pointer
 
 		return answer, nil
 	case *dst.CallExpr:
 		p, ok := t.Fun.(*dst.ParenExpr)
 		if !ok {
-			return TypeID{}, fmt.Errorf("CallExpr fun must be ParenExpr, got %T", t.Fun)
+			return common.TypeID{}, fmt.Errorf("CallExpr fun must be ParenExpr, got %T", t.Fun)
 		}
 		return parseFuncFromExpr(p.X, importMap), nil
 	default:
 		fmt.Printf("Unrecognized -- %T %#v\n", expr, expr)
-		return TypeID{}, fmt.Errorf("Unrecognized -- %T %#v\n", expr, expr)
+		return common.TypeID{}, fmt.Errorf("Unrecognized -- %T %#v\n", expr, expr)
 	}
 }

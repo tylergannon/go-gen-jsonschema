@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/dave/dst"
 	"github.com/dave/dst/decorator"
-	"github.com/tylergannon/go-gen-jsonschema/internal/importmap"
+	"github.com/tylergannon/go-gen-jsonschema/internal/common"
 	"go/token"
 	"go/types"
 	"golang.org/x/tools/go/packages"
@@ -25,7 +25,7 @@ type TypeDecl struct {
 
 type InterfaceTypeInfo struct {
 	typeInfo
-	Implementations []TypeID
+	Implementations []common.TypeID
 }
 
 // AliasTypeInfo
@@ -121,7 +121,7 @@ type (
 	}
 
 	SchemaMethod struct {
-		Receiver   TypeID
+		Receiver   common.TypeID
 		FuncName   string
 		MarkerCall MarkerFunctionCall
 	}
@@ -134,8 +134,8 @@ type (
 	IfaceImplementations struct {
 		Pkg      *decorator.Package
 		File     *dst.File
-		TypeID   TypeID
-		Impls    []TypeID
+		TypeID   common.TypeID
+		Impls    []common.TypeID
 		Position token.Position
 	}
 
@@ -162,7 +162,7 @@ type (
 		TypeSpec *dst.TypeSpec
 		Pkg      *decorator.Package
 		File     *dst.File
-		TypeID   TypeID
+		TypeID   common.TypeID
 		Values   []enumVal
 	}
 )
@@ -216,9 +216,9 @@ const (
 	MarkerKindSchema    MarkerKind = "Schema"
 )
 
-func (v VarDecls) importMap() importmap.ImportMap {
-	return v.File.Imports
-}
+//func (v VarDecls) importMap() syntax.ImportMap {
+//	return v.File.Imports
+//}
 
 type VarDeclSet []VarDecls
 
@@ -244,10 +244,10 @@ type decls struct {
 
 type ScanResult struct {
 	Pkg             *decorator.Package
-	Constants       map[TypeID]*EnumSet
+	Constants       map[common.TypeID]*EnumSet
 	MarkerCalls     []MarkerFunctionCall
 	Interfaces      map[string]IfaceImplementations
-	ConcreteTypes   map[TypeID]bool
+	ConcreteTypes   map[common.TypeID]bool
 	SchemaMethods   []SchemaMethod
 	SchemaFuncs     []SchemaFunction
 	LocalNamedTypes map[string]NamedTypeSpec
@@ -261,9 +261,9 @@ func LoadPackage(pkg *decorator.Package) (ScanResult, error) {
 	var (
 		_decls          = loadPkgDecls(pkg)
 		markerCalls     = _decls.varDecls.MarkerFuncs()
-		enums           = map[TypeID]*EnumSet{}
+		enums           = map[common.TypeID]*EnumSet{}
 		interfaces      = map[string]IfaceImplementations{}
-		concreteTypes   = map[TypeID]bool{}
+		concreteTypes   = map[common.TypeID]bool{}
 		schemaMethods   []SchemaMethod
 		schemaFuncs     []SchemaFunction
 		localNamedTypes = map[string]NamedTypeSpec{}
@@ -312,7 +312,7 @@ func LoadPackage(pkg *decorator.Package) (ScanResult, error) {
 	for _, _typeDecl := range _decls.typeDecls {
 		for _, spec := range _typeDecl.Specs {
 			var (
-				typeID = TypeID{DeclaredLocally: true, TypeName: spec.Name.Name}
+				typeID = common.TypeID{DeclaredLocally: true, TypeName: spec.Name.Name}
 			)
 			if iface, ok := interfaces[typeID.TypeName]; ok {
 				iface.Pkg = pkg
@@ -347,7 +347,7 @@ func LoadPackage(pkg *decorator.Package) (ScanResult, error) {
 				continue
 			}
 			if ident, ok := spec.Type.(*dst.Ident); ok {
-				typeID := TypeID{TypeName: ident.Name}
+				typeID := common.TypeID{TypeName: ident.Name}
 				if ident.Path == "" {
 					typeID.PkgPath = pkg.PkgPath
 				} else {

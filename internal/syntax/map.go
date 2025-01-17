@@ -1,4 +1,4 @@
-package importmap
+package syntax
 
 import (
 	"github.com/dave/dst"
