@@ -232,7 +232,7 @@ func LoadPackage(pkg *decorator.Package) (ScanResult, error) {
 		localNamedTypes = map[string]NamedTypeSpec{}
 	)
 	for _, decl := range markerCalls {
-		switch decl.Function {
+		switch decl.CallExpr.MustIdentifyFunc().TypeName {
 		case MarkerFuncNewEnumType:
 			enums[decl.TypeArgument.Concrete()] = &EnumSet{}
 		case MarkerFuncNewInterfaceImpl:
@@ -240,7 +240,7 @@ func LoadPackage(pkg *decorator.Package) (ScanResult, error) {
 				err   error
 				iface = IfaceImplementations{
 					TypeID:   *decl.TypeArgument,
-					Position: decl.Position,
+					Position: decl.CallExpr.Position(),
 				}
 			)
 			if iface.Impls, err = decl.ParseTypesFromArgs(); err != nil {
@@ -266,7 +266,7 @@ func LoadPackage(pkg *decorator.Package) (ScanResult, error) {
 			schemaFuncs = append(schemaFuncs, method)
 
 		default:
-			return ScanResult{}, fmt.Errorf("unsupported marker function: %s", decl.Function)
+			return ScanResult{}, fmt.Errorf("unsupported marker function: %s", decl.CallExpr.MustIdentifyFunc())
 		}
 	}
 	for _, _typeDecl := range _decls.typeDecls {

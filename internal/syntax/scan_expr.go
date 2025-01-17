@@ -6,23 +6,15 @@ import (
 	"github.com/dave/dst"
 	"github.com/dave/dst/decorator"
 	"go/token"
+	"slices"
 	"strings"
 )
 
-type (
-	// Indirection labels a TypeID to tell whether the indicated type is a
-	// concrete instance of a named type, a pointer to it, etc.
-
-	// MarkerFunction is an enum that labels a marker function call to denote
-	// which function was called.
-	MarkerFunction string
-)
-
 const (
-	MarkerFuncNewJSONSchemaBuilder MarkerFunction = "NewJSONSchemaBuilder" // NewJSONSchemaBuilder
-	MarkerFuncNewJSONSchemaMethod  MarkerFunction = "NewJSONSchemaMethod"  // NewJSONSchemaMethod
-	MarkerFuncNewInterfaceImpl     MarkerFunction = "NewInterfaceImpl"     // NewInterfaceImpl
-	MarkerFuncNewEnumType          MarkerFunction = "NewEnumType"          // NewEnumType
+	MarkerFuncNewJSONSchemaBuilder = "NewJSONSchemaBuilder" // NewJSONSchemaBuilder
+	MarkerFuncNewJSONSchemaMethod  = "NewJSONSchemaMethod"  // NewJSONSchemaMethod
+	MarkerFuncNewInterfaceImpl     = "NewInterfaceImpl"     // NewInterfaceImpl
+	MarkerFuncNewEnumType          = "NewEnumType"          // NewEnumType
 )
 
 // TypeID is our structured representation of a type. It can represent named types,
@@ -32,14 +24,11 @@ type (
 	// MarkerFunctionCall denotes a call to one of the marker functions, found
 	// in the scanned source code.
 	MarkerFunctionCall struct {
-		Pkg      *decorator.Package
-		Function MarkerFunction
+		CallExpr CallExpr
 		// Our function calls need either zero or one type argument.
 		// If present, denote the type argument here.
 		TypeArgument *TypeID
 		Arguments    []dst.Expr
-		File         *dst.File
-		Position     token.Position
 	}
 )
 
@@ -48,7 +37,14 @@ func (m MarkerFunctionCall) String() string {
 	for i, arg := range m.Arguments {
 		args[i] = fmt.Sprint(arg)
 	}
-	return fmt.Sprintf("%s %s Args{%s}", m.Function, m.TypeArgument, strings.Join(args, ","))
+	return fmt.Sprintf("%s %s Args{%s}", m.CallExpr.MustIdentifyFunc(), m.TypeArgument, strings.Join(args, ","))
+}
+
+var markerFunctions = []string{
+	MarkerFuncNewJSONSchemaBuilder,
+	MarkerFuncNewJSONSchemaMethod,
+	MarkerFuncNewInterfaceImpl,
+	MarkerFuncNewEnumType,
 }
 
 func ParseValueExprForMarkerFunctionCall(e ValueSpec) []MarkerFunctionCall {
@@ -58,24 +54,19 @@ func ParseValueExprForMarkerFunctionCall(e ValueSpec) []MarkerFunctionCall {
 		if !ok {
 			continue
 		}
-		id := parseFuncFromExpr(NewExpr(ce.Fun, e.pkg, e.file))
-		if id.PkgPath != SchemaPackagePath {
+		callExpr := NewCallExpr(ce, e.pkg, e.file)
+
+		if id, ok := callExpr.IdentifyFunc(); !ok || id.PkgPath != SchemaPackagePath {
 			fmt.Println("Not path", id)
 			continue
-		}
-		switch MarkerFunction(id.TypeName) {
-		case MarkerFuncNewJSONSchemaBuilder, MarkerFuncNewJSONSchemaMethod, MarkerFuncNewInterfaceImpl, MarkerFuncNewEnumType:
-		default:
+		} else if !slices.Contains(markerFunctions, id.TypeName) {
 			fmt.Println("Unsupported MarkerFunction", id.TypeName)
 			continue
 		}
 		results = append(results, MarkerFunctionCall{
-			Pkg:          e.pkg,
-			Function:     MarkerFunction(id.TypeName),
+			CallExpr:     callExpr,
 			Arguments:    ce.Args,
 			TypeArgument: parseTypeArguments(ce.Fun, e.pkg, e.file.Imports),
-			File:         e.file,
-			Position:     e.Position(),
 		})
 	}
 	return results
@@ -131,7 +122,8 @@ func (m MarkerFunctionCall) ParseTypesFromArgs(foo ...bool) ([]TypeID, error) {
 	if len(foo) > 0 {
 		p = foo[0]
 	}
-	return parseFuncCallForTypes(m.Arguments, m.File, m.Pkg, p)
+	// TODO: Fix this one
+	return parseFuncCallForTypes(m.Arguments, m.CallExpr.File(), m.CallExpr.Pkg(), p)
 }
 
 func unwrapSchemaMethodReceiver(expr Expr) (TypeID, error) {
@@ -166,7 +158,7 @@ func unwrapSchemaMethodReceiver(expr Expr) (TypeID, error) {
 
 func (m MarkerFunctionCall) ParseSchemaFunc() (SchemaFunction, error) {
 	if m.TypeArgument == nil {
-		return SchemaFunction{}, fmt.Errorf("expected a type argument to denote schema func at %s", m.Position)
+		return SchemaFunction{}, fmt.Errorf("expected a type argument to denote schema func at %s", m.CallExpr.Position())
 	}
 	return SchemaFunction{
 		MarkerCall: m,
@@ -177,13 +169,13 @@ func (m MarkerFunctionCall) ParseSchemaFunc() (SchemaFunction, error) {
 
 func (m MarkerFunctionCall) ParseSchemaMethod() (SchemaMethod, error) {
 	if len(m.Arguments) != 1 {
-		err := fmt.Errorf("schema Method expects one argument but got %d, at %s", len(m.Arguments), m.Position)
+		err := fmt.Errorf("schema Method expects one argument but got %d, at %s", len(m.Arguments), m.CallExpr.Position())
 		return SchemaMethod{}, err
 	}
 	switch expr := m.Arguments[0].(type) {
 	// Must be a selector expression, in which X is either an Ident or a ParenExpr with a StarExpr to an Ident.
 	case *dst.SelectorExpr:
-		receiver, err := unwrapSchemaMethodReceiver(NewExpr(expr.X, m.Pkg, m.File))
+		receiver, err := unwrapSchemaMethodReceiver(NewExpr(expr.X, m.CallExpr.pkg, m.CallExpr.file))
 		if err != nil {
 			return SchemaMethod{}, err
 		}

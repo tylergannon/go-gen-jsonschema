@@ -79,7 +79,7 @@ var _ = Describe("FuncCallParser", Ordered, func() {
 
 	It("Call number 1", func() {
 		_call := syntax.ParseValueExprForMarkerFunctionCall(valueSpec(0))[0]
-		Expect(_call.Function).To(Equal(syntax.MarkerFuncNewJSONSchemaMethod))
+		Expect(_call.CallExpr.MustIdentifyFunc().TypeName).To(Equal(syntax.MarkerFuncNewJSONSchemaMethod))
 		Expect(_call.Arguments).To(HaveLen(1))
 		Expect(_call.TypeArgument).To(BeNil())
 
@@ -93,7 +93,7 @@ var _ = Describe("FuncCallParser", Ordered, func() {
 	})
 	It("Call number 2", func() {
 		_call := syntax.ParseValueExprForMarkerFunctionCall(valueSpec(1))[0]
-		Expect(_call.Function).To(Equal(syntax.MarkerFuncNewJSONSchemaMethod))
+		Expect(_call.CallExpr.MustIdentifyFunc().TypeName).To(Equal(syntax.MarkerFuncNewJSONSchemaMethod))
 		Expect(_call.Arguments).To(HaveLen(1))
 		Expect(_call.TypeArgument).To(BeNil())
 		schemaMethod, err := _call.ParseSchemaMethod()
@@ -106,7 +106,7 @@ var _ = Describe("FuncCallParser", Ordered, func() {
 	})
 	It("Call number 3", func() {
 		_call := syntax.ParseValueExprForMarkerFunctionCall(valueSpec(2))[0]
-		Expect(_call.Function).To(Equal(syntax.MarkerFuncNewJSONSchemaBuilder))
+		Expect(_call.CallExpr.MustIdentifyFunc().TypeName).To(Equal(syntax.MarkerFuncNewJSONSchemaBuilder))
 		Expect(_call.Arguments).To(HaveLen(1))
 		Expect(_call.TypeArgument).NotTo(BeNil())
 		Expect(_call.TypeArgument.TypeName).To(Equal("TypeForSchemaFunction"))
@@ -115,7 +115,7 @@ var _ = Describe("FuncCallParser", Ordered, func() {
 	})
 	It("Call number 4", func() {
 		_call := syntax.ParseValueExprForMarkerFunctionCall(valueSpec(3))[0]
-		Expect(_call.Function).To(Equal(syntax.MarkerFuncNewJSONSchemaBuilder))
+		Expect(_call.CallExpr.MustIdentifyFunc().TypeName).To(Equal(syntax.MarkerFuncNewJSONSchemaBuilder))
 		Expect(_call.Arguments).To(HaveLen(1))
 		Expect(_call.TypeArgument).NotTo(BeNil())
 		Expect(_call.TypeArgument.TypeName).To(Equal("PointerTypeForSchemaFunction"))
@@ -126,7 +126,7 @@ var _ = Describe("FuncCallParser", Ordered, func() {
 
 	It("Call number 5", func() {
 		_call := syntax.ParseValueExprForMarkerFunctionCall(valueSpec(4))[0]
-		Expect(_call.Function).To(Equal(syntax.MarkerFuncNewInterfaceImpl))
+		Expect(_call.CallExpr.MustIdentifyFunc().TypeName).To(Equal(syntax.MarkerFuncNewInterfaceImpl))
 		Expect(_call.Arguments).To(HaveLen(4))
 		Expect(_call.TypeArgument).NotTo(BeNil())
 		Expect(_call.TypeArgument.TypeName).To(Equal("MarkerInterface"))
@@ -145,7 +145,7 @@ var _ = Describe("FuncCallParser", Ordered, func() {
 	})
 	It("Call number 6", func() {
 		_call := syntax.ParseValueExprForMarkerFunctionCall(valueSpec(5))[0]
-		Expect(_call.Function).To(Equal(syntax.MarkerFuncNewEnumType))
+		Expect(_call.CallExpr.MustIdentifyFunc().TypeName).To(Equal(syntax.MarkerFuncNewEnumType))
 		Expect(_call.Arguments).To(HaveLen(0))
 		Expect(_call.TypeArgument).NotTo(BeNil())
 		Expect(_call.TypeArgument.TypeName).To(Equal("NiceEnumType"))
@@ -156,7 +156,7 @@ var _ = Describe("FuncCallParser", Ordered, func() {
 
 	It("Call number 7", func() {
 		_call := syntax.ParseValueExprForMarkerFunctionCall(valueSpec(6))[0]
-		Expect(_call.Function).To(Equal(syntax.MarkerFuncNewJSONSchemaBuilder))
+		Expect(_call.CallExpr.MustIdentifyFunc().TypeName).To(Equal(syntax.MarkerFuncNewJSONSchemaBuilder))
 		Expect(_call.Arguments).To(HaveLen(1))
 		Expect(_call.TypeArgument).NotTo(BeNil())
 		Expect(_call.TypeArgument.TypeName).To(Equal("TypeForSchemaFunction"))
@@ -167,7 +167,7 @@ var _ = Describe("FuncCallParser", Ordered, func() {
 
 	It("Call number 8", func() {
 		_call := syntax.ParseValueExprForMarkerFunctionCall(valueSpec(7))[0]
-		Expect(_call.Function).To(Equal(syntax.MarkerFuncNewJSONSchemaBuilder))
+		Expect(_call.CallExpr.MustIdentifyFunc().TypeName).To(Equal(syntax.MarkerFuncNewJSONSchemaBuilder))
 		Expect(_call.Arguments).To(HaveLen(1))
 		Expect(_call.TypeArgument).NotTo(BeNil())
 		Expect(_call.TypeArgument.TypeName).To(Equal("PointerTypeForSchemaFunction"))
@@ -178,7 +178,7 @@ var _ = Describe("FuncCallParser", Ordered, func() {
 
 	It("Call number 9", func() {
 		_call := syntax.ParseValueExprForMarkerFunctionCall(valueSpec(8))[0]
-		Expect(_call.Function).To(Equal(syntax.MarkerFuncNewInterfaceImpl))
+		Expect(_call.CallExpr.MustIdentifyFunc().TypeName).To(Equal(syntax.MarkerFuncNewInterfaceImpl))
 		Expect(_call.Arguments).To(HaveLen(4))
 		Expect(_call.TypeArgument).NotTo(BeNil())
 		Expect(_call.TypeArgument.TypeName).To(Equal("MarkerInterface"))
@@ -200,7 +200,7 @@ var _ = Describe("FuncCallParser", Ordered, func() {
 
 	It("Call number 10", func() {
 		_call := syntax.ParseValueExprForMarkerFunctionCall(valueSpec(9))[0]
-		Expect(_call.Function).To(Equal(syntax.MarkerFuncNewEnumType))
+		Expect(_call.CallExpr.MustIdentifyFunc().TypeName).To(Equal(syntax.MarkerFuncNewEnumType))
 		Expect(_call.Arguments).To(HaveLen(0))
 		Expect(_call.TypeArgument).NotTo(BeNil())
 		Expect(_call.TypeArgument.TypeName).To(Equal("NiceEnumType"))

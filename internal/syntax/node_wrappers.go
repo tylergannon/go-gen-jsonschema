@@ -144,12 +144,56 @@ var _ Expr = STExpr[dst.Expr]{}
  * CallExpr methods
  */
 
+func NewCallExpr(ce *dst.CallExpr, pkg *decorator.Package, file *dst.File) CallExpr {
+	return CallExpr{
+		NewExpr(ce, pkg, file),
+	}
+}
+
 func (c CallExpr) Args() []Expr {
 	var args = make([]Expr, len(c.node.Args))
 	for i, arg := range c.node.Args {
 		args[i] = NewExpr(arg, c.pkg, c.file)
 	}
 	return args
+}
+
+func (e CallExpr) MustIdentifyFunc() TypeID {
+	if t, ok := e.IdentifyFunc(); !ok {
+		panic("expected type identifier for call expression")
+	} else {
+		return t
+	}
+}
+
+func (e CallExpr) IdentifyFunc() (typeID TypeID, ok bool) {
+	var expr dst.Expr
+	switch _expr := e.node.Fun.(type) {
+	case *dst.IndexExpr:
+		expr = _expr.X
+	default:
+		expr = _expr
+	}
+	switch t := expr.(type) {
+	case *dst.SelectorExpr:
+		var xIdent *dst.Ident
+		if xIdent, ok = t.X.(*dst.Ident); !ok {
+			return typeID, false
+		}
+		typeID.PkgPath, _ = e.Imports().GetPackageForPrefix(xIdent.Name)
+		typeID.TypeName = t.Sel.Name
+		return typeID, true
+	case *dst.Ident:
+		if t.Path == "" {
+			typeID.PkgPath = e.Pkg().PkgPath
+		} else {
+			typeID.PkgPath = t.Path
+		}
+		typeID.TypeName = t.Name
+		return typeID, true
+	default:
+		return TypeID{}, false
+	}
 }
 
 /**
