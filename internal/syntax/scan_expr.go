@@ -51,14 +51,14 @@ func (m MarkerFunctionCall) String() string {
 	return fmt.Sprintf("%s %s Args{%s}", m.Function, m.TypeArgument, strings.Join(args, ","))
 }
 
-func ParseValueExprForMarkerFunctionCall(e *dst.ValueSpec, file *dst.File, pkg *decorator.Package) []MarkerFunctionCall {
+func ParseValueExprForMarkerFunctionCall(e ValueSpec) []MarkerFunctionCall {
 	var results []MarkerFunctionCall
-	for _, arg := range e.Values {
+	for _, arg := range e.Value().Values {
 		ce, ok := arg.(*dst.CallExpr)
 		if !ok {
 			continue
 		}
-		id := parseFuncFromExpr(ce.Fun, file.Imports, pkg)
+		id := parseFuncFromExpr(ce.Fun, e.Imports(), e.Pkg())
 		if id.PkgPath != SchemaPackagePath {
 			fmt.Println("Not path", id)
 			continue
@@ -70,12 +70,12 @@ func ParseValueExprForMarkerFunctionCall(e *dst.ValueSpec, file *dst.File, pkg *
 			continue
 		}
 		results = append(results, MarkerFunctionCall{
-			Pkg:          pkg,
+			Pkg:          e.pkg,
 			Function:     MarkerFunction(id.TypeName),
 			Arguments:    ce.Args,
-			TypeArgument: parseTypeArguments(ce.Fun, pkg, file.Imports),
-			File:         file,
-			Position:     NodePosition(pkg, e),
+			TypeArgument: parseTypeArguments(ce.Fun, e.pkg, e.file.Imports),
+			File:         e.file,
+			Position:     e.Position(),
 		})
 	}
 	return results

@@ -17,9 +17,10 @@ const (
 )
 
 type fileSpecs struct {
-	file  *dst.File
-	specs []dst.Spec
-	pkg   *decorator.Package
+	file    *dst.File
+	specs   []dst.Spec
+	genDecl *dst.GenDecl
+	pkg     *decorator.Package
 }
 
 func LoadDecls(path, fileName string, tok token.Token) []fileSpecs {
@@ -40,6 +41,7 @@ func LoadDecls(path, fileName string, tok token.Token) []fileSpecs {
 				if !ok || genDecl.Tok != tok {
 					continue
 				}
+				fileSpec.genDecl = genDecl
 				fileSpec.specs = append(fileSpec.specs, genDecl.Specs...)
 			}
 			if len(fileSpec.specs) > 0 {
@@ -54,9 +56,13 @@ func LoadDecls(path, fileName string, tok token.Token) []fileSpecs {
 
 var _ = Describe("FuncCallParser", Ordered, func() {
 	var (
-		specs []fileSpecs
-		calls []syntax.MarkerFunctionCall
+		specs     []fileSpecs
+		calls     []syntax.MarkerFunctionCall
+		valueSpec = func(idx int) syntax.ValueSpec {
+			return syntax.NewValueSpec(specs[0].genDecl, specs[0].specs[idx].(*dst.ValueSpec), specs[0].pkg, specs[0].file)
+		}
 	)
+
 	BeforeAll(func() {
 		specs = LoadDecls("./testfixtures/typescanner", "calls.go", token.VAR)
 		Expect(specs).To(HaveLen(1))
@@ -65,14 +71,14 @@ var _ = Describe("FuncCallParser", Ordered, func() {
 
 	It("Figures them all out", func() {
 		for _, spec := range specs[0].specs {
-			_calls := syntax.ParseValueExprForMarkerFunctionCall(spec.(*dst.ValueSpec), specs[0].file, specs[0].pkg)
+			_calls := syntax.ParseValueExprForMarkerFunctionCall(syntax.NewValueSpec(specs[0].genDecl, spec.(*dst.ValueSpec), specs[0].pkg, specs[0].file))
 			calls = append(calls, _calls...)
 		}
 		Expect(calls).To(HaveLen(10))
 	})
 
 	It("Call number 1", func() {
-		_call := syntax.ParseValueExprForMarkerFunctionCall(specs[0].specs[0].(*dst.ValueSpec), specs[0].file, specs[0].pkg)[0]
+		_call := syntax.ParseValueExprForMarkerFunctionCall(valueSpec(0))[0]
 		Expect(_call.Function).To(Equal(syntax.MarkerFuncNewJSONSchemaMethod))
 		Expect(_call.Arguments).To(HaveLen(1))
 		Expect(_call.TypeArgument).To(BeNil())
@@ -86,7 +92,7 @@ var _ = Describe("FuncCallParser", Ordered, func() {
 		Expect(schemaMethod.Receiver.TypeName).To(Equal("TypeForSchemaMethod"))
 	})
 	It("Call number 2", func() {
-		_call := syntax.ParseValueExprForMarkerFunctionCall(specs[0].specs[1].(*dst.ValueSpec), specs[0].file, specs[0].pkg)[0]
+		_call := syntax.ParseValueExprForMarkerFunctionCall(valueSpec(1))[0]
 		Expect(_call.Function).To(Equal(syntax.MarkerFuncNewJSONSchemaMethod))
 		Expect(_call.Arguments).To(HaveLen(1))
 		Expect(_call.TypeArgument).To(BeNil())
@@ -99,7 +105,7 @@ var _ = Describe("FuncCallParser", Ordered, func() {
 		Expect(schemaMethod.Receiver.TypeName).To(Equal("PointerTypeForSchemaMethod"))
 	})
 	It("Call number 3", func() {
-		_call := syntax.ParseValueExprForMarkerFunctionCall(specs[0].specs[2].(*dst.ValueSpec), specs[0].file, specs[0].pkg)[0]
+		_call := syntax.ParseValueExprForMarkerFunctionCall(valueSpec(2))[0]
 		Expect(_call.Function).To(Equal(syntax.MarkerFuncNewJSONSchemaBuilder))
 		Expect(_call.Arguments).To(HaveLen(1))
 		Expect(_call.TypeArgument).NotTo(BeNil())
@@ -108,7 +114,7 @@ var _ = Describe("FuncCallParser", Ordered, func() {
 		Expect(_call.TypeArgument.PkgPath).To(Equal(pkg))
 	})
 	It("Call number 4", func() {
-		_call := syntax.ParseValueExprForMarkerFunctionCall(specs[0].specs[3].(*dst.ValueSpec), specs[0].file, specs[0].pkg)[0]
+		_call := syntax.ParseValueExprForMarkerFunctionCall(valueSpec(3))[0]
 		Expect(_call.Function).To(Equal(syntax.MarkerFuncNewJSONSchemaBuilder))
 		Expect(_call.Arguments).To(HaveLen(1))
 		Expect(_call.TypeArgument).NotTo(BeNil())
@@ -119,7 +125,7 @@ var _ = Describe("FuncCallParser", Ordered, func() {
 	})
 
 	It("Call number 5", func() {
-		_call := syntax.ParseValueExprForMarkerFunctionCall(specs[0].specs[4].(*dst.ValueSpec), specs[0].file, specs[0].pkg)[0]
+		_call := syntax.ParseValueExprForMarkerFunctionCall(valueSpec(4))[0]
 		Expect(_call.Function).To(Equal(syntax.MarkerFuncNewInterfaceImpl))
 		Expect(_call.Arguments).To(HaveLen(4))
 		Expect(_call.TypeArgument).NotTo(BeNil())
@@ -138,7 +144,7 @@ var _ = Describe("FuncCallParser", Ordered, func() {
 
 	})
 	It("Call number 6", func() {
-		_call := syntax.ParseValueExprForMarkerFunctionCall(specs[0].specs[5].(*dst.ValueSpec), specs[0].file, specs[0].pkg)[0]
+		_call := syntax.ParseValueExprForMarkerFunctionCall(valueSpec(5))[0]
 		Expect(_call.Function).To(Equal(syntax.MarkerFuncNewEnumType))
 		Expect(_call.Arguments).To(HaveLen(0))
 		Expect(_call.TypeArgument).NotTo(BeNil())
@@ -149,7 +155,7 @@ var _ = Describe("FuncCallParser", Ordered, func() {
 	})
 
 	It("Call number 7", func() {
-		_call := syntax.ParseValueExprForMarkerFunctionCall(specs[0].specs[6].(*dst.ValueSpec), specs[0].file, specs[0].pkg)[0]
+		_call := syntax.ParseValueExprForMarkerFunctionCall(valueSpec(6))[0]
 		Expect(_call.Function).To(Equal(syntax.MarkerFuncNewJSONSchemaBuilder))
 		Expect(_call.Arguments).To(HaveLen(1))
 		Expect(_call.TypeArgument).NotTo(BeNil())
@@ -160,7 +166,7 @@ var _ = Describe("FuncCallParser", Ordered, func() {
 	})
 
 	It("Call number 8", func() {
-		_call := syntax.ParseValueExprForMarkerFunctionCall(specs[0].specs[7].(*dst.ValueSpec), specs[0].file, specs[0].pkg)[0]
+		_call := syntax.ParseValueExprForMarkerFunctionCall(valueSpec(7))[0]
 		Expect(_call.Function).To(Equal(syntax.MarkerFuncNewJSONSchemaBuilder))
 		Expect(_call.Arguments).To(HaveLen(1))
 		Expect(_call.TypeArgument).NotTo(BeNil())
@@ -171,7 +177,7 @@ var _ = Describe("FuncCallParser", Ordered, func() {
 	})
 
 	It("Call number 9", func() {
-		_call := syntax.ParseValueExprForMarkerFunctionCall(specs[0].specs[8].(*dst.ValueSpec), specs[0].file, specs[0].pkg)[0]
+		_call := syntax.ParseValueExprForMarkerFunctionCall(valueSpec(8))[0]
 		Expect(_call.Function).To(Equal(syntax.MarkerFuncNewInterfaceImpl))
 		Expect(_call.Arguments).To(HaveLen(4))
 		Expect(_call.TypeArgument).NotTo(BeNil())
@@ -193,7 +199,7 @@ var _ = Describe("FuncCallParser", Ordered, func() {
 	})
 
 	It("Call number 10", func() {
-		_call := syntax.ParseValueExprForMarkerFunctionCall(specs[0].specs[9].(*dst.ValueSpec), specs[0].file, specs[0].pkg)[0]
+		_call := syntax.ParseValueExprForMarkerFunctionCall(valueSpec(9))[0]
 		Expect(_call.Function).To(Equal(syntax.MarkerFuncNewEnumType))
 		Expect(_call.Arguments).To(HaveLen(0))
 		Expect(_call.TypeArgument).NotTo(BeNil())

@@ -211,7 +211,7 @@ func (vd VarDeclSet) MarkerFuncs() []MarkerFunctionCall {
 		for _, spec := range decl.Specs() {
 			result = append(
 				result,
-				ParseValueExprForMarkerFunctionCall(spec.node, decl.File(), decl.Pkg())...,
+				ParseValueExprForMarkerFunctionCall(spec)...,
 			)
 		}
 	}
