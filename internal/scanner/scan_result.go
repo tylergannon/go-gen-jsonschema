@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/dave/dst"
 	"github.com/dave/dst/decorator"
-	"github.com/tylergannon/go-gen-jsonschema/internal/common"
 	"go/token"
 	"go/types"
 	"golang.org/x/tools/go/packages"
@@ -25,7 +24,7 @@ type TypeDecl struct {
 
 type InterfaceTypeInfo struct {
 	typeInfo
-	Implementations []common.TypeID
+	Implementations []TypeID
 }
 
 // AliasTypeInfo
@@ -121,7 +120,7 @@ type (
 	}
 
 	SchemaMethod struct {
-		Receiver   common.TypeID
+		Receiver   TypeID
 		FuncName   string
 		MarkerCall MarkerFunctionCall
 	}
@@ -134,8 +133,8 @@ type (
 	IfaceImplementations struct {
 		Pkg      *decorator.Package
 		File     *dst.File
-		TypeID   common.TypeID
-		Impls    []common.TypeID
+		TypeID   TypeID
+		Impls    []TypeID
 		Position token.Position
 	}
 
@@ -162,7 +161,7 @@ type (
 		TypeSpec *dst.TypeSpec
 		Pkg      *decorator.Package
 		File     *dst.File
-		TypeID   common.TypeID
+		TypeID   TypeID
 		Values   []enumVal
 	}
 )
@@ -244,10 +243,10 @@ type decls struct {
 
 type ScanResult struct {
 	Pkg             *decorator.Package
-	Constants       map[common.TypeID]*EnumSet
+	Constants       map[TypeID]*EnumSet
 	MarkerCalls     []MarkerFunctionCall
 	Interfaces      map[string]IfaceImplementations
-	ConcreteTypes   map[common.TypeID]bool
+	ConcreteTypes   map[TypeID]bool
 	SchemaMethods   []SchemaMethod
 	SchemaFuncs     []SchemaFunction
 	LocalNamedTypes map[string]NamedTypeSpec
@@ -261,9 +260,9 @@ func LoadPackage(pkg *decorator.Package) (ScanResult, error) {
 	var (
 		_decls          = loadPkgDecls(pkg)
 		markerCalls     = _decls.varDecls.MarkerFuncs()
-		enums           = map[common.TypeID]*EnumSet{}
+		enums           = map[TypeID]*EnumSet{}
 		interfaces      = map[string]IfaceImplementations{}
-		concreteTypes   = map[common.TypeID]bool{}
+		concreteTypes   = map[TypeID]bool{}
 		schemaMethods   []SchemaMethod
 		schemaFuncs     []SchemaFunction
 		localNamedTypes = map[string]NamedTypeSpec{}
@@ -312,7 +311,7 @@ func LoadPackage(pkg *decorator.Package) (ScanResult, error) {
 	for _, _typeDecl := range _decls.typeDecls {
 		for _, spec := range _typeDecl.Specs {
 			var (
-				typeID = common.TypeID{DeclaredLocally: true, TypeName: spec.Name.Name}
+				typeID = TypeID{DeclaredLocally: true, TypeName: spec.Name.Name}
 			)
 			if iface, ok := interfaces[typeID.TypeName]; ok {
 				iface.Pkg = pkg
@@ -347,7 +346,7 @@ func LoadPackage(pkg *decorator.Package) (ScanResult, error) {
 				continue
 			}
 			if ident, ok := spec.Type.(*dst.Ident); ok {
-				typeID := common.TypeID{TypeName: ident.Name}
+				typeID := TypeID{TypeName: ident.Name}
 				if ident.Path == "" {
 					typeID.PkgPath = pkg.PkgPath
 				} else {
