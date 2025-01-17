@@ -3,13 +3,13 @@
   "description": "DefinedAsSliceOfRemoteSliceType is defined as a slice of pointer to slice of named named slice type",
   "items": {
     "type": "array",
-    "description": "SliceOfNamedNamedSliceType is a slice of the named slice type.",
+    "description": "DefinedAsSliceOfRemoteSliceType is defined as a slice of pointer to slice of named named slice type",
     "items": {
       "type": "array",
-      "description": "SliceOfNamedType is a slice of a named type",
+      "description": "SliceOfNamedNamedSliceType is a slice of the named slice type.",
       "items": {
         "type": "integer",
-        "description": "IntType is Foobarbax"
+        "description": "SliceOfNamedType is a slice of a named type"
       }
     }
   }
