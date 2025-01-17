@@ -28,13 +28,13 @@ type (
 		// Our function calls need either zero or one type argument.
 		// If present, denote the type argument here.
 		TypeArgument *TypeID
-		Arguments    []dst.Expr
 	}
 )
 
 func (m MarkerFunctionCall) String() string {
-	args := make([]string, len(m.Arguments))
-	for i, arg := range m.Arguments {
+	callArgs := m.CallExpr.Args()
+	args := make([]string, len(callArgs))
+	for i, arg := range callArgs {
 		args[i] = fmt.Sprint(arg)
 	}
 	return fmt.Sprintf("%s %s Args{%s}", m.CallExpr.MustIdentifyFunc(), m.TypeArgument, strings.Join(args, ","))
@@ -65,7 +65,6 @@ func ParseValueExprForMarkerFunctionCall(e ValueSpec) []MarkerFunctionCall {
 		}
 		results = append(results, MarkerFunctionCall{
 			CallExpr:     callExpr,
-			Arguments:    ce.Args,
 			TypeArgument: parseTypeArguments(ce.Fun, e.pkg, e.file.Imports),
 		})
 	}
@@ -117,13 +116,17 @@ func parseTypeArguments(e dst.Expr, pkg *decorator.Package, importMap ImportMap)
 	return &typeID
 }
 
-func (m MarkerFunctionCall) ParseTypesFromArgs(foo ...bool) ([]TypeID, error) {
-	var p bool
-	if len(foo) > 0 {
-		p = foo[0]
+func (m MarkerFunctionCall) ParseTypesFromArgs() ([]TypeID, error) {
+	var results []TypeID
+	for _, arg := range m.CallExpr.Args() {
+		if typeID, err := parseLitForType(arg); err != nil {
+			return nil, fmt.Errorf("unsupported arg at %s: %w", arg.Position(), err)
+		} else {
+			results = append(results, typeID)
+		}
 	}
-	// TODO: Fix this one
-	return parseFuncCallForTypes(m.Arguments, m.CallExpr.File(), m.CallExpr.Pkg(), p)
+
+	return results, nil
 }
 
 func unwrapSchemaMethodReceiver(expr Expr) (TypeID, error) {
@@ -163,16 +166,17 @@ func (m MarkerFunctionCall) ParseSchemaFunc() (SchemaFunction, error) {
 	return SchemaFunction{
 		MarkerCall: m,
 		Receiver:   *m.TypeArgument,
-		FuncName:   m.Arguments[0].(*dst.Ident).Name,
+		FuncName:   m.CallExpr.Args()[0].Expr().(*dst.Ident).Name,
 	}, nil
 }
 
 func (m MarkerFunctionCall) ParseSchemaMethod() (SchemaMethod, error) {
-	if len(m.Arguments) != 1 {
-		err := fmt.Errorf("schema Method expects one argument but got %d, at %s", len(m.Arguments), m.CallExpr.Position())
+	var funcArgs = m.CallExpr.Args()
+	if len(funcArgs) != 1 {
+		err := fmt.Errorf("schema Method expects one argument but got %d, at %s", len(funcArgs), m.CallExpr.Position())
 		return SchemaMethod{}, err
 	}
-	switch expr := m.Arguments[0].(type) {
+	switch expr := funcArgs[0].Expr().(type) {
 	// Must be a selector expression, in which X is either an Ident or a ParenExpr with a StarExpr to an Ident.
 	case *dst.SelectorExpr:
 		receiver, err := unwrapSchemaMethodReceiver(NewExpr(expr.X, m.CallExpr.pkg, m.CallExpr.file))
@@ -188,22 +192,6 @@ func (m MarkerFunctionCall) ParseSchemaMethod() (SchemaMethod, error) {
 		fmt.Printf("ArgBoo --> %T %#v", expr, expr)
 	}
 	return SchemaMethod{}, nil
-}
-
-func parseFuncCallForTypes(args []dst.Expr, file *dst.File, pkg *decorator.Package, p bool) ([]TypeID, error) {
-	var results []TypeID
-
-	for _, arg := range args {
-
-		pos := pkg.Fset.Position(pkg.Decorator.Map.Ast.Nodes[arg].Pos())
-		if typeID, err := parseLitForType(NewExpr(arg, pkg, file)); err != nil {
-			return nil, fmt.Errorf("unsupported arg at %s: %w", pos, err)
-		} else {
-			results = append(results, typeID)
-		}
-	}
-
-	return results, nil
 }
 
 func parseLitForType(expr Expr) (TypeID, error) {
