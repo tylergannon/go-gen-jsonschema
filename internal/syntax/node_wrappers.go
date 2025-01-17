@@ -274,10 +274,6 @@ func (v VarConstDecl) Specs() []ValueSpec {
  * NamedType methods
  */
 
-func (n NamedTypeSpec) GetDescription() string {
-	return n.TypeSpec.Comments()
-}
-
-func (n NamedTypeSpec) Type() Expr {
-	return NewExpr(n.TypeSpec.node.Type, n.TypeSpec.pkg, n.TypeSpec.file)
+func (n TypeSpec) Type() Expr {
+	return NewExpr(n.node.Type, n.pkg, n.file)
 }

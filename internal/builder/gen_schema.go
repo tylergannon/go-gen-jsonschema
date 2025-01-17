@@ -240,7 +240,7 @@ func (s SchemaBuilder) mapNamedType(t syntax.TypeID, seen seenTypes) error {
 	if seen.Seen(t) {
 		return fmt.Errorf("circular dependency found for type %s at %s", t.TypeName, typeSpec.Position())
 	}
-	if schema, err := s.renderSchema(t, typeSpec.Type(), typeSpec.GetDescription(), seen); err != nil {
+	if schema, err := s.renderSchema(t, typeSpec.Type(), typeSpec.Comments(), seen); err != nil {
 		return err
 	} else {
 		s.AddSchema(t, schema)

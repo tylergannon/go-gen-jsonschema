@@ -5,7 +5,6 @@ import (
 	"github.com/dave/dst"
 	"github.com/dave/dst/decorator"
 	"go/token"
-	"go/types"
 	"golang.org/x/tools/go/packages"
 	"slices"
 )
@@ -123,12 +122,6 @@ type (
 		Impls    []TypeID
 	}
 
-	NamedTypeSpec struct {
-		NamedType *types.Named
-		TypeSpec  TypeSpec
-		//Expr
-	}
-
 	EnumSet struct {
 		TypeSpec TypeSpec
 		Values   []ValueSpec
@@ -201,7 +194,7 @@ type ScanResult struct {
 	ConcreteTypes   map[string]bool
 	SchemaMethods   []SchemaMethod
 	SchemaFuncs     []SchemaFunction
-	LocalNamedTypes map[string]NamedTypeSpec
+	LocalNamedTypes map[string]TypeSpec
 }
 
 type seenPackages []string
@@ -242,7 +235,7 @@ func loadPackageInternal(pkg *decorator.Package, seen seenPackages) (ScanResult,
 		concreteTypes   = map[string]bool{}
 		schemaMethods   []SchemaMethod
 		schemaFuncs     []SchemaFunction
-		localNamedTypes = map[string]NamedTypeSpec{}
+		localNamedTypes = map[string]TypeSpec{}
 	)
 	if !ok {
 		return ScanResult{}, fmt.Errorf("circular package dependency detected. %v", seen)
@@ -294,13 +287,7 @@ func loadPackageInternal(pkg *decorator.Package, seen seenPackages) (ScanResult,
 			} else if enum, ok := enums[typeID.TypeName]; ok {
 				enum.TypeSpec = NewTypeSpec(_typeDecl.Decl, spec, _typeDecl.Pkg, _typeDecl.File)
 			} else {
-				var t = NamedTypeSpec{
-					TypeSpec: NewTypeSpec(_typeDecl.Decl, spec, _typeDecl.Pkg, _typeDecl.File),
-				}
-				if t.NamedType, ok = findNamedType(_typeDecl.Pkg, spec.Name.Name); !ok {
-					return ScanResult{}, fmt.Errorf("unable to load named type for %s declared at %s", spec.Name.Name, t.TypeSpec.Position())
-				}
-				localNamedTypes[typeID.TypeName] = t
+				localNamedTypes[typeID.TypeName] = NewTypeSpec(_typeDecl.Decl, spec, _typeDecl.Pkg, _typeDecl.File)
 			}
 		}
 	}
@@ -368,31 +355,27 @@ func loadPkgDecls(pkg *decorator.Package) *decls {
 	return &_decls
 }
 
-func (n NamedTypeSpec) Position() token.Position {
-	return n.TypeSpec.Position()
-}
-
-func findNamedType(pkg *decorator.Package, typeName string) (*types.Named, bool) {
-	// Get the package's scope
-	scope := pkg.Types.Scope()
-
-	// Lookup the type by name
-	obj := scope.Lookup(typeName)
-	if obj == nil {
-		return nil, false // Type not found
-	}
-
-	// Ensure the object is a TypeName
-	typeNameObj, ok := obj.(*types.TypeName)
-	if !ok {
-		return nil, false // Not a named type
-	}
-
-	// Assert the type to *types.Named
-	named, ok := typeNameObj.Type().(*types.Named)
-	if !ok {
-		return nil, false // Not a named type
-	}
-
-	return named, true
-}
+//func findNamedType(pkg *decorator.Package, typeName string) (*types.Named, bool) {
+//	// Get the package's scope
+//	scope := pkg.Types.Scope()
+//
+//	// Lookup the type by name
+//	obj := scope.Lookup(typeName)
+//	if obj == nil {
+//		return nil, false // Type not found
+//	}
+//
+//	// Ensure the object is a TypeName
+//	typeNameObj, ok := obj.(*types.TypeName)
+//	if !ok {
+//		return nil, false // Not a named type
+//	}
+//
+//	// Assert the type to *types.Named
+//	named, ok := typeNameObj.Type().(*types.Named)
+//	if !ok {
+//		return nil, false // Not a named type
+//	}
+//
+//	return named, true
+//}
