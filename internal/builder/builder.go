@@ -3,7 +3,7 @@ package builder
 import (
 	"fmt"
 	"github.com/dave/dst/decorator"
-	"github.com/tylergannon/go-gen-jsonschema/internal/scanner"
+	"github.com/tylergannon/go-gen-jsonschema/internal/syntax"
 )
 
 type BuilderArgs struct {
@@ -16,7 +16,7 @@ func Run(args BuilderArgs) (err error) {
 		pkgs    []*decorator.Package
 		builder SchemaBuilder
 	)
-	if pkgs, err = scanner.Load(args.TargetDir); err != nil {
+	if pkgs, err = syntax.Load(args.TargetDir); err != nil {
 		return err
 	}
 	if len(pkgs) == 0 {

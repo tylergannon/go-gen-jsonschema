@@ -6,7 +6,7 @@ package typescanner
 import (
 	"encoding/json"
 	jsonschema "github.com/tylergannon/go-gen-jsonschema"
-	"github.com/tylergannon/go-gen-jsonschema/internal/scanner/testfixtures/typescanner/scannersubpkg"
+	"github.com/tylergannon/go-gen-jsonschema/internal/syntax/testfixtures/typescanner/scannersubpkg"
 )
 
 func (TypeForSchemaMethod) Schema() (json.RawMessage, error) {

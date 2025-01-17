@@ -3,7 +3,7 @@ package builder
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/tylergannon/go-gen-jsonschema/internal/common"
+	"github.com/tylergannon/go-gen-jsonschema/internal/syntax"
 	"strconv"
 	"strings"
 )
@@ -16,7 +16,7 @@ type (
 	JSONSchema interface {
 		json.Marshaler
 		jsonSchemaMarker()
-		TypeID() common.TypeID
+		TypeID() syntax.TypeID
 	}
 
 	schemaNode interface {
@@ -33,13 +33,15 @@ type (
 		Optional bool
 	}
 
+	ObjectPropSet []ObjectProp
+
 	// ObjectNode represents an object schema.
 	// Discriminator: always non-empty, but only used when included in a union (anyOf).
 	ObjectNode struct {
 		Desc          string        `json:"description,omitempty"`
-		Properties    []ObjectProp  `json:"properties,omitempty"`
+		Properties    ObjectPropSet `json:"properties,omitempty"`
 		Discriminator string        `json:"-"`
-		TypeID_       common.TypeID `json:"-"`
+		TypeID_       syntax.TypeID `json:"-"`
 	}
 
 	// PropertyNode is a scalar property (string, int, bool).
@@ -51,7 +53,7 @@ type (
 		Enum    []T           `json:"enum,omitempty"`
 		Const   *T            `json:"const,omitempty"`
 		Typ     string        `json:"type,omitempty"`
-		TypeID_ common.TypeID `json:"-"`
+		TypeID_ syntax.TypeID `json:"-"`
 	}
 
 	ConstNode[T ~int | ~string | ~bool | float32 | float64] struct {
@@ -62,14 +64,14 @@ type (
 	ArrayNode struct {
 		Desc    string        `json:"description,omitempty"`
 		Items   JSONSchema    `json:"items,omitempty"`
-		TypeID_ common.TypeID `json:"-"`
+		TypeID_ syntax.TypeID `json:"-"`
 	}
 
 	// UnionTypeNode means `{"anyOf": [ <object1-with-discriminator>, ... ]}`.
 	UnionTypeNode struct {
 		DiscriminatorPropName string
 		Options               []ObjectNode
-		TypeID_               common.TypeID `json:"-"`
+		TypeID_               syntax.TypeID `json:"-"`
 	}
 )
 
@@ -88,7 +90,7 @@ var (
 // ObjectNode
 //---------------------------------------------------------------------
 
-func (o ObjectNode) TypeID() common.TypeID { return o.TypeID_ }
+func (o ObjectNode) TypeID() syntax.TypeID { return o.TypeID_ }
 
 func (o ObjectNode) Type() string {
 	return "object"
@@ -165,7 +167,7 @@ func (o ObjectNode) MarshalJSON() ([]byte, error) {
 // PropertyNode[T]
 //---------------------------------------------------------------------
 
-func (p PropertyNode[T]) TypeID() common.TypeID { return p.TypeID_ }
+func (p PropertyNode[T]) TypeID() syntax.TypeID { return p.TypeID_ }
 
 func (p PropertyNode[T]) Type() string {
 	return p.Typ
@@ -254,7 +256,7 @@ func (a ArrayNode) setDescription(s string) schemaNode {
 	a.Desc = s
 	return a
 }
-func (a ArrayNode) TypeID() common.TypeID { return a.TypeID_ }
+func (a ArrayNode) TypeID() syntax.TypeID { return a.TypeID_ }
 
 func (a ArrayNode) Type() string {
 	return "array"
@@ -304,7 +306,7 @@ func (a ArrayNode) MarshalJSON() ([]byte, error) {
 // UnionTypeNode (anyOf)
 //---------------------------------------------------------------------
 
-func (u UnionTypeNode) TypeID() common.TypeID { return u.TypeID_ }
+func (u UnionTypeNode) TypeID() syntax.TypeID { return u.TypeID_ }
 
 func (u UnionTypeNode) jsonSchemaMarker() {}
 
@@ -349,7 +351,7 @@ func prependDiscriminator(o ObjectNode, discPropName string) ObjectNode {
 	if discPropName == "" {
 		discPropName = DefaultDiscriminatorPropName
 	}
-	newProps := make([]ObjectProp, len(o.Properties)+1)
+	newProps := make(ObjectPropSet, len(o.Properties)+1)
 	newProps[0] = ObjectProp{
 		Name: discPropName,
 		Schema: PropertyNode[string]{

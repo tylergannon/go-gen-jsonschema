@@ -3,10 +3,10 @@
   "description": "SliceOfNamedNamedSliceType is a slice of the named slice type.",
   "items": {
     "type": "array",
-    "description": "SliceOfNamedNamedSliceType is a slice of the named slice type.",
+    "description": "NamedNamedSliceType is another level of indirection from NamedSliceType",
     "items": {
       "type": "integer",
-      "description": "SliceOfNamedType is a slice of a named type"
+      "description": "IntType is Foobarbax"
     }
   }
 }

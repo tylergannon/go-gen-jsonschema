@@ -3,6 +3,6 @@
   "description": "SliceOfPointerToNamedType is a slice of pointers to named types",
   "items": {
     "type": "integer",
-    "description": "SliceOfPointerToNamedType is a slice of pointers to named types"
+    "description": "IntType is Foobarbax"
   }
 }

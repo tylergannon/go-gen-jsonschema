@@ -1,4 +1,4 @@
-package scanner_test
+package syntax_test
 
 import (
 	"testing"

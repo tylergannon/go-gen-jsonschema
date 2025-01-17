@@ -3,6 +3,6 @@
   "description": "NamedSliceType is a slice of a named type.",
   "items": {
     "type": "integer",
-    "description": "SliceOfNamedType is a slice of a named type"
+    "description": "IntType is Foobarbax"
   }
 }
