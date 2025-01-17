@@ -1,4 +1,4 @@
 {
   "type": "integer",
-  "description": "IntType is Foobarbax"
+  "description": "PointerToRemoteType is a pointer to a remote type."
 }
