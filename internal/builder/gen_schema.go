@@ -112,7 +112,7 @@ func (s SchemaBuilder) find(t syntax.TypeID) (token.Position, error) {
 	if !ok {
 		return token.Position{}, fmt.Errorf("type %s not found", t.TypeName)
 	}
-	return syntax.NodePosition(sb.Pkg, typeSpec.TypeSpec), nil
+	return typeSpec.Position(), nil
 }
 
 func (s SchemaBuilder) mapInterface(iface syntax.IfaceImplementations, seen seenTypes) error {
@@ -240,7 +240,7 @@ func (s SchemaBuilder) mapNamedType(t syntax.TypeID, seen seenTypes) error {
 	if seen.Seen(t) {
 		return fmt.Errorf("circular dependency found for type %s at %s", t.TypeName, typeSpec.Position())
 	}
-	if schema, err := s.renderSchema(t, typeSpec.AnyTypeSpec, typeSpec.GetDescription(), seen); err != nil {
+	if schema, err := s.renderSchema(t, typeSpec.Expr, typeSpec.GetDescription(), seen); err != nil {
 		return err
 	} else {
 		s.AddSchema(t, schema)
@@ -248,8 +248,8 @@ func (s SchemaBuilder) mapNamedType(t syntax.TypeID, seen seenTypes) error {
 	return nil
 }
 
-func (s SchemaBuilder) renderSchema(typeID syntax.TypeID, anyTypeSpec syntax.AnyTypeSpec, description string, seen seenTypes) (JSONSchema, error) {
-	switch node := anyTypeSpec.Spec.(type) {
+func (s SchemaBuilder) renderSchema(typeID syntax.TypeID, anyTypeSpec syntax.Expr, description string, seen seenTypes) (JSONSchema, error) {
+	switch node := anyTypeSpec.Expr().(type) {
 	case *dst.Ident:
 		switch node.Name {
 		case "int", "int8", "int16", "int32", "int64", "uint", "uint8", "uint16", "uint32", "uint64":
@@ -284,7 +284,7 @@ func (s SchemaBuilder) renderSchema(typeID syntax.TypeID, anyTypeSpec syntax.Any
 			}
 		}
 	case *dst.StarExpr:
-		return s.renderSchema(typeID, anyTypeSpec.Derive(node.X), description, seen)
+		return s.renderSchema(typeID, anyTypeSpec.NewExpr(node.X), description, seen)
 	case *dst.ArrayType:
 		var (
 			err    error
@@ -293,12 +293,12 @@ func (s SchemaBuilder) renderSchema(typeID syntax.TypeID, anyTypeSpec syntax.Any
 				TypeID_: typeID,
 			}
 		)
-		if schema.Items, err = s.renderSchema(typeID, anyTypeSpec.Derive(node.Elt), description, seen); err != nil {
+		if schema.Items, err = s.renderSchema(typeID, anyTypeSpec.NewExpr(node.Elt), description, seen); err != nil {
 			return nil, err
 		}
 		return schema, nil
 	default:
-		fmt.Printf("Node mapper found unrecognized node type %s (%T) at %s\n", anyTypeSpec.Spec, anyTypeSpec.Spec, anyTypeSpec.Position())
+		fmt.Printf("Node mapper found unrecognized node type %s (%T) at %s\n", anyTypeSpec.Expr(), anyTypeSpec.Expr(), anyTypeSpec.Position())
 		return nil, errors.New("unhandled node type")
 	}
 

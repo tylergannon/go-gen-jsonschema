@@ -131,17 +131,10 @@ type (
 		Position token.Position
 	}
 
-	AnyTypeSpec struct {
-		Spec dst.Expr
-		File *dst.File
-		Pkg  *decorator.Package
-	}
-
 	NamedTypeSpec struct {
 		NamedType *types.Named
-		GenDecl   *dst.GenDecl
-		TypeSpec  *dst.TypeSpec
-		AnyTypeSpec
+		TypeSpec  TypeSpec
+		Expr
 	}
 
 	EnumSet struct {
@@ -151,20 +144,7 @@ type (
 )
 
 func (n NamedTypeSpec) GetDescription() string {
-	if len(n.TypeSpec.Decorations().Start.All()) > 0 {
-		return BuildComments(n.TypeSpec.Decorations())
-	} else if len(n.GenDecl.Specs) == 1 && len(n.GenDecl.Decs.Start.All()) > 0 {
-		return BuildComments(n.GenDecl.Decorations())
-	}
-	return ""
-}
-
-func (a AnyTypeSpec) Derive(spec dst.Expr) AnyTypeSpec {
-	return AnyTypeSpec{
-		Spec: spec,
-		File: a.File,
-		Pkg:  a.Pkg,
-	}
+	return n.TypeSpec.Comments()
 }
 
 func (s SchemaMethod) markerType() MarkerKind {
@@ -302,17 +282,11 @@ func LoadPackage(pkg *decorator.Package) (ScanResult, error) {
 				enum.TypeSpec = NewTypeSpec(_typeDecl.Decl, spec, _typeDecl.Pkg, _typeDecl.File)
 			} else {
 				var t = NamedTypeSpec{
-					GenDecl:  _typeDecl.Decl,
-					TypeSpec: spec,
-					AnyTypeSpec: AnyTypeSpec{
-						File: _typeDecl.File,
-						Pkg:  _typeDecl.Pkg,
-						Spec: spec.Type,
-					},
+					TypeSpec: NewTypeSpec(_typeDecl.Decl, spec, _typeDecl.Pkg, _typeDecl.File),
+					Expr:     NewExpr(spec.Type, _typeDecl.Pkg, _typeDecl.File),
 				}
 				if t.NamedType, ok = findNamedType(_typeDecl.Pkg, spec.Name.Name); !ok {
-					pos := NodePosition(_typeDecl.Pkg, spec)
-					return ScanResult{}, fmt.Errorf("unable to load named type for %s declared at %s", spec.Name.Name, pos)
+					return ScanResult{}, fmt.Errorf("unable to load named type for %s declared at %s", spec.Name.Name, t.TypeSpec.Position())
 				}
 				localNamedTypes[typeID.TypeName] = t
 			}
@@ -390,11 +364,7 @@ func loadPkgDecls(pkg *decorator.Package) *decls {
 }
 
 func (n NamedTypeSpec) Position() token.Position {
-	return NodePosition(n.Pkg, n.TypeSpec)
-}
-
-func (a AnyTypeSpec) Position() token.Position {
-	return NodePosition(a.Pkg, a.Spec)
+	return n.TypeSpec.Position()
 }
 
 func findNamedType(pkg *decorator.Package, typeName string) (*types.Named, bool) {

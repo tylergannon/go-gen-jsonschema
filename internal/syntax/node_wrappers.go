@@ -1,6 +1,7 @@
 package syntax
 
 import (
+	"fmt"
 	"github.com/dave/dst"
 	"github.com/dave/dst/decorator"
 	"go/token"
@@ -20,6 +21,7 @@ type (
 		Pos() token.Pos
 		Position() token.Position
 		Imports() ImportMap
+		Details() string
 	}
 
 	STExpr[T dst.Expr] struct {
@@ -55,6 +57,10 @@ type (
 	}
 )
 
+func (s STNode[T]) Details() string {
+	return fmt.Sprintf("%T %v", s.node, s.node)
+}
+
 func (s STExpr[T]) NewExpr(expr dst.Expr) Expr {
 	return NewExpr(expr, s.pkg, s.file)
 }
@@ -64,7 +70,7 @@ func buildComments(node dst.Node, genDecl *dst.GenDecl) string {
 	if len(comments) > 0 {
 		return comments
 	}
-	if len(genDecl.Specs) > 0 {
+	if len(genDecl.Specs) > 1 {
 		return ""
 	}
 	return BuildComments(genDecl.Decorations())
