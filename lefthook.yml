@@ -5,3 +5,7 @@ pre-commit:
   commands:
     golangci:
       run: golangci-lint run
+pre-push:
+  commands:
+    test:
+      run: go test ./...
