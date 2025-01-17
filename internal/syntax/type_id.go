@@ -20,29 +20,15 @@ const (
 type TypeID struct {
 	// May be empty string if there is no package info available, meaning the type
 	// is defined in the current package from where it's referenced.
-	PkgPath  string
-	TypeName string
-	// MUST be set to true if the PkgPath is empty.
-	DeclaredLocally bool
-	Indirection     Indirection
+	PkgPath     string
+	TypeName    string
+	Indirection Indirection
 }
 
 func (t TypeID) Concrete() TypeID {
 	var newTypeID = t
 	t.Indirection = NormalConcrete
 	return newTypeID
-}
-
-func (t TypeID) Localize(localPkgPath string) TypeID {
-	if t.DeclaredLocally {
-		return TypeID{
-			PkgPath:         localPkgPath,
-			TypeName:        t.TypeName,
-			DeclaredLocally: false,
-			Indirection:     t.Indirection,
-		}
-	}
-	return t
 }
 
 func (t TypeID) String() string {
@@ -54,10 +40,7 @@ func (t TypeID) String() string {
 		ptr = "*"
 	}
 	if pkgPath == "" {
-		pkgPath = "<local>"
-		if !t.DeclaredLocally {
-			panic("mismatch declaredLocally / pkgPath")
-		}
+		panic("pkgPath is empty")
 	}
 	return fmt.Sprintf("%s%s.%s", ptr, pkgPath, t.TypeName)
 }

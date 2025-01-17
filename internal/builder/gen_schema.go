@@ -83,7 +83,7 @@ func (s SchemaBuilder) GetSchema(t syntax.TypeID) (schema JSONSchema, ok bool) {
 }
 
 func (s SchemaBuilder) AddSchema(t syntax.TypeID, schema JSONSchema) {
-	ty := t.Concrete().Localize(s.LocalPkg.PkgPath)
+	ty := t.Concrete()
 	s.schemas.Set(ty.PkgPath, ty.TypeName, schema)
 }
 
@@ -151,13 +151,13 @@ func (s SchemaBuilder) mapInterface(iface syntax.IfaceImplementations, seen seen
 }
 
 func (s SchemaBuilder) mapEnumType(enum *syntax.EnumSet, seen seenTypes) error {
-	seen = seen.See(enum.TypeID)
+	seen = seen.See(enum.TypeSpec.ID())
 	if err := s.checkSeen(seen); err != nil {
 		return err
 	}
 
 	propType := PropertyNode[string]{
-		TypeID_: enum.TypeID,
+		TypeID_: enum.TypeSpec.ID(),
 		Typ:     "string",
 	}
 	var (
@@ -167,14 +167,9 @@ func (s SchemaBuilder) mapEnumType(enum *syntax.EnumSet, seen seenTypes) error {
 
 	for _, opt := range enum.Values {
 		var (
-			newValue = strings.Trim(opt.Decl.Values[0].(*dst.BasicLit).Value, "\"")
-			comment  string
+			newValue = strings.Trim(opt.Value().Values[0].(*dst.BasicLit).Value, "\"")
+			comment  = opt.Comments()
 		)
-		if comment = syntax.BuildComments(opt.Decl.Decorations()); len(comment) == 0 {
-			if len(opt.GenDecl.Specs) == 1 {
-				comment = syntax.BuildComments(opt.GenDecl.Decorations())
-			}
-		}
 		if len(comment) > 0 {
 			if countComments > 0 {
 				sb.WriteString("\n\n")
@@ -186,14 +181,11 @@ func (s SchemaBuilder) mapEnumType(enum *syntax.EnumSet, seen seenTypes) error {
 		}
 		propType.Enum = append(propType.Enum, newValue)
 	}
-	if enum.TypeSpec == nil {
+	if enum.TypeSpec.Pkg() == nil {
 		panic("oh heck")
 	}
 
-	var comment = syntax.BuildComments(enum.TypeSpec.Decorations())
-	if len(comment) == 0 && len(enum.GenDecl.Specs) == 1 {
-		comment = syntax.BuildComments(enum.GenDecl.Decorations())
-	}
+	var comment = enum.TypeSpec.Comments()
 	if len(comment) > 0 {
 		if sb.Len() > 0 {
 			propType.Desc = comment + "\n\n" + sb.String()
@@ -203,7 +195,7 @@ func (s SchemaBuilder) mapEnumType(enum *syntax.EnumSet, seen seenTypes) error {
 	} else if sb.Len() > 0 {
 		propType.Desc = sb.String()
 	}
-	s.AddSchema(enum.TypeID, propType)
+	s.AddSchema(enum.TypeSpec.ID(), propType)
 	return nil
 }
 
@@ -217,7 +209,7 @@ func (s SchemaBuilder) mapType(t syntax.TypeID, seen seenTypes) error {
 		if err = s.mapInterface(iface, seen); err != nil {
 			return err
 		}
-	} else if enum, ok := scanResult.Constants[t.Concrete().Localize(scanResult.Pkg.PkgPath)]; ok {
+	} else if enum, ok := scanResult.Constants[t.Concrete()]; ok {
 		if err = s.mapEnumType(enum, seen); err != nil {
 			return err
 		}
@@ -274,9 +266,7 @@ func (s SchemaBuilder) renderSchema(typeID syntax.TypeID, anyTypeSpec syntax.Any
 			newType := syntax.TypeID{TypeName: node.Name, PkgPath: node.Path}
 			if newType.PkgPath == "" {
 				newType.PkgPath = typeID.PkgPath
-				newType.DeclaredLocally = typeID.DeclaredLocally
 			}
-			newType = newType.Localize(s.LocalPkg.PkgPath)
 			if err := s.mapType(newType, seen.See(typeID)); err != nil {
 				return nil, err
 			}
@@ -351,7 +341,7 @@ func (s SchemaBuilder) RenderSchemas() (err error) {
 		return fmt.Errorf("could not create subdir %s: %w", targetDir, err)
 	}
 	for _, method := range localScan.SchemaMethods {
-		if err = s.writeSchema(method.Receiver.Localize(s.LocalPkg.PkgPath), targetDir); err != nil {
+		if err = s.writeSchema(method.Receiver, targetDir); err != nil {
 			return err
 		}
 	}

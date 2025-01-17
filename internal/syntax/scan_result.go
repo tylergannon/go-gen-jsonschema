@@ -112,13 +112,6 @@ type (
 		Decl *dst.FuncDecl
 	}
 
-	ConstDecls struct {
-		Pkg   *decorator.Package
-		File  *dst.File
-		Decl  *dst.GenDecl
-		Specs []*dst.ValueSpec
-	}
-
 	SchemaMethod struct {
 		Receiver   TypeID
 		FuncName   string
@@ -138,11 +131,6 @@ type (
 		Position token.Position
 	}
 
-	enumVal struct {
-		GenDecl *dst.GenDecl
-		Decl    *dst.ValueSpec
-	}
-
 	AnyTypeSpec struct {
 		Spec dst.Expr
 		File *dst.File
@@ -157,12 +145,8 @@ type (
 	}
 
 	EnumSet struct {
-		GenDecl  *dst.GenDecl
-		TypeSpec *dst.TypeSpec
-		Pkg      *decorator.Package
-		File     *dst.File
-		TypeID   TypeID
-		Values   []enumVal
+		TypeSpec TypeSpec
+		Values   []ValueSpec
 	}
 )
 
@@ -219,15 +203,15 @@ const (
 //	return v.File.Imports
 //}
 
-type VarDeclSet []VarDecls
+type VarDeclSet []VarConstDecl
 
 func (vd VarDeclSet) MarkerFuncs() []MarkerFunctionCall {
 	var result []MarkerFunctionCall
 	for _, decl := range vd {
-		for _, spec := range decl.Specs {
+		for _, spec := range decl.Specs() {
 			result = append(
 				result,
-				ParseValueExprForMarkerFunctionCall(spec, decl.File, decl.Pkg)...,
+				ParseValueExprForMarkerFunctionCall(spec.node, decl.File(), decl.Pkg())...,
 			)
 		}
 	}
@@ -235,7 +219,7 @@ func (vd VarDeclSet) MarkerFuncs() []MarkerFunctionCall {
 }
 
 type decls struct {
-	constDecls []ConstDecls
+	constDecls []VarConstDecl
 	typeDecls  []TypeDecls
 	varDecls   VarDeclSet
 	funcDecls  []FuncDecl
@@ -270,10 +254,7 @@ func LoadPackage(pkg *decorator.Package) (ScanResult, error) {
 	for _, decl := range markerCalls {
 		switch decl.Function {
 		case MarkerFuncNewEnumType:
-			enums[decl.TypeArgument.Localize(pkg.PkgPath)] = &EnumSet{
-				Pkg:    decl.Pkg,
-				TypeID: decl.TypeArgument.Localize(pkg.PkgPath),
-			}
+			enums[decl.TypeArgument.Concrete()] = &EnumSet{}
 		case MarkerFuncNewInterfaceImpl:
 			var (
 				err   error
@@ -311,16 +292,14 @@ func LoadPackage(pkg *decorator.Package) (ScanResult, error) {
 	for _, _typeDecl := range _decls.typeDecls {
 		for _, spec := range _typeDecl.Specs {
 			var (
-				typeID = TypeID{DeclaredLocally: true, TypeName: spec.Name.Name}
+				typeID = TypeID{PkgPath: pkg.PkgPath, TypeName: spec.Name.Name}
 			)
 			if iface, ok := interfaces[typeID.TypeName]; ok {
 				iface.Pkg = pkg
 				iface.File = _typeDecl.File
 				interfaces[typeID.TypeName] = iface
-			} else if enum, ok := enums[typeID.Concrete().Localize(pkg.PkgPath)]; ok {
-				enum.GenDecl = _typeDecl.Decl
-				enum.TypeSpec = spec
-				enum.File = _typeDecl.File
+			} else if enum, ok := enums[typeID.Concrete()]; ok {
+				enum.TypeSpec = NewTypeSpec(_typeDecl.Decl, spec, _typeDecl.Pkg, _typeDecl.File)
 			} else {
 				var t = NamedTypeSpec{
 					GenDecl:  _typeDecl.Decl,
@@ -341,18 +320,18 @@ func LoadPackage(pkg *decorator.Package) (ScanResult, error) {
 	}
 	// Find all locally defined enum values
 	for _, _constDecl := range _decls.constDecls {
-		for _, spec := range _constDecl.Specs {
-			if spec.Type == nil {
+		for _, spec := range _constDecl.Specs() {
+			if !spec.HasType() {
 				continue
 			}
-			if ident, ok := spec.Type.(*dst.Ident); ok {
+			if ident, ok := spec.Type().(*dst.Ident); ok {
 				typeID := TypeID{TypeName: ident.Name}
 				if ident.Path == "" {
 					typeID.PkgPath = pkg.PkgPath
 				} else {
 					typeID.PkgPath = ident.Path
 				}
-				enums[typeID].Values = append(enums[typeID].Values, enumVal{GenDecl: _constDecl.Decl, Decl: spec})
+				enums[typeID].Values = append(enums[typeID].Values, spec)
 			}
 			//if ident, ok := spec.Type.(*dst.Ident); ok && enums[ident.Name] != nil {
 			//	enums[ident.Name].Values = append(enums[ident.Name].Values, enumVal{GenDecl: _constDecl.Decl, Decl: spec})
@@ -399,27 +378,9 @@ func loadPkgDecls(pkg *decorator.Package) *decls {
 						Specs: specs,
 					})
 				case token.CONST:
-					var values []*dst.ValueSpec
-					for _, spec := range _decl.Specs {
-						values = append(values, spec.(*dst.ValueSpec))
-					}
-					_decls.constDecls = append(_decls.constDecls, ConstDecls{
-						Pkg:   pkg,
-						File:  file,
-						Decl:  _decl,
-						Specs: values,
-					})
+					_decls.constDecls = append(_decls.constDecls, NewVarConstDecl(_decl, pkg, file))
 				case token.VAR:
-					var specs []*dst.ValueSpec
-					for _, spec := range _decl.Specs {
-						specs = append(specs, spec.(*dst.ValueSpec))
-					}
-					_decls.varDecls = append(_decls.varDecls, VarDecls{
-						Pkg:   pkg,
-						File:  file,
-						Decl:  _decl,
-						Specs: specs,
-					})
+					_decls.varDecls = append(_decls.varDecls, NewVarConstDecl(_decl, pkg, file))
 				default:
 				}
 			}

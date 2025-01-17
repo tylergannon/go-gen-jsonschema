@@ -58,7 +58,7 @@ func ParseValueExprForMarkerFunctionCall(e *dst.ValueSpec, file *dst.File, pkg *
 		if !ok {
 			continue
 		}
-		id := parseFuncFromExpr(ce.Fun, file.Imports)
+		id := parseFuncFromExpr(ce.Fun, file.Imports, pkg)
 		if id.PkgPath != SchemaPackagePath {
 			fmt.Println("Not path", id)
 			continue
@@ -73,7 +73,7 @@ func ParseValueExprForMarkerFunctionCall(e *dst.ValueSpec, file *dst.File, pkg *
 			Pkg:          pkg,
 			Function:     MarkerFunction(id.TypeName),
 			Arguments:    ce.Args,
-			TypeArgument: parseTypeArguments(ce.Fun, file.Imports),
+			TypeArgument: parseTypeArguments(ce.Fun, pkg, file.Imports),
 			File:         file,
 			Position:     NodePosition(pkg, e),
 		})
@@ -81,7 +81,7 @@ func ParseValueExprForMarkerFunctionCall(e *dst.ValueSpec, file *dst.File, pkg *
 	return results
 }
 
-func parseFuncFromExpr(e dst.Expr, importMap ImportMap) TypeID {
+func parseFuncFromExpr(e dst.Expr, importMap ImportMap, pkg *decorator.Package) TypeID {
 	var (
 		ok     bool
 		typeID TypeID
@@ -97,31 +97,31 @@ func parseFuncFromExpr(e dst.Expr, importMap ImportMap) TypeID {
 		typeID.TypeName = t.Sel.Name
 		return typeID
 	case *dst.IndexExpr:
-		return parseFuncFromExpr(t.X, importMap)
+		return parseFuncFromExpr(t.X, importMap, pkg)
 	case *dst.Ident:
 		if t.Path == "" {
-			typeID.DeclaredLocally = true
+			typeID.PkgPath = pkg.PkgPath
 		} else {
 			typeID.PkgPath = t.Path
 		}
 		typeID.TypeName = t.Name
 		return typeID
 	case *dst.StarExpr:
-		typeID = parseFuncFromExpr(t.X, importMap)
+		typeID = parseFuncFromExpr(t.X, importMap, pkg)
 		typeID.Indirection = Pointer
 		return typeID
 	}
 	return TypeID{}
 }
 
-func parseTypeArguments(e dst.Expr, importMap ImportMap) *TypeID {
+func parseTypeArguments(e dst.Expr, pkg *decorator.Package, importMap ImportMap) *TypeID {
 	var expr dst.Expr
 	if idxExpr, ok := e.(*dst.IndexExpr); ok {
 		expr = idxExpr.Index
 	} else {
 		return nil
 	}
-	typeID := parseFuncFromExpr(expr, importMap)
+	typeID := parseFuncFromExpr(expr, importMap, pkg)
 
 	return &typeID
 }
@@ -137,7 +137,7 @@ func (m MarkerFunctionCall) ParseTypesFromArgs(foo ...bool) ([]TypeID, error) {
 func unwrapSchemaMethodReceiver(expr dst.Expr, pkg *decorator.Package, importMap ImportMap) (TypeID, error) {
 	switch t := expr.(type) {
 	case *dst.Ident:
-		return TypeID{DeclaredLocally: true, TypeName: t.Name}, nil
+		return TypeID{PkgPath: pkg.PkgPath, TypeName: t.Name}, nil
 	case *dst.SelectorExpr:
 		xIdent, ok := t.X.(*dst.Ident)
 		if !ok {
@@ -214,7 +214,7 @@ func parseFuncCallForTypes(args []dst.Expr, importMap ImportMap, pkg *decorator.
 	for _, arg := range args {
 
 		pos := pkg.Fset.Position(pkg.Decorator.Map.Ast.Nodes[arg].Pos())
-		if typeID, err := parseLitForType(arg, importMap); err != nil {
+		if typeID, err := parseLitForType(arg, pkg, importMap); err != nil {
 			return nil, fmt.Errorf("unsupported arg at %s: %w", pos, err)
 		} else {
 			results = append(results, typeID)
@@ -224,10 +224,10 @@ func parseFuncCallForTypes(args []dst.Expr, importMap ImportMap, pkg *decorator.
 	return results, nil
 }
 
-func parseLitForType(expr dst.Expr, importMap ImportMap) (TypeID, error) {
+func parseLitForType(expr dst.Expr, pkg *decorator.Package, importMap ImportMap) (TypeID, error) {
 	switch t := expr.(type) {
 	case *dst.CompositeLit:
-		return parseFuncFromExpr(t.Type, importMap), nil
+		return parseFuncFromExpr(t.Type, importMap, pkg), nil
 	case *dst.UnaryExpr:
 		if t.Op != token.AND {
 			return TypeID{}, errors.New("unary expression op must be &")
@@ -236,7 +236,7 @@ func parseLitForType(expr dst.Expr, importMap ImportMap) (TypeID, error) {
 		if !ok {
 			return TypeID{}, fmt.Errorf("unary expression type expects composite literal but was %T", t.X)
 		}
-		answer := parseFuncFromExpr(lit.Type, importMap)
+		answer := parseFuncFromExpr(lit.Type, importMap, pkg)
 		answer.Indirection = Pointer
 
 		return answer, nil
@@ -245,7 +245,7 @@ func parseLitForType(expr dst.Expr, importMap ImportMap) (TypeID, error) {
 		if !ok {
 			return TypeID{}, fmt.Errorf("CallExpr fun must be ParenExpr, got %T", t.Fun)
 		}
-		return parseFuncFromExpr(p.X, importMap), nil
+		return parseFuncFromExpr(p.X, importMap, pkg), nil
 	default:
 		fmt.Printf("Unrecognized -- %T %#v\n", expr, expr)
 		return TypeID{}, fmt.Errorf("Unrecognized -- %T %#v\n", expr, expr)
