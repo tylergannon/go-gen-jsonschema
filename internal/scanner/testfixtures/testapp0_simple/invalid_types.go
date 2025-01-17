@@ -1,3 +1,4 @@
+// nolint
 package testapp0_simple
 
 type InvalidDueToFunctionField1 struct {

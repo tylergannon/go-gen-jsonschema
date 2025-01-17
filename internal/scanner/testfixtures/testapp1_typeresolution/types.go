@@ -1,3 +1,4 @@
+// nolint
 package testapp1_typeresolution
 
 type TrivialNamedType int

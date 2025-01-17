@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/tylergannon/go-gen-jsonschema/internal/builder"
+	"github.com/tylergannon/go-gen-jsonschema/internal/common"
 	"github.com/tylergannon/go-gen-jsonschema/internal/scanner"
 	"go/build"
 	"io"
@@ -78,7 +79,7 @@ func handleGen(firstArg int) {
 		genCmd.PrintDefaults()
 		return
 	}
-	genCmd.Parse(os.Args[firstArg:])
+	_ = genCmd.Parse(os.Args[firstArg:])
 
 	if err = builder.Run(builder.BuilderArgs{
 		TargetDir: *target,
@@ -162,7 +163,7 @@ func handleNew() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	defer writer.Close()
+	defer common.LogClose(writer)
 	data, err := builder.RenderTemplate(configTmplContents, tmplArg)
 	if err != nil {
 		log.Fatalln(err)
