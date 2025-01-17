@@ -7,6 +7,7 @@ import (
 	"go/token"
 	"go/types"
 	"golang.org/x/tools/go/packages"
+	"slices"
 )
 
 type PackageScanner interface {
@@ -106,12 +107,6 @@ type (
 		Specs []*dst.ValueSpec
 	}
 
-	FuncDecl struct {
-		Pkg  *decorator.Package
-		File *dst.File
-		Decl *dst.FuncDecl
-	}
-
 	SchemaMethod struct {
 		Receiver   TypeID
 		FuncName   string
@@ -131,7 +126,7 @@ type (
 	NamedTypeSpec struct {
 		NamedType *types.Named
 		TypeSpec  TypeSpec
-		Expr
+		//Expr
 	}
 
 	EnumSet struct {
@@ -139,10 +134,6 @@ type (
 		Values   []ValueSpec
 	}
 )
-
-func (n NamedTypeSpec) GetDescription() string {
-	return n.TypeSpec.Comments()
-}
 
 func (s SchemaMethod) markerType() MarkerKind {
 	return MarkerKindSchema
@@ -204,38 +195,62 @@ type decls struct {
 
 type ScanResult struct {
 	Pkg             *decorator.Package
-	Constants       map[TypeID]*EnumSet
+	Constants       map[string]*EnumSet
 	MarkerCalls     []MarkerFunctionCall
 	Interfaces      map[string]IfaceImplementations
-	ConcreteTypes   map[TypeID]bool
+	ConcreteTypes   map[string]bool
 	SchemaMethods   []SchemaMethod
 	SchemaFuncs     []SchemaFunction
 	LocalNamedTypes map[string]NamedTypeSpec
 }
 
+type seenPackages []string
+
+func (s seenPackages) seen(pkg *decorator.Package) bool {
+	return slices.Contains(s, pkg.ID)
+}
+
+func (s seenPackages) see(pkg *decorator.Package) seenPackages {
+	return append(seenPackages{pkg.ID}, s...)
+}
+
+func (s seenPackages) add(pkg *decorator.Package) (seenPackages, bool) {
+	if s.seen(pkg) {
+		return s, false
+	}
+	return s.see(pkg), true
+}
+
 /**
  * Need a way to map out all the types in one go.  The structures here don't seem to do it.
  */
-
 func LoadPackage(pkg *decorator.Package) (ScanResult, error) {
+	return loadPackageInternal(pkg, seenPackages{})
+}
+
+func loadPackageInternal(pkg *decorator.Package, seen seenPackages) (ScanResult, error) {
 	// Needs to discover:
 	// 1. Enum (Const) Values
 	// 2. Supported Interfaces
 	// 3. Types to render
 	var (
+		_, ok           = seen.add(pkg)
 		_decls          = loadPkgDecls(pkg)
 		markerCalls     = _decls.varDecls.MarkerFuncs()
-		enums           = map[TypeID]*EnumSet{}
+		enums           = map[string]*EnumSet{}
 		interfaces      = map[string]IfaceImplementations{}
-		concreteTypes   = map[TypeID]bool{}
+		concreteTypes   = map[string]bool{}
 		schemaMethods   []SchemaMethod
 		schemaFuncs     []SchemaFunction
 		localNamedTypes = map[string]NamedTypeSpec{}
 	)
+	if !ok {
+		return ScanResult{}, fmt.Errorf("circular package dependency detected. %v", seen)
+	}
 	for _, decl := range markerCalls {
 		switch decl.CallExpr.MustIdentifyFunc().TypeName {
 		case MarkerFuncNewEnumType:
-			enums[decl.MustTypeArgument().Concrete()] = &EnumSet{}
+			enums[decl.MustTypeArgument().TypeName] = &EnumSet{}
 		case MarkerFuncNewInterfaceImpl:
 			var (
 				err   error
@@ -246,18 +261,18 @@ func LoadPackage(pkg *decorator.Package) (ScanResult, error) {
 			}
 			interfaces[decl.MustTypeArgument().TypeName] = iface
 			for _, impl := range iface.Impls {
-				concreteTypes[impl.Concrete()] = true
+				concreteTypes[impl.TypeName] = true
 			}
 		case MarkerFuncNewJSONSchemaMethod:
 			method, err := decl.ParseSchemaMethod()
-			concreteTypes[method.Receiver.Concrete()] = true
+			concreteTypes[method.Receiver.TypeName] = true
 			if err != nil {
 				return ScanResult{}, err
 			}
 			schemaMethods = append(schemaMethods, method)
 		case MarkerFuncNewJSONSchemaBuilder:
 			method, err := decl.ParseSchemaFunc()
-			concreteTypes[method.Receiver.Concrete()] = true
+			concreteTypes[method.Receiver.TypeName] = true
 			if err != nil {
 				return ScanResult{}, err
 			}
@@ -276,12 +291,11 @@ func LoadPackage(pkg *decorator.Package) (ScanResult, error) {
 			if iface, ok := interfaces[typeID.TypeName]; ok {
 				iface.TypeSpec = NewTypeSpec(_typeDecl.Decl, spec, _typeDecl.Pkg, _typeDecl.File)
 				interfaces[typeID.TypeName] = iface
-			} else if enum, ok := enums[typeID.Concrete()]; ok {
+			} else if enum, ok := enums[typeID.TypeName]; ok {
 				enum.TypeSpec = NewTypeSpec(_typeDecl.Decl, spec, _typeDecl.Pkg, _typeDecl.File)
 			} else {
 				var t = NamedTypeSpec{
 					TypeSpec: NewTypeSpec(_typeDecl.Decl, spec, _typeDecl.Pkg, _typeDecl.File),
-					Expr:     NewExpr(spec.Type, _typeDecl.Pkg, _typeDecl.File),
 				}
 				if t.NamedType, ok = findNamedType(_typeDecl.Pkg, spec.Name.Name); !ok {
 					return ScanResult{}, fmt.Errorf("unable to load named type for %s declared at %s", spec.Name.Name, t.TypeSpec.Position())
@@ -303,11 +317,8 @@ func LoadPackage(pkg *decorator.Package) (ScanResult, error) {
 				} else {
 					typeID.PkgPath = ident.Path
 				}
-				enums[typeID].Values = append(enums[typeID].Values, spec)
+				enums[typeID.TypeName].Values = append(enums[typeID.TypeName].Values, spec)
 			}
-			//if ident, ok := spec.Type.(*dst.Ident); ok && enums[ident.Name] != nil {
-			//	enums[ident.Name].Values = append(enums[ident.Name].Values, enumVal{GenDecl: _constDecl.Decl, Decl: spec})
-			//}
 		}
 
 	}
@@ -331,11 +342,7 @@ func loadPkgDecls(pkg *decorator.Package) *decls {
 		for _, decl := range file.Decls {
 			switch _decl := decl.(type) {
 			case *dst.FuncDecl:
-				_decls.funcDecls = append(_decls.funcDecls, FuncDecl{
-					Pkg:  pkg,
-					File: file,
-					Decl: _decl,
-				})
+				_decls.funcDecls = append(_decls.funcDecls, NewFuncDecl(_decl, pkg, file))
 			case *dst.GenDecl:
 				switch _decl.Tok {
 				case token.TYPE:

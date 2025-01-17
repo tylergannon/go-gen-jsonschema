@@ -55,6 +55,9 @@ type (
 	VarConstDecl struct {
 		STNode[*dst.GenDecl]
 	}
+	FuncDecl struct {
+		STNode[*dst.FuncDecl]
+	}
 )
 
 func (s STNode[T]) Details() string {
@@ -74,6 +77,12 @@ func buildComments(node dst.Node, genDecl *dst.GenDecl) string {
 		return ""
 	}
 	return BuildComments(genDecl.Decorations())
+}
+
+func NewFuncDecl(f *dst.FuncDecl, pkg *decorator.Package, file *dst.File) FuncDecl {
+	return FuncDecl{
+		NewNode(f, pkg, file),
+	}
 }
 
 func NewVarConstDecl(node *dst.GenDecl, pkg *decorator.Package, file *dst.File) VarConstDecl {
@@ -259,4 +268,16 @@ func (v VarConstDecl) Specs() []ValueSpec {
 		}
 	}
 	return specs
+}
+
+/**
+ * NamedType methods
+ */
+
+func (n NamedTypeSpec) GetDescription() string {
+	return n.TypeSpec.Comments()
+}
+
+func (n NamedTypeSpec) Type() Expr {
+	return NewExpr(n.TypeSpec.node.Type, n.TypeSpec.pkg, n.TypeSpec.file)
 }

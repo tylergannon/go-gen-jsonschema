@@ -209,7 +209,7 @@ func (s SchemaBuilder) mapType(t syntax.TypeID, seen seenTypes) error {
 		if err = s.mapInterface(iface, seen); err != nil {
 			return err
 		}
-	} else if enum, ok := scanResult.Constants[t.Concrete()]; ok {
+	} else if enum, ok := scanResult.Constants[t.TypeName]; ok {
 		if err = s.mapEnumType(enum, seen); err != nil {
 			return err
 		}
@@ -240,7 +240,7 @@ func (s SchemaBuilder) mapNamedType(t syntax.TypeID, seen seenTypes) error {
 	if seen.Seen(t) {
 		return fmt.Errorf("circular dependency found for type %s at %s", t.TypeName, typeSpec.Position())
 	}
-	if schema, err := s.renderSchema(t, typeSpec.Expr, typeSpec.GetDescription(), seen); err != nil {
+	if schema, err := s.renderSchema(t, typeSpec.Type(), typeSpec.GetDescription(), seen); err != nil {
 		return err
 	} else {
 		s.AddSchema(t, schema)
