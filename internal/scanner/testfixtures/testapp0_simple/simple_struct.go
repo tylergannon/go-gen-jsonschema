@@ -1,3 +1,4 @@
+// nolint
 package testapp0_simple
 
 //go:generate go run github.com/tylergannon/go-gen-jsonschema/gen-jsonschema/ -type SimpleStruct
