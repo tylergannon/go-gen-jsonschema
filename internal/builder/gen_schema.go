@@ -7,7 +7,7 @@ import (
 	"github.com/dave/dst"
 	"github.com/dave/dst/decorator"
 	"github.com/tylergannon/go-gen-jsonschema/internal/common"
-	"github.com/tylergannon/go-gen-jsonschema/internal/scanner"
+	"github.com/tylergannon/go-gen-jsonschema/internal/syntax"
 	"go/token"
 	"os"
 	"path/filepath"
@@ -18,24 +18,24 @@ import (
 const maxNestingDepth = 100 // This is not the JSON Schema nesting depth but recursion depth...
 const defaultSubdir = "jsonschema"
 
-type seenTypes []scanner.TypeID
+type seenTypes []syntax.TypeID
 
-func (s seenTypes) Seen(t scanner.TypeID) bool {
+func (s seenTypes) Seen(t syntax.TypeID) bool {
 	return slices.Contains(s, t.Concrete())
 }
 
-func (s seenTypes) See(t scanner.TypeID) seenTypes {
+func (s seenTypes) See(t syntax.TypeID) seenTypes {
 	return append(seenTypes{t.Concrete()}, s...)
 }
 
 func New(pkg *decorator.Package) (SchemaBuilder, error) {
-	data, err := scanner.LoadPackage(pkg)
+	data, err := syntax.LoadPackage(pkg)
 	if err != nil {
 		return SchemaBuilder{}, err
 	}
 	var builder = SchemaBuilder{
 		LocalPkg: pkg,
-		Packages: map[string]scanner.ScanResult{pkg.PkgPath: data},
+		Packages: map[string]syntax.ScanResult{pkg.PkgPath: data},
 		schemas:  schemaMap{},
 		Subdir:   defaultSubdir,
 	}
@@ -55,7 +55,7 @@ func New(pkg *decorator.Package) (SchemaBuilder, error) {
 
 type SchemaBuilder struct {
 	LocalPkg *decorator.Package
-	Packages map[string]scanner.ScanResult
+	Packages map[string]syntax.ScanResult
 	schemas  schemaMap
 	Subdir   string
 	Pretty   bool
@@ -78,32 +78,32 @@ func (m schemaMap) Get(pkgPath, typeName string) (schema JSONSchema, ok bool) {
 	return
 }
 
-func (s SchemaBuilder) GetSchema(t scanner.TypeID) (schema JSONSchema, ok bool) {
+func (s SchemaBuilder) GetSchema(t syntax.TypeID) (schema JSONSchema, ok bool) {
 	return s.schemas.Get(t.PkgPath, t.TypeName)
 }
 
-func (s SchemaBuilder) AddSchema(t scanner.TypeID, schema JSONSchema) {
+func (s SchemaBuilder) AddSchema(t syntax.TypeID, schema JSONSchema) {
 	ty := t.Concrete().Localize(s.LocalPkg.PkgPath)
 	s.schemas.Set(ty.PkgPath, ty.TypeName, schema)
 }
 
-// loadScanResult gets the scan result associated with the given scanner.TypeID
-func (s SchemaBuilder) loadScanResult(t scanner.TypeID) (scanner.ScanResult, error) {
+// loadScanResult gets the scan result associated with the given syntax.TypeID
+func (s SchemaBuilder) loadScanResult(t syntax.TypeID) (syntax.ScanResult, error) {
 	var pkgPath = t.PkgPath
 	if pkgPath == "" {
 		pkgPath = s.LocalPkg.PkgPath
 	}
 	if _, ok := s.Packages[pkgPath]; !ok {
-		if pkgs, err := scanner.Load(pkgPath); err != nil {
-			return scanner.ScanResult{}, err
-		} else if s.Packages[pkgPath], err = scanner.LoadPackage(pkgs[0]); err != nil {
-			return scanner.ScanResult{}, err
+		if pkgs, err := syntax.Load(pkgPath); err != nil {
+			return syntax.ScanResult{}, err
+		} else if s.Packages[pkgPath], err = syntax.LoadPackage(pkgs[0]); err != nil {
+			return syntax.ScanResult{}, err
 		}
 	}
 	return s.Packages[pkgPath], nil
 }
 
-func (s SchemaBuilder) find(t scanner.TypeID) (token.Position, error) {
+func (s SchemaBuilder) find(t syntax.TypeID) (token.Position, error) {
 	sb, err := s.loadScanResult(t)
 	if err != nil {
 		return token.Position{}, err
@@ -112,10 +112,10 @@ func (s SchemaBuilder) find(t scanner.TypeID) (token.Position, error) {
 	if !ok {
 		return token.Position{}, fmt.Errorf("type %s not found", t.TypeName)
 	}
-	return scanner.NodePosition(sb.Pkg, typeSpec.TypeSpec), nil
+	return syntax.NodePosition(sb.Pkg, typeSpec.TypeSpec), nil
 }
 
-func (s SchemaBuilder) mapInterface(iface scanner.IfaceImplementations, seen seenTypes) error {
+func (s SchemaBuilder) mapInterface(iface syntax.IfaceImplementations, seen seenTypes) error {
 	if seen.Seen(iface.TypeID) {
 		return fmt.Errorf("circular dependency found for type %s, defined at %s", iface.TypeID, iface.Position)
 	}
@@ -150,7 +150,7 @@ func (s SchemaBuilder) mapInterface(iface scanner.IfaceImplementations, seen see
 	return nil
 }
 
-func (s SchemaBuilder) mapEnumType(enum *scanner.EnumSet, seen seenTypes) error {
+func (s SchemaBuilder) mapEnumType(enum *syntax.EnumSet, seen seenTypes) error {
 	seen = seen.See(enum.TypeID)
 	if err := s.checkSeen(seen); err != nil {
 		return err
@@ -170,9 +170,9 @@ func (s SchemaBuilder) mapEnumType(enum *scanner.EnumSet, seen seenTypes) error 
 			newValue = strings.Trim(opt.Decl.Values[0].(*dst.BasicLit).Value, "\"")
 			comment  string
 		)
-		if comment = scanner.BuildComments(opt.Decl.Decorations()); len(comment) == 0 {
+		if comment = syntax.BuildComments(opt.Decl.Decorations()); len(comment) == 0 {
 			if len(opt.GenDecl.Specs) == 1 {
-				comment = scanner.BuildComments(opt.GenDecl.Decorations())
+				comment = syntax.BuildComments(opt.GenDecl.Decorations())
 			}
 		}
 		if len(comment) > 0 {
@@ -190,9 +190,9 @@ func (s SchemaBuilder) mapEnumType(enum *scanner.EnumSet, seen seenTypes) error 
 		panic("oh heck")
 	}
 
-	var comment = scanner.BuildComments(enum.TypeSpec.Decorations())
+	var comment = syntax.BuildComments(enum.TypeSpec.Decorations())
 	if len(comment) == 0 && len(enum.GenDecl.Specs) == 1 {
-		comment = scanner.BuildComments(enum.GenDecl.Decorations())
+		comment = syntax.BuildComments(enum.GenDecl.Decorations())
 	}
 	if len(comment) > 0 {
 		if sb.Len() > 0 {
@@ -208,7 +208,7 @@ func (s SchemaBuilder) mapEnumType(enum *scanner.EnumSet, seen seenTypes) error 
 }
 
 // mapType
-func (s SchemaBuilder) mapType(t scanner.TypeID, seen seenTypes) error {
+func (s SchemaBuilder) mapType(t syntax.TypeID, seen seenTypes) error {
 	scanResult, err := s.loadScanResult(t)
 	if err != nil {
 		return err
@@ -236,7 +236,7 @@ func (s SchemaBuilder) checkSeen(seen seenTypes) error {
 	return nil
 }
 
-func (s SchemaBuilder) mapNamedType(t scanner.TypeID, seen seenTypes) error {
+func (s SchemaBuilder) mapNamedType(t syntax.TypeID, seen seenTypes) error {
 	scanResult, err := s.loadScanResult(t)
 	if err != nil {
 		return err
@@ -256,7 +256,7 @@ func (s SchemaBuilder) mapNamedType(t scanner.TypeID, seen seenTypes) error {
 	return nil
 }
 
-func (s SchemaBuilder) renderSchema(typeID scanner.TypeID, anyTypeSpec scanner.AnyTypeSpec, description string, seen seenTypes) (JSONSchema, error) {
+func (s SchemaBuilder) renderSchema(typeID syntax.TypeID, anyTypeSpec syntax.AnyTypeSpec, description string, seen seenTypes) (JSONSchema, error) {
 	switch node := anyTypeSpec.Spec.(type) {
 	case *dst.Ident:
 		switch node.Name {
@@ -271,7 +271,7 @@ func (s SchemaBuilder) renderSchema(typeID scanner.TypeID, anyTypeSpec scanner.A
 		default:
 			// Means it is another named type.
 			// Find it.
-			newType := scanner.TypeID{TypeName: node.Name, PkgPath: node.Path}
+			newType := syntax.TypeID{TypeName: node.Name, PkgPath: node.Path}
 			if newType.PkgPath == "" {
 				newType.PkgPath = typeID.PkgPath
 				newType.DeclaredLocally = typeID.DeclaredLocally
@@ -314,11 +314,11 @@ func (s SchemaBuilder) renderSchema(typeID scanner.TypeID, anyTypeSpec scanner.A
 
 }
 
-func (s SchemaBuilder) localScan() scanner.ScanResult {
+func (s SchemaBuilder) localScan() syntax.ScanResult {
 	return s.Packages[s.LocalPkg.PkgPath]
 }
 
-func (s SchemaBuilder) writeSchema(t scanner.TypeID, targetDir string) (err error) {
+func (s SchemaBuilder) writeSchema(t syntax.TypeID, targetDir string) (err error) {
 	var (
 		file     *os.File
 		ok       bool

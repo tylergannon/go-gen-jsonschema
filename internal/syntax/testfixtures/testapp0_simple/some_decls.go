@@ -1,7 +1,7 @@
 package testapp0_simple
 
 import (
-	"github.com/tylergannon/go-gen-jsonschema/internal/scanner/testfixtures/testapp0_simple/subpkg"
+	"github.com/tylergannon/go-gen-jsonschema/internal/syntax/testfixtures/testapp0_simple/subpkg"
 )
 
 type (

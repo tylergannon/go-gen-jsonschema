@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/tylergannon/go-gen-jsonschema/internal/builder"
 	"github.com/tylergannon/go-gen-jsonschema/internal/common"
-	"github.com/tylergannon/go-gen-jsonschema/internal/scanner"
+	"github.com/tylergannon/go-gen-jsonschema/internal/syntax"
 	"go/build"
 	"io"
 	"log"
@@ -136,7 +136,7 @@ func handleNew() {
 	}
 
 	var tmplArg = configArg{
-		BuildTag: scanner.BuildTag,
+		BuildTag: syntax.BuildTag,
 		PkgName:  pkgName,
 	}
 

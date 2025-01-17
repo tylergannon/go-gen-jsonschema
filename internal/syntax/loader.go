@@ -1,4 +1,4 @@
-package scanner
+package syntax
 
 import (
 	"github.com/dave/dst/decorator"
