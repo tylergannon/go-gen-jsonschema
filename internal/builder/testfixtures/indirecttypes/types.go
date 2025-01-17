@@ -4,7 +4,7 @@ package basictypes
 
 import (
 	_ "github.com/dave/dst"
-	"github.com/tylergannon/go-gen-jsonschema/internal/builder/testfixtures/basictypes/indirectsubpkg"
+	"github.com/tylergannon/go-gen-jsonschema/internal/builder/testfixtures/indirecttypes/indirectsubpkg"
 )
 
 // IntType is Foobarbax
