@@ -234,12 +234,12 @@ func LoadPackage(pkg *decorator.Package) (ScanResult, error) {
 	for _, decl := range markerCalls {
 		switch decl.CallExpr.MustIdentifyFunc().TypeName {
 		case MarkerFuncNewEnumType:
-			enums[decl.TypeArgument.Concrete()] = &EnumSet{}
+			enums[decl.MustTypeArgument().Concrete()] = &EnumSet{}
 		case MarkerFuncNewInterfaceImpl:
 			var (
 				err   error
 				iface = IfaceImplementations{
-					TypeID:   *decl.TypeArgument,
+					TypeID:   decl.MustTypeArgument(),
 					Position: decl.CallExpr.Position(),
 				}
 			)

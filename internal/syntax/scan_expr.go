@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/dave/dst"
-	"github.com/dave/dst/decorator"
 	"go/token"
 	"slices"
 	"strings"
@@ -25,11 +24,27 @@ type (
 	// in the scanned source code.
 	MarkerFunctionCall struct {
 		CallExpr CallExpr
-		// Our function calls need either zero or one type argument.
-		// If present, denote the type argument here.
-		TypeArgument *TypeID
 	}
 )
+
+func (m MarkerFunctionCall) MustTypeArgument() TypeID {
+	if t := m.TypeArgument(); t == nil {
+		panic("type argument cannot be nil")
+	} else {
+		return *t
+	}
+}
+
+func (m MarkerFunctionCall) TypeArgument() *TypeID {
+	var expr dst.Expr
+	if idxExpr, ok := m.CallExpr.node.Fun.(*dst.IndexExpr); ok {
+		expr = idxExpr.Index
+	} else {
+		return nil
+	}
+	typeID := parseFuncFromExpr(m.CallExpr.NewExpr(expr))
+	return &typeID
+}
 
 func (m MarkerFunctionCall) String() string {
 	callArgs := m.CallExpr.Args()
@@ -37,7 +52,7 @@ func (m MarkerFunctionCall) String() string {
 	for i, arg := range callArgs {
 		args[i] = fmt.Sprint(arg)
 	}
-	return fmt.Sprintf("%s %s Args{%s}", m.CallExpr.MustIdentifyFunc(), m.TypeArgument, strings.Join(args, ","))
+	return fmt.Sprintf("%s %s Args{%s}", m.CallExpr.MustIdentifyFunc(), m.TypeArgument(), strings.Join(args, ","))
 }
 
 var markerFunctions = []string{
@@ -64,8 +79,7 @@ func ParseValueExprForMarkerFunctionCall(e ValueSpec) []MarkerFunctionCall {
 			continue
 		}
 		results = append(results, MarkerFunctionCall{
-			CallExpr:     callExpr,
-			TypeArgument: parseTypeArguments(ce.Fun, e.pkg, e.file.Imports),
+			CallExpr: callExpr,
 		})
 	}
 	return results
@@ -104,17 +118,17 @@ func parseFuncFromExpr(e Expr) TypeID {
 	return TypeID{}
 }
 
-func parseTypeArguments(e dst.Expr, pkg *decorator.Package, importMap ImportMap) *TypeID {
-	var expr dst.Expr
-	if idxExpr, ok := e.(*dst.IndexExpr); ok {
-		expr = idxExpr.Index
-	} else {
-		return nil
-	}
-	typeID := parseFuncFromExpr(NewExpr(expr, pkg, nil))
-
-	return &typeID
-}
+//func parseTypeArguments(e dst.Expr, pkg *decorator.Package, importMap ImportMap) *TypeID {
+//	var expr dst.Expr
+//	if idxExpr, ok := e.(*dst.IndexExpr); ok {
+//		expr = idxExpr.Index
+//	} else {
+//		return nil
+//	}
+//	typeID := parseFuncFromExpr(NewExpr(expr, pkg, nil))
+//
+//	return &typeID
+//}
 
 func (m MarkerFunctionCall) ParseTypesFromArgs() ([]TypeID, error) {
 	var results []TypeID
@@ -160,17 +174,20 @@ func unwrapSchemaMethodReceiver(expr Expr) (TypeID, error) {
 }
 
 func (m MarkerFunctionCall) ParseSchemaFunc() (SchemaFunction, error) {
-	if m.TypeArgument == nil {
+	var typeArg = m.TypeArgument()
+	if typeArg == nil {
 		return SchemaFunction{}, fmt.Errorf("expected a type argument to denote schema func at %s", m.CallExpr.Position())
 	}
 	return SchemaFunction{
 		MarkerCall: m,
-		Receiver:   *m.TypeArgument,
+		Receiver:   *typeArg,
 		FuncName:   m.CallExpr.Args()[0].Expr().(*dst.Ident).Name,
 	}, nil
 }
 
 func (m MarkerFunctionCall) ParseSchemaMethod() (SchemaMethod, error) {
+	// There's only one result object because we only accept a single
+	// argument to the NewJSONSchema method.
 	var funcArgs = m.CallExpr.Args()
 	if len(funcArgs) != 1 {
 		err := fmt.Errorf("schema Method expects one argument but got %d, at %s", len(funcArgs), m.CallExpr.Position())
