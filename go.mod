@@ -6,6 +6,7 @@ require (
 	github.com/dave/dst v0.27.3
 	github.com/onsi/ginkgo/v2 v2.22.2
 	github.com/onsi/gomega v1.36.2
+	github.com/tylergannon/structtag v0.0.1
 	golang.org/x/tools v0.29.0
 )
 

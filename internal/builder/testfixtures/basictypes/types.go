@@ -4,6 +4,7 @@ package basictypes
 
 import (
 	_ "github.com/dave/dst"
+	_ "github.com/tylergannon/structtag"
 )
 
 // TypeInItsOwnDecl is an integer type that is the only item in its GenDecl

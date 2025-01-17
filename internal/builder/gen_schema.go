@@ -7,7 +7,7 @@ import (
 	"github.com/dave/dst"
 	"github.com/dave/dst/decorator"
 	"github.com/tylergannon/go-gen-jsonschema/internal/common"
-	"github.com/tylergannon/go-gen-jsonschema/internal/scanner"
+	"github.com/tylergannon/go-gen-jsonschema/internal/syntax"
 	"go/token"
 	"os"
 	"path/filepath"
@@ -18,34 +18,23 @@ import (
 const maxNestingDepth = 100 // This is not the JSON Schema nesting depth but recursion depth...
 const defaultSubdir = "jsonschema"
 
-type seenTypes []common.TypeID
-
-func (s seenTypes) Seen(t common.TypeID) bool {
-	return slices.Contains(s, t.Concrete())
-}
-
-func (s seenTypes) See(t common.TypeID) seenTypes {
-	return append(seenTypes{t.Concrete()}, s...)
-}
-
 func New(pkg *decorator.Package) (SchemaBuilder, error) {
-	data, err := scanner.LoadPackage(pkg)
+	data, err := syntax.LoadPackage(pkg)
 	if err != nil {
 		return SchemaBuilder{}, err
 	}
 	var builder = SchemaBuilder{
-		LocalPkg: pkg,
-		Packages: map[string]scanner.ScanResult{pkg.PkgPath: data},
-		schemas:  schemaMap{},
-		Subdir:   defaultSubdir,
+		Scan:    data,
+		schemas: schemaMap{},
+		Subdir:  defaultSubdir,
 	}
 	for _, m := range data.SchemaMethods {
-		if err = builder.mapType(m.Receiver, seenTypes{}); err != nil {
+		if err = builder.mapType(m.Receiver, syntax.SeenTypes{}); err != nil {
 			return builder, err
 		}
 	}
 	for _, f := range data.SchemaFuncs {
-		if err = builder.mapType(f.Receiver, seenTypes{}); err != nil {
+		if err = builder.mapType(f.Receiver, syntax.SeenTypes{}); err != nil {
 			return builder, err
 		}
 	}
@@ -54,11 +43,10 @@ func New(pkg *decorator.Package) (SchemaBuilder, error) {
 }
 
 type SchemaBuilder struct {
-	LocalPkg *decorator.Package
-	Packages map[string]scanner.ScanResult
-	schemas  schemaMap
-	Subdir   string
-	Pretty   bool
+	Scan    syntax.ScanResult
+	schemas schemaMap
+	Subdir  string
+	Pretty  bool
 }
 
 type schemaMap map[string]map[string]JSONSchema
@@ -78,32 +66,27 @@ func (m schemaMap) Get(pkgPath, typeName string) (schema JSONSchema, ok bool) {
 	return
 }
 
-func (s SchemaBuilder) GetSchema(t common.TypeID) (schema JSONSchema, ok bool) {
+func (s SchemaBuilder) GetSchema(t syntax.TypeID) (schema JSONSchema, ok bool) {
 	return s.schemas.Get(t.PkgPath, t.TypeName)
 }
 
-func (s SchemaBuilder) AddSchema(t common.TypeID, schema JSONSchema) {
-	ty := t.Concrete().Localize(s.LocalPkg.PkgPath)
+func (s SchemaBuilder) AddSchema(t syntax.TypeID, schema JSONSchema) {
+	ty := t.Concrete()
 	s.schemas.Set(ty.PkgPath, ty.TypeName, schema)
 }
 
-// loadScanResult gets the scan result associated with the given scanner.TypeID
-func (s SchemaBuilder) loadScanResult(t common.TypeID) (scanner.ScanResult, error) {
-	var pkgPath = t.PkgPath
-	if pkgPath == "" {
-		pkgPath = s.LocalPkg.PkgPath
+// loadScanResult gets the scan result associated with the given syntax.TypeID
+func (s SchemaBuilder) loadScanResult(t syntax.TypeID) (syntax.ScanResult, error) {
+	if t.PkgPath == "" {
+		panic("empty package path in loadScanResult")
 	}
-	if _, ok := s.Packages[pkgPath]; !ok {
-		if pkgs, err := scanner.Load(pkgPath); err != nil {
-			return scanner.ScanResult{}, err
-		} else if s.Packages[pkgPath], err = scanner.LoadPackage(pkgs[0]); err != nil {
-			return scanner.ScanResult{}, err
-		}
+	if res, ok := s.Scan.GetPackage(t.PkgPath); ok {
+		return res, nil
 	}
-	return s.Packages[pkgPath], nil
+	panic("package was not loaded: " + t.PkgPath)
 }
 
-func (s SchemaBuilder) find(t common.TypeID) (token.Position, error) {
+func (s SchemaBuilder) find(t syntax.TypeID) (token.Position, error) {
 	sb, err := s.loadScanResult(t)
 	if err != nil {
 		return token.Position{}, err
@@ -112,20 +95,20 @@ func (s SchemaBuilder) find(t common.TypeID) (token.Position, error) {
 	if !ok {
 		return token.Position{}, fmt.Errorf("type %s not found", t.TypeName)
 	}
-	return scanner.NodePosition(sb.Pkg, typeSpec.TypeSpec), nil
+	return typeSpec.Position(), nil
 }
 
-func (s SchemaBuilder) mapInterface(iface scanner.IfaceImplementations, seen seenTypes) error {
-	if seen.Seen(iface.TypeID) {
-		return fmt.Errorf("circular dependency found for type %s, defined at %s", iface.TypeID, iface.Position)
+func (s SchemaBuilder) mapInterface(iface syntax.IfaceImplementations, seen syntax.SeenTypes) error {
+	if seen.Seen(iface.TypeSpec.ID()) {
+		return fmt.Errorf("circular dependency found for type %s, defined at %s", iface.TypeSpec.ID(), iface.TypeSpec.Position())
 	}
-	seen = seen.See(iface.TypeID)
+	seen = seen.See(iface.TypeSpec.ID())
 	if err := s.checkSeen(seen); err != nil {
 		return err
 	}
 
 	node := UnionTypeNode{
-		TypeID_: iface.TypeID,
+		TypeID_: iface.TypeSpec.ID(),
 	}
 	for _, opt := range iface.Impls {
 		if err := s.mapType(opt, seen); err != nil {
@@ -146,18 +129,18 @@ func (s SchemaBuilder) mapInterface(iface scanner.IfaceImplementations, seen see
 		}
 		node.Options = append(node.Options, obj)
 	}
-	s.AddSchema(iface.TypeID, node)
+	s.AddSchema(iface.TypeSpec.ID(), node)
 	return nil
 }
 
-func (s SchemaBuilder) mapEnumType(enum *scanner.EnumSet, seen seenTypes) error {
-	seen = seen.See(enum.TypeID)
+func (s SchemaBuilder) mapEnumType(enum *syntax.EnumSet, seen syntax.SeenTypes) error {
+	seen = seen.See(enum.TypeSpec.ID())
 	if err := s.checkSeen(seen); err != nil {
 		return err
 	}
 
 	propType := PropertyNode[string]{
-		TypeID_: enum.TypeID,
+		TypeID_: enum.TypeSpec.ID(),
 		Typ:     "string",
 	}
 	var (
@@ -167,14 +150,9 @@ func (s SchemaBuilder) mapEnumType(enum *scanner.EnumSet, seen seenTypes) error 
 
 	for _, opt := range enum.Values {
 		var (
-			newValue = strings.Trim(opt.Decl.Values[0].(*dst.BasicLit).Value, "\"")
-			comment  string
+			newValue = strings.Trim(opt.Value().Values[0].(*dst.BasicLit).Value, "\"")
+			comment  = opt.Comments()
 		)
-		if comment = scanner.BuildComments(opt.Decl.Decorations()); len(comment) == 0 {
-			if len(opt.GenDecl.Specs) == 1 {
-				comment = scanner.BuildComments(opt.GenDecl.Decorations())
-			}
-		}
 		if len(comment) > 0 {
 			if countComments > 0 {
 				sb.WriteString("\n\n")
@@ -186,14 +164,11 @@ func (s SchemaBuilder) mapEnumType(enum *scanner.EnumSet, seen seenTypes) error 
 		}
 		propType.Enum = append(propType.Enum, newValue)
 	}
-	if enum.TypeSpec == nil {
+	if enum.TypeSpec.Pkg() == nil {
 		panic("oh heck")
 	}
 
-	var comment = scanner.BuildComments(enum.TypeSpec.Decorations())
-	if len(comment) == 0 && len(enum.GenDecl.Specs) == 1 {
-		comment = scanner.BuildComments(enum.GenDecl.Decorations())
-	}
+	var comment = enum.TypeSpec.Comments()
 	if len(comment) > 0 {
 		if sb.Len() > 0 {
 			propType.Desc = comment + "\n\n" + sb.String()
@@ -203,12 +178,12 @@ func (s SchemaBuilder) mapEnumType(enum *scanner.EnumSet, seen seenTypes) error 
 	} else if sb.Len() > 0 {
 		propType.Desc = sb.String()
 	}
-	s.AddSchema(enum.TypeID, propType)
+	s.AddSchema(enum.TypeSpec.ID(), propType)
 	return nil
 }
 
 // mapType
-func (s SchemaBuilder) mapType(t common.TypeID, seen seenTypes) error {
+func (s SchemaBuilder) mapType(t syntax.TypeID, seen syntax.SeenTypes) error {
 	scanResult, err := s.loadScanResult(t)
 	if err != nil {
 		return err
@@ -217,7 +192,7 @@ func (s SchemaBuilder) mapType(t common.TypeID, seen seenTypes) error {
 		if err = s.mapInterface(iface, seen); err != nil {
 			return err
 		}
-	} else if enum, ok := scanResult.Constants[t.Concrete().Localize(scanResult.Pkg.PkgPath)]; ok {
+	} else if enum, ok := scanResult.Constants[t.TypeName]; ok {
 		if err = s.mapEnumType(enum, seen); err != nil {
 			return err
 		}
@@ -228,7 +203,7 @@ func (s SchemaBuilder) mapType(t common.TypeID, seen seenTypes) error {
 	return nil
 }
 
-func (s SchemaBuilder) checkSeen(seen seenTypes) error {
+func (s SchemaBuilder) checkSeen(seen syntax.SeenTypes) error {
 	if len(seen) > maxNestingDepth {
 		pos, _ := s.find(seen[0])
 		return fmt.Errorf("max nesting depth exceeded at %s", pos)
@@ -236,7 +211,7 @@ func (s SchemaBuilder) checkSeen(seen seenTypes) error {
 	return nil
 }
 
-func (s SchemaBuilder) mapNamedType(t common.TypeID, seen seenTypes) error {
+func (s SchemaBuilder) mapNamedType(t syntax.TypeID, seen syntax.SeenTypes) error {
 	scanResult, err := s.loadScanResult(t)
 	if err != nil {
 		return err
@@ -248,7 +223,7 @@ func (s SchemaBuilder) mapNamedType(t common.TypeID, seen seenTypes) error {
 	if seen.Seen(t) {
 		return fmt.Errorf("circular dependency found for type %s at %s", t.TypeName, typeSpec.Position())
 	}
-	if schema, err := s.renderSchema(t, typeSpec.AnyTypeSpec, typeSpec.GetDescription(), seen); err != nil {
+	if schema, err := s.renderSchema(typeSpec.Derive(), typeSpec.Comments(), seen); err != nil {
 		return err
 	} else {
 		s.AddSchema(t, schema)
@@ -256,28 +231,26 @@ func (s SchemaBuilder) mapNamedType(t common.TypeID, seen seenTypes) error {
 	return nil
 }
 
-func (s SchemaBuilder) renderSchema(typeID common.TypeID, anyTypeSpec scanner.AnyTypeSpec, description string, seen seenTypes) (JSONSchema, error) {
-	switch node := anyTypeSpec.Spec.(type) {
+func (s SchemaBuilder) renderSchema(t syntax.TypeExpr, description string, seen syntax.SeenTypes) (JSONSchema, error) {
+	switch node := t.Excerpt.(type) {
 	case *dst.Ident:
 		switch node.Name {
 		case "int", "int8", "int16", "int32", "int64", "uint", "uint8", "uint16", "uint32", "uint64":
-			return PropertyNode[int]{Desc: description, Typ: "integer", TypeID_: typeID}, nil
+			return PropertyNode[int]{Desc: description, Typ: "integer", TypeID_: t.ID()}, nil
 		case "string":
-			return PropertyNode[string]{Desc: description, Typ: "string", TypeID_: typeID}, nil
+			return PropertyNode[string]{Desc: description, Typ: "string", TypeID_: t.ID()}, nil
 		case "bool":
-			return PropertyNode[bool]{Desc: description, Typ: "boolean", TypeID_: typeID}, nil
+			return PropertyNode[bool]{Desc: description, Typ: "boolean", TypeID_: t.ID()}, nil
 		case "float32", "float64":
-			return PropertyNode[float64]{Desc: description, Typ: "number", TypeID_: typeID}, nil
+			return PropertyNode[float64]{Desc: description, Typ: "number", TypeID_: t.ID()}, nil
 		default:
 			// Means it is another named type.
 			// Find it.
-			newType := common.TypeID{TypeName: node.Name, PkgPath: node.Path}
+			newType := syntax.TypeID{TypeName: node.Name, PkgPath: node.Path}
 			if newType.PkgPath == "" {
-				newType.PkgPath = typeID.PkgPath
-				newType.DeclaredLocally = typeID.DeclaredLocally
+				newType.PkgPath = t.Pkg().PkgPath
 			}
-			newType = newType.Localize(s.LocalPkg.PkgPath)
-			if err := s.mapType(newType, seen.See(typeID)); err != nil {
+			if err := s.mapType(newType, seen.See(t.ID())); err != nil {
 				return nil, err
 			}
 			if schema, ok := s.GetSchema(newType); !ok {
@@ -294,31 +267,39 @@ func (s SchemaBuilder) renderSchema(typeID common.TypeID, anyTypeSpec scanner.An
 			}
 		}
 	case *dst.StarExpr:
-		return s.renderSchema(typeID, anyTypeSpec.Derive(node.X), description, seen)
+		return s.renderSchema(t.Derive(node.X), description, seen)
+	case *dst.ParenExpr:
+		return s.renderSchema(t.Derive(node.X), description, seen)
 	case *dst.ArrayType:
 		var (
 			err    error
-			schema = ArrayNode{
-				Desc:    description,
-				TypeID_: typeID,
-			}
+			schema = ArrayNode{Desc: description, TypeID_: t.ID()}
 		)
-		if schema.Items, err = s.renderSchema(typeID, anyTypeSpec.Derive(node.Elt), description, seen); err != nil {
+		if schema.Items, err = s.renderSchema(t.Derive(node.Elt), "", seen); err != nil {
 			return nil, err
 		}
 		return schema, nil
+	case *dst.MapType, *dst.ChanType:
+		return nil, fmt.Errorf("unsupported type %s at %s", t.Name(), t.Position())
+	case *dst.StructType:
+		return s.renderStructSchema(syntax.NewStructType(node, t), description, seen)
 	default:
-		fmt.Printf("Node mapper found unrecognized node type %s (%T) at %s\n", anyTypeSpec.Spec, anyTypeSpec.Spec, anyTypeSpec.Position())
+		fmt.Printf("Node mapper found unrecognized node type %s at %s\n", t.ToExpr().Details(), t.ToExpr().Position())
 		return nil, errors.New("unhandled node type")
 	}
-
 }
 
-func (s SchemaBuilder) localScan() scanner.ScanResult {
-	return s.Packages[s.LocalPkg.PkgPath]
+func (s SchemaBuilder) renderStructSchema(t syntax.StructType, description string, seen syntax.SeenTypes) (node ObjectNode, err error) {
+	node = ObjectNode{
+		Desc:          description,
+		Discriminator: t.Name(),
+		TypeID_:       t.ID(),
+	}
+	node.Properties, err = s.renderStructProps(t, nil, seen)
+	return node, err
 }
 
-func (s SchemaBuilder) writeSchema(t common.TypeID, targetDir string) (err error) {
+func (s SchemaBuilder) writeSchema(t syntax.TypeID, targetDir string) (err error) {
 	var (
 		file     *os.File
 		ok       bool
@@ -343,17 +324,113 @@ func (s SchemaBuilder) writeSchema(t common.TypeID, targetDir string) (err error
 }
 
 func (s SchemaBuilder) RenderSchemas() (err error) {
-	var (
-		localScan = s.localScan()
-		targetDir = filepath.Join(s.LocalPkg.Dir, s.Subdir)
-	)
+	var targetDir = filepath.Join(s.Scan.Pkg.Dir, s.Subdir)
+
 	if err = os.MkdirAll(targetDir, 0755); err != nil {
 		return fmt.Errorf("could not create subdir %s: %w", targetDir, err)
 	}
-	for _, method := range localScan.SchemaMethods {
-		if err = s.writeSchema(method.Receiver.Localize(s.LocalPkg.PkgPath), targetDir); err != nil {
+	for _, method := range s.Scan.SchemaMethods {
+		if err = s.writeSchema(method.Receiver, targetDir); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func (s SchemaBuilder) resolveEmbeddedType(t syntax.TypeExpr, seen syntax.SeenTypes) (syntax.StructType, error) {
+	switch expr := t.Excerpt.(type) {
+	case *dst.Ident:
+		if syntax.BasicTypes[expr.Name] {
+			return syntax.NoStructType, fmt.Errorf("basic type %s is unsupported for embedding at %s", expr.Name, t.Position())
+		}
+		var pkgPath = expr.Path
+		if pkgPath == "" {
+			pkgPath = t.Pkg().PkgPath
+		}
+		if scan, ok := s.Scan.GetPackage(pkgPath); !ok {
+			return syntax.NoStructType, fmt.Errorf("could not resolve package for type %s at %s", expr, t.Position())
+		} else if ts, ok := scan.LocalNamedTypes[expr.Name]; !ok {
+			return syntax.NoStructType, fmt.Errorf("could not resolve type %s at %s", expr, t.Position())
+		} else {
+			typeExpr := ts.Derive()
+			switch _expr := typeExpr.Excerpt.(type) {
+			case *dst.StructType:
+				return syntax.NewStructType(_expr, typeExpr), nil
+			case *dst.Ident:
+				return s.resolveEmbeddedType(typeExpr, seen)
+			}
+			return syntax.NoStructType, fmt.Errorf("unsupported type %s at %s", ts.Details(), ts.Position())
+		}
+
+	case *dst.StarExpr:
+		return s.resolveEmbeddedType(t.Derive(expr.X), seen)
+	case *dst.ParenExpr:
+		return s.resolveEmbeddedType(t.Derive(expr.X), seen)
+	default:
+		return syntax.NoStructType, fmt.Errorf("unsupported type %s", expr)
+	}
+}
+
+func (s SchemaBuilder) renderStructProps(t syntax.StructType, seenProps SeenProps, seen syntax.SeenTypes) (props ObjectPropSet, err error) {
+	var myProps = append(SeenProps{}, seenProps...)
+	for _, prop := range t.Fields() {
+		if prop.Skip() {
+			continue
+		}
+		for _, name := range prop.PropNames() {
+			myProps = myProps.See(name)
+		}
+	}
+	for _, prop := range t.Fields() {
+		var tempProps ObjectPropSet
+		if prop.Skip() {
+			continue
+		}
+		if prop.Embedded() {
+			var embeddedType syntax.StructType
+			if embeddedType, err = s.resolveEmbeddedType(t.Derive(prop.Type()), seen); err != nil {
+				return nil, fmt.Errorf("resolving embedded type: %w", err)
+			} else if tempProps, err = s.renderStructProps(embeddedType, myProps, seen); err != nil {
+				return nil, fmt.Errorf("rendering embedded type: %w", err)
+			}
+		} else if tempProps, err = s.renderStructField(prop, seen); err != nil {
+			return nil, fmt.Errorf("rendering struct field: %w", err)
+		}
+		props = append(props, tempProps...)
+	}
+	return props, nil
+}
+
+func (s SchemaBuilder) renderStructField(f syntax.StructField, seen syntax.SeenTypes) (props []ObjectProp, err error) {
+	var (
+		schema JSONSchema
+		name   string
+	)
+	//s.renderSchema()
+	if objNode, ok := schema.(schemaNode); ok {
+		schema = objNode.setDescription(f.Comments())
+	}
+	for _, name = range f.PropNames() {
+		props = append(props, ObjectProp{
+			Name:     name,
+			Schema:   schema,
+			Optional: false,
+		})
+	}
+	return props, nil
+}
+
+type SeenProps []string
+
+func (s SeenProps) Seen(t string) bool { return slices.Contains(s, t) }
+
+func (s SeenProps) See(t string) SeenProps {
+	return append(SeenProps{t}, s...)
+}
+
+func (s SeenProps) Add(t string) (SeenProps, bool) {
+	if s.Seen(t) {
+		return nil, false
+	}
+	return s.See(t), true
 }

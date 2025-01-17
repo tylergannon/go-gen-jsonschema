@@ -3,6 +3,6 @@
   "description": "NamedNamedSliceType is another level of indirection from NamedSliceType",
   "items": {
     "type": "integer",
-    "description": "SliceOfNamedType is a slice of a named type"
+    "description": "IntType is Foobarbax"
   }
 }
