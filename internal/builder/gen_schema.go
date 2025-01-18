@@ -282,12 +282,11 @@ func (s SchemaBuilder) renderSchema(typeID syntax.TypeID, exprSpec syntax.Expr, 
 	case *dst.MapType, *dst.ChanType:
 		return nil, fmt.Errorf("unsupported type %s at %s", typeID.TypeName, exprSpec.Position())
 	case *dst.StructType:
-		panic("unreachable")
+		return s.renderStructSchema(typeID, syntax.NewStructType(node, exprSpec.Pkg(), exprSpec.File()), description, seen)
 	default:
 		fmt.Printf("Node mapper found unrecognized node type %s (%T) at %s\n", exprSpec.Expr(), exprSpec.Expr(), exprSpec.Position())
 		return nil, errors.New("unhandled node type")
 	}
-
 }
 
 func (s SchemaBuilder) renderStructSchema(typeID syntax.TypeID, t syntax.StructType, description string, seen syntax.SeenTypes) (node ObjectNode, err error) {
