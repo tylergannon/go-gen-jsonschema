@@ -223,7 +223,7 @@ func (s SchemaBuilder) mapNamedType(t syntax.TypeID, seen syntax.SeenTypes) erro
 	if seen.Seen(t) {
 		return fmt.Errorf("circular dependency found for type %s at %s", t.TypeName, typeSpec.Position())
 	}
-	if schema, err := s.renderSchema(t, typeSpec.Type(), typeSpec.Comments(), seen); err != nil {
+	if schema, err := s.renderSchema(typeSpec.Derive(), typeSpec.Comments(), seen); err != nil {
 		return err
 	} else {
 		s.AddSchema(t, schema)
@@ -231,26 +231,26 @@ func (s SchemaBuilder) mapNamedType(t syntax.TypeID, seen syntax.SeenTypes) erro
 	return nil
 }
 
-func (s SchemaBuilder) renderSchema(typeID syntax.TypeID, exprSpec syntax.Expr, description string, seen syntax.SeenTypes) (JSONSchema, error) {
-	switch node := exprSpec.Expr().(type) {
+func (s SchemaBuilder) renderSchema(t syntax.TypeExpr, description string, seen syntax.SeenTypes) (JSONSchema, error) {
+	switch node := t.Excerpt.(type) {
 	case *dst.Ident:
 		switch node.Name {
 		case "int", "int8", "int16", "int32", "int64", "uint", "uint8", "uint16", "uint32", "uint64":
-			return PropertyNode[int]{Desc: description, Typ: "integer", TypeID_: typeID}, nil
+			return PropertyNode[int]{Desc: description, Typ: "integer", TypeID_: t.ID()}, nil
 		case "string":
-			return PropertyNode[string]{Desc: description, Typ: "string", TypeID_: typeID}, nil
+			return PropertyNode[string]{Desc: description, Typ: "string", TypeID_: t.ID()}, nil
 		case "bool":
-			return PropertyNode[bool]{Desc: description, Typ: "boolean", TypeID_: typeID}, nil
+			return PropertyNode[bool]{Desc: description, Typ: "boolean", TypeID_: t.ID()}, nil
 		case "float32", "float64":
-			return PropertyNode[float64]{Desc: description, Typ: "number", TypeID_: typeID}, nil
+			return PropertyNode[float64]{Desc: description, Typ: "number", TypeID_: t.ID()}, nil
 		default:
 			// Means it is another named type.
 			// Find it.
 			newType := syntax.TypeID{TypeName: node.Name, PkgPath: node.Path}
 			if newType.PkgPath == "" {
-				newType.PkgPath = typeID.PkgPath
+				newType.PkgPath = t.Pkg().PkgPath
 			}
-			if err := s.mapType(newType, seen.See(typeID)); err != nil {
+			if err := s.mapType(newType, seen.See(t.ID())); err != nil {
 				return nil, err
 			}
 			if schema, ok := s.GetSchema(newType); !ok {
@@ -267,33 +267,33 @@ func (s SchemaBuilder) renderSchema(typeID syntax.TypeID, exprSpec syntax.Expr, 
 			}
 		}
 	case *dst.StarExpr:
-		return s.renderSchema(typeID, exprSpec.NewExpr(node.X), description, seen)
+		return s.renderSchema(t.Derive(node.X), description, seen)
 	case *dst.ParenExpr:
-		return s.renderSchema(typeID, exprSpec.NewExpr(node.X), description, seen)
+		return s.renderSchema(t.Derive(node.X), description, seen)
 	case *dst.ArrayType:
 		var (
 			err    error
-			schema = ArrayNode{Desc: description, TypeID_: typeID}
+			schema = ArrayNode{Desc: description, TypeID_: t.ID()}
 		)
-		if schema.Items, err = s.renderSchema(typeID, exprSpec.NewExpr(node.Elt), "", seen); err != nil {
+		if schema.Items, err = s.renderSchema(t.Derive(node.Elt), "", seen); err != nil {
 			return nil, err
 		}
 		return schema, nil
 	case *dst.MapType, *dst.ChanType:
-		return nil, fmt.Errorf("unsupported type %s at %s", typeID.TypeName, exprSpec.Position())
+		return nil, fmt.Errorf("unsupported type %s at %s", t.Name(), t.Position())
 	case *dst.StructType:
-		return s.renderStructSchema(typeID, syntax.NewStructType(node, exprSpec.Pkg(), exprSpec.File()), description, seen)
+		return s.renderStructSchema(syntax.NewStructType(node, t), description, seen)
 	default:
-		fmt.Printf("Node mapper found unrecognized node type %s (%T) at %s\n", exprSpec.Expr(), exprSpec.Expr(), exprSpec.Position())
+		fmt.Printf("Node mapper found unrecognized node type %s at %s\n", t.ToExpr().Details(), t.ToExpr().Position())
 		return nil, errors.New("unhandled node type")
 	}
 }
 
-func (s SchemaBuilder) renderStructSchema(typeID syntax.TypeID, t syntax.StructType, description string, seen syntax.SeenTypes) (node ObjectNode, err error) {
+func (s SchemaBuilder) renderStructSchema(t syntax.StructType, description string, seen syntax.SeenTypes) (node ObjectNode, err error) {
 	node = ObjectNode{
 		Desc:          description,
-		Discriminator: typeID.TypeName,
-		TypeID_:       typeID,
+		Discriminator: t.Name(),
+		TypeID_:       t.ID(),
 	}
 	node.Properties, err = s.renderStructProps(t, nil, seen)
 	return node, err
@@ -337,34 +337,35 @@ func (s SchemaBuilder) RenderSchemas() (err error) {
 	return nil
 }
 
-func (s SchemaBuilder) resolveEmbeddedType(_expr syntax.Expr, seen syntax.SeenTypes) (syntax.StructType, error) {
-	switch expr := _expr.Expr().(type) {
+func (s SchemaBuilder) resolveEmbeddedType(t syntax.TypeExpr, seen syntax.SeenTypes) (syntax.StructType, error) {
+	switch expr := t.Excerpt.(type) {
 	case *dst.Ident:
 		if syntax.BasicTypes[expr.Name] {
-			return syntax.NoStructType, fmt.Errorf("basic type %s is unsupported for embedding at %s", expr.Name, _expr.Position())
+			return syntax.NoStructType, fmt.Errorf("basic type %s is unsupported for embedding at %s", expr.Name, t.Position())
 		}
 		var pkgPath = expr.Path
 		if pkgPath == "" {
-			pkgPath = _expr.Pkg().PkgPath
+			pkgPath = t.Pkg().PkgPath
 		}
 		if scan, ok := s.Scan.GetPackage(pkgPath); !ok {
-			return syntax.NoStructType, fmt.Errorf("could not resolve package for type %s at %s", expr, _expr.Position())
+			return syntax.NoStructType, fmt.Errorf("could not resolve package for type %s at %s", expr, t.Position())
 		} else if ts, ok := scan.LocalNamedTypes[expr.Name]; !ok {
-			return syntax.NoStructType, fmt.Errorf("could not resolve type %s at %s", expr, _expr.Position())
+			return syntax.NoStructType, fmt.Errorf("could not resolve type %s at %s", expr, t.Position())
 		} else {
-			switch t := ts.Type().Expr().(type) {
+			typeExpr := ts.Derive()
+			switch _expr := typeExpr.Excerpt.(type) {
 			case *dst.StructType:
-				return syntax.NewStructType(t, ts.Pkg(), ts.File()), nil
+				return syntax.NewStructType(_expr, typeExpr), nil
 			case *dst.Ident:
-				return s.resolveEmbeddedType(_expr.NewExpr(t), seen)
+				return s.resolveEmbeddedType(typeExpr, seen)
 			}
 			return syntax.NoStructType, fmt.Errorf("unsupported type %s at %s", ts.Details(), ts.Position())
 		}
 
 	case *dst.StarExpr:
-		return s.resolveEmbeddedType(_expr.NewExpr(expr.X), seen)
+		return s.resolveEmbeddedType(t.Derive(expr.X), seen)
 	case *dst.ParenExpr:
-		return s.resolveEmbeddedType(_expr.NewExpr(expr.X), seen)
+		return s.resolveEmbeddedType(t.Derive(expr.X), seen)
 	default:
 		return syntax.NoStructType, fmt.Errorf("unsupported type %s", expr)
 	}
@@ -387,7 +388,7 @@ func (s SchemaBuilder) renderStructProps(t syntax.StructType, seenProps SeenProp
 		}
 		if prop.Embedded() {
 			var embeddedType syntax.StructType
-			if embeddedType, err = s.resolveEmbeddedType(syntax.NewExpr(prop.Type(), t.Pkg(), t.File()), seen); err != nil {
+			if embeddedType, err = s.resolveEmbeddedType(t.Derive(prop.Type()), seen); err != nil {
 				return nil, fmt.Errorf("resolving embedded type: %w", err)
 			} else if tempProps, err = s.renderStructProps(embeddedType, myProps, seen); err != nil {
 				return nil, fmt.Errorf("rendering embedded type: %w", err)

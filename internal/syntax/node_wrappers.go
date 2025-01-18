@@ -38,6 +38,17 @@ type (
 		Expr() dst.Expr
 	}
 
+	// TypeExpr is an Expr that is specifically an except from
+	// a type declaration.
+	// The main idea is mostly to anchor the expr to a specific TypeID.
+	// Not 100% sure that's necessary, strictly speaking, but the goal here
+	// is more to ensure that there's sufficient information to build
+	// the schemas and their associated artifacts.
+	TypeExpr struct {
+		*TypeSpec
+		Excerpt dst.Expr
+	}
+
 	CallExpr struct {
 		STExpr[*dst.CallExpr]
 	}
@@ -53,7 +64,8 @@ type (
 	}
 
 	StructType struct {
-		STExpr[*dst.StructType]
+		TypeExpr
+		Expr *dst.StructType
 	}
 
 	StructField struct {
@@ -251,6 +263,14 @@ func NewTypeSpec(genDecl *dst.GenDecl, ts *dst.TypeSpec, pkg *decorator.Package,
 	}
 }
 
+func (t TypeSpec) Name() string {
+	return t.node.Name.Name
+}
+
+func (t TypeSpec) Derive() TypeExpr {
+	return TypeExpr{TypeSpec: &t, Excerpt: t.node.Type}
+}
+
 func (t TypeSpec) Comments() string {
 	return buildComments(t.node, t.GenDecl.node)
 }
@@ -260,25 +280,39 @@ func (t TypeSpec) ID() TypeID {
 }
 
 /**
+ * TypeExpr methods
+ */
+func (t TypeExpr) Derive(expr dst.Expr) TypeExpr {
+	return TypeExpr{TypeSpec: t.TypeSpec, Excerpt: expr}
+}
+
+func (t TypeExpr) Pos() token.Pos {
+	return t.ToExpr().Pos()
+}
+
+func (t TypeExpr) ToExpr() Expr {
+	return NewExpr(t.Excerpt, t.pkg, t.file)
+}
+
+func (t TypeExpr) Position() token.Position {
+	return t.pkg.Fset.Position(t.Pos())
+}
+
+/**
  * StructType methods
  */
 
 var NoStructType = StructType{}
 
-func NewStructType(s *dst.StructType, pkg *decorator.Package, file *dst.File) StructType {
-	return StructType{NewExpr(s, pkg, file)}
-}
-
-func (s StructType) ID() TypeID {
-	panic("blah")
-}
-
-func (s StructType) Type() *dst.StructType {
-	return s.node
+func NewStructType(s *dst.StructType, t TypeExpr) StructType {
+	return StructType{
+		TypeExpr: t,
+		Expr:     s,
+	}
 }
 
 func (s StructType) Fields() (fields []StructField) {
-	for _, _field := range s.node.Fields.List {
+	for _, _field := range s.Expr.Fields.List {
 		field := StructField{NewNode(_field, s.pkg, s.file)}
 		if field.Skip() {
 			continue
