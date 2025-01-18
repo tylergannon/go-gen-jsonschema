@@ -13,6 +13,8 @@ type TestInterface interface {
 
 // Make this look pretty interesting.
 type FancyStruct struct {
+	// Something tells me this isn't going to make it into the document.
+	IFace TestInterface `json:"iface"`
 	// Here are the details.  Make sure you fill them out.
 	Details [](*struct {
 		Name      string `json:"-"`
@@ -20,8 +22,6 @@ type FancyStruct struct {
 		funk      int
 		// Highly interesting stuff regarding Foo and Bar.
 		Foo, Bar string
-		// Something tells me this isn't going to make it into the document.
-		IFace TestInterface `json:"iface"`
 	})
 }
 
