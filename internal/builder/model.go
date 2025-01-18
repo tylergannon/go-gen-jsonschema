@@ -321,7 +321,7 @@ func (u UnionTypeNode) jsonSchemaMarker() {}
 //	}
 func (u UnionTypeNode) MarshalJSON() ([]byte, error) {
 	var sb strings.Builder
-	sb.WriteString(`"{anyOf":[`)
+	sb.WriteString(`{"anyOf":[`)
 
 	for i, obj := range u.Options {
 		if i > 0 {
