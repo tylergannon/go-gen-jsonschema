@@ -355,6 +355,14 @@ func (r *ScanResult) loadPackageInternal(seen seenPackages, typesToMap map[strin
 
 	for typeName := range typesToMap {
 		if _, ok := r.LocalNamedTypes[typeName]; !ok {
+			if r.Constants[typeName] != nil {
+				fmt.Println("Skipping enum type " + typeName)
+				continue
+			}
+			if _, ok = r.Interfaces[typeName]; ok {
+				fmt.Println("Skipping interface type " + typeName)
+				continue
+			}
 			return fmt.Errorf("undeclared local type found: %s", typeName)
 		} else {
 			// We'll queue it for resolution
@@ -393,7 +401,7 @@ func (r *ScanResult) resolveTypeExpr(_expr Expr, seen SeenTypes) error {
 				return nil // basic type
 			}
 			if named, ok := r.LocalNamedTypes[expr.Name]; !ok {
-				return fmt.Errorf("undeclared local type found: %s", expr.Name)
+				return fmt.Errorf("undeclared local %s type found: %s at %s", expr.Name, _expr.Details(), _expr.Position())
 			} else {
 				var added bool
 				seen, added = seen.Add(named.ID())

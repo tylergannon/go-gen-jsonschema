@@ -282,7 +282,7 @@ func (s SchemaBuilder) renderSchema(typeID syntax.TypeID, anyTypeSpec syntax.Exp
 				TypeID_: typeID,
 			}
 		)
-		if schema.Items, err = s.renderSchema(typeID, anyTypeSpec.NewExpr(node.Elt), description, seen); err != nil {
+		if schema.Items, err = s.renderSchema(typeID, anyTypeSpec.NewExpr(node.Elt), "", seen); err != nil {
 			return nil, err
 		}
 		return schema, nil

@@ -72,7 +72,7 @@ var _ = Describe("Basic", func() {
 		Entry(
 			"Basic struct with no special types",
 			"builder/testfixtures/basictypes",
-			"test1",
+			"test1-basictypes",
 			false,
 			"jsonschema/TypeInItsOwnDecl.json",
 			"jsonschema/TypeInNestedDecl.json",
@@ -81,7 +81,7 @@ var _ = Describe("Basic", func() {
 		Entry(
 			"Indirect types and arrays",
 			"builder/testfixtures/indirecttypes",
-			"test2",
+			"test2-indirecttypes",
 			false,
 			"jsonschema/DefinedAsNamedType.json",
 			"jsonschema/DefinedAsPointerToRemoteSliceType.json",
@@ -98,6 +98,16 @@ var _ = Describe("Basic", func() {
 			"jsonschema/SliceOfNamedType.json",
 			"jsonschema/SliceOfPointerToInt.json",
 			"jsonschema/SliceOfPointerToNamedType.json",
+		),
+		Entry(
+			"Enums and arrays of enums",
+			"builder/testfixtures/enums",
+			"test3-enums",
+			false,
+			"jsonschema/EnumType.json",
+			"jsonschema/SliceOfEnumType.json",
+			"jsonschema/SliceOfPointerToRemoteEnum.json",
+			"jsonschema/SliceOfRemoteEnumType.json",
 		),
 	)
 })
