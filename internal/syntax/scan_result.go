@@ -202,6 +202,14 @@ type ScanResult struct {
 	alreadyTraversedLocally map[string]bool
 }
 
+func (s ScanResult) GetPackage(pkgPath string) (ScanResult, bool) {
+	if pkgPath == s.Pkg.PkgPath {
+		return s, true
+	}
+	res, ok := s.deps[pkgPath]
+	return res, ok
+}
+
 type seenPackages []string
 
 func (s seenPackages) seen(pkg *decorator.Package) bool {
@@ -356,11 +364,9 @@ func (r *ScanResult) loadPackageInternal(seen seenPackages, typesToMap map[strin
 	for typeName := range typesToMap {
 		if _, ok := r.LocalNamedTypes[typeName]; !ok {
 			if r.Constants[typeName] != nil {
-				fmt.Println("Skipping enum type " + typeName)
 				continue
 			}
 			if _, ok = r.Interfaces[typeName]; ok {
-				fmt.Println("Skipping interface type " + typeName)
 				continue
 			}
 			return fmt.Errorf("undeclared local type found: %s", typeName)
@@ -377,7 +383,6 @@ func (r *ScanResult) loadPackageInternal(seen seenPackages, typesToMap map[strin
 }
 
 func (r *ScanResult) resolveTypeExpr(_expr Expr, seen SeenTypes) error {
-
 	switch expr := _expr.Expr().(type) {
 	case *dst.ParenExpr:
 		return r.resolveTypeExpr(_expr.NewExpr(expr.X), seen)
@@ -385,6 +390,8 @@ func (r *ScanResult) resolveTypeExpr(_expr Expr, seen SeenTypes) error {
 		return r.resolveTypeExpr(_expr.NewExpr(expr.X), seen)
 	case *dst.SliceExpr:
 		return r.resolveTypeExpr(_expr.NewExpr(expr.X), seen)
+	case *dst.ArrayType:
+		return r.resolveTypeExpr(_expr.NewExpr(expr.Elt), seen)
 	case *dst.StructType:
 		for _, field := range expr.Fields.List {
 			if skipField(field) {
@@ -401,6 +408,11 @@ func (r *ScanResult) resolveTypeExpr(_expr Expr, seen SeenTypes) error {
 				return nil // basic type
 			}
 			if named, ok := r.LocalNamedTypes[expr.Name]; !ok {
+				if r.Constants[expr.Name] != nil {
+					return nil
+				} else if _, ok := r.Interfaces[expr.Name]; !ok {
+					return nil
+				}
 				return fmt.Errorf("undeclared local %s type found: %s at %s", expr.Name, _expr.Details(), _expr.Position())
 			} else {
 				var added bool
@@ -433,6 +445,8 @@ func (r *ScanResult) resolveTypeExpr(_expr Expr, seen SeenTypes) error {
 		}
 	case *dst.BasicLit:
 		return nil
+	default:
+		return fmt.Errorf("unhandled expression %s", _expr.Details())
 	}
 	return nil
 }

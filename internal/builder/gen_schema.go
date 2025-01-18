@@ -23,10 +23,9 @@ func New(pkg *decorator.Package) (SchemaBuilder, error) {
 		return SchemaBuilder{}, err
 	}
 	var builder = SchemaBuilder{
-		LocalPkg: pkg,
-		Packages: map[string]syntax.ScanResult{pkg.PkgPath: data},
-		schemas:  schemaMap{},
-		Subdir:   defaultSubdir,
+		Scan:    data,
+		schemas: schemaMap{},
+		Subdir:  defaultSubdir,
 	}
 	for _, m := range data.SchemaMethods {
 		if err = builder.mapType(m.Receiver, syntax.SeenTypes{}); err != nil {
@@ -43,11 +42,10 @@ func New(pkg *decorator.Package) (SchemaBuilder, error) {
 }
 
 type SchemaBuilder struct {
-	LocalPkg *decorator.Package
-	Packages map[string]syntax.ScanResult
-	schemas  schemaMap
-	Subdir   string
-	Pretty   bool
+	Scan    syntax.ScanResult
+	schemas schemaMap
+	Subdir  string
+	Pretty  bool
 }
 
 type schemaMap map[string]map[string]JSONSchema
@@ -78,18 +76,13 @@ func (s SchemaBuilder) AddSchema(t syntax.TypeID, schema JSONSchema) {
 
 // loadScanResult gets the scan result associated with the given syntax.TypeID
 func (s SchemaBuilder) loadScanResult(t syntax.TypeID) (syntax.ScanResult, error) {
-	var pkgPath = t.PkgPath
-	if pkgPath == "" {
-		pkgPath = s.LocalPkg.PkgPath
+	if t.PkgPath == "" {
+		panic("empty package path in loadScanResult")
 	}
-	if _, ok := s.Packages[pkgPath]; !ok {
-		if pkgs, err := syntax.Load(pkgPath); err != nil {
-			return syntax.ScanResult{}, err
-		} else if s.Packages[pkgPath], err = syntax.LoadPackage(pkgs[0]); err != nil {
-			return syntax.ScanResult{}, err
-		}
+	if res, ok := s.Scan.GetPackage(t.PkgPath); ok {
+		return res, nil
 	}
-	return s.Packages[pkgPath], nil
+	panic("package was not loaded: " + t.PkgPath)
 }
 
 func (s SchemaBuilder) find(t syntax.TypeID) (token.Position, error) {
@@ -237,8 +230,8 @@ func (s SchemaBuilder) mapNamedType(t syntax.TypeID, seen syntax.SeenTypes) erro
 	return nil
 }
 
-func (s SchemaBuilder) renderSchema(typeID syntax.TypeID, anyTypeSpec syntax.Expr, description string, seen syntax.SeenTypes) (JSONSchema, error) {
-	switch node := anyTypeSpec.Expr().(type) {
+func (s SchemaBuilder) renderSchema(typeID syntax.TypeID, exprSpec syntax.Expr, description string, seen syntax.SeenTypes) (JSONSchema, error) {
+	switch node := exprSpec.Expr().(type) {
 	case *dst.Ident:
 		switch node.Name {
 		case "int", "int8", "int16", "int32", "int64", "uint", "uint8", "uint16", "uint32", "uint64":
@@ -273,7 +266,9 @@ func (s SchemaBuilder) renderSchema(typeID syntax.TypeID, anyTypeSpec syntax.Exp
 			}
 		}
 	case *dst.StarExpr:
-		return s.renderSchema(typeID, anyTypeSpec.NewExpr(node.X), description, seen)
+		return s.renderSchema(typeID, exprSpec.NewExpr(node.X), description, seen)
+	case *dst.ParenExpr:
+		return s.renderSchema(typeID, exprSpec.NewExpr(node.X), description, seen)
 	case *dst.ArrayType:
 		var (
 			err    error
@@ -282,19 +277,19 @@ func (s SchemaBuilder) renderSchema(typeID syntax.TypeID, anyTypeSpec syntax.Exp
 				TypeID_: typeID,
 			}
 		)
-		if schema.Items, err = s.renderSchema(typeID, anyTypeSpec.NewExpr(node.Elt), "", seen); err != nil {
+		if schema.Items, err = s.renderSchema(typeID, exprSpec.NewExpr(node.Elt), "", seen); err != nil {
 			return nil, err
 		}
 		return schema, nil
+	case *dst.MapType, *dst.ChanType:
+		return nil, fmt.Errorf("unsupported type %s at %s", typeID.TypeName, exprSpec.Position())
+	case *dst.StructType:
+		panic("unreachable")
 	default:
-		fmt.Printf("Node mapper found unrecognized node type %s (%T) at %s\n", anyTypeSpec.Expr(), anyTypeSpec.Expr(), anyTypeSpec.Position())
+		fmt.Printf("Node mapper found unrecognized node type %s (%T) at %s\n", exprSpec.Expr(), exprSpec.Expr(), exprSpec.Position())
 		return nil, errors.New("unhandled node type")
 	}
 
-}
-
-func (s SchemaBuilder) localScan() syntax.ScanResult {
-	return s.Packages[s.LocalPkg.PkgPath]
 }
 
 func (s SchemaBuilder) writeSchema(t syntax.TypeID, targetDir string) (err error) {
@@ -323,13 +318,12 @@ func (s SchemaBuilder) writeSchema(t syntax.TypeID, targetDir string) (err error
 
 func (s SchemaBuilder) RenderSchemas() (err error) {
 	var (
-		localScan = s.localScan()
-		targetDir = filepath.Join(s.LocalPkg.Dir, s.Subdir)
+		targetDir = filepath.Join(s.Scan.Pkg.Dir, s.Subdir)
 	)
 	if err = os.MkdirAll(targetDir, 0755); err != nil {
 		return fmt.Errorf("could not create subdir %s: %w", targetDir, err)
 	}
-	for _, method := range localScan.SchemaMethods {
+	for _, method := range s.Scan.SchemaMethods {
 		if err = s.writeSchema(method.Receiver, targetDir); err != nil {
 			return err
 		}
