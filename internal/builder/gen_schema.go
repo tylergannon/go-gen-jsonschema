@@ -24,9 +24,10 @@ func New(pkg *decorator.Package) (SchemaBuilder, error) {
 		return SchemaBuilder{}, err
 	}
 	var builder = SchemaBuilder{
-		Scan:    data,
-		schemas: schemaMap{},
-		Subdir:  defaultSubdir,
+		Scan:        data,
+		schemas:     schemaMap{},
+		customTypes: map[string][]InterfaceProp{},
+		Subdir:      defaultSubdir,
 	}
 	for _, m := range data.SchemaMethods {
 		if err = builder.mapType(m.Receiver, syntax.SeenTypes{}); err != nil {
@@ -43,10 +44,11 @@ func New(pkg *decorator.Package) (SchemaBuilder, error) {
 }
 
 type SchemaBuilder struct {
-	Scan    syntax.ScanResult
-	schemas schemaMap
-	Subdir  string
-	Pretty  bool
+	Scan        syntax.ScanResult
+	schemas     schemaMap
+	customTypes map[string][]InterfaceProp
+	Subdir      string
+	Pretty      bool
 }
 
 type schemaMap map[string]map[string]JSONSchema
@@ -223,6 +225,13 @@ func (s SchemaBuilder) mapNamedType(t syntax.TypeID, seen syntax.SeenTypes) erro
 	}
 	if seen.Seen(t) {
 		return fmt.Errorf("circular dependency found for type %s at %s", t.TypeName, typeSpec.Position())
+	}
+	if structType, ok := typeSpec.Type().Expr().(*dst.StructType); ok {
+		if props, err := s.resolveLocalInterfaceProps(syntax.NewStructType(structType, typeSpec.Derive()), nil); err != nil {
+			return err
+		} else if len(props) > 0 {
+			s.customTypes[t.TypeName] = props
+		}
 	}
 	if schema, err := s.renderSchema(typeSpec.Derive(), typeSpec.Comments(), seen); err != nil {
 		return err
@@ -428,12 +437,123 @@ func (s SchemaBuilder) renderStructField(f syntax.StructField, seen syntax.SeenT
 	return props, nil
 }
 
+type InterfaceProp struct {
+	Field     syntax.StructField
+	Interface syntax.IfaceImplementations
+}
+
+// resolveLocalInterfaceProps finds registered interface properties anywhere in the
+// given struct field, as long as the struct type is from the local package.
+// If the interface field is the very type of one of the struct's types (or of
+// one of its embedded structs), it will be returned.
+// If there are any registered interface types that are embedded deeper in the
+// type expressions, they are considered illegal and will result in an error.
+//
+// Valid:
+// ```
+// type MyInterface interface{}
+//
+//	type struct Foo {
+//	  Bar MyInterface `json:"bar"`
+//	}
+//
+// ```
+// Invalid examples:
+// ```
+// type (
+//
+//	MyInterface interface{}
+//	struct Foo {
+//	  Bar (MyInterface) `json:"bar"`
+//	  Baz []MyInterface `json:"baz"`
+//	  Bap struct { // Inline structs are permissible, but they cannot contain interfaces.
+//	    Rap MyInterface `json:"rap"`
+//	  }
+//	}
+//
+// )
+// ```
+func (s SchemaBuilder) resolveLocalInterfaceProps(t syntax.StructType, seenProps SeenProps) (props []InterfaceProp, err error) {
+	if t.Pkg().PkgPath != s.Scan.Pkg.PkgPath {
+		return nil, nil
+	}
+	for _, prop := range t.Fields() {
+		if prop.Embedded() {
+			continue
+		}
+		if ident, ok := prop.Field.Type.(*dst.Ident); ok {
+			ok = false
+			for _, name := range prop.PropNames() {
+				if !seenProps.Seen(name) {
+					ok = true
+				}
+				seenProps = seenProps.See(name)
+			}
+			if !ok {
+				continue
+			}
+			iface, ok := s.findInterfaceImpl(ident, s.Scan.Pkg)
+			if !ok {
+				continue
+			}
+			props = append(props, InterfaceProp{
+				Field:     prop,
+				Interface: iface,
+			})
+			continue
+		}
+		dst.Inspect(prop.Field.Type, func(node dst.Node) bool {
+			if ident, ok := node.(*dst.Ident); !ok {
+				return true
+			} else if _, ok = s.findInterfaceImpl(ident, s.Scan.Pkg); ok {
+				pos := prop.Derive(ident).Position()
+				err = fmt.Errorf("found registered interface type %s in an unsupported location at %s", ident.Name, pos)
+				return false
+			}
+			return true
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+	for _, prop := range t.Fields() {
+		if !prop.Embedded() {
+			continue
+		}
+		if _t, err := s.resolveEmbeddedType(t.Derive(prop.Type()), nil); err != nil {
+			return nil, fmt.Errorf("resolving embedded type: %w", err)
+		} else if propsTemp, err := s.resolveLocalInterfaceProps(_t, seenProps); err != nil {
+			return nil, fmt.Errorf("resolving embedded local interface properties: %w", err)
+		} else {
+			props = append(props, propsTemp...)
+		}
+	}
+	return props, nil
+}
+
+func (s SchemaBuilder) findInterfaceImpl(ident *dst.Ident, localPkg *decorator.Package) (iface syntax.IfaceImplementations, ok bool) {
+	var pkgPath = ident.Path
+	if pkgPath == "" {
+		pkgPath = localPkg.PkgPath
+	}
+	scan, ok := s.Scan.GetPackage(pkgPath)
+	if !ok {
+		panic(fmt.Sprintf("resolveLocalInterfaceProps could not resolve package for type %s at %s", ident.Name, pkgPath))
+	}
+	iface, ok = scan.Interfaces[ident.Name]
+	return iface, ok
+}
+
 type SeenProps []string
 
 func (s SeenProps) Seen(t string) bool { return slices.Contains(s, t) }
 
 func (s SeenProps) See(t string) SeenProps {
 	return append(SeenProps{t}, s...)
+}
+
+func (s SeenProps) Copy() SeenProps {
+	return append(SeenProps{}, s...)
 }
 
 func (s SeenProps) Add(t string) (SeenProps, bool) {
