@@ -184,6 +184,7 @@ func (s SchemaBuilder) mapEnumType(enum *syntax.EnumSet, seen syntax.SeenTypes) 
 
 // mapType
 func (s SchemaBuilder) mapType(t syntax.TypeID, seen syntax.SeenTypes) error {
+	fmt.Println("Map type", t)
 	scanResult, err := s.loadScanResult(t)
 	if err != nil {
 		return err
@@ -283,6 +284,8 @@ func (s SchemaBuilder) renderSchema(t syntax.TypeExpr, description string, seen 
 		return nil, fmt.Errorf("unsupported type %s at %s", t.Name(), t.Position())
 	case *dst.StructType:
 		return s.renderStructSchema(syntax.NewStructType(node, t), description, seen)
+	case *dst.InterfaceType:
+		return nil, fmt.Errorf("Interface types are not supported. Found on %s at %s\n", t.ID(), t.Position())
 	default:
 		fmt.Printf("Node mapper found unrecognized node type %s at %s\n", t.ToExpr().Details(), t.ToExpr().Position())
 		return nil, errors.New("unhandled node type")
@@ -316,6 +319,12 @@ func (s SchemaBuilder) writeSchema(t syntax.TypeID, targetDir string) (err error
 	}
 	if s.Pretty {
 		encoder.SetIndent("", "  ")
+	}
+	if poop, err := schema.MarshalJSON(); err != nil {
+		fmt.Println("Mega error", err)
+	} else {
+		fmt.Println("Here's the deal.")
+		fmt.Println(string(poop))
 	}
 	if err = encoder.Encode(schema); err != nil {
 		return fmt.Errorf("could not encode schema: %w", err)
