@@ -5,6 +5,8 @@ import (
 	_ "github.com/tylergannon/structtag"
 )
 
+//go:generate go run github.com/tylergannon/go-gen-jsonschema/gen-jsonschema/ --pretty
+
 // It's really that way
 type EnumType123 string
 

@@ -33,11 +33,13 @@ type (
 		Optional bool
 	}
 
+	ObjectPropSet []ObjectProp
+
 	// ObjectNode represents an object schema.
 	// Discriminator: always non-empty, but only used when included in a union (anyOf).
 	ObjectNode struct {
 		Desc          string        `json:"description,omitempty"`
-		Properties    []ObjectProp  `json:"properties,omitempty"`
+		Properties    ObjectPropSet `json:"properties,omitempty"`
 		Discriminator string        `json:"-"`
 		TypeID_       syntax.TypeID `json:"-"`
 	}
@@ -349,7 +351,7 @@ func prependDiscriminator(o ObjectNode, discPropName string) ObjectNode {
 	if discPropName == "" {
 		discPropName = DefaultDiscriminatorPropName
 	}
-	newProps := make([]ObjectProp, len(o.Properties)+1)
+	newProps := make(ObjectPropSet, len(o.Properties)+1)
 	newProps[0] = ObjectProp{
 		Name: discPropName,
 		Schema: PropertyNode[string]{

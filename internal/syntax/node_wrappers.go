@@ -4,7 +4,11 @@ import (
 	"fmt"
 	"github.com/dave/dst"
 	"github.com/dave/dst/decorator"
+	"github.com/tylergannon/structtag"
 	"go/token"
+	"slices"
+	"strings"
+	"unicode"
 )
 
 type (
@@ -49,7 +53,11 @@ type (
 	}
 
 	StructType struct {
-		STNode[*dst.StructType]
+		STExpr[*dst.StructType]
+	}
+
+	StructField struct {
+		STNode[*dst.Field]
 	}
 
 	VarConstDecl struct {
@@ -254,6 +262,88 @@ func (t TypeSpec) ID() TypeID {
 /**
  * StructType methods
  */
+
+var NoStructType = StructType{}
+
+func NewStructType(s *dst.StructType, pkg *decorator.Package, file *dst.File) StructType {
+	return StructType{NewExpr(s, pkg, file)}
+}
+
+func (s StructType) ID() TypeID {
+	panic("blah")
+}
+
+func (s StructType) Type() *dst.StructType {
+	return s.node
+}
+
+func (s StructType) Fields() (fields []StructField) {
+	for _, _field := range s.node.Fields.List {
+		field := StructField{NewNode(_field, s.pkg, s.file)}
+		if field.Skip() {
+			continue
+		}
+		fields = append(fields, field)
+	}
+	return fields
+}
+
+/**
+ * StructField methods
+ */
+
+func (f StructField) Comments() string {
+	return BuildComments(f.node.Decorations())
+}
+
+func (f StructField) Embedded() bool {
+	return len(f.node.Names) == 0
+}
+
+func (f StructField) Type() dst.Expr {
+	return f.node.Type
+}
+
+func (f StructField) PropNames() (names []string) {
+	switch len(f.node.Names) {
+	case 0:
+		return
+	case 1:
+		if tag := f.JSONTag(); tag != nil {
+			return []string{tag.Options[0]}
+		}
+	}
+	for _, n := range f.node.Names {
+		if unicode.IsUpper(rune(n.Name[0])) {
+			names = append(names, n.Name)
+		}
+	}
+	return names
+}
+
+func (f StructField) JSONTag() *structtag.Tag {
+	if f.node.Tag == nil {
+		return nil
+	} else if tags, err := structtag.Parse(strings.Trim(f.node.Tag.Value, "`")); err == nil {
+		if tag, err := tags.Get("json"); err == nil && len(tag.Options) > 0 {
+			return tag
+		}
+	}
+	return nil
+}
+
+func (f StructField) Skip() bool {
+	if len(f.node.Names) == 0 {
+		return false
+	} else if !slices.ContainsFunc(f.node.Names, func(ident *dst.Ident) bool {
+		return unicode.IsUpper(rune(ident.Name[0]))
+	}) {
+		return true
+	} else if tag := f.JSONTag(); tag != nil {
+		return tag.Options[0] == "-"
+	}
+	return false
+}
 
 /**
  * VarConstDecl methods

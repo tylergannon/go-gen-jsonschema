@@ -11,6 +11,7 @@ import (
 	"go/token"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 )
 
@@ -272,10 +273,7 @@ func (s SchemaBuilder) renderSchema(typeID syntax.TypeID, exprSpec syntax.Expr, 
 	case *dst.ArrayType:
 		var (
 			err    error
-			schema = ArrayNode{
-				Desc:    description,
-				TypeID_: typeID,
-			}
+			schema = ArrayNode{Desc: description, TypeID_: typeID}
 		)
 		if schema.Items, err = s.renderSchema(typeID, exprSpec.NewExpr(node.Elt), "", seen); err != nil {
 			return nil, err
@@ -290,6 +288,16 @@ func (s SchemaBuilder) renderSchema(typeID syntax.TypeID, exprSpec syntax.Expr, 
 		return nil, errors.New("unhandled node type")
 	}
 
+}
+
+func (s SchemaBuilder) renderStructSchema(typeID syntax.TypeID, t syntax.StructType, description string, seen syntax.SeenTypes) (node ObjectNode, err error) {
+	node = ObjectNode{
+		Desc:          description,
+		Discriminator: typeID.TypeName,
+		TypeID_:       typeID,
+	}
+	node.Properties, err = s.renderStructProps(t, nil, seen)
+	return node, err
 }
 
 func (s SchemaBuilder) writeSchema(t syntax.TypeID, targetDir string) (err error) {
@@ -317,9 +325,8 @@ func (s SchemaBuilder) writeSchema(t syntax.TypeID, targetDir string) (err error
 }
 
 func (s SchemaBuilder) RenderSchemas() (err error) {
-	var (
-		targetDir = filepath.Join(s.Scan.Pkg.Dir, s.Subdir)
-	)
+	var targetDir = filepath.Join(s.Scan.Pkg.Dir, s.Subdir)
+
 	if err = os.MkdirAll(targetDir, 0755); err != nil {
 		return fmt.Errorf("could not create subdir %s: %w", targetDir, err)
 	}
@@ -329,4 +336,101 @@ func (s SchemaBuilder) RenderSchemas() (err error) {
 		}
 	}
 	return nil
+}
+
+func (s SchemaBuilder) resolveEmbeddedType(_expr syntax.Expr, seen syntax.SeenTypes) (syntax.StructType, error) {
+	switch expr := _expr.Expr().(type) {
+	case *dst.Ident:
+		if syntax.BasicTypes[expr.Name] {
+			return syntax.NoStructType, fmt.Errorf("basic type %s is unsupported for embedding at %s", expr.Name, _expr.Position())
+		}
+		var pkgPath = expr.Path
+		if pkgPath == "" {
+			pkgPath = _expr.Pkg().PkgPath
+		}
+		if scan, ok := s.Scan.GetPackage(pkgPath); !ok {
+			return syntax.NoStructType, fmt.Errorf("could not resolve package for type %s at %s", expr, _expr.Position())
+		} else if ts, ok := scan.LocalNamedTypes[expr.Name]; !ok {
+			return syntax.NoStructType, fmt.Errorf("could not resolve type %s at %s", expr, _expr.Position())
+		} else {
+			switch t := ts.Type().Expr().(type) {
+			case *dst.StructType:
+				return syntax.NewStructType(t, ts.Pkg(), ts.File()), nil
+			case *dst.Ident:
+				return s.resolveEmbeddedType(_expr.NewExpr(t), seen)
+			}
+			return syntax.NoStructType, fmt.Errorf("unsupported type %s at %s", ts.Details(), ts.Position())
+		}
+
+	case *dst.StarExpr:
+		return s.resolveEmbeddedType(_expr.NewExpr(expr.X), seen)
+	case *dst.ParenExpr:
+		return s.resolveEmbeddedType(_expr.NewExpr(expr.X), seen)
+	default:
+		return syntax.NoStructType, fmt.Errorf("unsupported type %s", expr)
+	}
+}
+
+func (s SchemaBuilder) renderStructProps(t syntax.StructType, seenProps SeenProps, seen syntax.SeenTypes) (props ObjectPropSet, err error) {
+	var myProps = append(SeenProps{}, seenProps...)
+	for _, prop := range t.Fields() {
+		if prop.Skip() {
+			continue
+		}
+		for _, name := range prop.PropNames() {
+			myProps = myProps.See(name)
+		}
+	}
+	for _, prop := range t.Fields() {
+		var tempProps ObjectPropSet
+		if prop.Skip() {
+			continue
+		}
+		if prop.Embedded() {
+			var embeddedType syntax.StructType
+			if embeddedType, err = s.resolveEmbeddedType(syntax.NewExpr(prop.Type(), t.Pkg(), t.File()), seen); err != nil {
+				return nil, fmt.Errorf("resolving embedded type: %w", err)
+			} else if tempProps, err = s.renderStructProps(embeddedType, myProps, seen); err != nil {
+				return nil, fmt.Errorf("rendering embedded type: %w", err)
+			}
+		} else if tempProps, err = s.renderStructField(prop, seen); err != nil {
+			return nil, fmt.Errorf("rendering struct field: %w", err)
+		}
+		props = append(props, tempProps...)
+	}
+	return props, nil
+}
+
+func (s SchemaBuilder) renderStructField(f syntax.StructField, seen syntax.SeenTypes) (props []ObjectProp, err error) {
+	var (
+		schema JSONSchema
+		name   string
+	)
+	//s.renderSchema()
+	if objNode, ok := schema.(schemaNode); ok {
+		schema = objNode.setDescription(f.Comments())
+	}
+	for _, name = range f.PropNames() {
+		props = append(props, ObjectProp{
+			Name:     name,
+			Schema:   schema,
+			Optional: false,
+		})
+	}
+	return props, nil
+}
+
+type SeenProps []string
+
+func (s SeenProps) Seen(t string) bool { return slices.Contains(s, t) }
+
+func (s SeenProps) See(t string) SeenProps {
+	return append(SeenProps{t}, s...)
+}
+
+func (s SeenProps) Add(t string) (SeenProps, bool) {
+	if s.Seen(t) {
+		return nil, false
+	}
+	return s.See(t), true
 }

@@ -404,7 +404,7 @@ func (r *ScanResult) resolveTypeExpr(_expr Expr, seen SeenTypes) error {
 	case *dst.Ident:
 		if expr.Path == "" || expr.Path == r.Pkg.PkgPath {
 			// It's either a basic type or a locally-defined named type
-			if basicTypes[expr.Name] {
+			if BasicTypes[expr.Name] {
 				return nil // basic type
 			}
 			if named, ok := r.LocalNamedTypes[expr.Name]; !ok {
@@ -541,7 +541,7 @@ func loadPkgDecls(pkg *decorator.Package) *decls {
 	return &_decls
 }
 
-var basicTypes = map[string]bool{
+var BasicTypes = map[string]bool{
 	"int":        true,
 	"int8":       true,
 	"int16":      true,
