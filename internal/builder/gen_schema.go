@@ -406,9 +406,8 @@ func (s SchemaBuilder) renderStructField(f syntax.StructField, seen syntax.SeenT
 		schema JSONSchema
 		name   string
 	)
-	//s.renderSchema()
-	if objNode, ok := schema.(schemaNode); ok {
-		schema = objNode.setDescription(f.Comments())
+	if schema, err = s.renderSchema(f.Derive(f.Type()), f.Comments(), seen); err != nil {
+		return nil, fmt.Errorf("rendering schema: %w", err)
 	}
 	for _, name = range f.PropNames() {
 		props = append(props, ObjectProp{
