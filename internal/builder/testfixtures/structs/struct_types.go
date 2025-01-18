@@ -11,9 +11,13 @@ import (
 type EnumType123 string
 
 const (
+	// Var1 is the very most interesting.
 	Var1 EnumType123 = "var1"
+	// var2 is so very nevermind.
 	Var2 EnumType123 = "var2"
+	// var3 is for when you're a mastermind.
 	Var3 EnumType123 = "var3"
+	// var4 is for when you have no mind / zen mind / beginner's mind
 	Var4 EnumType123 = "var4"
 )
 
@@ -30,7 +34,7 @@ type StructType1 struct {
 
 	Field5 [][]struct {
 		// The second field is truly interesting.
-		Field2 []EnumType123 `json:"field2"`
+		Field2 *([]*EnumType123) `json:"field2"`
 		Field3 struct {
 			Field9 []*EnumType123 `json:"field9"`
 			// foobar is just a field where you do things
