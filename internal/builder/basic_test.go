@@ -109,5 +109,13 @@ var _ = Describe("Basic", func() {
 			"jsonschema/SliceOfPointerToRemoteEnum.json",
 			"jsonschema/SliceOfRemoteEnumType.json",
 		),
+		Entry(
+			"Struct types",
+			"builder/testfixtures/structs",
+			"test4-structs",
+			false,
+			"jsonschema/StructType1.json",
+			"jsonschema/StructType2.json",
+		),
 	)
 })

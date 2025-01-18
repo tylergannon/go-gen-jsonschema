@@ -69,7 +69,8 @@ type (
 	}
 
 	StructField struct {
-		STNode[*dst.Field]
+		TypeExpr
+		Field *dst.Field
 	}
 
 	VarConstDecl struct {
@@ -313,7 +314,7 @@ func NewStructType(s *dst.StructType, t TypeExpr) StructType {
 
 func (s StructType) Fields() (fields []StructField) {
 	for _, _field := range s.Expr.Fields.List {
-		field := StructField{NewNode(_field, s.pkg, s.file)}
+		field := StructField{TypeExpr: s.TypeExpr, Field: _field}
 		if field.Skip() {
 			continue
 		}
@@ -327,19 +328,19 @@ func (s StructType) Fields() (fields []StructField) {
  */
 
 func (f StructField) Comments() string {
-	return BuildComments(f.node.Decorations())
+	return BuildComments(f.Field.Decorations())
 }
 
 func (f StructField) Embedded() bool {
-	return len(f.node.Names) == 0
+	return len(f.Field.Names) == 0
 }
 
 func (f StructField) Type() dst.Expr {
-	return f.node.Type
+	return f.Field.Type
 }
 
 func (f StructField) PropNames() (names []string) {
-	switch len(f.node.Names) {
+	switch len(f.Field.Names) {
 	case 0:
 		return
 	case 1:
@@ -347,7 +348,7 @@ func (f StructField) PropNames() (names []string) {
 			return []string{tag.Options[0]}
 		}
 	}
-	for _, n := range f.node.Names {
+	for _, n := range f.Field.Names {
 		if unicode.IsUpper(rune(n.Name[0])) {
 			names = append(names, n.Name)
 		}
@@ -356,9 +357,9 @@ func (f StructField) PropNames() (names []string) {
 }
 
 func (f StructField) JSONTag() *structtag.Tag {
-	if f.node.Tag == nil {
+	if f.Field.Tag == nil {
 		return nil
-	} else if tags, err := structtag.Parse(strings.Trim(f.node.Tag.Value, "`")); err == nil {
+	} else if tags, err := structtag.Parse(strings.Trim(f.Field.Tag.Value, "`")); err == nil {
 		if tag, err := tags.Get("json"); err == nil && len(tag.Options) > 0 {
 			return tag
 		}
@@ -367,9 +368,9 @@ func (f StructField) JSONTag() *structtag.Tag {
 }
 
 func (f StructField) Skip() bool {
-	if len(f.node.Names) == 0 {
+	if len(f.Field.Names) == 0 {
 		return false
-	} else if !slices.ContainsFunc(f.node.Names, func(ident *dst.Ident) bool {
+	} else if !slices.ContainsFunc(f.Field.Names, func(ident *dst.Ident) bool {
 		return unicode.IsUpper(rune(ident.Name[0]))
 	}) {
 		return true

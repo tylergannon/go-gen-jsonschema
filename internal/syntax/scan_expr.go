@@ -118,8 +118,8 @@ func parseFuncFromExpr(e Expr) TypeID {
 	return TypeID{}
 }
 
-//func parseTypeArguments(e dst.Expr, pkgPath *decorator.Package, importMap ImportMap) *TypeID {
-//	var expr dst.Expr
+//func parseTypeArguments(e dst.Field, pkgPath *decorator.Package, importMap ImportMap) *TypeID {
+//	var expr dst.Field
 //	if idxExpr, ok := e.(*dst.IndexExpr); ok {
 //		expr = idxExpr.Index
 //	} else {
