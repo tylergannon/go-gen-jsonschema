@@ -12,8 +12,8 @@ import (
 )
 
 const (
-	pkg    = "github.com/tylergannon/go-gen-jsonschema/internal/syntax/testfixtures/typescanner"
-	subpkg = "github.com/tylergannon/go-gen-jsonschema/internal/syntax/testfixtures/typescanner/scannersubpkg"
+	pkgPath = "github.com/tylergannon/go-gen-jsonschema/internal/syntax/testfixtures/typescanner"
+	subpkg  = "github.com/tylergannon/go-gen-jsonschema/internal/syntax/testfixtures/typescanner/scannersubpkg"
 )
 
 type fileSpecs struct {
@@ -28,7 +28,7 @@ func LoadDecls(path, fileName string, tok token.Token) []fileSpecs {
 	pkgs, err := syntax.Load(path)
 	Expect(err).NotTo(HaveOccurred())
 	for _, pkg := range pkgs {
-		_, err := syntax.LoadPackage(pkg)
+		_, err = syntax.LoadPackage(pkg)
 		Expect(err).NotTo(HaveOccurred())
 		for _, file := range pkg.Syntax {
 			var pos = nodePosition(pkg, file)
@@ -88,7 +88,7 @@ var _ = Describe("FuncCallParser", Ordered, func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(schemaMethod.FuncName).To(Equal("Schema"))
 		Expect(schemaMethod.Receiver.Indirection).To(Equal(syntax.NormalConcrete))
-		Expect(schemaMethod.Receiver.PkgPath).To(Equal(pkg))
+		Expect(schemaMethod.Receiver.PkgPath).To(Equal(pkgPath))
 		Expect(schemaMethod.Receiver.TypeName).To(Equal("TypeForSchemaMethod"))
 	})
 	It("Call number 2", func() {
@@ -101,7 +101,7 @@ var _ = Describe("FuncCallParser", Ordered, func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(schemaMethod.FuncName).To(Equal("Schema"))
 		Expect(schemaMethod.Receiver.Indirection).To(Equal(syntax.Pointer))
-		Expect(schemaMethod.Receiver.PkgPath).To(Equal(pkg))
+		Expect(schemaMethod.Receiver.PkgPath).To(Equal(pkgPath))
 		Expect(schemaMethod.Receiver.TypeName).To(Equal("PointerTypeForSchemaMethod"))
 	})
 	It("Call number 3", func() {
@@ -111,7 +111,7 @@ var _ = Describe("FuncCallParser", Ordered, func() {
 		Expect(_call.MustTypeArgument()).NotTo(BeNil())
 		Expect(_call.MustTypeArgument().TypeName).To(Equal("TypeForSchemaFunction"))
 		Expect(_call.MustTypeArgument()).ToNot(BeNil())
-		Expect(_call.MustTypeArgument().PkgPath).To(Equal(pkg))
+		Expect(_call.MustTypeArgument().PkgPath).To(Equal(pkgPath))
 	})
 	It("Call number 4", func() {
 		_call := syntax.ParseValueExprForMarkerFunctionCall(valueSpec(3))[0]
@@ -121,7 +121,7 @@ var _ = Describe("FuncCallParser", Ordered, func() {
 		Expect(_call.MustTypeArgument().TypeName).To(Equal("PointerTypeForSchemaFunction"))
 		Expect(_call.MustTypeArgument().Indirection).To(Equal(syntax.Pointer))
 		Expect(_call.MustTypeArgument()).ToNot(BeNil())
-		Expect(_call.MustTypeArgument().PkgPath).To(Equal(pkg))
+		Expect(_call.MustTypeArgument().PkgPath).To(Equal(pkgPath))
 	})
 
 	It("Call number 5", func() {
@@ -132,7 +132,7 @@ var _ = Describe("FuncCallParser", Ordered, func() {
 		Expect(_call.MustTypeArgument().TypeName).To(Equal("MarkerInterface"))
 		Expect(_call.MustTypeArgument().Indirection).To(Equal(syntax.NormalConcrete))
 		Expect(_call.MustTypeArgument()).ToNot(BeNil())
-		Expect(_call.MustTypeArgument().PkgPath).To(Equal(pkg))
+		Expect(_call.MustTypeArgument().PkgPath).To(Equal(pkgPath))
 
 		callArgs, err := _call.ParseTypesFromArgs()
 		Expect(err).NotTo(HaveOccurred())
@@ -151,7 +151,7 @@ var _ = Describe("FuncCallParser", Ordered, func() {
 		Expect(_call.MustTypeArgument().TypeName).To(Equal("NiceEnumType"))
 		Expect(_call.MustTypeArgument().Indirection).To(Equal(syntax.NormalConcrete))
 		Expect(_call.MustTypeArgument()).ToNot(BeNil())
-		Expect(_call.MustTypeArgument().PkgPath).To(Equal(pkg))
+		Expect(_call.MustTypeArgument().PkgPath).To(Equal(pkgPath))
 	})
 
 	It("Call number 7", func() {

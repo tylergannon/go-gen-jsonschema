@@ -11,22 +11,11 @@ import (
 	"go/token"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 )
 
 const maxNestingDepth = 100 // This is not the JSON Schema nesting depth but recursion depth...
 const defaultSubdir = "jsonschema"
-
-type seenTypes []syntax.TypeID
-
-func (s seenTypes) Seen(t syntax.TypeID) bool {
-	return slices.Contains(s, t.Concrete())
-}
-
-func (s seenTypes) See(t syntax.TypeID) seenTypes {
-	return append(seenTypes{t.Concrete()}, s...)
-}
 
 func New(pkg *decorator.Package) (SchemaBuilder, error) {
 	data, err := syntax.LoadPackage(pkg)
@@ -40,12 +29,12 @@ func New(pkg *decorator.Package) (SchemaBuilder, error) {
 		Subdir:   defaultSubdir,
 	}
 	for _, m := range data.SchemaMethods {
-		if err = builder.mapType(m.Receiver, seenTypes{}); err != nil {
+		if err = builder.mapType(m.Receiver, syntax.SeenTypes{}); err != nil {
 			return builder, err
 		}
 	}
 	for _, f := range data.SchemaFuncs {
-		if err = builder.mapType(f.Receiver, seenTypes{}); err != nil {
+		if err = builder.mapType(f.Receiver, syntax.SeenTypes{}); err != nil {
 			return builder, err
 		}
 	}
@@ -115,7 +104,7 @@ func (s SchemaBuilder) find(t syntax.TypeID) (token.Position, error) {
 	return typeSpec.Position(), nil
 }
 
-func (s SchemaBuilder) mapInterface(iface syntax.IfaceImplementations, seen seenTypes) error {
+func (s SchemaBuilder) mapInterface(iface syntax.IfaceImplementations, seen syntax.SeenTypes) error {
 	if seen.Seen(iface.TypeSpec.ID()) {
 		return fmt.Errorf("circular dependency found for type %s, defined at %s", iface.TypeSpec.ID(), iface.TypeSpec.Position())
 	}
@@ -150,7 +139,7 @@ func (s SchemaBuilder) mapInterface(iface syntax.IfaceImplementations, seen seen
 	return nil
 }
 
-func (s SchemaBuilder) mapEnumType(enum *syntax.EnumSet, seen seenTypes) error {
+func (s SchemaBuilder) mapEnumType(enum *syntax.EnumSet, seen syntax.SeenTypes) error {
 	seen = seen.See(enum.TypeSpec.ID())
 	if err := s.checkSeen(seen); err != nil {
 		return err
@@ -200,7 +189,7 @@ func (s SchemaBuilder) mapEnumType(enum *syntax.EnumSet, seen seenTypes) error {
 }
 
 // mapType
-func (s SchemaBuilder) mapType(t syntax.TypeID, seen seenTypes) error {
+func (s SchemaBuilder) mapType(t syntax.TypeID, seen syntax.SeenTypes) error {
 	scanResult, err := s.loadScanResult(t)
 	if err != nil {
 		return err
@@ -220,7 +209,7 @@ func (s SchemaBuilder) mapType(t syntax.TypeID, seen seenTypes) error {
 	return nil
 }
 
-func (s SchemaBuilder) checkSeen(seen seenTypes) error {
+func (s SchemaBuilder) checkSeen(seen syntax.SeenTypes) error {
 	if len(seen) > maxNestingDepth {
 		pos, _ := s.find(seen[0])
 		return fmt.Errorf("max nesting depth exceeded at %s", pos)
@@ -228,7 +217,7 @@ func (s SchemaBuilder) checkSeen(seen seenTypes) error {
 	return nil
 }
 
-func (s SchemaBuilder) mapNamedType(t syntax.TypeID, seen seenTypes) error {
+func (s SchemaBuilder) mapNamedType(t syntax.TypeID, seen syntax.SeenTypes) error {
 	scanResult, err := s.loadScanResult(t)
 	if err != nil {
 		return err
@@ -248,7 +237,7 @@ func (s SchemaBuilder) mapNamedType(t syntax.TypeID, seen seenTypes) error {
 	return nil
 }
 
-func (s SchemaBuilder) renderSchema(typeID syntax.TypeID, anyTypeSpec syntax.Expr, description string, seen seenTypes) (JSONSchema, error) {
+func (s SchemaBuilder) renderSchema(typeID syntax.TypeID, anyTypeSpec syntax.Expr, description string, seen syntax.SeenTypes) (JSONSchema, error) {
 	switch node := anyTypeSpec.Expr().(type) {
 	case *dst.Ident:
 		switch node.Name {

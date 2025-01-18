@@ -2,6 +2,7 @@ package structs
 
 import (
 	_ "github.com/dave/dst"
+	_ "github.com/tylergannon/structtag"
 )
 
 // It's really that way

@@ -5,6 +5,7 @@ package basictypes
 import (
 	_ "github.com/dave/dst"
 	"github.com/tylergannon/go-gen-jsonschema/internal/builder/testfixtures/enums/enumsremote"
+	_ "github.com/tylergannon/structtag"
 )
 
 // EnumType is an enum type from enumsremote

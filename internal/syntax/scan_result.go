@@ -4,9 +4,12 @@ import (
 	"fmt"
 	"github.com/dave/dst"
 	"github.com/dave/dst/decorator"
+	"github.com/tylergannon/structtag"
 	"go/token"
 	"golang.org/x/tools/go/packages"
 	"slices"
+	"strings"
+	"unicode"
 )
 
 type PackageScanner interface {
@@ -112,6 +115,7 @@ type (
 		MarkerCall MarkerFunctionCall
 	}
 	SchemaFunction SchemaMethod
+
 	// IfaceImplementations represents an interface type and its allowed types.
 	// Error in the event that the loader encounters TypeName referenced on any
 	// types declared outside of this package.
@@ -160,10 +164,6 @@ const (
 	MarkerKindSchema    MarkerKind = "Schema"
 )
 
-//func (v VarDecls) importMap() syntax.ImportMap {
-//	return v.File.Imports
-//}
-
 type VarDeclSet []VarConstDecl
 
 func (vd VarDeclSet) MarkerFuncs() []MarkerFunctionCall {
@@ -191,10 +191,15 @@ type ScanResult struct {
 	Constants       map[string]*EnumSet
 	MarkerCalls     []MarkerFunctionCall
 	Interfaces      map[string]IfaceImplementations
-	ConcreteTypes   map[string]bool
+	localTypeNames  map[string]bool
 	SchemaMethods   []SchemaMethod
 	SchemaFuncs     []SchemaFunction
 	LocalNamedTypes map[string]TypeSpec
+	remoteTypes     typesMap
+	deps            map[string]ScanResult
+	// temp variable used during resolution only.
+	resolveQueue            []TypeSpec
+	alreadyTraversedLocally map[string]bool
 }
 
 type seenPackages []string
@@ -214,80 +219,116 @@ func (s seenPackages) add(pkg *decorator.Package) (seenPackages, bool) {
 	return s.see(pkg), true
 }
 
-/**
- * Need a way to map out all the types in one go.  The structures here don't seem to do it.
- */
-func LoadPackage(pkg *decorator.Package) (ScanResult, error) {
-	return loadPackageInternal(pkg, seenPackages{})
+// LoadPackage is the main entry point that creates a ScanResult for the given package.
+// Note: we pass a non-nil map to loadPackageInternal(...) so we can safely store references
+// to local types without panicking.
+func LoadPackage(pkg *decorator.Package) (res ScanResult, err error) {
+	res = newScanResult(pkg, map[string]ScanResult{})
+	// Pass an empty map so we never do `typesToMap[foo] = true` on a nil map.
+	err = res.loadPackageInternal(seenPackages{}, make(map[string]bool))
+	return
 }
 
-func loadPackageInternal(pkg *decorator.Package, seen seenPackages) (ScanResult, error) {
-	// Needs to discover:
-	// 1. Enum (Const) Values
-	// 2. Supported Interfaces
-	// 3. Types to render
+func newScanResult(pkg *decorator.Package, deps map[string]ScanResult) ScanResult {
+	return ScanResult{
+		Pkg:                     pkg,
+		Constants:               make(map[string]*EnumSet),
+		MarkerCalls:             make([]MarkerFunctionCall, 0),
+		Interfaces:              make(map[string]IfaceImplementations),
+		SchemaMethods:           make([]SchemaMethod, 0),
+		SchemaFuncs:             make([]SchemaFunction, 0),
+		LocalNamedTypes:         make(map[string]TypeSpec),
+		remoteTypes:             typesMap{},
+		localTypeNames:          make(map[string]bool),
+		deps:                    deps,
+		alreadyTraversedLocally: make(map[string]bool),
+	}
+}
+
+type typesMap map[string]map[string]bool
+
+func (t typesMap) addTypeByID(typ TypeID) {
+	t.addType(typ.PkgPath, typ.TypeName)
+}
+
+func (t typesMap) addType(pkgPath, typeName string) {
+	if t[pkgPath] == nil {
+		t[pkgPath] = map[string]bool{typeName: true}
+	} else {
+		t[pkgPath][typeName] = true
+	}
+}
+
+func (r *ScanResult) loadPackageInternal(seen seenPackages, typesToMap map[string]bool) error {
+	if typesToMap == nil {
+		// Safety check in case it's ever passed nil from some other call site
+		typesToMap = make(map[string]bool)
+	}
+
 	var (
-		_, ok           = seen.add(pkg)
-		_decls          = loadPkgDecls(pkg)
-		markerCalls     = _decls.varDecls.MarkerFuncs()
-		enums           = map[string]*EnumSet{}
-		interfaces      = map[string]IfaceImplementations{}
-		concreteTypes   = map[string]bool{}
-		schemaMethods   []SchemaMethod
-		schemaFuncs     []SchemaFunction
-		localNamedTypes = map[string]TypeSpec{}
+		_, ok  = seen.add(r.Pkg)
+		_decls = loadPkgDecls(r.Pkg)
 	)
 	if !ok {
-		return ScanResult{}, fmt.Errorf("circular package dependency detected. %v", seen)
+		return fmt.Errorf("circular package dependency detected. %v", seen)
 	}
-	for _, decl := range markerCalls {
+
+	r.MarkerCalls = _decls.varDecls.MarkerFuncs()
+	for _, decl := range r.MarkerCalls {
 		switch decl.CallExpr.MustIdentifyFunc().TypeName {
 		case MarkerFuncNewEnumType:
-			enums[decl.MustTypeArgument().TypeName] = &EnumSet{}
+			r.Constants[decl.MustTypeArgument().TypeName] = &EnumSet{}
 		case MarkerFuncNewInterfaceImpl:
 			var (
 				err   error
 				iface = IfaceImplementations{}
 			)
 			if iface.Impls, err = decl.ParseTypesFromArgs(); err != nil {
-				return ScanResult{}, err
+				return err
 			}
-			interfaces[decl.MustTypeArgument().TypeName] = iface
+			r.Interfaces[decl.MustTypeArgument().TypeName] = iface
 			for _, impl := range iface.Impls {
-				concreteTypes[impl.TypeName] = true
+				if impl.PkgPath == r.Pkg.PkgPath {
+					r.localTypeNames[impl.TypeName] = true
+					typesToMap[impl.TypeName] = true
+				} else {
+					r.remoteTypes.addTypeByID(impl)
+				}
 			}
 		case MarkerFuncNewJSONSchemaMethod:
 			method, err := decl.ParseSchemaMethod()
-			concreteTypes[method.Receiver.TypeName] = true
 			if err != nil {
-				return ScanResult{}, err
+				return err
 			}
-			schemaMethods = append(schemaMethods, method)
+			r.localTypeNames[method.Receiver.TypeName] = true
+			typesToMap[method.Receiver.TypeName] = true
+			r.SchemaMethods = append(r.SchemaMethods, method)
 		case MarkerFuncNewJSONSchemaBuilder:
-			method, err := decl.ParseSchemaFunc()
-			concreteTypes[method.Receiver.TypeName] = true
+			fn, err := decl.ParseSchemaFunc()
 			if err != nil {
-				return ScanResult{}, err
+				return err
 			}
-			schemaFuncs = append(schemaFuncs, method)
+			r.localTypeNames[fn.Receiver.TypeName] = true
+			typesToMap[fn.Receiver.TypeName] = true
+			r.SchemaFuncs = append(r.SchemaFuncs, fn)
 
 		default:
-			return ScanResult{}, fmt.Errorf("unsupported marker function: %s", decl.CallExpr.MustIdentifyFunc())
+			return fmt.Errorf("unsupported marker function: %s", decl.CallExpr.MustIdentifyFunc())
 		}
 	}
 
 	for _, _typeDecl := range _decls.typeDecls {
 		for _, spec := range _typeDecl.Specs {
 			var (
-				typeID = TypeID{PkgPath: pkg.PkgPath, TypeName: spec.Name.Name}
+				typeID = TypeID{PkgPath: r.Pkg.PkgPath, TypeName: spec.Name.Name}
 			)
-			if iface, ok := interfaces[typeID.TypeName]; ok {
+			if iface, ok := r.Interfaces[typeID.TypeName]; ok {
 				iface.TypeSpec = NewTypeSpec(_typeDecl.Decl, spec, _typeDecl.Pkg, _typeDecl.File)
-				interfaces[typeID.TypeName] = iface
-			} else if enum, ok := enums[typeID.TypeName]; ok {
+				r.Interfaces[typeID.TypeName] = iface
+			} else if enum, ok := r.Constants[typeID.TypeName]; ok {
 				enum.TypeSpec = NewTypeSpec(_typeDecl.Decl, spec, _typeDecl.Pkg, _typeDecl.File)
 			} else {
-				localNamedTypes[typeID.TypeName] = NewTypeSpec(_typeDecl.Decl, spec, _typeDecl.Pkg, _typeDecl.File)
+				r.LocalNamedTypes[typeID.TypeName] = NewTypeSpec(_typeDecl.Decl, spec, _typeDecl.Pkg, _typeDecl.File)
 			}
 		}
 	}
@@ -300,25 +341,148 @@ func loadPackageInternal(pkg *decorator.Package, seen seenPackages) (ScanResult,
 			if ident, ok := spec.Type().(*dst.Ident); ok {
 				typeID := TypeID{TypeName: ident.Name}
 				if ident.Path == "" {
-					typeID.PkgPath = pkg.PkgPath
+					typeID.PkgPath = r.Pkg.PkgPath
 				} else {
 					typeID.PkgPath = ident.Path
 				}
-				enums[typeID.TypeName].Values = append(enums[typeID.TypeName].Values, spec)
+				// Only append to the enum set if r.Constants[typeID.TypeName] is non-nil:
+				if e, exists := r.Constants[typeID.TypeName]; exists && e != nil {
+					e.Values = append(e.Values, spec)
+				}
 			}
 		}
-
 	}
-	return ScanResult{
-		Pkg:             pkg,
-		Constants:       enums,
-		MarkerCalls:     markerCalls,
-		Interfaces:      interfaces,
-		ConcreteTypes:   concreteTypes,
-		SchemaMethods:   schemaMethods,
-		SchemaFuncs:     schemaFuncs,
-		LocalNamedTypes: localNamedTypes,
-	}, nil
+
+	for typeName := range typesToMap {
+		if _, ok := r.LocalNamedTypes[typeName]; !ok {
+			return fmt.Errorf("undeclared local type found: %s", typeName)
+		} else {
+			// We'll queue it for resolution
+			r.resolveQueue = append(r.resolveQueue, r.LocalNamedTypes[typeName])
+		}
+	}
+
+	if err := r.resolveTypes(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *ScanResult) resolveTypeExpr(_expr Expr, seen SeenTypes) error {
+
+	switch expr := _expr.Expr().(type) {
+	case *dst.ParenExpr:
+		return r.resolveTypeExpr(_expr.NewExpr(expr.X), seen)
+	case *dst.StarExpr:
+		return r.resolveTypeExpr(_expr.NewExpr(expr.X), seen)
+	case *dst.SliceExpr:
+		return r.resolveTypeExpr(_expr.NewExpr(expr.X), seen)
+	case *dst.StructType:
+		for _, field := range expr.Fields.List {
+			if skipField(field) {
+				continue
+			}
+			if err := r.resolveTypeExpr(_expr.NewExpr(field.Type), seen); err != nil {
+				return fmt.Errorf("struct field at %s: %w", _expr.NewExpr(field.Type).Position(), err)
+			}
+		}
+	case *dst.Ident:
+		if expr.Path == "" || expr.Path == r.Pkg.PkgPath {
+			// It's either a basic type or a locally-defined named type
+			if basicTypes[expr.Name] {
+				return nil // basic type
+			}
+			if named, ok := r.LocalNamedTypes[expr.Name]; !ok {
+				return fmt.Errorf("undeclared local type found: %s", expr.Name)
+			} else {
+				var added bool
+				seen, added = seen.Add(named.ID())
+				if !added {
+					return fmt.Errorf("cyclic dependency found at %s", named.Position())
+				}
+				if r.alreadyTraversedLocally[expr.Name] {
+					return nil
+				}
+				if err := r.resolveTypeExpr(named.Type(), seen); err != nil {
+					return err
+				}
+				r.alreadyTraversedLocally[expr.Name] = true
+			}
+		} else {
+			r.remoteTypes.addType(expr.Path, expr.Name)
+		}
+	case *dst.SelectorExpr:
+		// Instead of panicking, at least store the remote reference
+		if xIdent, ok := expr.X.(*dst.Ident); ok {
+			if xIdent.Path != "" {
+				r.remoteTypes.addType(xIdent.Path, expr.Sel.Name)
+			} else {
+				// Fallback if there's no path, treat the 'X' as the package name
+				r.remoteTypes.addType(xIdent.Name, expr.Sel.Name)
+			}
+		} else {
+			return fmt.Errorf("unhandled selector expression: %s", _expr.Details())
+		}
+	case *dst.BasicLit:
+		return nil
+	}
+	return nil
+}
+
+func skipField(field *dst.Field) bool {
+	if len(field.Names) == 0 { // don't skip embedded
+		return false
+	}
+	if idx := slices.IndexFunc(field.Names, func(ident *dst.Ident) bool {
+		return unicode.IsLower(rune(ident.Name[0]))
+	}); idx == -1 {
+		return true // skip if all names are lowercased (non-exported)
+	}
+	if field.Tag == nil {
+		return false
+	}
+	tags, _ := structtag.Parse(strings.Trim(field.Tag.Value, "`"))
+	jsonTag, _ := tags.Get("json")
+	return len(jsonTag.Options) == 0 || jsonTag.Options[0] == "-"
+}
+
+func (r *ScanResult) resolveTypes() error {
+	var (
+		ts  TypeSpec
+		err error
+	)
+	for len(r.resolveQueue) > 0 {
+		ts = r.resolveQueue[0]
+		r.resolveQueue = r.resolveQueue[1:]
+		if r.alreadyTraversedLocally[ts.node.Name.Name] {
+			continue
+		}
+		// Pass a non-nil "seen" so we can detect cycles properly.
+		if err = r.resolveTypeExpr(NewExpr(ts.node.Type, ts.pkg, ts.file), nil); err != nil {
+			return fmt.Errorf("resolving node at %s: %w", ts.Position(), err)
+		}
+	}
+	for pkgPath, typeNames := range r.remoteTypes {
+		if remote, ok := r.deps[pkgPath]; ok {
+			for typeName := range typeNames {
+				if !remote.alreadyTraversedLocally[typeName] {
+					remote.resolveQueue = append(remote.resolveQueue, remote.LocalNamedTypes[typeName])
+				}
+			}
+			if err = remote.resolveTypes(); err != nil {
+				return fmt.Errorf("resolving type at %s: %w", pkgPath, err)
+			}
+		} else if pkgs, err := Load(pkgPath); err != nil {
+			return err
+		} else {
+			remote = newScanResult(pkgs[0], r.deps)
+			if err = remote.loadPackageInternal(seenPackages{}, typeNames); err != nil {
+				return fmt.Errorf("resolving type at %s: %w", pkgPath, err)
+			}
+			r.deps[pkgPath] = remote
+		}
+	}
+	return nil
 }
 
 func loadPkgDecls(pkg *decorator.Package) *decls {
@@ -355,27 +519,25 @@ func loadPkgDecls(pkg *decorator.Package) *decls {
 	return &_decls
 }
 
-//func findNamedType(pkg *decorator.Package, typeName string) (*types.Named, bool) {
-//	// Get the package's scope
-//	scope := pkg.Types.Scope()
-//
-//	// Lookup the type by name
-//	obj := scope.Lookup(typeName)
-//	if obj == nil {
-//		return nil, false // Type not found
-//	}
-//
-//	// Ensure the object is a TypeName
-//	typeNameObj, ok := obj.(*types.TypeName)
-//	if !ok {
-//		return nil, false // Not a named type
-//	}
-//
-//	// Assert the type to *types.Named
-//	named, ok := typeNameObj.Type().(*types.Named)
-//	if !ok {
-//		return nil, false // Not a named type
-//	}
-//
-//	return named, true
-//}
+var basicTypes = map[string]bool{
+	"int":        true,
+	"int8":       true,
+	"int16":      true,
+	"int32":      true,
+	"int64":      true,
+	"uint":       true,
+	"uint8":      true,
+	"uint16":     true,
+	"uint32":     true,
+	"uint64":     true,
+	"uintptr":    true,
+	"string":     true,
+	"bool":       true,
+	"float32":    true,
+	"float64":    true,
+	"complex64":  true,
+	"complex128": true,
+	"byte":       true, // alias for uint8
+	"rune":       true, // alias for int32
+	"error":      true,
+}
