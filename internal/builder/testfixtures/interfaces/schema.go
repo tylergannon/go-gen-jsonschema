@@ -14,5 +14,5 @@ func (FancyStruct) Schema() (json.RawMessage, error) {
 
 var (
 	_ = jsonschema.NewJSONSchemaMethod(FancyStruct.Schema)
-	_ = jsonschema.NewInterfaceImpl[TestInterface](TestInterface1{}, TestInterface2{})
+	_ = jsonschema.NewInterfaceImpl[TestInterface](TestInterface1{}, TestInterface2{}, (*PointerToTestInterface)(nil))
 )

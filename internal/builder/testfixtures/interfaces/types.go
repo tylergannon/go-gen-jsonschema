@@ -42,3 +42,13 @@ type TestInterface2 struct {
 }
 
 func (t TestInterface2) marker() {}
+
+type PointerToTestInterface struct {
+	Fork99 int `json:"fork99"`
+	Fork10 int `json:"fork10"`
+	Fork11 int `json:"fork11"`
+}
+
+func (t *PointerToTestInterface) marker() {}
+
+var _ TestInterface = &PointerToTestInterface{}
