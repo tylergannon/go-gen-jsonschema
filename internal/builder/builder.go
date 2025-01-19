@@ -29,5 +29,8 @@ func Run(args BuilderArgs) (err error) {
 	if err = builder.RenderSchemas(); err != nil {
 		return err
 	}
+	if err = builder.RenderGoCode(); err != nil {
+		return err
+	}
 	return nil
 }

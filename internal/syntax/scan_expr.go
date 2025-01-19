@@ -179,9 +179,9 @@ func (m MarkerFunctionCall) ParseSchemaFunc() (SchemaFunction, error) {
 		return SchemaFunction{}, fmt.Errorf("expected a type argument to denote schema func at %s", m.CallExpr.Position())
 	}
 	return SchemaFunction{
-		MarkerCall: m,
-		Receiver:   *typeArg,
-		FuncName:   m.CallExpr.Args()[0].Expr().(*dst.Ident).Name,
+		MarkerCall:       m,
+		Receiver:         *typeArg,
+		SchemaMethodName: m.CallExpr.Args()[0].Expr().(*dst.Ident).Name,
 	}, nil
 }
 
@@ -201,9 +201,9 @@ func (m MarkerFunctionCall) ParseSchemaMethod() (SchemaMethod, error) {
 			return SchemaMethod{}, err
 		}
 		return SchemaMethod{
-			Receiver:   receiver,
-			FuncName:   expr.Sel.Name,
-			MarkerCall: m,
+			Receiver:         receiver,
+			SchemaMethodName: expr.Sel.Name,
+			MarkerCall:       m,
 		}, nil
 	default:
 		fmt.Printf("ArgBoo --> %T %#v", expr, expr)

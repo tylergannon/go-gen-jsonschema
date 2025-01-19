@@ -86,7 +86,7 @@ var _ = Describe("FuncCallParser", Ordered, func() {
 		schemaMethod, err := _call.ParseSchemaMethod()
 
 		Expect(err).NotTo(HaveOccurred())
-		Expect(schemaMethod.FuncName).To(Equal("Schema"))
+		Expect(schemaMethod.SchemaMethodName).To(Equal("Schema"))
 		Expect(schemaMethod.Receiver.Indirection).To(Equal(syntax.NormalConcrete))
 		Expect(schemaMethod.Receiver.PkgPath).To(Equal(pkgPath))
 		Expect(schemaMethod.Receiver.TypeName).To(Equal("TypeForSchemaMethod"))
@@ -99,7 +99,7 @@ var _ = Describe("FuncCallParser", Ordered, func() {
 		schemaMethod, err := _call.ParseSchemaMethod()
 
 		Expect(err).NotTo(HaveOccurred())
-		Expect(schemaMethod.FuncName).To(Equal("Schema"))
+		Expect(schemaMethod.SchemaMethodName).To(Equal("Schema"))
 		Expect(schemaMethod.Receiver.Indirection).To(Equal(syntax.Pointer))
 		Expect(schemaMethod.Receiver.PkgPath).To(Equal(pkgPath))
 		Expect(schemaMethod.Receiver.TypeName).To(Equal("PointerTypeForSchemaMethod"))
