@@ -1,6 +1,7 @@
 package builder
 
 import (
+	_ "embed"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,8 +13,12 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 )
+
+//go:embed schemas.go.tmpl
+var schemasTemplate string
 
 const maxNestingDepth = 100 // This is not the JSON Schema nesting depth but recursion depth...
 const defaultSubdir = "jsonschema"
@@ -24,10 +29,12 @@ func New(pkg *decorator.Package) (SchemaBuilder, error) {
 		return SchemaBuilder{}, err
 	}
 	var builder = SchemaBuilder{
-		Scan:        data,
-		schemas:     schemaMap{},
-		customTypes: map[string][]InterfaceProp{},
-		Subdir:      defaultSubdir,
+		Scan:              data,
+		schemas:           schemaMap{},
+		customTypes:       map[string][]InterfaceProp{},
+		Subdir:            defaultSubdir,
+		BuildTag:          syntax.BuildTag,
+		DiscriminatorProp: DefaultDiscriminatorPropName,
 	}
 	for _, m := range data.SchemaMethods {
 		if err = builder.mapType(m.Receiver, syntax.SeenTypes{}); err != nil {
@@ -43,12 +50,84 @@ func New(pkg *decorator.Package) (SchemaBuilder, error) {
 	return builder, nil
 }
 
+type CustomMarshaledType struct {
+	Name           string
+	InterfaceProps []InterfaceProp
+	Star           string
+	Initial        string
+}
+
+type InterfaceOptionInfo struct {
+	TypeNameWithPrefix string
+	Discriminator      string
+	Pointer            bool
+}
+
+type InterfaceInfo struct {
+	TypeNameWithPrefix string
+	UnmarshalerFunc    string
+	Options            []InterfaceOptionInfo
+}
+
+func (c *CustomMarshaledType) UnmarshalJSON(data []byte) (err error) {
+	type Wrapper struct {
+		*CustomMarshaledType
+		Star    json.RawMessage
+		Initial json.RawMessage
+	}
+	wrapper := Wrapper{
+		CustomMarshaledType: c,
+	}
+	if err = json.Unmarshal(data, &wrapper); err != nil {
+		return err
+	}
+	if err = json.Unmarshal(wrapper.Initial, &c.Initial); err != nil {
+		return err
+	}
+	if err = json.Unmarshal(wrapper.Star, &c.Star); err != nil {
+		return err
+	}
+	return nil
+}
+
 type SchemaBuilder struct {
-	Scan        syntax.ScanResult
-	schemas     schemaMap
-	customTypes map[string][]InterfaceProp
-	Subdir      string
-	Pretty      bool
+	Scan              syntax.ScanResult
+	schemas           schemaMap
+	customTypes       map[string][]InterfaceProp
+	Subdir            string
+	Pretty            bool
+	BuildTag          string
+	Imports           []string
+	SpecialTypes      []CustomMarshaledType
+	Interfaces        []InterfaceInfo
+	DiscriminatorProp string
+}
+
+func (s SchemaBuilder) HaveInterfaces() bool {
+	return len(s.Interfaces) > 0
+}
+
+func (s SchemaBuilder) imports() *ImportMap {
+	importMap := NewImportMap(s.Scan.Pkg)
+	// For each type that has any special interface handling,
+	// need a
+	for _, interfaceProps := range s.customTypes {
+		for _, prop := range interfaceProps {
+			importMap.AddPackage(prop.Interface.TypeSpec.Pkg())
+			for _, implType := range prop.Interface.Impls {
+				if scan, ok := s.Scan.GetPackage(implType.PkgPath); !ok {
+					panic("internal error: no package found for " + implType.PkgPath)
+				} else {
+					importMap.AddPackage(scan.Pkg)
+				}
+			}
+		}
+	}
+	return importMap
+}
+
+func (s SchemaBuilder) SchemaMethods() []syntax.SchemaMethod {
+	return s.Scan.SchemaMethods
 }
 
 type schemaMap map[string]map[string]JSONSchema
@@ -186,7 +265,6 @@ func (s SchemaBuilder) mapEnumType(enum *syntax.EnumSet, seen syntax.SeenTypes) 
 
 // mapType
 func (s SchemaBuilder) mapType(t syntax.TypeID, seen syntax.SeenTypes) error {
-	fmt.Println("Map type", t)
 	scanResult, err := s.loadScanResult(t)
 	if err != nil {
 		return err
@@ -329,14 +407,69 @@ func (s SchemaBuilder) writeSchema(t syntax.TypeID, targetDir string) (err error
 	if s.Pretty {
 		encoder.SetIndent("", "  ")
 	}
-	if poop, err := schema.MarshalJSON(); err != nil {
-		fmt.Println("Mega error", err)
-	} else {
-		fmt.Println("Here's the deal.")
-		fmt.Println(string(poop))
-	}
 	if err = encoder.Encode(schema); err != nil {
 		return fmt.Errorf("could not encode schema: %w", err)
+	}
+	return nil
+}
+
+func (s SchemaBuilder) RenderGoCode() (err error) {
+	var interfaces = map[syntax.TypeID]InterfaceProp{}
+	importMap := s.imports()
+	s.Imports = importMap.ImportStatements()
+	for n, itsProps := range s.customTypes {
+		s.SpecialTypes = append(s.SpecialTypes, CustomMarshaledType{
+			Name:           n,
+			InterfaceProps: itsProps,
+			Initial:        strings.ToLower(n[0:1]),
+		})
+		for _, prop := range itsProps {
+			interfaces[prop.Interface.TypeSpec.ID()] = prop
+		}
+	}
+	for _, ifaceProp := range interfaces {
+		var (
+			discriminators = map[string]bool{}
+			ifacePkg       = ifaceProp.Interface.TypeSpec.Pkg()
+		)
+		var props []InterfaceOptionInfo
+		for _, option := range ifaceProp.Interface.Impls {
+			pkg, ok := s.Scan.GetPackage(option.PkgPath)
+			if !ok {
+				panic("could not find package at RenderGoCode: " + option.PkgPath)
+			}
+			var (
+				discriminator = option.TypeName
+				i             = 1
+			)
+			for discriminators[discriminator] {
+				discriminator = strings.TrimSuffix(discriminator, strconv.Itoa(i-1))
+				discriminator = fmt.Sprintf("%s%d", discriminator, i)
+			}
+			discriminators[discriminator] = true
+			props = append(props, InterfaceOptionInfo{
+				TypeNameWithPrefix: importMap.PrefixExpr(option.TypeName, pkg.Pkg),
+				Discriminator:      discriminator,
+				Pointer:            option.Indirection == syntax.Pointer,
+			})
+		}
+		s.Interfaces = append(s.Interfaces, InterfaceInfo{
+			TypeNameWithPrefix: importMap.PrefixExpr(ifaceProp.Interface.TypeSpec.Name(), ifacePkg),
+			UnmarshalerFunc:    ifaceProp.UnmarshalerFunc(),
+			Options:            props,
+		})
+	}
+	data, err := RenderTemplate(schemasTemplate, s)
+	if err != nil {
+		return err
+	}
+	result, err := FormatCodeWithGoimports(data.Bytes())
+	if err != nil {
+		return err
+	}
+	err = os.WriteFile(filepath.Join("jsonschema_gen.go"), result, 0644)
+	if err != nil {
+		return err
 	}
 	return nil
 }
@@ -442,6 +575,25 @@ type InterfaceProp struct {
 	Interface syntax.IfaceImplementations
 }
 
+func (s InterfaceProp) UnmarshalerFunc() string {
+	return fmt.Sprintf("__jsonUnmarshal__%s__%s", s.Interface.TypeSpec.Pkg().Name, s.Interface.TypeSpec.Name())
+}
+
+func (i InterfaceProp) FieldNames() string {
+	var names []string
+	for _, name := range i.Field.Field.Names {
+		names = append(names, name.Name)
+	}
+	return strings.Join(names, ", ")
+}
+
+func (i InterfaceProp) StructTag() string {
+	if i.Field.Field.Tag == nil {
+		return ""
+	}
+	return i.Field.Field.Tag.Value
+}
+
 // resolveLocalInterfaceProps finds registered interface properties anywhere in the
 // given struct field, as long as the struct type is from the local package.
 // If the interface field is the very type of one of the struct's types (or of
@@ -495,6 +647,9 @@ func (s SchemaBuilder) resolveLocalInterfaceProps(t syntax.StructType, seenProps
 			iface, ok := s.findInterfaceImpl(ident, s.Scan.Pkg)
 			if !ok {
 				continue
+			}
+			if len(prop.Field.Names) != 1 {
+				return nil, fmt.Errorf("interface prop %s has more than one field name at %s", strings.Join(prop.PropNames(), ","), prop.Position())
 			}
 			props = append(props, InterfaceProp{
 				Field:     prop,

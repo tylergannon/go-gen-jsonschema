@@ -110,9 +110,9 @@ type (
 	}
 
 	SchemaMethod struct {
-		Receiver   TypeID
-		FuncName   string
-		MarkerCall MarkerFunctionCall
+		Receiver         TypeID
+		SchemaMethodName string
+		MarkerCall       MarkerFunctionCall
 	}
 	SchemaFunction SchemaMethod
 
@@ -131,6 +131,10 @@ type (
 		Values   []ValueSpec
 	}
 )
+
+func (s SchemaMethod) IsPointer() bool {
+	return s.Receiver.Indirection == Pointer
+}
 
 func (s SchemaMethod) markerType() MarkerKind {
 	return MarkerKindSchema
