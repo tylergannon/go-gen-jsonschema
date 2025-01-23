@@ -6,3 +6,7 @@ watch focus:
 
 testregistry:
     cd internal/typeregistry && ginkgo
+
+
+lint:
+    golangci-lint run ./...
