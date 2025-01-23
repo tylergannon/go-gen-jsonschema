@@ -37,7 +37,7 @@ func (m MarkerFunctionCall) MustTypeArgument() TypeID {
 
 func (m MarkerFunctionCall) TypeArgument() *TypeID {
 	var expr dst.Expr
-	if idxExpr, ok := m.CallExpr.node.Fun.(*dst.IndexExpr); ok {
+	if idxExpr, ok := m.CallExpr.Concrete.Fun.(*dst.IndexExpr); ok {
 		expr = idxExpr.Index
 	} else {
 		return nil
