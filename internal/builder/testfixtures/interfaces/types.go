@@ -7,12 +7,29 @@ import (
 
 //go:generate go run github.com/tylergannon/go-gen-jsonschema/gen-jsonschema/ --pretty
 
+// Overall description for MyEnumType.
+type MyEnumType string
+
+const (
+	// The first possible item
+	Val1 MyEnumType = "val1"
+	// Use this one second
+	Val2 MyEnumType = "val2"
+	// Use this one third
+	Val3 MyEnumType = "val3"
+	// Fourth option.
+	Val4 MyEnumType = "val4"
+)
+
 type TestInterface interface {
 	marker()
 }
 
 // Make this look pretty interesting.
 type FancyStruct struct {
+	// A list of enumVals that can be really meaningful when used correctly.
+	EnumVal []MyEnumType `json:"enumVal"`
+
 	// Something tells me this isn't going to make it into the document.
 	IFace TestInterface `json:"iface"`
 	// Here are the details.  Make sure you fill them out.
@@ -22,6 +39,8 @@ type FancyStruct struct {
 		funk      int
 		// Highly interesting stuff regarding Foo and Bar.
 		Foo, Bar string
+
+		EnumVal MyEnumType `json:"enumVal"`
 	})
 }
 
