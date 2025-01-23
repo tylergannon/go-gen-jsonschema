@@ -480,12 +480,12 @@ func (r *ScanResult) resolveTypes() error {
 	for len(r.resolveQueue) > 0 {
 		ts = r.resolveQueue[0]
 		r.resolveQueue = r.resolveQueue[1:]
-		if r.alreadyTraversedLocally[ts.node.Name.Name] {
+		if r.alreadyTraversedLocally[ts.Concrete.Name.Name] {
 			continue
 		}
 		// Pass a non-nil "seen" so we can detect cycles properly.
-		if err = r.resolveTypeExpr(NewExpr(ts.node.Type, ts.pkg, ts.file), nil); err != nil {
-			return fmt.Errorf("resolving node at %s: %w", ts.Position(), err)
+		if err = r.resolveTypeExpr(NewExpr(ts.Concrete.Type, ts.pkg, ts.file), nil); err != nil {
+			return fmt.Errorf("resolving Concrete at %s: %w", ts.Position(), err)
 		}
 	}
 	for pkgPath, typeNames := range r.remoteTypes {
