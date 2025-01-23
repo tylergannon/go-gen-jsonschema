@@ -2,20 +2,21 @@ package syntax
 
 import (
 	"fmt"
-	"github.com/dave/dst"
-	"github.com/dave/dst/decorator"
-	"github.com/tylergannon/structtag"
 	"go/token"
 	"slices"
 	"strings"
 	"unicode"
+
+	"github.com/dave/dst"
+	"github.com/dave/dst/decorator"
+	"github.com/tylergannon/structtag"
 )
 
 type (
 	STNode[T dst.Node] struct {
-		node T
-		file *dst.File
-		pkg  *decorator.Package
+		Concrete T
+		file     *dst.File
+		pkg      *decorator.Package
 	}
 
 	Node interface {
@@ -38,7 +39,7 @@ type (
 		Expr() dst.Expr
 	}
 
-	// TypeExpr is an Expr that is specifically an except from
+	// TypeExpr is an Expr that is specifically an excerpt from
 	// a type declaration.
 	// The main idea is mostly to anchor the expr to a specific TypeID.
 	// Not 100% sure that's necessary, strictly speaking, but the goal here
@@ -64,7 +65,7 @@ type (
 	}
 
 	StructType struct {
-		TypeExpr
+		TypeSpec
 		Expr *dst.StructType
 	}
 
@@ -76,13 +77,19 @@ type (
 	VarConstDecl struct {
 		STNode[*dst.GenDecl]
 	}
+
 	FuncDecl struct {
 		STNode[*dst.FuncDecl]
+	}
+
+	IdentExpr struct {
+		STExpr[*dst.Ident]
+		InterfaceType bool
 	}
 )
 
 func (s STNode[T]) Details() string {
-	return fmt.Sprintf("%T %v", s.node, s.node)
+	return fmt.Sprintf("%T %v", s.Concrete, s.Concrete)
 }
 
 func (s STExpr[T]) NewExpr(expr dst.Expr) Expr {
@@ -109,9 +116,9 @@ func NewFuncDecl(f *dst.FuncDecl, pkg *decorator.Package, file *dst.File) FuncDe
 func NewVarConstDecl(node *dst.GenDecl, pkg *decorator.Package, file *dst.File) VarConstDecl {
 	return VarConstDecl{
 		STNode[*dst.GenDecl]{
-			node: node,
-			file: file,
-			pkg:  pkg,
+			Concrete: node,
+			file:     file,
+			pkg:      pkg,
 		},
 	}
 }
@@ -121,7 +128,7 @@ func NewVarConstDecl(node *dst.GenDecl, pkg *decorator.Package, file *dst.File) 
  */
 
 func (s STNode[T]) Node() dst.Node {
-	return s.node
+	return s.Concrete
 }
 
 func (s STNode[T]) File() *dst.File {
@@ -133,7 +140,7 @@ func (s STNode[T]) Pkg() *decorator.Package {
 }
 
 func (s STNode[T]) Pos() token.Pos {
-	return s.pkg.Decorator.Map.Ast.Nodes[s.node].Pos()
+	return s.pkg.Decorator.Map.Ast.Nodes[s.Concrete].Pos()
 }
 
 func (s STNode[T]) Position() token.Position {
@@ -146,9 +153,9 @@ func (s STNode[T]) Imports() ImportMap {
 
 func NewNode[T dst.Node](node T, pkg *decorator.Package, file *dst.File) STNode[T] {
 	return STNode[T]{
-		node: node,
-		file: file,
-		pkg:  pkg,
+		Concrete: node,
+		file:     file,
+		pkg:      pkg,
 	}
 }
 
@@ -159,7 +166,7 @@ var _ Node = STNode[dst.Node]{}
  */
 
 func (s STExpr[T]) Expr() dst.Expr {
-	return s.node
+	return s.Concrete
 }
 
 func NewExpr[T dst.Expr](expr T, pkg *decorator.Package, file *dst.File) STExpr[T] {
@@ -181,8 +188,8 @@ func NewCallExpr(ce *dst.CallExpr, pkg *decorator.Package, file *dst.File) CallE
 }
 
 func (c CallExpr) Args() []Expr {
-	var args = make([]Expr, len(c.node.Args))
-	for i, arg := range c.node.Args {
+	var args = make([]Expr, len(c.Concrete.Args))
+	for i, arg := range c.Concrete.Args {
 		args[i] = NewExpr(arg, c.pkg, c.file)
 	}
 	return args
@@ -198,7 +205,7 @@ func (e CallExpr) MustIdentifyFunc() TypeID {
 
 func (e CallExpr) IdentifyFunc() (typeID TypeID, ok bool) {
 	var expr dst.Expr
-	switch _expr := e.node.Fun.(type) {
+	switch _expr := e.Concrete.Fun.(type) {
 	case *dst.IndexExpr:
 		expr = _expr.X
 	default:
@@ -238,19 +245,19 @@ func NewValueSpec(genDecl *dst.GenDecl, node *dst.ValueSpec, pkg *decorator.Pack
 }
 
 func (v ValueSpec) Comments() string {
-	return buildComments(v.node, v.GenDecl.node)
+	return buildComments(v.Concrete, v.GenDecl.Concrete)
 }
 
 func (v ValueSpec) HasType() bool {
-	return v.node.Type != nil
+	return v.Concrete.Type != nil
 }
 
 func (t ValueSpec) Type() dst.Expr {
-	return t.node.Type
+	return t.Concrete.Type
 }
 
 func (t ValueSpec) Value() *dst.ValueSpec {
-	return t.node
+	return t.Concrete
 }
 
 /**
@@ -265,19 +272,20 @@ func NewTypeSpec(genDecl *dst.GenDecl, ts *dst.TypeSpec, pkg *decorator.Package,
 }
 
 func (t TypeSpec) Name() string {
-	return t.node.Name.Name
+	return t.Concrete.Name.Name
 }
 
 func (t TypeSpec) Derive() TypeExpr {
-	return TypeExpr{TypeSpec: &t, Excerpt: t.node.Type}
+
+	return TypeExpr{TypeSpec: &t, Excerpt: t.Concrete.Type}
 }
 
 func (t TypeSpec) Comments() string {
-	return buildComments(t.node, t.GenDecl.node)
+	return buildComments(t.Concrete, t.GenDecl.Concrete)
 }
 
 func (t TypeSpec) ID() TypeID {
-	return TypeID{PkgPath: t.pkg.PkgPath, TypeName: t.node.Name.Name}
+	return TypeID{PkgPath: t.pkg.PkgPath, TypeName: t.Concrete.Name.Name}
 }
 
 /**
@@ -305,22 +313,296 @@ func (t TypeExpr) Position() token.Position {
 
 var NoStructType = StructType{}
 
-func NewStructType(s *dst.StructType, t TypeExpr) StructType {
+func NewStructType(s *dst.StructType, t TypeSpec) StructType {
+	if s == nil {
+		panic("the struct type is nil")
+	}
 	return StructType{
-		TypeExpr: t,
+		TypeSpec: t,
 		Expr:     s,
 	}
 }
 
 func (s StructType) Fields() (fields []StructField) {
 	for _, _field := range s.Expr.Fields.List {
-		field := StructField{TypeExpr: s.TypeExpr, Field: _field}
+		field := StructField{TypeExpr: s.TypeSpec.Derive().Derive(_field.Type), Field: _field}
 		if field.Skip() {
 			continue
 		}
 		fields = append(fields, field)
 	}
 	return fields
+}
+
+// Flatten resolves all type names into their actual shapes.
+// It should recurse when a struct field is embedded, and then interleave
+// the fields of the embedded type into the resulting struct.
+// It has two helpers that are given as arguments:
+// *resolve* is for when a type expression resolves to a named type.
+// It will return an Expr representing the concrete type name, after
+// looking up all type definition / aliasing, to arrive at the actual
+// definition of the type.
+// *seenProps* contains the names of all properties that have already
+// been found on types that embed the present StructType.  If a field
+// is encountered on the struct and found to exist in seenProps,
+// it should be skipped.  Likewise, props that are considered to be
+// "Skip()" by normal encoding/json rules, should be skipped here.
+//
+// ## Example:
+// Given the following types:
+// ```go
+// type Foobar int
+//
+//	type ExampleStruct struct {
+//	  Foobar []*Foobar `json:"foobar"`
+//	}
+//
+//	type AnotherExample struct {
+//	  Example  ExampleStruct `json:"example"`
+//	  Example2 ExampleStruct `json:"example2"`
+//	}
+//
+// ```
+// The result of flattening it would look like:
+// ```
+//
+//	struct {
+//		Example struct {
+//			Foobar int `json:"foobar"`
+//		} `json:"example"`
+//		Example2 struct {
+//			Foobar []*int `json:"foobar"`
+//		} `json:"example2"`
+//	}
+//
+// ```
+// In particular, note that the shape is exactly the same but the named
+// types have all been resolved to their concrete type definitions.
+func (s StructType) Flatten(
+	localPkgPath string,
+	resolve func(localPkgPath string, e IdentExpr) (Expr, error),
+	seenProps SeenProps,
+) (StructType, error) {
+	newStruct := &dst.StructType{
+		Fields: &dst.FieldList{},
+	}
+	var newFields []*dst.Field
+	var embeddedFields []StructField
+	var acceptedFieldNames = map[string]bool{}
+
+	for _, fieldObj := range s.Fields() {
+		if fieldObj.Skip() {
+			continue
+		}
+
+		// embedded field => no explicit name
+		if fieldObj.Embedded() {
+			embeddedFields = append(embeddedFields, fieldObj)
+			continue
+		}
+		var names []string
+		for _, ident := range fieldObj.Field.Names {
+			name := ident.Name
+			if seenProps.Seen(name) {
+				continue
+			}
+			acceptedFieldNames[name] = true
+			seenProps = seenProps.See(name)
+			names = append(names, name)
+		}
+		if len(names) == 0 {
+			continue
+		}
+		flattenedType, err := flattenExpr(fieldObj.TypeAsExpr(), resolve, 0)
+		if err != nil {
+			return NoStructType, err
+		}
+		copied := dst.Clone(fieldObj.Field).(*dst.Field)
+		copied.Names = nil
+		for _, name := range names {
+			copied.Names = append(copied.Names, dst.NewIdent(name))
+		}
+		copied.Type = flattenedType
+		newFields = append(newFields, copied)
+	}
+
+	for _, fieldObj := range embeddedFields {
+		embeddedExpr, err := flattenExpr(fieldObj.TypeAsExpr(), resolve, 0)
+		if err != nil {
+			return NoStructType, err
+		}
+
+		stNode, ok := embeddedExpr.(*dst.StructType)
+		if !ok {
+			// you said you want to error out for non-struct embedded fields
+			return NoStructType, fmt.Errorf("embedded field must be struct type")
+		}
+
+		// dst.Print(stNode)
+
+		// Recursively flatten the embedded struct, sharing the same seenProps
+		subStruct := NewStructType(stNode, s.TypeSpec)
+		flattened, err := subStruct.Flatten(localPkgPath, resolve, seenProps)
+		if err != nil {
+			return NoStructType, err
+		}
+		// Only keep property names that are not already in the parent struct
+		// Also, if all names are already in the parent struct, skip the embedded struct
+
+		// Child already handled skipping collisions. Just splice them in
+		newFields = append(newFields, flattened.Expr.Fields.List...)
+	}
+	_ = acceptedFieldNames["foo"]
+
+	newStruct.Fields.List = newFields
+	flat := NewStructType(newStruct, s.TypeSpec)
+	return flat, nil
+}
+
+type ExprResolveFunc func(localPkgPath string, e IdentExpr) (Expr, error)
+
+// decorateIdentIfItPointsToInterface adds an "After" decoration to the ident
+// if it points to an interface type.
+// The point of this is to make sure that the ident is not flattened
+// when it points to an interface type.
+func decorateIdentIfItPointsToInterface(ident IdentExpr, resolve ExprResolveFunc) (IdentExpr, error) {
+	var resolved, err = resolve(ident.Pkg().PkgPath, ident)
+	if err != nil {
+		return ident, err
+	}
+	if _ident, ok := resolved.Expr().(*dst.Ident); ok {
+		newIdent := IdentExpr{STExpr: NewExpr(_ident, ident.pkg, ident.file)}
+		newIdent, err = decorateIdentIfItPointsToInterface(newIdent, resolve)
+		if err != nil {
+			return ident, err
+		}
+		ident.InterfaceType = newIdent.InterfaceType
+		return ident, nil
+	}
+	_, ident.InterfaceType = resolved.Expr().(*dst.InterfaceType)
+	return ident, nil
+}
+
+// flattenExpr recursively replaces any named type references with the
+// result of `resolve(...)`, then continues descending into pointer/array types.
+// It returns a final expression with no named references left (unless built-ins).
+func flattenExpr(expr Expr, resolve ExprResolveFunc, depth int) (dst.Expr, error) {
+	var result dst.Expr
+	if depth > 50 {
+		return nil, fmt.Errorf("flattenExpr recursion depth exceeded")
+	}
+	switch e := expr.Expr().(type) {
+	case *dst.Ident:
+		if isBuiltinOrBlank(e.Name) {
+			return e, nil
+		}
+		identExpr := IdentExpr{
+			STExpr: NewExpr(e, expr.Pkg(), expr.File()),
+		}
+		var err error
+		identExpr, err = decorateIdentIfItPointsToInterface(identExpr, resolve)
+		if err != nil {
+			return nil, err
+		}
+		if identExpr.InterfaceType {
+			return dst.Clone(e).(dst.Expr), nil
+		}
+		// Named type => must resolve
+		resolved, err := resolve(expr.Pkg().PkgPath, identExpr)
+		if err != nil {
+			return nil, fmt.Errorf("flattenExpr from pkg %s %v: %w", expr.Pkg().PkgPath, e, err)
+		}
+		return flattenExpr(resolved, resolve, depth+1)
+
+	case *dst.StarExpr:
+		sub, err := flattenExpr(expr.NewExpr(e.X), resolve, depth+1)
+		if err != nil {
+			return nil, err
+		}
+		result = &dst.StarExpr{X: sub}
+
+	case *dst.ArrayType:
+		el, err := flattenExpr(expr.NewExpr(e.Elt), resolve, depth+1)
+		if err != nil {
+			return nil, err
+		}
+		var lenExpr dst.Expr
+		if e.Len != nil {
+			lenExpr = dst.Clone(e.Len).(dst.Expr)
+		}
+
+		result = &dst.ArrayType{
+			Len: lenExpr,
+			Elt: el,
+		}
+
+	case *dst.MapType:
+		k, err := flattenExpr(expr.NewExpr(e.Key), resolve, depth+1)
+		if err != nil {
+			return nil, err
+		}
+		v, err := flattenExpr(expr.NewExpr(e.Value), resolve, depth+1)
+		if err != nil {
+			return nil, err
+		}
+		result = &dst.MapType{
+			Key:   k,
+			Value: v,
+		}
+
+	case *dst.StructType:
+		// Flatten a literal struct
+		copied := dst.Clone(e).(*dst.StructType)
+		for _, field := range copied.Fields.List {
+			typeExpr, err := flattenExpr(expr.NewExpr(field.Type), resolve, depth+1)
+			if err != nil {
+				return nil, err
+			}
+			field.Type = typeExpr
+		}
+		result = copied
+	default:
+		// Some other expression (func type, chan, etc.). We leave it as is.
+		result = e
+	}
+	return dst.Clone(result).(dst.Expr), nil
+}
+
+// isBuiltinOrBlank returns true if the ident is `_` or one of the builtin names.
+func isBuiltinOrBlank(name string) bool {
+	if name == "_" {
+		return true
+	}
+	switch name {
+	case "bool", "string", "int", "int8", "int16", "int32", "int64",
+		"uint", "uint8", "uint16", "uint32", "uint64", "uintptr",
+		"byte", "rune", "float32", "float64", "complex64", "complex128":
+		return true
+	}
+	return false
+}
+
+// SeenProps is a list of property names that are already "taken"
+// in the flattened struct. If a property is seen, we skip it on any embedded struct.
+type SeenProps []string
+
+func (s SeenProps) Seen(t string) bool {
+	return slices.Contains(s, t)
+}
+
+func (s SeenProps) See(t string) SeenProps {
+	return append(SeenProps{t}, s...)
+}
+
+func (s SeenProps) Copy() SeenProps {
+	return append(SeenProps{}, s...)
+}
+
+func (s SeenProps) Add(t string) (SeenProps, bool) {
+	if s.Seen(t) {
+		return nil, false
+	}
+	return s.See(t), true
 }
 
 /**
@@ -339,6 +621,13 @@ func (f StructField) Type() dst.Expr {
 	return f.Field.Type
 }
 
+func (f StructField) TypeAsExpr() Expr {
+	if f.Field == nil {
+		panic(fmt.Sprintf("Field is nil for %v", f))
+	}
+	return NewExpr(f.Field.Type, f.pkg, f.file)
+}
+
 func (f StructField) PropNames() (names []string) {
 	switch len(f.Field.Names) {
 	case 0:
@@ -349,6 +638,7 @@ func (f StructField) PropNames() (names []string) {
 		}
 	}
 	for _, n := range f.Field.Names {
+		// Only exported
 		if unicode.IsUpper(rune(n.Name[0])) {
 			names = append(names, n.Name)
 		}
@@ -359,23 +649,45 @@ func (f StructField) PropNames() (names []string) {
 func (f StructField) JSONTag() *structtag.Tag {
 	if f.Field.Tag == nil {
 		return nil
-	} else if tags, err := structtag.Parse(strings.Trim(f.Field.Tag.Value, "`")); err == nil {
-		if tag, err := tags.Get("json"); err == nil && len(tag.Options) > 0 {
-			return tag
-		}
+	}
+	tags, err := structtag.Parse(strings.Trim(f.Field.Tag.Value, "`"))
+	if err != nil {
+		return nil
+	}
+	tag, err := tags.Get("json")
+	if err != nil {
+		return nil
+	}
+	if len(tag.Options) > 0 {
+		return tag
 	}
 	return nil
 }
 
 func (f StructField) Skip() bool {
-	if len(f.Field.Names) == 0 {
+	// If there's a name list, check if all are unexported or check if `json:"-"`
+	if len(f.Field.Names) > 0 {
+		exported := false
+		for _, ident := range f.Field.Names {
+			if unicode.IsUpper(rune(ident.Name[0])) {
+				exported = true
+				break
+			}
+		}
+		if !exported {
+			return true
+		}
+		if tag := f.JSONTag(); tag != nil {
+			return tag.Options[0] == "-"
+		}
 		return false
-	} else if !slices.ContainsFunc(f.Field.Names, func(ident *dst.Ident) bool {
-		return unicode.IsUpper(rune(ident.Name[0]))
-	}) {
-		return true
-	} else if tag := f.JSONTag(); tag != nil {
-		return tag.Options[0] == "-"
+	}
+	// If embedded, do not skip unless it's unexported (i.e. an embedded private type).
+	// For embedded types, check if the type is an ident with uppercase name, etc.
+	if ident, ok := f.Field.Type.(*dst.Ident); ok {
+		if !unicode.IsUpper(rune(ident.Name[0])) {
+			return true
+		}
 	}
 	return false
 }
@@ -385,8 +697,8 @@ func (f StructField) Skip() bool {
  */
 
 func (v VarConstDecl) Specs() []ValueSpec {
-	var specs = make([]ValueSpec, len(v.node.Specs))
-	for i, spec := range v.node.Specs {
+	var specs = make([]ValueSpec, len(v.Concrete.Specs))
+	for i, spec := range v.Concrete.Specs {
 		specs[i] = ValueSpec{
 			GenDecl: v.STNode,
 			STNode:  NewNode(spec.(*dst.ValueSpec), v.pkg, v.file),
@@ -400,5 +712,5 @@ func (v VarConstDecl) Specs() []ValueSpec {
  */
 
 func (n TypeSpec) Type() Expr {
-	return NewExpr(n.node.Type, n.pkg, n.file)
+	return NewExpr(n.Concrete.Type, n.pkg, n.file)
 }

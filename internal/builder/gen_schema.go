@@ -5,16 +5,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"go/token"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+
 	"github.com/dave/dst"
 	"github.com/dave/dst/decorator"
 	"github.com/tylergannon/go-gen-jsonschema/internal/common"
 	"github.com/tylergannon/go-gen-jsonschema/internal/syntax"
-	"go/token"
-	"os"
-	"path/filepath"
-	"slices"
-	"strconv"
-	"strings"
 )
 
 //go:embed schemas.go.tmpl
@@ -174,7 +174,7 @@ func (s SchemaBuilder) find(t syntax.TypeID) (token.Position, error) {
 	}
 	typeSpec, ok := sb.LocalNamedTypes[t.TypeName]
 	if !ok {
-		return token.Position{}, fmt.Errorf("type %s not found", t.TypeName)
+		return token.Position{}, fmt.Errorf("SchemaBuilder.find: type %s not found", t.TypeName)
 	}
 	return typeSpec.Position(), nil
 }
@@ -299,13 +299,13 @@ func (s SchemaBuilder) mapNamedType(t syntax.TypeID, seen syntax.SeenTypes) erro
 	}
 	typeSpec, ok := scanResult.LocalNamedTypes[t.TypeName]
 	if !ok {
-		return fmt.Errorf("type %s not found", t.TypeName)
+		return fmt.Errorf("mapNamedType: type %s not found", t.TypeName)
 	}
 	if seen.Seen(t) {
 		return fmt.Errorf("circular dependency found for type %s at %s", t.TypeName, typeSpec.Position())
 	}
 	if structType, ok := typeSpec.Type().Expr().(*dst.StructType); ok {
-		if props, err := s.resolveLocalInterfaceProps(syntax.NewStructType(structType, typeSpec.Derive()), nil); err != nil {
+		if props, err := s.resolveLocalInterfaceProps(syntax.NewStructType(structType, typeSpec), nil); err != nil {
 			return err
 		} else if len(props) > 0 {
 			s.customTypes[t.TypeName] = props
@@ -368,9 +368,9 @@ func (s SchemaBuilder) renderSchema(t syntax.TypeExpr, description string, seen 
 		}
 		return schema, nil
 	case *dst.MapType, *dst.ChanType:
-		return nil, fmt.Errorf("unsupported type %s at %s", t.Name(), t.Position())
+		return nil, fmt.Errorf("mapType/chanType not allowed %s at %s", t.Name(), t.Position())
 	case *dst.StructType:
-		return s.renderStructSchema(syntax.NewStructType(node, t), description, seen)
+		return s.renderStructSchema(syntax.NewStructType(node, *t.TypeSpec), description, seen)
 	case *dst.InterfaceType:
 		return nil, fmt.Errorf("Interface types are not supported. Found on %s at %s\n", t.ID(), t.Position())
 	default:
@@ -417,6 +417,35 @@ func (s SchemaBuilder) RenderGoCode() (err error) {
 	var interfaces = map[syntax.TypeID]InterfaceProp{}
 	importMap := s.imports()
 	s.Imports = importMap.ImportStatements()
+
+	// for _, poop := range s.SchemaMethods() {
+	// 	t := s.Scan.LocalNamedTypes[poop.Receiver.TypeName]
+	// 	if st, ok := t.Type().Expr().(*dst.StructType); ok {
+	// 		_st := syntax.NewStructType(st, t.Derive())
+	// 		foo, err := _st.Flatten(
+	// 			func(ident syntax.IdentExpr) (syntax.Expr, error) {
+	// 				var (
+	// 					newType syntax.TypeSpec
+	// 					ok      bool
+	// 				)
+	// 				if ident.Concrete.Path == "" {
+	// 					if newType, ok = s.Scan.LocalNamedTypes[ident.Concrete.Name]; !ok {
+	// 						panic(fmt.Sprintf("unknown type %s", ident.Concrete.Name))
+	// 					}
+	// 				} else {
+	// 					if scan, ok := s.Scan.GetPackage(ident.Concrete.Path); !ok {
+	// 						panic(fmt.Sprintf("unknown type %s", ident.Concrete.Name))
+	// 					}
+
+	// 				}
+
+	// 			},
+	// 			nil,
+	// 		)
+
+	// 	}
+	// }
+
 	for n, itsProps := range s.customTypes {
 		s.SpecialTypes = append(s.SpecialTypes, CustomMarshaledType{
 			Name:           n,
@@ -506,11 +535,11 @@ func (s SchemaBuilder) resolveEmbeddedType(t syntax.TypeExpr, seen syntax.SeenTy
 			typeExpr := ts.Derive()
 			switch _expr := typeExpr.Excerpt.(type) {
 			case *dst.StructType:
-				return syntax.NewStructType(_expr, typeExpr), nil
+				return syntax.NewStructType(_expr, *typeExpr.TypeSpec), nil
 			case *dst.Ident:
 				return s.resolveEmbeddedType(typeExpr, seen)
 			}
-			return syntax.NoStructType, fmt.Errorf("unsupported type %s at %s", ts.Details(), ts.Position())
+			return syntax.NoStructType, fmt.Errorf("embedded ident should be alias or struct type %s at %s", ts.Details(), ts.Position())
 		}
 
 	case *dst.StarExpr:
@@ -518,12 +547,12 @@ func (s SchemaBuilder) resolveEmbeddedType(t syntax.TypeExpr, seen syntax.SeenTy
 	case *dst.ParenExpr:
 		return s.resolveEmbeddedType(t.Derive(expr.X), seen)
 	default:
-		return syntax.NoStructType, fmt.Errorf("unsupported type %s", expr)
+		return syntax.NoStructType, fmt.Errorf("unsupported embedded field %T at %s", expr, t.Position())
 	}
 }
 
-func (s SchemaBuilder) renderStructProps(t syntax.StructType, seenProps SeenProps, seen syntax.SeenTypes) (props ObjectPropSet, err error) {
-	var myProps = append(SeenProps{}, seenProps...)
+func (s SchemaBuilder) renderStructProps(t syntax.StructType, seenProps syntax.SeenProps, seen syntax.SeenTypes) (props ObjectPropSet, err error) {
+	var myProps = append(syntax.SeenProps{}, seenProps...)
 	for _, prop := range t.Fields() {
 		if prop.Skip() {
 			continue
@@ -539,7 +568,7 @@ func (s SchemaBuilder) renderStructProps(t syntax.StructType, seenProps SeenProp
 		}
 		if prop.Embedded() {
 			var embeddedType syntax.StructType
-			if embeddedType, err = s.resolveEmbeddedType(t.Derive(prop.Type()), seen); err != nil {
+			if embeddedType, err = s.resolveEmbeddedType(prop.TypeExpr, seen); err != nil {
 				return nil, fmt.Errorf("resolving embedded type: %w", err)
 			} else if tempProps, err = s.renderStructProps(embeddedType, myProps, seen); err != nil {
 				return nil, fmt.Errorf("rendering embedded type: %w", err)
@@ -625,7 +654,7 @@ func (i InterfaceProp) StructTag() string {
 //
 // )
 // ```
-func (s SchemaBuilder) resolveLocalInterfaceProps(t syntax.StructType, seenProps SeenProps) (props []InterfaceProp, err error) {
+func (s SchemaBuilder) resolveLocalInterfaceProps(t syntax.StructType, seenProps syntax.SeenProps) (props []InterfaceProp, err error) {
 	if t.Pkg().PkgPath != s.Scan.Pkg.PkgPath {
 		return nil, nil
 	}
@@ -675,7 +704,7 @@ func (s SchemaBuilder) resolveLocalInterfaceProps(t syntax.StructType, seenProps
 		if !prop.Embedded() {
 			continue
 		}
-		if _t, err := s.resolveEmbeddedType(t.Derive(prop.Type()), nil); err != nil {
+		if _t, err := s.resolveEmbeddedType(prop.TypeExpr, nil); err != nil {
 			return nil, fmt.Errorf("resolving embedded type: %w", err)
 		} else if propsTemp, err := s.resolveLocalInterfaceProps(_t, seenProps); err != nil {
 			return nil, fmt.Errorf("resolving embedded local interface properties: %w", err)
@@ -697,23 +726,4 @@ func (s SchemaBuilder) findInterfaceImpl(ident *dst.Ident, localPkg *decorator.P
 	}
 	iface, ok = scan.Interfaces[ident.Name]
 	return iface, ok
-}
-
-type SeenProps []string
-
-func (s SeenProps) Seen(t string) bool { return slices.Contains(s, t) }
-
-func (s SeenProps) See(t string) SeenProps {
-	return append(SeenProps{t}, s...)
-}
-
-func (s SeenProps) Copy() SeenProps {
-	return append(SeenProps{}, s...)
-}
-
-func (s SeenProps) Add(t string) (SeenProps, bool) {
-	if s.Seen(t) {
-		return nil, false
-	}
-	return s.See(t), true
 }

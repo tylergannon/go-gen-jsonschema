@@ -1,4 +1,4 @@
-package syntax_test
+package syntax
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestScanner(t *testing.T) {
+func TestSyntax(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Scanner Suite")
+	RunSpecs(t, "Syntax Suite")
 }
