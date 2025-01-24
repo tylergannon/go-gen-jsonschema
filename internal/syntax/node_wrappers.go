@@ -84,6 +84,7 @@ type (
 
 	IdentExpr struct {
 		STExpr[*dst.Ident]
+		InterfaceType bool
 	}
 )
 
@@ -405,6 +406,8 @@ func (s StructType) Flatten(
 				return NoStructType, fmt.Errorf("embedded field must be struct type")
 			}
 
+			// dst.Print(stNode)
+
 			// Recursively flatten the embedded struct, sharing the same seenProps
 			subStruct := NewStructType(stNode, s.TypeSpec)
 			flattened, err := subStruct.Flatten(localPkgPath, resolve, seenProps)
@@ -431,10 +434,35 @@ func (s StructType) Flatten(
 	return flat, nil
 }
 
+type ExprResolveFunc func(localPkgPath string, e IdentExpr) (Expr, error)
+
+// decorateIdentIfItPointsToInterface adds an "After" decoration to the ident
+// if it points to an interface type.
+// The point of this is to make sure that the ident is not flattened
+// when it points to an interface type.
+func decorateIdentIfItPointsToInterface(ident IdentExpr, resolve ExprResolveFunc) (IdentExpr, error) {
+	var resolved, err = resolve(ident.Pkg().PkgPath, ident)
+	if err != nil {
+		return ident, err
+	}
+	if _ident, ok := resolved.Expr().(*dst.Ident); ok {
+		newIdent := IdentExpr{STExpr: NewExpr(_ident, ident.pkg, ident.file)}
+		newIdent, err = decorateIdentIfItPointsToInterface(newIdent, resolve)
+		if err != nil {
+			return ident, err
+		}
+		ident.InterfaceType = newIdent.InterfaceType
+		return ident, nil
+	}
+	_, ident.InterfaceType = resolved.Expr().(*dst.InterfaceType)
+	return ident, nil
+}
+
 // flattenExpr recursively replaces any named type references with the
 // result of `resolve(...)`, then continues descending into pointer/array types.
 // It returns a final expression with no named references left (unless built-ins).
-func flattenExpr(expr Expr, resolve func(localPkgPath string, e IdentExpr) (Expr, error), depth int) (dst.Expr, error) {
+func flattenExpr(expr Expr, resolve ExprResolveFunc, depth int) (dst.Expr, error) {
+	var result dst.Expr
 	if depth > 50 {
 		return nil, fmt.Errorf("flattenExpr recursion depth exceeded")
 	}
@@ -443,17 +471,23 @@ func flattenExpr(expr Expr, resolve func(localPkgPath string, e IdentExpr) (Expr
 		if isBuiltinOrBlank(e.Name) {
 			return e, nil
 		}
+		identExpr := IdentExpr{
+			STExpr: NewExpr(e, expr.Pkg(), expr.File()),
+		}
+		var err error
+		identExpr, err = decorateIdentIfItPointsToInterface(identExpr, resolve)
+		if err != nil {
+			return nil, err
+		}
+		if identExpr.InterfaceType {
+			fmt.Printf("I found an interface %s.%s, in package %s\n", e.Path, e.Name, expr.Pkg().PkgPath)
+			return dst.Clone(e).(dst.Expr), nil
+		}
 		// Named type => must resolve
-		fmt.Printf("FlattenExpr has Ident %v\n", e)
-		resolved, err := resolve(expr.Pkg().PkgPath, IdentExpr{
-			STExpr: STExpr[*dst.Ident]{
-				STNode: STNode[*dst.Ident]{Concrete: e},
-			},
-		})
+		resolved, err := resolve(expr.Pkg().PkgPath, identExpr)
 		if err != nil {
 			return nil, fmt.Errorf("flattenExpr from pkg %s %v: %w", expr.Pkg().PkgPath, e, err)
 		}
-		fmt.Printf("FlattenExpr has resolved Ident %v\n", resolved.Node())
 		return flattenExpr(resolved, resolve, depth+1)
 
 	case *dst.StarExpr:
@@ -461,17 +495,22 @@ func flattenExpr(expr Expr, resolve func(localPkgPath string, e IdentExpr) (Expr
 		if err != nil {
 			return nil, err
 		}
-		return &dst.StarExpr{X: sub}, nil
+		result = &dst.StarExpr{X: sub}
 
 	case *dst.ArrayType:
 		el, err := flattenExpr(expr.NewExpr(e.Elt), resolve, depth+1)
 		if err != nil {
 			return nil, err
 		}
-		return &dst.ArrayType{
-			Len: e.Len,
+		var lenExpr dst.Expr
+		if e.Len != nil {
+			lenExpr = dst.Clone(e.Len).(dst.Expr)
+		}
+
+		result = &dst.ArrayType{
+			Len: lenExpr,
 			Elt: el,
-		}, nil
+		}
 
 	case *dst.MapType:
 		k, err := flattenExpr(expr.NewExpr(e.Key), resolve, depth+1)
@@ -482,14 +521,13 @@ func flattenExpr(expr Expr, resolve func(localPkgPath string, e IdentExpr) (Expr
 		if err != nil {
 			return nil, err
 		}
-		return &dst.MapType{
+		result = &dst.MapType{
 			Key:   k,
 			Value: v,
-		}, nil
+		}
 
 	case *dst.StructType:
 		// Flatten a literal struct
-		fmt.Printf("FlattenExpr has StructType %v\n", e)
 		copied := dst.Clone(e).(*dst.StructType)
 		for _, field := range copied.Fields.List {
 			typeExpr, err := flattenExpr(expr.NewExpr(field.Type), resolve, depth+1)
@@ -498,11 +536,12 @@ func flattenExpr(expr Expr, resolve func(localPkgPath string, e IdentExpr) (Expr
 			}
 			field.Type = typeExpr
 		}
-		return copied, nil
+		result = copied
 	default:
 		// Some other expression (func type, chan, etc.). We leave it as is.
-		return e, nil
+		result = e
 	}
+	return dst.Clone(result).(dst.Expr), nil
 }
 
 // isBuiltinOrBlank returns true if the ident is `_` or one of the builtin names.
@@ -562,16 +601,6 @@ func (f StructField) TypeAsExpr() Expr {
 	if f.Field == nil {
 		panic(fmt.Sprintf("Field is nil for %v", f))
 	}
-	fmt.Printf("Field is %v %v\n", f.Field, f.Field.Type)
-	fmt.Printf("Type is %#v\n", f)
-	if f.TypeSpec == nil {
-		fmt.Printf("TypeSpec is nil\n")
-	}
-	if f.pkg == nil {
-		fmt.Printf("pkg is nil\n")
-	}
-	fmt.Printf("pkg is %v\n", f.pkg)
-	fmt.Printf("file is %v\n", f.file)
 	return NewExpr(f.Field.Type, f.pkg, f.file)
 }
 

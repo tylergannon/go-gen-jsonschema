@@ -3,6 +3,7 @@ package syntax
 import (
 	"fmt"
 	"go/token"
+	"runtime/debug"
 	"slices"
 	"strings"
 	"unicode"
@@ -283,15 +284,13 @@ func (t typesMap) addType(pkgPath, typeName string) {
 }
 
 func (r *ScanResult) resolveTypeLocal(name string) (Expr, error) {
-	fmt.Printf("resolveTypeLocal(%s)\n", name)
 	var namedTypeNames []string
 	for typeName := range r.LocalNamedTypes {
 		namedTypeNames = append(namedTypeNames, typeName)
 	}
-	fmt.Printf("Named types in %s: %v\n", r.Pkg.PkgPath, namedTypeNames)
 	t, ok := r.LocalNamedTypes[name]
 	if !ok {
-		return nil, fmt.Errorf("type %s not found", name)
+		return nil, fmt.Errorf("resolveTypeLocal:type %s not found", name)
 	}
 	if ident, ok := t.Type().Expr().(*dst.Ident); ok {
 		return r.resolveType(r.Pkg.PkgPath, IdentExpr{STExpr: NewExpr(ident, t.Pkg(), t.File())})
@@ -300,7 +299,6 @@ func (r *ScanResult) resolveTypeLocal(name string) (Expr, error) {
 }
 
 func (r *ScanResult) resolveTypeRemote(path, name string) (Expr, error) {
-	fmt.Printf("Resolving remote type %s from %s\n", name, path)
 	scanResult, ok := r.GetPackage(path)
 	if !ok {
 		return nil, fmt.Errorf("package %s not found", path)
@@ -309,28 +307,44 @@ func (r *ScanResult) resolveTypeRemote(path, name string) (Expr, error) {
 	for typeName := range scanResult.LocalNamedTypes {
 		namedTypeNames = append(namedTypeNames, typeName)
 	}
-	fmt.Printf("resolveTypeRemote: Named types in %s: %v\n", path, namedTypeNames)
-	return scanResult.resolveTypeLocal(name)
+	// The thing is, we have to translate the remote expression into one that
+	// is valid locally.  That means that the resulting Expr should have the local
+	// package and any unqualified idents should have their Path set.
+	expr, err := scanResult.resolveTypeLocal(name)
+	if err != nil {
+		return nil, err
+	}
+	itsNode := dst.Clone(expr.Node())
+	theThing := false
+	dst.Inspect(itsNode, func(n dst.Node) bool {
+		if ident, ok := n.(*dst.Ident); ok && ident.Path == "" {
+			if ident.Name == "Animal" {
+				theThing = true
+			}
+			ident.Path = path
+		}
+		return true
+	})
+	if theThing {
+		fmt.Println("The thing is true", string(debug.Stack()))
+	}
+	return expr, nil
 }
 
 func (r *ScanResult) resolveType(pkgPath string, ident IdentExpr) (Expr, error) {
-	fmt.Printf("resolveType %s: Resolving type %v\n", r.Pkg.PkgPath, ident)
 	e := ident.Concrete
 	if e.Path == "" {
 		s, ok := r.GetPackage(pkgPath)
 		if !ok {
 			return nil, fmt.Errorf("package %s not found", pkgPath)
 		}
-		fmt.Printf("resolveType(pkgPath=%s, %s.%s)\n", pkgPath, e.Path, e.Name)
 		return s.resolveTypeLocal(e.Name)
 	} else {
-		fmt.Printf("Resolving remote type %s from %s\n", e.Name, e.Path)
 		return r.resolveTypeRemote(e.Path, e.Name)
 	}
 }
 
 func (r *ScanResult) loadPackageInternal(seen seenPackages, typesToMap map[string]bool) error {
-	fmt.Printf("Loading package %s with typesToMap %v\n", r.Pkg.PkgPath, typesToMap)
 	if typesToMap == nil {
 		// Safety check in case it's ever passed nil from some other call site
 		typesToMap = make(map[string]bool)
@@ -548,7 +562,6 @@ func (r *ScanResult) resolveTypes() error {
 		}
 	}
 	for pkgPath, typeNames := range r.remoteTypes {
-		fmt.Printf("Resolving remote types %v for %s\n", typeNames, pkgPath)
 		if remote, ok := r.deps[pkgPath]; ok {
 			for typeName := range typeNames {
 				if !remote.alreadyTraversedLocally[typeName] {

@@ -174,7 +174,7 @@ func (s SchemaBuilder) find(t syntax.TypeID) (token.Position, error) {
 	}
 	typeSpec, ok := sb.LocalNamedTypes[t.TypeName]
 	if !ok {
-		return token.Position{}, fmt.Errorf("type %s not found", t.TypeName)
+		return token.Position{}, fmt.Errorf("SchemaBuilder.find: type %s not found", t.TypeName)
 	}
 	return typeSpec.Position(), nil
 }
@@ -299,7 +299,7 @@ func (s SchemaBuilder) mapNamedType(t syntax.TypeID, seen syntax.SeenTypes) erro
 	}
 	typeSpec, ok := scanResult.LocalNamedTypes[t.TypeName]
 	if !ok {
-		return fmt.Errorf("type %s not found", t.TypeName)
+		return fmt.Errorf("mapNamedType: type %s not found", t.TypeName)
 	}
 	if seen.Seen(t) {
 		return fmt.Errorf("circular dependency found for type %s at %s", t.TypeName, typeSpec.Position())

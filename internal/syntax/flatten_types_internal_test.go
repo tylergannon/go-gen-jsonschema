@@ -42,6 +42,7 @@ var _ = Describe("FlattenTypes", Ordered, func() {
 		file := &dst.File{Name: dst.NewIdent("borksauce")}
 		ts := flattened.TypeSpec.Concrete
 		ts.Type = flattened.Expr
+
 		file.Decls = append(file.Decls, &dst.GenDecl{Tok: token.TYPE, Specs: []dst.Spec{
 			ts,
 		}})
