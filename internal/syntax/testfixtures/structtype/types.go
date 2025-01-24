@@ -6,6 +6,7 @@ type ArrayOfSuperStruct []*structsubpkg.SuperStructure
 
 // ExperimentRun represents a single run of an experiment with all its data
 type ExperimentRun struct {
+	structsubpkg.SuperStructure
 	// Basic metadata
 	ID         string  `json:"id"`
 	Name       string  `json:"name"`

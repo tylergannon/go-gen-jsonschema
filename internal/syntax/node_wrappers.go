@@ -2,13 +2,14 @@ package syntax
 
 import (
 	"fmt"
-	"github.com/dave/dst"
-	"github.com/dave/dst/decorator"
-	"github.com/tylergannon/structtag"
 	"go/token"
 	"slices"
 	"strings"
 	"unicode"
+
+	"github.com/dave/dst"
+	"github.com/dave/dst/decorator"
+	"github.com/tylergannon/structtag"
 )
 
 type (
@@ -64,7 +65,7 @@ type (
 	}
 
 	StructType struct {
-		TypeExpr
+		TypeSpec
 		Expr *dst.StructType
 	}
 
@@ -274,6 +275,7 @@ func (t TypeSpec) Name() string {
 }
 
 func (t TypeSpec) Derive() TypeExpr {
+
 	return TypeExpr{TypeSpec: &t, Excerpt: t.Concrete.Type}
 }
 
@@ -310,16 +312,19 @@ func (t TypeExpr) Position() token.Position {
 
 var NoStructType = StructType{}
 
-func NewStructType(s *dst.StructType, t TypeExpr) StructType {
+func NewStructType(s *dst.StructType, t TypeSpec) StructType {
+	if s == nil {
+		panic("the struct type is nil")
+	}
 	return StructType{
-		TypeExpr: t,
+		TypeSpec: t,
 		Expr:     s,
 	}
 }
 
 func (s StructType) Fields() (fields []StructField) {
 	for _, _field := range s.Expr.Fields.List {
-		field := StructField{TypeExpr: s.TypeExpr, Field: _field}
+		field := StructField{TypeExpr: s.TypeSpec.Derive().Derive(_field.Type), Field: _field}
 		if field.Skip() {
 			continue
 		}
@@ -373,7 +378,8 @@ func (s StructType) Fields() (fields []StructField) {
 // In particular, note that the shape is exactly the same but the named
 // types have all been resolved to their concrete type definitions.
 func (s StructType) Flatten(
-	resolve func(e IdentExpr) (Expr, error),
+	localPkgPath string,
+	resolve func(localPkgPath string, e IdentExpr) (Expr, error),
 	seenProps SeenProps,
 ) (StructType, error) {
 	newStruct := &dst.StructType{
@@ -381,15 +387,14 @@ func (s StructType) Flatten(
 	}
 	var newFields []*dst.Field
 
-	for _, field := range s.Expr.Fields.List {
-		fieldObj := StructField{TypeExpr: s.TypeExpr, Field: field}
+	for _, fieldObj := range s.Fields() {
 		if fieldObj.Skip() {
 			continue
 		}
 
 		// embedded field => no explicit name
-		if len(field.Names) == 0 {
-			embeddedExpr, err := flattenExpr(field.Type, resolve)
+		if fieldObj.Embedded() {
+			embeddedExpr, err := flattenExpr(fieldObj.TypeAsExpr(), resolve, 0)
 			if err != nil {
 				return NoStructType, err
 			}
@@ -401,8 +406,8 @@ func (s StructType) Flatten(
 			}
 
 			// Recursively flatten the embedded struct, sharing the same seenProps
-			subStruct := NewStructType(stNode, s.TypeExpr.Derive(stNode))
-			flattened, err := subStruct.Flatten(resolve, seenProps)
+			subStruct := NewStructType(stNode, s.TypeSpec)
+			flattened, err := subStruct.Flatten(localPkgPath, resolve, seenProps)
 			if err != nil {
 				return NoStructType, err
 			}
@@ -412,64 +417,54 @@ func (s StructType) Flatten(
 			continue
 		}
 
-		// Otherwise, a named field
-		propNames := fieldObj.PropNames()
-		for _, prop := range propNames {
-			if seenProps.Seen(prop) {
-				continue
-			}
-			flattenedType, err := flattenExpr(field.Type, resolve)
-			if err != nil {
-				return NoStructType, err
-			}
-			copied := dst.Clone(field).(*dst.Field)
-			copied.Type = flattenedType
-			copied.Names = []*dst.Ident{{Name: prop}}
-			newFields = append(newFields, copied)
-
-			// Mark it seen, so siblings in the same struct or any sub-struct
-			// will skip that property name
-			seenProps = seenProps.See(prop)
+		flattenedType, err := flattenExpr(fieldObj.TypeAsExpr(), resolve, 0)
+		if err != nil {
+			return NoStructType, err
 		}
+		copied := dst.Clone(fieldObj.Field).(*dst.Field)
+		copied.Type = flattenedType
+		newFields = append(newFields, copied)
 	}
 
 	newStruct.Fields.List = newFields
-	flat := StructType{
-		TypeExpr: s.TypeExpr.Derive(newStruct),
-		Expr:     newStruct,
-	}
+	flat := NewStructType(newStruct, s.TypeSpec)
 	return flat, nil
 }
 
 // flattenExpr recursively replaces any named type references with the
 // result of `resolve(...)`, then continues descending into pointer/array types.
 // It returns a final expression with no named references left (unless built-ins).
-func flattenExpr(expr dst.Expr, resolve func(e IdentExpr) (Expr, error)) (dst.Expr, error) {
-	switch e := expr.(type) {
+func flattenExpr(expr Expr, resolve func(localPkgPath string, e IdentExpr) (Expr, error), depth int) (dst.Expr, error) {
+	if depth > 50 {
+		return nil, fmt.Errorf("flattenExpr recursion depth exceeded")
+	}
+	switch e := expr.Expr().(type) {
 	case *dst.Ident:
 		if isBuiltinOrBlank(e.Name) {
 			return e, nil
 		}
 		// Named type => must resolve
-		resolved, err := resolve(IdentExpr{
+		fmt.Printf("FlattenExpr has Ident %v\n", e)
+		resolved, err := resolve(expr.Pkg().PkgPath, IdentExpr{
 			STExpr: STExpr[*dst.Ident]{
 				STNode: STNode[*dst.Ident]{Concrete: e},
 			},
 		})
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("flattenExpr from pkg %s %v: %w", expr.Pkg().PkgPath, e, err)
 		}
-		return flattenExpr(resolved.Node().(dst.Expr), resolve)
+		fmt.Printf("FlattenExpr has resolved Ident %v\n", resolved.Node())
+		return flattenExpr(resolved, resolve, depth+1)
 
 	case *dst.StarExpr:
-		sub, err := flattenExpr(e.X, resolve)
+		sub, err := flattenExpr(expr.NewExpr(e.X), resolve, depth+1)
 		if err != nil {
 			return nil, err
 		}
 		return &dst.StarExpr{X: sub}, nil
 
 	case *dst.ArrayType:
-		el, err := flattenExpr(e.Elt, resolve)
+		el, err := flattenExpr(expr.NewExpr(e.Elt), resolve, depth+1)
 		if err != nil {
 			return nil, err
 		}
@@ -479,11 +474,11 @@ func flattenExpr(expr dst.Expr, resolve func(e IdentExpr) (Expr, error)) (dst.Ex
 		}, nil
 
 	case *dst.MapType:
-		k, err := flattenExpr(e.Key, resolve)
+		k, err := flattenExpr(expr.NewExpr(e.Key), resolve, depth+1)
 		if err != nil {
 			return nil, err
 		}
-		v, err := flattenExpr(e.Value, resolve)
+		v, err := flattenExpr(expr.NewExpr(e.Value), resolve, depth+1)
 		if err != nil {
 			return nil, err
 		}
@@ -494,16 +489,16 @@ func flattenExpr(expr dst.Expr, resolve func(e IdentExpr) (Expr, error)) (dst.Ex
 
 	case *dst.StructType:
 		// Flatten a literal struct
-		anon := StructType{
-			TypeExpr: TypeExpr{TypeSpec: nil, Excerpt: e},
-			Expr:     e,
+		fmt.Printf("FlattenExpr has StructType %v\n", e)
+		copied := dst.Clone(e).(*dst.StructType)
+		for _, field := range copied.Fields.List {
+			typeExpr, err := flattenExpr(expr.NewExpr(field.Type), resolve, depth+1)
+			if err != nil {
+				return nil, err
+			}
+			field.Type = typeExpr
 		}
-		flattened, err := anon.Flatten(resolve, nil)
-		if err != nil {
-			return nil, err
-		}
-		return flattened.Expr, nil
-
+		return copied, nil
 	default:
 		// Some other expression (func type, chan, etc.). We leave it as is.
 		return e, nil
@@ -561,6 +556,23 @@ func (f StructField) Embedded() bool {
 
 func (f StructField) Type() dst.Expr {
 	return f.Field.Type
+}
+
+func (f StructField) TypeAsExpr() Expr {
+	if f.Field == nil {
+		panic(fmt.Sprintf("Field is nil for %v", f))
+	}
+	fmt.Printf("Field is %v %v\n", f.Field, f.Field.Type)
+	fmt.Printf("Type is %#v\n", f)
+	if f.TypeSpec == nil {
+		fmt.Printf("TypeSpec is nil\n")
+	}
+	if f.pkg == nil {
+		fmt.Printf("pkg is nil\n")
+	}
+	fmt.Printf("pkg is %v\n", f.pkg)
+	fmt.Printf("file is %v\n", f.file)
+	return NewExpr(f.Field.Type, f.pkg, f.file)
 }
 
 func (f StructField) PropNames() (names []string) {

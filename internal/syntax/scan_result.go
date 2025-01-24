@@ -2,14 +2,15 @@ package syntax
 
 import (
 	"fmt"
-	"github.com/dave/dst"
-	"github.com/dave/dst/decorator"
-	"github.com/tylergannon/structtag"
 	"go/token"
-	"golang.org/x/tools/go/packages"
 	"slices"
 	"strings"
 	"unicode"
+
+	"github.com/dave/dst"
+	"github.com/dave/dst/decorator"
+	"github.com/tylergannon/structtag"
+	"golang.org/x/tools/go/packages"
 )
 
 type PackageScanner interface {
@@ -241,6 +242,16 @@ func LoadPackage(pkg *decorator.Package) (res ScanResult, err error) {
 	return
 }
 
+func loadPackageForTest(pkg *decorator.Package, typesToInclude ...string) (ScanResult, error) {
+	var types = make(map[string]bool)
+	for _, typeName := range typesToInclude {
+		types[typeName] = true
+	}
+	scanResult := newScanResult(pkg, map[string]ScanResult{})
+	err := scanResult.loadPackageInternal(seenPackages{}, types)
+	return scanResult, err
+}
+
 func newScanResult(pkg *decorator.Package, deps map[string]ScanResult) ScanResult {
 	return ScanResult{
 		Pkg:                     pkg,
@@ -271,7 +282,55 @@ func (t typesMap) addType(pkgPath, typeName string) {
 	}
 }
 
+func (r *ScanResult) resolveTypeLocal(name string) (Expr, error) {
+	fmt.Printf("resolveTypeLocal(%s)\n", name)
+	var namedTypeNames []string
+	for typeName := range r.LocalNamedTypes {
+		namedTypeNames = append(namedTypeNames, typeName)
+	}
+	fmt.Printf("Named types in %s: %v\n", r.Pkg.PkgPath, namedTypeNames)
+	t, ok := r.LocalNamedTypes[name]
+	if !ok {
+		return nil, fmt.Errorf("type %s not found", name)
+	}
+	if ident, ok := t.Type().Expr().(*dst.Ident); ok {
+		return r.resolveType(r.Pkg.PkgPath, IdentExpr{STExpr: NewExpr(ident, t.Pkg(), t.File())})
+	}
+	return t.Type(), nil
+}
+
+func (r *ScanResult) resolveTypeRemote(path, name string) (Expr, error) {
+	fmt.Printf("Resolving remote type %s from %s\n", name, path)
+	scanResult, ok := r.GetPackage(path)
+	if !ok {
+		return nil, fmt.Errorf("package %s not found", path)
+	}
+	var namedTypeNames []string
+	for typeName := range scanResult.LocalNamedTypes {
+		namedTypeNames = append(namedTypeNames, typeName)
+	}
+	fmt.Printf("resolveTypeRemote: Named types in %s: %v\n", path, namedTypeNames)
+	return scanResult.resolveTypeLocal(name)
+}
+
+func (r *ScanResult) resolveType(pkgPath string, ident IdentExpr) (Expr, error) {
+	fmt.Printf("resolveType %s: Resolving type %v\n", r.Pkg.PkgPath, ident)
+	e := ident.Concrete
+	if e.Path == "" {
+		s, ok := r.GetPackage(pkgPath)
+		if !ok {
+			return nil, fmt.Errorf("package %s not found", pkgPath)
+		}
+		fmt.Printf("resolveType(pkgPath=%s, %s.%s)\n", pkgPath, e.Path, e.Name)
+		return s.resolveTypeLocal(e.Name)
+	} else {
+		fmt.Printf("Resolving remote type %s from %s\n", e.Name, e.Path)
+		return r.resolveTypeRemote(e.Path, e.Name)
+	}
+}
+
 func (r *ScanResult) loadPackageInternal(seen seenPackages, typesToMap map[string]bool) error {
+	fmt.Printf("Loading package %s with typesToMap %v\n", r.Pkg.PkgPath, typesToMap)
 	if typesToMap == nil {
 		// Safety check in case it's ever passed nil from some other call site
 		typesToMap = make(map[string]bool)
@@ -489,6 +548,7 @@ func (r *ScanResult) resolveTypes() error {
 		}
 	}
 	for pkgPath, typeNames := range r.remoteTypes {
+		fmt.Printf("Resolving remote types %v for %s\n", typeNames, pkgPath)
 		if remote, ok := r.deps[pkgPath]; ok {
 			for typeName := range typeNames {
 				if !remote.alreadyTraversedLocally[typeName] {
