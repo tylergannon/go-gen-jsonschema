@@ -387,6 +387,8 @@ func (s StructType) Flatten(
 		Fields: &dst.FieldList{},
 	}
 	var newFields []*dst.Field
+	var embeddedFields []StructField
+	var acceptedFieldNames = map[string]bool{}
 
 	for _, fieldObj := range s.Fields() {
 		if fieldObj.Skip() {
@@ -395,39 +397,64 @@ func (s StructType) Flatten(
 
 		// embedded field => no explicit name
 		if fieldObj.Embedded() {
-			embeddedExpr, err := flattenExpr(fieldObj.TypeAsExpr(), resolve, 0)
-			if err != nil {
-				return NoStructType, err
-			}
-
-			stNode, ok := embeddedExpr.(*dst.StructType)
-			if !ok {
-				// you said you want to error out for non-struct embedded fields
-				return NoStructType, fmt.Errorf("embedded field must be struct type")
-			}
-
-			// dst.Print(stNode)
-
-			// Recursively flatten the embedded struct, sharing the same seenProps
-			subStruct := NewStructType(stNode, s.TypeSpec)
-			flattened, err := subStruct.Flatten(localPkgPath, resolve, seenProps)
-			if err != nil {
-				return NoStructType, err
-			}
-
-			// Child already handled skipping collisions. Just splice them in
-			newFields = append(newFields, flattened.Expr.Fields.List...)
+			embeddedFields = append(embeddedFields, fieldObj)
 			continue
 		}
-
+		var names []string
+		for _, ident := range fieldObj.Field.Names {
+			name := ident.Name
+			fmt.Println("name, muthafucka", name)
+			if seenProps.Seen(name) {
+				continue
+			}
+			acceptedFieldNames[name] = true
+			seenProps = seenProps.See(name)
+			names = append(names, name)
+		}
+		if len(names) == 0 {
+			continue
+		}
 		flattenedType, err := flattenExpr(fieldObj.TypeAsExpr(), resolve, 0)
 		if err != nil {
 			return NoStructType, err
 		}
 		copied := dst.Clone(fieldObj.Field).(*dst.Field)
+		copied.Names = nil
+		for _, name := range names {
+			fmt.Println("name", name)
+			copied.Names = append(copied.Names, dst.NewIdent(name))
+		}
 		copied.Type = flattenedType
 		newFields = append(newFields, copied)
 	}
+
+	for _, fieldObj := range embeddedFields {
+		embeddedExpr, err := flattenExpr(fieldObj.TypeAsExpr(), resolve, 0)
+		if err != nil {
+			return NoStructType, err
+		}
+
+		stNode, ok := embeddedExpr.(*dst.StructType)
+		if !ok {
+			// you said you want to error out for non-struct embedded fields
+			return NoStructType, fmt.Errorf("embedded field must be struct type")
+		}
+
+		// dst.Print(stNode)
+
+		// Recursively flatten the embedded struct, sharing the same seenProps
+		subStruct := NewStructType(stNode, s.TypeSpec)
+		flattened, err := subStruct.Flatten(localPkgPath, resolve, seenProps)
+		if err != nil {
+			return NoStructType, err
+		}
+		// Only keep property names that are not already in the parent struct
+		// Also, if all names are already in the parent struct, skip the embedded struct
+
+		// Child already handled skipping collisions. Just splice them in
+		newFields = append(newFields, flattened.Expr.Fields.List...)
+	}
+	_ = acceptedFieldNames["foo"]
 
 	newStruct.Fields.List = newFields
 	flat := NewStructType(newStruct, s.TypeSpec)
@@ -480,7 +507,6 @@ func flattenExpr(expr Expr, resolve ExprResolveFunc, depth int) (dst.Expr, error
 			return nil, err
 		}
 		if identExpr.InterfaceType {
-			fmt.Printf("I found an interface %s.%s, in package %s\n", e.Path, e.Name, expr.Pkg().PkgPath)
 			return dst.Clone(e).(dst.Expr), nil
 		}
 		// Named type => must resolve

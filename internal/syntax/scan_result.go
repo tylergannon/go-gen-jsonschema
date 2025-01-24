@@ -3,7 +3,6 @@ package syntax
 import (
 	"fmt"
 	"go/token"
-	"runtime/debug"
 	"slices"
 	"strings"
 	"unicode"
@@ -284,10 +283,6 @@ func (t typesMap) addType(pkgPath, typeName string) {
 }
 
 func (r *ScanResult) resolveTypeLocal(name string) (Expr, error) {
-	var namedTypeNames []string
-	for typeName := range r.LocalNamedTypes {
-		namedTypeNames = append(namedTypeNames, typeName)
-	}
 	t, ok := r.LocalNamedTypes[name]
 	if !ok {
 		return nil, fmt.Errorf("resolveTypeLocal:type %s not found", name)
@@ -298,14 +293,28 @@ func (r *ScanResult) resolveTypeLocal(name string) (Expr, error) {
 	return t.Type(), nil
 }
 
+func setAllIdentPaths(node dst.Node, path string) {
+	dst.Inspect(node, func(n dst.Node) bool {
+		switch typ := n.(type) {
+		case *dst.StructType:
+			for _, field := range typ.Fields.List {
+				setAllIdentPaths(field.Type, path)
+			}
+			return false
+		case *dst.Ident:
+			if !BasicTypes[typ.Name] {
+				typ.Path = path
+			}
+			return false
+		}
+		return true
+	})
+}
+
 func (r *ScanResult) resolveTypeRemote(path, name string) (Expr, error) {
 	scanResult, ok := r.GetPackage(path)
 	if !ok {
 		return nil, fmt.Errorf("package %s not found", path)
-	}
-	var namedTypeNames []string
-	for typeName := range scanResult.LocalNamedTypes {
-		namedTypeNames = append(namedTypeNames, typeName)
 	}
 	// The thing is, we have to translate the remote expression into one that
 	// is valid locally.  That means that the resulting Expr should have the local
@@ -315,20 +324,8 @@ func (r *ScanResult) resolveTypeRemote(path, name string) (Expr, error) {
 		return nil, err
 	}
 	itsNode := dst.Clone(expr.Node())
-	theThing := false
-	dst.Inspect(itsNode, func(n dst.Node) bool {
-		if ident, ok := n.(*dst.Ident); ok && ident.Path == "" {
-			if ident.Name == "Animal" {
-				theThing = true
-			}
-			ident.Path = path
-		}
-		return true
-	})
-	if theThing {
-		fmt.Println("The thing is true", string(debug.Stack()))
-	}
-	return expr, nil
+	setAllIdentPaths(itsNode, path)
+	return expr.NewExpr(itsNode.(dst.Expr)), nil
 }
 
 func (r *ScanResult) resolveType(pkgPath string, ident IdentExpr) (Expr, error) {
@@ -340,7 +337,11 @@ func (r *ScanResult) resolveType(pkgPath string, ident IdentExpr) (Expr, error) 
 		}
 		return s.resolveTypeLocal(e.Name)
 	} else {
-		return r.resolveTypeRemote(e.Path, e.Name)
+		result, err := r.resolveTypeRemote(e.Path, e.Name)
+		if err != nil {
+			return nil, err
+		}
+		return ident.NewExpr(result.Expr()), nil
 	}
 }
 
@@ -404,16 +405,13 @@ func (r *ScanResult) loadPackageInternal(seen seenPackages, typesToMap map[strin
 
 	for _, _typeDecl := range _decls.typeDecls {
 		for _, spec := range _typeDecl.Specs {
-			var (
-				typeID = TypeID{PkgPath: r.Pkg.PkgPath, TypeName: spec.Name.Name}
-			)
-			if iface, ok := r.Interfaces[typeID.TypeName]; ok {
+			if iface, ok := r.Interfaces[spec.Name.Name]; ok {
 				iface.TypeSpec = NewTypeSpec(_typeDecl.Decl, spec, _typeDecl.Pkg, _typeDecl.File)
-				r.Interfaces[typeID.TypeName] = iface
-			} else if enum, ok := r.Constants[typeID.TypeName]; ok {
+				r.Interfaces[spec.Name.Name] = iface
+			} else if enum, ok := r.Constants[spec.Name.Name]; ok {
 				enum.TypeSpec = NewTypeSpec(_typeDecl.Decl, spec, _typeDecl.Pkg, _typeDecl.File)
 			} else {
-				r.LocalNamedTypes[typeID.TypeName] = NewTypeSpec(_typeDecl.Decl, spec, _typeDecl.Pkg, _typeDecl.File)
+				r.LocalNamedTypes[spec.Name.Name] = NewTypeSpec(_typeDecl.Decl, spec, _typeDecl.Pkg, _typeDecl.File)
 			}
 		}
 	}
