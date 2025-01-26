@@ -3,15 +3,19 @@ package builder
 import (
 	"context"
 	_ "embed"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"go/token"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
+
+	"hash/fnv"
 
 	"github.com/dave/dst"
 	"github.com/dave/dst/decorator"
@@ -425,28 +429,49 @@ func (s SchemaBuilder) renderStructSchema(t syntax.StructType, description strin
 	return node, err
 }
 
-func (s SchemaBuilder) writeSchema(t syntax.TypeID, targetDir string) (err error) {
+func (s SchemaBuilder) writeSchema(t syntax.TypeID, targetDir string) (wroteNew bool, err error) {
 	var (
 		file     *os.File
 		ok       bool
 		filePath = filepath.Join(targetDir, fmt.Sprintf("%s.json", t.TypeName))
+		sumPath  = filePath + ".sum"
 	)
+
 	if file, err = os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644); err != nil {
-		return fmt.Errorf("could not open file %s: %w", filePath, err)
+		return false, fmt.Errorf("could not open file %s: %w", filePath, err)
 	}
 	defer common.LogClose(file)
-	encoder := json.NewEncoder(file)
+
 	var schema json.Marshaler
 	if schema, ok = s.GetSchema(t); !ok {
-		return fmt.Errorf("unknown type %s", t)
+		return false, fmt.Errorf("unknown type %s", t)
 	}
+
+	hash := fnv.New64a()
+	writer := io.MultiWriter(file, hash)
+	encoder := json.NewEncoder(writer)
 	if s.Pretty {
 		encoder.SetIndent("", "  ")
 	}
+
 	if err = encoder.Encode(schema); err != nil {
-		return fmt.Errorf("could not encode schema: %w", err)
+		return false, fmt.Errorf("could not encode schema: %w", err)
 	}
-	return nil
+
+	newChecksum := hex.EncodeToString(hash.Sum(nil))
+
+	// Check if content actually changed by comparing with old checksum
+	wroteNew = true
+	if oldSum, err := os.ReadFile(sumPath); err == nil {
+		wroteNew = string(oldSum) != newChecksum
+	}
+
+	// Write new checksum file
+	if err = os.WriteFile(sumPath, []byte(newChecksum), 0644); err != nil {
+		return false, fmt.Errorf("could not write checksum file: %w", err)
+	}
+
+	return wroteNew, nil
 }
 
 func (s SchemaBuilder) RenderGoCode() (err error) {
@@ -546,7 +571,7 @@ func (s SchemaBuilder) RenderSchemas() (err error) {
 		return fmt.Errorf("could not create subdir %s: %w", targetDir, err)
 	}
 	for _, method := range s.Scan.SchemaMethods {
-		if err = s.writeSchema(method.Receiver, targetDir); err != nil {
+		if _, err = s.writeSchema(method.Receiver, targetDir); err != nil {
 			return err
 		}
 	}
