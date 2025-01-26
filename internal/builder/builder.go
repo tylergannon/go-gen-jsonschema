@@ -37,5 +37,10 @@ func Run(args BuilderArgs) (err error) {
 	if err = builder.RenderGoCode(); err != nil {
 		return err
 	}
+	if args.GenerateTests {
+		if err = builder.RenderTestCode(); err != nil {
+			return err
+		}
+	}
 	return nil
 }
