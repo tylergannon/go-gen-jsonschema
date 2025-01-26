@@ -1,0 +1,6 @@
+
+{
+  "discriminator": "test-discriminator",
+  "typeName": "MyInterface",
+  "pkgPath": "github.com/example/mypackage"
+}

@@ -1,0 +1,6 @@
+
+{
+  "discriminator": "example_value",
+  "typeName": "MyInterfaceType",
+  "pkgPath": "github.com/organization/repo/pkg/mypackage"
+}

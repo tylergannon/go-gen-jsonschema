@@ -1,0 +1,12 @@
+
+{
+  "assertions": [
+    {
+      "path": ".field1.nestedField",
+      "value": {
+        "!type": "AssertBoolValue",
+        "value": true
+      }
+    }
+  ]
+}

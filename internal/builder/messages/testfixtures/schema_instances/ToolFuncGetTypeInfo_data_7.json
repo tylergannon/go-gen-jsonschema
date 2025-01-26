@@ -1,0 +1,6 @@
+
+{
+  "discriminator": "fruit",
+  "typeName": "FoodItem",
+  "pkgPath": "github.com/example/food/types"
+}

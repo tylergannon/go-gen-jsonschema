@@ -1,0 +1,9 @@
+
+{
+  "path": ".Field1.NestedField1",
+  "value": {
+    "!type": "AssertType",
+    "pkgPath": "github.com/example/package",
+    "typeName": "ExampleType"
+  }
+}
