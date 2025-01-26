@@ -2,6 +2,7 @@ package builder
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/dave/dst/decorator"
 	"github.com/tylergannon/go-gen-jsonschema/internal/syntax"
@@ -12,6 +13,7 @@ type BuilderArgs struct {
 	Pretty         bool
 	GenerateTests  bool
 	NumTestSamples int
+	NoChanges      bool // If true, fail if any schema changes are detected
 }
 
 func Run(args BuilderArgs) (err error) {
@@ -36,6 +38,20 @@ func Run(args BuilderArgs) (err error) {
 	if changedSchemas, err = builder.RenderSchemas(); err != nil {
 		return err
 	}
+
+	// If NoChanges is set, fail if any schemas changed
+	if args.NoChanges {
+		var changedTypes []string
+		for typeName, changed := range changedSchemas {
+			if changed {
+				changedTypes = append(changedTypes, typeName)
+			}
+		}
+		if len(changedTypes) > 0 {
+			return fmt.Errorf("schema changes detected for types: %s (and --no-changes or JSONSCHEMA_NO_CHANGES was set)", strings.Join(changedTypes, ", "))
+		}
+	}
+
 	if err = builder.RenderGoCode(); err != nil {
 		return err
 	}
