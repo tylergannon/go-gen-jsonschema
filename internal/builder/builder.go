@@ -38,7 +38,7 @@ func Run(args BuilderArgs) (err error) {
 		return err
 	}
 	if args.GenerateTests {
-		if err = builder.RenderTestCode(); err != nil {
+		if err = builder.RenderTestCodeAnthropic(); err != nil {
 			return err
 		}
 	}
