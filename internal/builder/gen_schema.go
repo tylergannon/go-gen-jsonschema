@@ -111,7 +111,7 @@ type SchemaBuilder struct {
 	DiscriminatorProp string
 }
 
-func (s SchemaBuilder) RenderTestCodeAnthropic() error {
+func (s SchemaBuilder) RenderTestCodeAnthropic(changedSchemas map[string]bool) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
 	anthropicAPIKey := os.Getenv("ANTHROPIC_API_KEY")
@@ -119,6 +119,10 @@ func (s SchemaBuilder) RenderTestCodeAnthropic() error {
 		return fmt.Errorf("env ANTHROPIC_API_KEY is not set")
 	}
 	for _, method := range s.Scan.SchemaMethods {
+		// Skip if schema hasn't changed
+		if !changedSchemas[method.Receiver.TypeName] {
+			continue
+		}
 		err := BuildTestDataAnthropic(ctx, filepath.Join(s.Subdir, fmt.Sprintf("%s.json", method.Receiver.TypeName)), "testfixtures/schema_instances", anthropicAPIKey, s.NumTestSamples)
 		if err != nil {
 			return err
@@ -564,18 +568,21 @@ func (s SchemaBuilder) RenderGoCode() (err error) {
 	return nil
 }
 
-func (s SchemaBuilder) RenderSchemas() (err error) {
+func (s SchemaBuilder) RenderSchemas() (changedSchemas map[string]bool, err error) {
 	var targetDir = filepath.Join(s.Scan.Pkg.Dir, s.Subdir)
+	changedSchemas = make(map[string]bool)
 
 	if err = os.MkdirAll(targetDir, 0755); err != nil {
-		return fmt.Errorf("could not create subdir %s: %w", targetDir, err)
+		return nil, fmt.Errorf("could not create subdir %s: %w", targetDir, err)
 	}
 	for _, method := range s.Scan.SchemaMethods {
-		if _, err = s.writeSchema(method.Receiver, targetDir); err != nil {
-			return err
+		var changed bool
+		if changed, err = s.writeSchema(method.Receiver, targetDir); err != nil {
+			return nil, err
 		}
+		changedSchemas[method.Receiver.TypeName] = changed
 	}
-	return nil
+	return changedSchemas, nil
 }
 
 func (s SchemaBuilder) resolveEmbeddedType(t syntax.TypeExpr, seen syntax.SeenTypes) (syntax.StructType, error) {

@@ -31,14 +31,16 @@ func Run(args BuilderArgs) (err error) {
 	builder.Pretty = args.Pretty
 	builder.GenerateTests = args.GenerateTests
 	builder.NumTestSamples = args.NumTestSamples
-	if err = builder.RenderSchemas(); err != nil {
+
+	var changedSchemas map[string]bool
+	if changedSchemas, err = builder.RenderSchemas(); err != nil {
 		return err
 	}
 	if err = builder.RenderGoCode(); err != nil {
 		return err
 	}
 	if args.GenerateTests {
-		if err = builder.RenderTestCodeAnthropic(); err != nil {
+		if err = builder.RenderTestCodeAnthropic(changedSchemas); err != nil {
 			return err
 		}
 	}
