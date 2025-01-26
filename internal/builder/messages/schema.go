@@ -22,7 +22,6 @@ func (GeneratedTestResponse) Schema() (json.RawMessage, error) {
 }
 
 var (
-	_ = jsonschema.NewJSONSchemaMethod(Assertion.Schema)
 	_ = jsonschema.NewJSONSchemaMethod(ToolFuncGetTypeInfo.Schema)
 	_ = jsonschema.NewJSONSchemaMethod(GeneratedTestResponse.Schema)
 	_ = jsonschema.NewInterfaceImpl[AssertionValue](
@@ -30,5 +29,6 @@ var (
 		AssertStringValue{},
 		AssertBoolValue{},
 		AssertType{},
+		AssertArrayLength{},
 	)
 )

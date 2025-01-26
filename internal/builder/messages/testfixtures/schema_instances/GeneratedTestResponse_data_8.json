@@ -4,9 +4,8 @@
     {
       "path": ".field1",
       "value": {
-        "!type": "AssertType",
-        "pkgPath": "example.com/pkg",
-        "typeName": "MyType"
+        "!type": "AssertBoolValue",
+        "value": true
       }
     }
   ]

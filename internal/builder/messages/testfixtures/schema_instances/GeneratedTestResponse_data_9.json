@@ -2,11 +2,10 @@
 {
   "assertions": [
     {
-      "path": ".path",
+      "path": ".Field1",
       "value": {
-        "!type": "AssertType",
-        "pkgPath": "",
-        "typeName": "MyType"
+        "!type": "AssertArrayLength",
+        "length": 42
       }
     }
   ]

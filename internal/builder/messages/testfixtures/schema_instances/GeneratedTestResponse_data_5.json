@@ -2,10 +2,11 @@
 {
   "assertions": [
     {
-      "path": ".Field1.NestedField1",
+      "path": ".Field1",
       "value": {
-        "!type": "AssertStringValue",
-        "value": "example string value"
+        "!type": "AssertType",
+        "pkgPath": "example.com/pkg",
+        "typeName": "SampleType"
       }
     }
   ]

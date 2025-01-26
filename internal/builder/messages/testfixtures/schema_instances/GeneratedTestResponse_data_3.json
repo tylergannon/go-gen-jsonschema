@@ -2,7 +2,7 @@
 {
   "assertions": [
     {
-      "path": ".Field1",
+      "path": ".testField",
       "value": {
         "!type": "AssertBoolValue",
         "value": true

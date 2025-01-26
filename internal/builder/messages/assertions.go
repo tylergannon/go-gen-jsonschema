@@ -89,3 +89,13 @@ type AssertType struct {
 }
 
 func (AssertType) assertionValueMarkerFunc() {}
+
+// AssertArrayLength is used to validate the length of array/slice fields.
+// This assertion should be made before any assertions about array elements
+// to prevent potential panic from accessing non-existent indices.
+type AssertArrayLength struct {
+	// The expected length of the array.
+	Length int `json:"length"`
+}
+
+func (AssertArrayLength) assertionValueMarkerFunc() {}

@@ -18,38 +18,42 @@ custom JSON unmarshaling code. You will be given:
 2. A Go file containing the definition of a struct that will receive the unmarshalled JSON.
 
 The struct definition is "flattened" in the sense that the named types have been
-replaced with their underlying types.  The exception is when there is a union type,
-which is represented as a field with a named type.  When you find a named type (that's not
+replaced with their underlying types. The exception is when there is a union type,
+which is represented as a field with a named type. When you find a named type (that's not
 a basic Go type), note that the corresponding entry in the JSON will contain a discriminator
-field '!type', used to select the right Go type to instantiate.  The '!type' and the named-type
+field '!type', used to select the right Go type to instantiate. The '!type' and the named-type
 field indicates a union type, where the '!type' field indicates the chosen shape/type for this
 instance of the union type.
 
-Use the tool function to resolve all the union types found in the test data.
+Use the ResolveTypeInfo tool function to resolve all union types found in the test data.
 If the function call returns a union type, you can call it again with the new union
-type as you find them.
+type as you find them. If a union type cannot be resolved, return an error explaining why.
 
 After all tool function calls have been made, the goal is to generate a set of assertions
 that validate the test data. This should be returned as a JSON object with a set of assertions.
 Note that you're not returning Go code, just field paths and values.
 
-There should be one assertion per value given in the test data. Whenever there is a union type,
-there should be a type assertion to validate the selected type, followed by value assertions to validate
-the values of the fields of the selected type.
+Validation requirements:
+1. Each value in the test data must have exactly one assertion
+2. For union types: first assert the type, then assert the field values
+3. Field paths must use dot notation (e.g. ".parent.child")
+4. For array fields: first assert the array length, then make assertions about elements
+5. Missing required fields in the test data should be reported as errors
+6. Invalid values should be reported as errors with clear explanations
 `
 
 const userMessage1 = `
-The resulting JSON object should be surrounded by '<json>' and '</json>' tags.
-
-The JSON object should be returned as a string, with no other text or formatting.
-Use the following schema for the JSON object:
+The response must:
+1. Be wrapped in '<json>' and '</json>' tags
+2. Contain only the JSON object with no additional text or formatting
+3. Follow this exact schema:
 `
 
 // BuildAssertions calls out to the LLM to get a set of assertions for some test data.
 func BuildAssertions(ctx context.Context, testData, flattenedStruct, pkgPath string, client *anthropic.Client, toolFunc func(arg ToolFuncGetTypeInfo) (string, error)) (GeneratedTestResponse, error) {
 	var userMessages = []anthropic.MessageParam{
 		anthropic.NewUserMessage(anthropic.NewTextBlock(testData)),
-		anthropic.NewAssistantMessage(anthropic.NewTextBlock("I see the JSON object.  Standing by to receive the Go code that goes along with it, and then I'll inspect it for all union types, and I'll be sure to resolve all of them before generating assertions for each field in the test data.")),
+		anthropic.NewAssistantMessage(anthropic.NewTextBlock("I see the JSON object. I will process the Go struct definition, identify all union types, resolve them using the ResolveTypeInfo tool, and generate assertions for all fields including array lengths. I'll ensure each union type has both type and value assertions.")),
 		anthropic.NewUserMessage(anthropic.NewTextBlock(flattenedStruct)),
 	}
 	var (
