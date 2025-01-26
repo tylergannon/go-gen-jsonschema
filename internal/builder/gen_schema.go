@@ -1,6 +1,7 @@
 package builder
 
 import (
+	"context"
 	_ "embed"
 	"encoding/json"
 	"errors"
@@ -10,6 +11,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/dave/dst"
 	"github.com/dave/dst/decorator"
@@ -96,11 +98,27 @@ type SchemaBuilder struct {
 	customTypes       map[string][]InterfaceProp
 	Subdir            string
 	Pretty            bool
+	GenerateTests     bool
+	NumTestSamples    int
 	BuildTag          string
 	Imports           []string
 	SpecialTypes      []CustomMarshaledType
 	Interfaces        []InterfaceInfo
 	DiscriminatorProp string
+}
+
+func (s SchemaBuilder) RenderTestCode() error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	openaiAPIKey := os.Getenv("OPENAI_API_KEY")
+	if openaiAPIKey == "" {
+		return fmt.Errorf("env OPENAI_API_KEY is not set")
+	}
+	err := BuildTestData(ctx, openaiAPIKey, s.Scan.Pkg.PkgPath, s.Scan.Pkg.Dir, s.NumTestSamples)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s SchemaBuilder) HaveInterfaces() bool {

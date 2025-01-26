@@ -4,15 +4,16 @@ import (
 	_ "embed"
 	"flag"
 	"fmt"
-	"github.com/tylergannon/go-gen-jsonschema/internal/builder"
-	"github.com/tylergannon/go-gen-jsonschema/internal/common"
-	"github.com/tylergannon/go-gen-jsonschema/internal/syntax"
 	"go/build"
 	"io"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/tylergannon/go-gen-jsonschema/internal/builder"
+	"github.com/tylergannon/go-gen-jsonschema/internal/common"
+	"github.com/tylergannon/go-gen-jsonschema/internal/syntax"
 )
 
 //go:embed tmpl/config.go.tmpl
@@ -56,10 +57,12 @@ func printGlobalHelp() {
 func handleGen(firstArg int) {
 	// Define the --pretty flag
 	var (
-		genCmd = flag.NewFlagSet("gen", flag.ExitOnError)
-		pretty = genCmd.Bool("pretty", false, "Enable pretty output")
-		target = genCmd.String("target", "", "Path to target package (default to local wd)")
-		err    error
+		genCmd         = flag.NewFlagSet("gen", flag.ExitOnError)
+		pretty         = genCmd.Bool("pretty", false, "Enable pretty output")
+		target         = genCmd.String("target", "", "Path to target package (default to local wd)")
+		noGenTests     = genCmd.Bool("no-gen-test", false, "Disable test generation")
+		numTestSamples = genCmd.Int("num-test-samples", 10, "Number of test samples to generate")
+		err            error
 	)
 
 	if *target == "" {
@@ -82,8 +85,10 @@ func handleGen(firstArg int) {
 	_ = genCmd.Parse(os.Args[firstArg:])
 
 	if err = builder.Run(builder.BuilderArgs{
-		TargetDir: *target,
-		Pretty:    *pretty,
+		TargetDir:      *target,
+		Pretty:         *pretty,
+		GenerateTests:  !*noGenTests,
+		NumTestSamples: *numTestSamples,
 	}); err != nil {
 		log.Fatal(err)
 	}
