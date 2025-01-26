@@ -1,8 +1,10 @@
 package structs
 
 import (
+	_ "github.com/anthropics/anthropic-sdk-go"
 	_ "github.com/dave/dst"
 	_ "github.com/openai/openai-go"
+	_ "github.com/santhosh-tekuri/jsonschema"
 	_ "github.com/tylergannon/structtag"
 )
 
