@@ -2,13 +2,16 @@ package builder
 
 import (
 	"fmt"
+
 	"github.com/dave/dst/decorator"
 	"github.com/tylergannon/go-gen-jsonschema/internal/syntax"
 )
 
 type BuilderArgs struct {
-	TargetDir string
-	Pretty    bool
+	TargetDir      string
+	Pretty         bool
+	GenerateTests  bool
+	NumTestSamples int
 }
 
 func Run(args BuilderArgs) (err error) {
@@ -26,11 +29,18 @@ func Run(args BuilderArgs) (err error) {
 		return err
 	}
 	builder.Pretty = args.Pretty
+	builder.GenerateTests = args.GenerateTests
+	builder.NumTestSamples = args.NumTestSamples
 	if err = builder.RenderSchemas(); err != nil {
 		return err
 	}
 	if err = builder.RenderGoCode(); err != nil {
 		return err
+	}
+	if args.GenerateTests {
+		if err = builder.RenderTestCode(); err != nil {
+			return err
+		}
 	}
 	return nil
 }

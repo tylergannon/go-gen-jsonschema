@@ -2,10 +2,11 @@ package interfaces
 
 import (
 	_ "github.com/dave/dst"
+	_ "github.com/openai/openai-go"
 	_ "github.com/tylergannon/structtag"
 )
 
-//go:generate go run github.com/tylergannon/go-gen-jsonschema/gen-jsonschema/ --pretty
+//go:generate go run github.com/tylergannon/go-gen-jsonschema/gen-jsonschema/ --pretty --no-gen-test
 
 // Overall description for MyEnumType.
 type MyEnumType string
