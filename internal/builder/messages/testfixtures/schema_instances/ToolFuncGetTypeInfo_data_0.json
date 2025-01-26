@@ -1,6 +1,10 @@
 
 {
-  "discriminator": "example",
-  "typeName": "ExampleType",
-  "pkgPath": "github.com/example/package"
+  "unionTypesFound": [
+    {
+      "discriminator": "type_a",
+      "typeName": "InterfaceA",
+      "pkgPath": "github.com/example/pkg/types"
+    }
+  ]
 }
