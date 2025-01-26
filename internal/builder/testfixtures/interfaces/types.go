@@ -1,6 +1,7 @@
 package interfaces
 
 import (
+	_ "github.com/anthropics/anthropic-sdk-go"
 	_ "github.com/dave/dst"
 	_ "github.com/openai/openai-go"
 	_ "github.com/tylergannon/structtag"

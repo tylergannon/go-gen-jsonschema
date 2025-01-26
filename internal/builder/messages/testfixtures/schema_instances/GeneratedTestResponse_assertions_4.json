@@ -1,0 +1,35 @@
+{
+  "assertions": [
+    {
+      "path": ".Assertions",
+      "value": {
+        "length": 1
+      }
+    },
+    {
+      "path": ".Assertions[0].Path",
+      "value": {
+        "value": ".Field1.NestedField"
+      }
+    },
+    {
+      "path": ".Assertions[0].Value",
+      "value": {
+        "pkgPath": "github.com/tylergannon/go-gen-jsonschema/internal/builder/messages",
+        "typeName": "AssertType"
+      }
+    },
+    {
+      "path": ".Assertions[0].Value.PkgPath",
+      "value": {
+        "value": "github.com/example/package"
+      }
+    },
+    {
+      "path": ".Assertions[0].Value.TypeName",
+      "value": {
+        "value": "ExampleType"
+      }
+    }
+  ]
+}

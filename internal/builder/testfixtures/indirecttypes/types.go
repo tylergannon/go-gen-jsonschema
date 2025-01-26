@@ -3,6 +3,7 @@ package basictypes
 //go:generate go run github.com/tylergannon/go-gen-jsonschema/gen-jsonschema/ --pretty --no-gen-test
 
 import (
+	_ "github.com/anthropics/anthropic-sdk-go"
 	_ "github.com/dave/dst"
 	_ "github.com/openai/openai-go"
 	"github.com/tylergannon/go-gen-jsonschema/internal/builder/testfixtures/indirecttypes/indirectsubpkg"

@@ -20,6 +20,8 @@ import (
 	"github.com/tylergannon/go-gen-jsonschema/internal/common"
 )
 
+// BuildTestDataAnthropic calls to Anthropic API, ones per numSamples, to generate test data,
+// each one being an instance of the schema in inputFile.
 func BuildTestDataAnthropic(ctx context.Context, inputFile, outputDir, apiKey string, numSamples int) (err error) {
 	var schema *jsonschema.Schema
 	var inputData json.RawMessage
@@ -46,9 +48,56 @@ func BuildTestDataAnthropic(ctx context.Context, inputFile, outputDir, apiKey st
 	return errors.Join(errs...)
 }
 
+func BuildAssertionsAnthropic(ctx context.Context, typeName, pkgPath, typeInfo, dataDir, apiKey string, numSamples int, toolFn messages.GetTypeInfoFulfillment) (err error) {
+	var client = anthropic.NewClient(anthroption.WithAPIKey(apiKey))
+	var wg sync.WaitGroup
+	var errs = make([]error, numSamples)
+	for i := 0; i < numSamples; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			errs[i] = buildOneAssertion(ctx, typeName, pkgPath, typeInfo, dataDir, i, client, toolFn)
+		}(i)
+	}
+	wg.Wait()
+	return errors.Join(errs...)
+}
+
+func buildOneAssertion(ctx context.Context, typeName, pkgPath, typeInfo, dataDir string, i int, client *anthropic.Client, toolFn messages.GetTypeInfoFulfillment) error {
+	fmt.Printf("Building assertions for %s, sample %d\n", typeName, i)
+	var (
+		inputData json.RawMessage
+		err       error
+		resp      messages.GeneratedTestResponse
+	)
+	if inputData, err = os.ReadFile(dataFilePath(typeName, dataDir, i)); err != nil {
+		return fmt.Errorf("reading input file: %w", err)
+	}
+	if resp, err = messages.BuildAssertions(ctx, string(inputData), typeInfo, pkgPath, client, toolFn); err != nil {
+		return fmt.Errorf("building assertions: %w", err)
+	}
+	var assertionsData []byte
+	if assertionsData, err = json.MarshalIndent(resp, "", "  "); err != nil {
+		return fmt.Errorf("marshalling assertions: %w", err)
+	} else if err = os.WriteFile(assertionFilePath(typeName, dataDir, i), assertionsData, 0644); err != nil {
+		return fmt.Errorf("writing assertions: %w", err)
+	}
+	return nil
+}
+
+// dataFilePath builds the datafile path.  This helper function exists just
+// to denote the need for several sources to references the same path.
+func dataFilePath(typeName, dataDir string, i int) string {
+	return fmt.Sprintf("%s/%s_data_%d.json", dataDir, typeName, i)
+}
+
+func assertionFilePath(typeName, dataDir string, i int) string {
+	return fmt.Sprintf("%s/%s_assertions_%d.json", dataDir, typeName, i)
+}
+
 func buildOneAnthropic(ctx context.Context, inputData json.RawMessage, schema *jsonschema.Schema, objectName, outputDir string, i int, client *anthropic.Client) (err error) {
 	var (
-		outputPath = fmt.Sprintf("%s/%s_data_%d.json", outputDir, objectName, i)
+		outputPath = dataFilePath(objectName, outputDir, i)
 		outputData string
 	)
 

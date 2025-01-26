@@ -41,15 +41,16 @@ func (GeneratedTestResponse) Schema() json.RawMessage {
 // UnmarshalJSON is a generated custom json.Unmarshaler implementation for
 // Assertion.
 func (a *Assertion) UnmarshalJSON(b []byte) (err error) {
+	type Alias Assertion
 	type Wrapper struct {
-		*Assertion
+		Alias
 		Value json.RawMessage `json:"value"`
 	}
 	var wrapper Wrapper
 	if err = json.Unmarshal(b, &wrapper); err != nil {
 		return err
 	}
-	*a = *wrapper.Assertion
+	*a = Assertion(wrapper.Alias)
 	if a.Value, err = __jsonUnmarshal__messages__AssertionValue(wrapper.Value); err != nil {
 		return err
 	}

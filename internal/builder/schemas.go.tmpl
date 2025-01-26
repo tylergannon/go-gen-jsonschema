@@ -39,8 +39,9 @@ func ({{if .IsPointer}}*{{end}}{{.Receiver.TypeName}}) {{.SchemaMethodName}}() j
 // UnmarshalJSON is a generated custom json.Unmarshaler implementation for
 // {{.Name}}.
 func ({{.Initial}} *{{.Name}}) UnmarshalJSON(b []byte) (err error) {
+	type Alias {{.Name}}
 	type Wrapper struct {
-		*{{.Name}}
+		Alias
 		{{range .InterfaceProps -}}
 		{{.FieldNames}} json.RawMessage {{.StructTag}}
 		{{ end -}}
@@ -49,7 +50,7 @@ func ({{.Initial}} *{{.Name}}) UnmarshalJSON(b []byte) (err error) {
 	if err = json.Unmarshal(b, &wrapper); err != nil {
 		return err
 	}
-	*{{.Initial}} = *wrapper.{{.Name}}
+	*{{.Initial}} = {{.Name}}(wrapper.Alias)
 	{{range $i, $prop := .InterfaceProps -}}
 	{{if eq $i 0}}if{{else}} else if{{end}} {{$initial}}.{{$prop.FieldNames}}, err = {{$prop.UnmarshalerFunc}}(wrapper.{{$prop.FieldNames}}); err != nil {
 		return err

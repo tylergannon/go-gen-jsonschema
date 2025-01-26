@@ -483,6 +483,10 @@ func decorateIdentIfItPointsToInterface(ident IdentExpr, resolve ExprResolveFunc
 	return ident, nil
 }
 
+func (s StructType) FlattenScan(localPkgPath string, scan ScanResult, seenProps SeenProps) (StructType, error) {
+	return s.Flatten(localPkgPath, scan.resolveType, seenProps)
+}
+
 // flattenExpr recursively replaces any named type references with the
 // result of `resolve(...)`, then continues descending into pointer/array types.
 // It returns a final expression with no named references left (unless built-ins).
