@@ -39,14 +39,14 @@ func BuildTestDataAnthropic(ctx context.Context, inputFile, outputDir, apiKey st
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			errs[i] = buildOneAnthropic(ctx, inputData, schema, fileNameWithoutExtension(inputFile), outputDir, i, client, false)
+			errs[i] = buildOneAnthropic(ctx, inputData, schema, fileNameWithoutExtension(inputFile), outputDir, i, client)
 		}(i)
 	}
 	wg.Wait()
 	return errors.Join(errs...)
 }
 
-func buildOneAnthropic(ctx context.Context, inputData json.RawMessage, schema *jsonschema.Schema, objectName, outputDir string, i int, client *anthropic.Client, forceCreate bool) (err error) {
+func buildOneAnthropic(ctx context.Context, inputData json.RawMessage, schema *jsonschema.Schema, objectName, outputDir string, i int, client *anthropic.Client) (err error) {
 	var (
 		outputPath = fmt.Sprintf("%s/%s_data_%d.json", outputDir, objectName, i)
 		outputData string

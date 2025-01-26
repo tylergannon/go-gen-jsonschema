@@ -20,15 +20,6 @@ func __gen_jsonschema_panic(fname string, err error) {
 	panic(fmt.Sprintf("error reading %s from embedded FS: %s", fname, err.Error()))
 }
 
-func (Assertion) Schema() json.RawMessage {
-	const fileName = "jsonschema/Assertion.json"
-	data, err := __gen_jsonschema_fs.ReadFile(fileName)
-	if err != nil {
-		__gen_jsonschema_panic(fileName, err)
-	}
-	return data
-}
-
 func (ToolFuncGetTypeInfo) Schema() json.RawMessage {
 	const fileName = "jsonschema/ToolFuncGetTypeInfo.json"
 	data, err := __gen_jsonschema_fs.ReadFile(fileName)
@@ -99,6 +90,12 @@ func __jsonUnmarshal__messages__AssertionValue(data []byte) (AssertionValue, err
 		return obj, nil
 	case "AssertType":
 		var obj AssertType
+		if err = json.Unmarshal(data, &obj); err != nil {
+			return nil, err
+		}
+		return obj, nil
+	case "AssertArrayLength":
+		var obj AssertArrayLength
 		if err = json.Unmarshal(data, &obj); err != nil {
 			return nil, err
 		}
