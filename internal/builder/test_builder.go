@@ -44,14 +44,26 @@ func BuildTestDataAnthropic(ctx context.Context, inputFile, outputDir, apiKey st
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			errs[i] = buildOneAnthropic(ctx, inputData, schema, fileNameWithoutExtension(inputFile), outputDir, i, client)
+			errs[i] = buildOneAnthropic(ctx, inputData, schema, fileNameWithoutExtension(inputFile), outputDir, i, client, false)
 		}(i)
 	}
 	wg.Wait()
 	return errors.Join(errs...)
 }
 
-func buildOneAnthropic(ctx context.Context, inputData json.RawMessage, schema *jsonschema.Schema, objectName, outputDir string, i int, client *anthropic.Client) (err error) {
+func buildOneAnthropic(ctx context.Context, inputData json.RawMessage, schema *jsonschema.Schema, objectName, outputDir string, i int, client *anthropic.Client, forceCreate bool) (err error) {
+	outputPath := fmt.Sprintf("%s/%s_data_%d.json", outputDir, objectName, i)
+
+	// Check if file exists and matches schema, unless force create is enabled
+	if !forceCreate {
+		if existingData, err := os.ReadFile(outputPath); err == nil {
+			if err := schema.Validate(bytes.NewReader(existingData)); err == nil {
+				// File exists and is valid, skip generation
+				return nil
+			}
+		}
+	}
+
 	fmt.Printf("Building test data for %s, sample %d\n", objectName, i)
 	var sb strings.Builder
 	sb.WriteString("You are a helpful assistant that generates test data for a JSON schema.\n")
@@ -77,7 +89,7 @@ func buildOneAnthropic(ctx context.Context, inputData json.RawMessage, schema *j
 		if err := schema.Validate(bytes.NewReader([]byte(outputData))); err != nil {
 			return fmt.Errorf("invalid test data: %w", err)
 		}
-		if err := os.WriteFile(fmt.Sprintf("%s/%s_data_%d.json", outputDir, objectName, i), []byte(outputData), 0644); err != nil {
+		if err := os.WriteFile(outputPath, []byte(outputData), 0644); err != nil {
 			return fmt.Errorf("writing test data: %w", err)
 		}
 	}
