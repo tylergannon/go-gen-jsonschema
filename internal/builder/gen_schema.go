@@ -96,6 +96,8 @@ type SchemaBuilder struct {
 	customTypes       map[string][]InterfaceProp
 	Subdir            string
 	Pretty            bool
+	GenerateTests     bool
+	NumTestSamples    int
 	BuildTag          string
 	Imports           []string
 	SpecialTypes      []CustomMarshaledType

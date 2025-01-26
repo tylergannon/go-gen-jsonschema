@@ -2,6 +2,7 @@ package structs
 
 import (
 	_ "github.com/dave/dst"
+	_ "github.com/openai/openai-go"
 	_ "github.com/tylergannon/structtag"
 )
 
