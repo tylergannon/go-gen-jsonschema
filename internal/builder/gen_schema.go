@@ -19,7 +19,6 @@ import (
 
 	"github.com/dave/dst"
 	"github.com/dave/dst/decorator"
-	"github.com/tylergannon/go-gen-jsonschema/internal/common"
 	"github.com/tylergannon/go-gen-jsonschema/internal/syntax"
 )
 
@@ -433,18 +432,25 @@ func (s SchemaBuilder) renderStructSchema(t syntax.StructType, description strin
 	return node, err
 }
 
-func (s SchemaBuilder) writeSchema(t syntax.TypeID, targetDir string) (wroteNew bool, err error) {
+func (s SchemaBuilder) writeSchema(t syntax.TypeID, targetDir string, noChanges bool) (wroteNew bool, err error) {
 	var (
-		file     *os.File
 		ok       bool
 		filePath = filepath.Join(targetDir, fmt.Sprintf("%s.json", t.TypeName))
 		sumPath  = filePath + ".sum"
 	)
 
-	if file, err = os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644); err != nil {
-		return false, fmt.Errorf("could not open file %s: %w", filePath, err)
+	// Create temp file in same directory to ensure same filesystem
+	tmpFile, err := os.CreateTemp(targetDir, fmt.Sprintf("%s.*.json.tmp", t.TypeName))
+	if err != nil {
+		return false, fmt.Errorf("could not create temp file: %w", err)
 	}
-	defer common.LogClose(file)
+	defer func() {
+		tmpFile.Close()
+		// Clean up temp file if we're returning with an error or if we didn't use it
+		if err != nil || wroteNew && noChanges {
+			os.Remove(tmpFile.Name())
+		}
+	}()
 
 	var schema json.Marshaler
 	if schema, ok = s.GetSchema(t); !ok {
@@ -452,7 +458,7 @@ func (s SchemaBuilder) writeSchema(t syntax.TypeID, targetDir string) (wroteNew 
 	}
 
 	hash := fnv.New64a()
-	writer := io.MultiWriter(file, hash)
+	writer := io.MultiWriter(tmpFile, hash)
 	encoder := json.NewEncoder(writer)
 	if s.Pretty {
 		encoder.SetIndent("", "  ")
@@ -470,7 +476,18 @@ func (s SchemaBuilder) writeSchema(t syntax.TypeID, targetDir string) (wroteNew 
 		wroteNew = string(oldSum) != newChecksum
 	}
 
-	// Write new checksum file
+	// If content changed and we're in noChanges mode, return without writing anything
+	if wroteNew && noChanges {
+		return true, nil
+	}
+
+	// Move temp file into place and write new checksum
+	if err = tmpFile.Close(); err != nil {
+		return false, fmt.Errorf("could not close temp file: %w", err)
+	}
+	if err = os.Rename(tmpFile.Name(), filePath); err != nil {
+		return false, fmt.Errorf("could not move temp file into place: %w", err)
+	}
 	if err = os.WriteFile(sumPath, []byte(newChecksum), 0644); err != nil {
 		return false, fmt.Errorf("could not write checksum file: %w", err)
 	}
@@ -568,7 +585,7 @@ func (s SchemaBuilder) RenderGoCode() (err error) {
 	return nil
 }
 
-func (s SchemaBuilder) RenderSchemas() (changedSchemas map[string]bool, err error) {
+func (s SchemaBuilder) RenderSchemas(noChanges bool) (changedSchemas map[string]bool, err error) {
 	var targetDir = filepath.Join(s.Scan.Pkg.Dir, s.Subdir)
 	changedSchemas = make(map[string]bool)
 
@@ -577,7 +594,7 @@ func (s SchemaBuilder) RenderSchemas() (changedSchemas map[string]bool, err erro
 	}
 	for _, method := range s.Scan.SchemaMethods {
 		var changed bool
-		if changed, err = s.writeSchema(method.Receiver, targetDir); err != nil {
+		if changed, err = s.writeSchema(method.Receiver, targetDir, noChanges); err != nil {
 			return nil, err
 		}
 		changedSchemas[method.Receiver.TypeName] = changed

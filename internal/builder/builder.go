@@ -35,7 +35,7 @@ func Run(args BuilderArgs) (err error) {
 	builder.NumTestSamples = args.NumTestSamples
 
 	var changedSchemas map[string]bool
-	if changedSchemas, err = builder.RenderSchemas(); err != nil {
+	if changedSchemas, err = builder.RenderSchemas(args.NoChanges); err != nil {
 		return err
 	}
 
