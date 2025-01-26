@@ -1,0 +1,28 @@
+{
+  "assertions": [
+    {
+      "path": ".UnionTypesFound",
+      "value": {
+        "length": 1
+      }
+    },
+    {
+      "path": ".UnionTypesFound[0].Discriminator",
+      "value": {
+        "value": "sample_discriminator"
+      }
+    },
+    {
+      "path": ".UnionTypesFound[0].TypeName",
+      "value": {
+        "value": "ExampleType"
+      }
+    },
+    {
+      "path": ".UnionTypesFound[0].PkgPath",
+      "value": {
+        "value": "github.com/example/package/path"
+      }
+    }
+  ]
+}

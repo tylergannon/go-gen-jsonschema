@@ -2,9 +2,9 @@
 {
   "unionTypesFound": [
     {
-      "discriminator": "type_a",
-      "typeName": "InterfaceA",
-      "pkgPath": "github.com/example/pkg/types"
+      "discriminator": "example_discriminator",
+      "typeName": "ExampleInterface",
+      "pkgPath": "github.com/example/package/path"
     }
   ]
 }

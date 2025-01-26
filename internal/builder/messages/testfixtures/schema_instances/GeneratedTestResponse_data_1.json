@@ -2,10 +2,10 @@
 {
   "assertions": [
     {
-      "path": ".Field1.NestedField1.Field2",
+      "path": ".Field1",
       "value": {
         "!type": "AssertNumericValue",
-        "value": "123"
+        "value": "42"
       }
     }
   ]

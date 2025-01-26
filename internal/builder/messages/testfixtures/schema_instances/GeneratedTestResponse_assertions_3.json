@@ -1,0 +1,28 @@
+{
+  "assertions": [
+    {
+      "path": ".Assertions",
+      "value": {
+        "length": 1
+      }
+    },
+    {
+      "path": ".Assertions[0].Path",
+      "value": {
+        "value": ".MyField"
+      }
+    },
+    {
+      "path": ".Assertions[0].Value.!type",
+      "value": {
+        "value": "AssertBoolValue"
+      }
+    },
+    {
+      "path": ".Assertions[0].Value.value",
+      "value": {
+        "value": true
+      }
+    }
+  ]
+}

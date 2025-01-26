@@ -3,6 +3,7 @@ package syntax
 import (
 	"fmt"
 	"go/token"
+	"runtime/debug"
 	"slices"
 	"strings"
 	"unicode"
@@ -283,8 +284,15 @@ func (t typesMap) addType(pkgPath, typeName string) {
 }
 
 func (r *ScanResult) resolveTypeLocal(name string) (Expr, error) {
+	if iface, ok := r.Interfaces[name]; ok {
+		return iface.TypeSpec.Type(), nil
+	}
 	t, ok := r.LocalNamedTypes[name]
 	if !ok {
+		for typeName := range r.LocalNamedTypes {
+			fmt.Println(typeName)
+		}
+		fmt.Println(string(debug.Stack()))
 		return nil, fmt.Errorf("resolveTypeLocal:type %s not found", name)
 	}
 	if ident, ok := t.Type().Expr().(*dst.Ident); ok {

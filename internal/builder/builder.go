@@ -14,6 +14,7 @@ type BuilderArgs struct {
 	GenerateTests  bool
 	NumTestSamples int
 	NoChanges      bool // If true, fail if any schema changes are detected
+	Force          bool // If true, force regeneration of schemas even if no changes are detected
 }
 
 func Run(args BuilderArgs) (err error) {
@@ -35,7 +36,7 @@ func Run(args BuilderArgs) (err error) {
 	builder.NumTestSamples = args.NumTestSamples
 
 	var changedSchemas map[string]bool
-	if changedSchemas, err = builder.RenderSchemas(args.NoChanges); err != nil {
+	if changedSchemas, err = builder.RenderSchemas(args.NoChanges, args.Force); err != nil {
 		return err
 	}
 
