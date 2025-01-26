@@ -368,7 +368,7 @@ func (s SchemaBuilder) renderSchema(t syntax.TypeExpr, description string, seen 
 		}
 		return schema, nil
 	case *dst.MapType, *dst.ChanType:
-		return nil, fmt.Errorf("unsupported type %s at %s", t.Name(), t.Position())
+		return nil, fmt.Errorf("mapType/chanType not allowed %s at %s", t.Name(), t.Position())
 	case *dst.StructType:
 		return s.renderStructSchema(syntax.NewStructType(node, *t.TypeSpec), description, seen)
 	case *dst.InterfaceType:
@@ -539,7 +539,7 @@ func (s SchemaBuilder) resolveEmbeddedType(t syntax.TypeExpr, seen syntax.SeenTy
 			case *dst.Ident:
 				return s.resolveEmbeddedType(typeExpr, seen)
 			}
-			return syntax.NoStructType, fmt.Errorf("unsupported type %s at %s", ts.Details(), ts.Position())
+			return syntax.NoStructType, fmt.Errorf("embedded ident should be alias or struct type %s at %s", ts.Details(), ts.Position())
 		}
 
 	case *dst.StarExpr:
@@ -547,7 +547,7 @@ func (s SchemaBuilder) resolveEmbeddedType(t syntax.TypeExpr, seen syntax.SeenTy
 	case *dst.ParenExpr:
 		return s.resolveEmbeddedType(t.Derive(expr.X), seen)
 	default:
-		return syntax.NoStructType, fmt.Errorf("unsupported type %s", expr)
+		return syntax.NoStructType, fmt.Errorf("unsupported embedded field %T at %s", expr, t.Position())
 	}
 }
 
@@ -568,7 +568,7 @@ func (s SchemaBuilder) renderStructProps(t syntax.StructType, seenProps syntax.S
 		}
 		if prop.Embedded() {
 			var embeddedType syntax.StructType
-			if embeddedType, err = s.resolveEmbeddedType(t.Derive(), seen); err != nil {
+			if embeddedType, err = s.resolveEmbeddedType(prop.TypeExpr, seen); err != nil {
 				return nil, fmt.Errorf("resolving embedded type: %w", err)
 			} else if tempProps, err = s.renderStructProps(embeddedType, myProps, seen); err != nil {
 				return nil, fmt.Errorf("rendering embedded type: %w", err)
@@ -704,7 +704,7 @@ func (s SchemaBuilder) resolveLocalInterfaceProps(t syntax.StructType, seenProps
 		if !prop.Embedded() {
 			continue
 		}
-		if _t, err := s.resolveEmbeddedType(t.Derive(), nil); err != nil {
+		if _t, err := s.resolveEmbeddedType(prop.TypeExpr, nil); err != nil {
 			return nil, fmt.Errorf("resolving embedded type: %w", err)
 		} else if propsTemp, err := s.resolveLocalInterfaceProps(_t, seenProps); err != nil {
 			return nil, fmt.Errorf("resolving embedded local interface properties: %w", err)

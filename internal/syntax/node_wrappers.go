@@ -403,7 +403,6 @@ func (s StructType) Flatten(
 		var names []string
 		for _, ident := range fieldObj.Field.Names {
 			name := ident.Name
-			fmt.Println("name, muthafucka", name)
 			if seenProps.Seen(name) {
 				continue
 			}
@@ -421,7 +420,6 @@ func (s StructType) Flatten(
 		copied := dst.Clone(fieldObj.Field).(*dst.Field)
 		copied.Names = nil
 		for _, name := range names {
-			fmt.Println("name", name)
 			copied.Names = append(copied.Names, dst.NewIdent(name))
 		}
 		copied.Type = flattenedType
