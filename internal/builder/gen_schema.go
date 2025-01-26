@@ -107,16 +107,34 @@ type SchemaBuilder struct {
 	DiscriminatorProp string
 }
 
-func (s SchemaBuilder) RenderTestCode() error {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+func (s SchemaBuilder) RenderTestCodeAnthropic() error {
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
+	defer cancel()
+	anthropicAPIKey := os.Getenv("ANTHROPIC_API_KEY")
+	if anthropicAPIKey == "" {
+		return fmt.Errorf("env ANTHROPIC_API_KEY is not set")
+	}
+	for _, method := range s.Scan.SchemaMethods {
+		err := BuildTestDataAnthropic(ctx, filepath.Join(s.Subdir, fmt.Sprintf("%s.json", method.Receiver.TypeName)), "testfixtures/schema_instances", anthropicAPIKey, s.NumTestSamples)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s SchemaBuilder) RenderTestCodeOpenAI() error {
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
 	openaiAPIKey := os.Getenv("OPENAI_API_KEY")
 	if openaiAPIKey == "" {
 		return fmt.Errorf("env OPENAI_API_KEY is not set")
 	}
-	err := BuildTestData(ctx, openaiAPIKey, s.Scan.Pkg.PkgPath, s.Scan.Pkg.Dir, s.NumTestSamples)
-	if err != nil {
-		return err
+	for _, method := range s.Scan.SchemaMethods {
+		err := BuildTestDataOpenAI(ctx, filepath.Join(s.Subdir, fmt.Sprintf("%s.json", method.Receiver.TypeName)), "testfixtures/schema_instances", openaiAPIKey, s.NumTestSamples)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
