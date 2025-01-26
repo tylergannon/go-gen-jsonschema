@@ -3,10 +3,11 @@ package syntax
 import (
 	"errors"
 	"fmt"
-	"github.com/dave/dst"
 	"go/token"
 	"slices"
 	"strings"
+
+	"github.com/dave/dst"
 )
 
 const (
@@ -72,7 +73,6 @@ func ParseValueExprForMarkerFunctionCall(e ValueSpec) []MarkerFunctionCall {
 		callExpr := NewCallExpr(ce, e.pkg, e.file)
 
 		if id, ok := callExpr.IdentifyFunc(); !ok || id.PkgPath != SchemaPackagePath {
-			fmt.Println("Not path", id)
 			continue
 		} else if !slices.Contains(markerFunctions, id.TypeName) {
 			fmt.Println("Unsupported MarkerFunction", id.TypeName)

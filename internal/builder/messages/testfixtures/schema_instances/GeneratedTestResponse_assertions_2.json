@@ -1,0 +1,16 @@
+{
+  "assertions": [
+    {
+      "path": ".Assertions",
+      "value": {
+        "length": 1
+      }
+    },
+    {
+      "path": ".Assertions[0].Path",
+      "value": {
+        "value": ".Field1"
+      }
+    }
+  ]
+}

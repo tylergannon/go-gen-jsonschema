@@ -1,0 +1,29 @@
+{
+  "assertions": [
+    {
+      "path": ".Assertions",
+      "value": {
+        "length": 1
+      }
+    },
+    {
+      "path": ".Assertions[0].Path",
+      "value": {
+        "value": ".Field1"
+      }
+    },
+    {
+      "path": ".Assertions[0].Value",
+      "value": {
+        "pkgPath": "",
+        "typeName": "AssertNumericValue"
+      }
+    },
+    {
+      "path": ".Assertions[0].Value.value",
+      "value": {
+        "value": "123"
+      }
+    }
+  ]
+}

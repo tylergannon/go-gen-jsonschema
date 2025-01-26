@@ -2,10 +2,10 @@
 {
   "assertions": [
     {
-      "path": ".field1",
+      "path": ".Field1",
       "value": {
         "!type": "AssertStringValue",
-        "value": "example string"
+        "value": "test string"
       }
     }
   ]

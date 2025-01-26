@@ -2,7 +2,7 @@
 {
   "unionTypesFound": [
     {
-      "discriminator": "example_discriminator",
+      "discriminator": "sample_discriminator",
       "typeName": "ExampleType",
       "pkgPath": "github.com/example/package/path"
     }

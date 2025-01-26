@@ -17,29 +17,20 @@ custom JSON unmarshaling code. You will be given:
 1. A JSON object ("test data")
 2. A Go file containing the definition of a struct that will receive the unmarshalled JSON.
 
-The struct definition is "flattened" in the sense that the named types have been
-replaced with their underlying types. The exception is when there is a union type,
-which is represented as a field with a named type. When you find a named type (that's not
-a basic Go type), note that the corresponding entry in the JSON will contain a discriminator
-field '!type', used to select the right Go type to instantiate. The '!type' and the named-type
-field indicates a union type, where the '!type' field indicates the chosen shape/type for this
-instance of the union type.
+Your task is to generate one assertion for each field in the test data.
 
-Use the ResolveTypeInfo tool function to resolve all union types found in the test data.
-If the function call returns a union type, you can call it again with the new union
-type as you find them. If a union type cannot be resolved, return an error explaining why.
-
-After all tool function calls have been made, the goal is to generate a set of assertions
-that validate the test data. This should be returned as a JSON object with a set of assertions.
-Note that you're not returning Go code, just field paths and values.
+There are three cases:
+1. The default case is a value assertion based on the kind of field (string, numeric, bool).
+2. When you see a field named "!type", you should use the ResolveTypeInfo tool function to resolve the type information for the field.
+   In this case, DO NOT ISSUE A VALUE ASSERTION.  Instead, issue a type assertion that matches the type name returned by the tool function.
+3. When you encounter a field that is an array, you should issue an assertion for the length of the array.
 
 Validation requirements:
-1. Each value in the test data must have exactly one assertion
-2. For union types: first assert the type, then assert the field values
-3. Field paths must use dot notation (e.g. ".parent.child")
-4. For array fields: first assert the array length, then make assertions about elements
-5. Missing required fields in the test data should be reported as errors
-6. Invalid values should be reported as errors with clear explanations
+1. Every "!type" field should have a corresponding type assertion in the final response.
+2. Every array field should have a corresponding assertion for the length of the array in the final response.
+3. Each pure-value (i.e. not an array or a "!type" field) field should have a corresponding assertion for its value in the final response.
+4. Field paths must use dot notation (e.g. ".Field.Child", ".Field.ArrayField.[0].Field)
+5. Inability to resolve a type should be ignored silently.
 `
 
 const userMessage1 = `
@@ -49,8 +40,15 @@ The response must:
 3. Follow this exact schema:
 `
 
+type GetTypeInfoFulfillment func(arg ToolFuncGetTypeInfo) (string, error)
+
 // BuildAssertions calls out to the LLM to get a set of assertions for some test data.
-func BuildAssertions(ctx context.Context, testData, flattenedStruct, pkgPath string, client *anthropic.Client, toolFunc func(arg ToolFuncGetTypeInfo) (string, error)) (GeneratedTestResponse, error) {
+// TestData is the JSON object whose unmarshalling will be the body of the test.
+// FlattenedStruct is the Go struct definition that will receive the unmarshalled JSON.
+// PkgPath is the package path of the struct definition.
+// Client is the Anthropic client to use for the LLM call.
+// ToolFunc is the fulfillment function for the tool function used to resolve union types.
+func BuildAssertions(ctx context.Context, testData, flattenedStruct, pkgPath string, client *anthropic.Client, toolFunc GetTypeInfoFulfillment) (GeneratedTestResponse, error) {
 	var userMessages = []anthropic.MessageParam{
 		anthropic.NewUserMessage(anthropic.NewTextBlock(testData)),
 		anthropic.NewAssistantMessage(anthropic.NewTextBlock("I see the JSON object. I will process the Go struct definition, identify all union types, resolve them using the ResolveTypeInfo tool, and generate assertions for all fields including array lengths. I'll ensure each union type has both type and value assertions.")),
@@ -69,8 +67,8 @@ func BuildAssertions(ctx context.Context, testData, flattenedStruct, pkgPath str
 				anthropic.NewTextBlock(userMessage1 + string(GeneratedTestResponse{}.Schema())),
 			}),
 			Messages: anthropic.F(userMessages),
-			Tools: anthropic.F([]anthropic.ToolParam{
-				{
+			Tools: anthropic.F([]anthropic.ToolUnionUnionParam{
+				anthropic.ToolParam{
 					Name:        anthropic.F("ResolveTypeInfo"),
 					Description: anthropic.F("Resolve the type information for one or more union type instances found in the test data."),
 					InputSchema: anthropic.F[any](ToolFuncGetTypeInfo{}.Schema()),
@@ -79,6 +77,8 @@ func BuildAssertions(ctx context.Context, testData, flattenedStruct, pkgPath str
 		}); err != nil {
 			return GeneratedTestResponse{}, fmt.Errorf("building assertions: %w", err)
 		} else if res.StopReason == anthropic.MessageStopReasonToolUse {
+			foo, _ := json.MarshalIndent(res.Content, "", "  ")
+			fmt.Println("Tool use", string(foo))
 			var toolResults []anthropic.ContentBlockParamUnion
 			for _, data := range res.Content {
 				if data.Type == anthropic.ContentBlockTypeToolUse {
@@ -88,11 +88,16 @@ func BuildAssertions(ctx context.Context, testData, flattenedStruct, pkgPath str
 						if err := json.Unmarshal([]byte(data.Input), &arg); err != nil {
 							return GeneratedTestResponse{}, fmt.Errorf("unmarshalling tool call argument: %w", err)
 						}
+						var toolResult anthropic.ToolResultBlockParam
 						if result, err := toolFunc(arg); err != nil {
-							toolResults = append(toolResults, anthropic.NewToolResultBlock(data.ID, err.Error(), true))
+							toolResult = anthropic.NewToolResultBlock(data.ID, err.Error(), true)
 						} else {
-							toolResults = append(toolResults, anthropic.NewToolResultBlock(data.ID, result, false))
+							fmt.Println("Data for type", string(data.Input), result)
+							toolResult = anthropic.NewToolResultBlock(data.ID, result, false)
 						}
+						foo, _ = json.MarshalIndent(toolResult, "", "  ")
+						fmt.Println("Tool result", string(foo))
+						toolResults = append(toolResults, toolResult)
 					}
 				}
 			}
