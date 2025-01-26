@@ -62,6 +62,7 @@ func handleGen(firstArg int) {
 		target         = genCmd.String("target", "", "Path to target package (default to local wd)")
 		noGenTests     = genCmd.Bool("no-gen-test", false, "Disable test generation")
 		numTestSamples = genCmd.Int("num-test-samples", 10, "Number of test samples to generate")
+		noChanges      = genCmd.Bool("no-changes", false, "Fail if any schema changes are detected")
 		err            error
 	)
 
@@ -84,11 +85,15 @@ func handleGen(firstArg int) {
 	}
 	_ = genCmd.Parse(os.Args[firstArg:])
 
+	// Check environment variable
+	*noChanges = *noChanges || os.Getenv("JSONSCHEMA_NO_CHANGES") != ""
+
 	if err = builder.Run(builder.BuilderArgs{
 		TargetDir:      *target,
 		Pretty:         *pretty,
 		GenerateTests:  !*noGenTests,
 		NumTestSamples: *numTestSamples,
+		NoChanges:      *noChanges,
 	}); err != nil {
 		log.Fatal(err)
 	}
