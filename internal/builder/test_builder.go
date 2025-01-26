@@ -16,13 +16,8 @@ import (
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/option"
 	jsonschema "github.com/santhosh-tekuri/jsonschema"
-)
-
-const (
-	AnthropicModel = anthropic.ModelClaude3_5SonnetLatest
-	OpenAIModel    = openai.ChatModelGPT4o2024_08_06
-	jsonTag        = "<json>"
-	jsonTagEnd     = "</json>"
+	"github.com/tylergannon/go-gen-jsonschema/internal/builder/messages"
+	"github.com/tylergannon/go-gen-jsonschema/internal/common"
 )
 
 func BuildTestDataAnthropic(ctx context.Context, inputFile, outputDir, apiKey string, numSamples int) (err error) {
@@ -61,11 +56,11 @@ func buildOneAnthropic(ctx context.Context, inputData json.RawMessage, schema *j
 	var sb strings.Builder
 	sb.WriteString("You are a helpful assistant that generates test data for a JSON schema.\n")
 	sb.WriteString(fmt.Sprintf("Wherever there is a union type, choose the %d-th option, modulo the number of options.\n Meaning if there are 5 options choose the %d%%5-th option (the %dth).\n", i, i, i%5))
-	sb.WriteString(fmt.Sprintf("I'll give you the schema.  Please respond with a JSON object that conforms to the schema.\nSurround the JSON object with %s...%s tags.\n", jsonTag, jsonTagEnd))
+	sb.WriteString(fmt.Sprintf("I'll give you the schema.  Please respond with a JSON object that conforms to the schema.\nSurround the JSON object with %s...%s tags.\n", common.JSONTag, common.JSONTagEnd))
 	sb.WriteString("The schema is:\n")
 	sb.Write(inputData)
 	if res, err := client.Messages.New(ctx, anthropic.MessageNewParams{
-		Model:     anthropic.F(AnthropicModel),
+		Model:     anthropic.F(common.AnthropicModel),
 		MaxTokens: anthropic.F(int64(1024)),
 		Messages: anthropic.F([]anthropic.MessageParam{
 			anthropic.NewUserMessage(anthropic.NewTextBlock(sb.String())),
@@ -73,12 +68,9 @@ func buildOneAnthropic(ctx context.Context, inputData json.RawMessage, schema *j
 	}); err != nil {
 		return fmt.Errorf("generating test data: %w", err)
 	} else {
-		startPos := strings.Index(res.Content[0].Text, jsonTag)
-		endPos := strings.LastIndex(res.Content[0].Text, jsonTagEnd)
-		if startPos == -1 || endPos == -1 {
-			return fmt.Errorf("no %s...%s tags found in response", jsonTag, jsonTagEnd)
+		if outputData, err = messages.ExtractJsonResponse(res.Content[0].Text); err != nil {
+			return fmt.Errorf("extracting JSON response: %w", err)
 		}
-		outputData = res.Content[0].Text[startPos+len(jsonTag) : endPos]
 		if err := schema.Validate(bytes.NewReader([]byte(outputData))); err != nil {
 			return fmt.Errorf("invalid test data: %w", err)
 		}
@@ -101,7 +93,7 @@ func BuildTestDataOpenAI(ctx context.Context, inputFile, outputDir, apiKey strin
 	var client = openai.NewClient(option.WithAPIKey(apiKey))
 	for i := 0; i < numSamples; i++ {
 		if res, err := client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
-			Model: openai.F(OpenAIModel),
+			Model: openai.F(common.OpenAIModel),
 			Messages: openai.F([]openai.ChatCompletionMessageParamUnion{
 				openai.SystemMessage("You are a helpful assistant that generates test data for a JSON schema."),
 				openai.UserMessage(fmt.Sprintf("Wherever there is a union type, choose the %d-th option, modulo the number of options.", i)),
