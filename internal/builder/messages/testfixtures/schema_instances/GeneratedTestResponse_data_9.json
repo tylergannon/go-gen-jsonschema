@@ -1,0 +1,13 @@
+
+{
+  "assertions": [
+    {
+      "path": ".path",
+      "value": {
+        "!type": "AssertType",
+        "pkgPath": "",
+        "typeName": "MyType"
+      }
+    }
+  ]
+}

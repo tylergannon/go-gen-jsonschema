@@ -48,9 +48,12 @@ func ({{.Initial}} *{{.Name}}) UnmarshalJSON(b []byte) (err error) {
 	var wrapper Wrapper
 	if err = json.Unmarshal(b, &wrapper); err != nil {
 		return err
-	} {{ range .InterfaceProps }} else if {{$initial}}.{{.FieldNames}}, err = {{.UnmarshalerFunc}}(wrapper.{{.FieldNames}}); err != nil {
+	}
+	*{{.Initial}} = *wrapper.{{.Name}}
+	{{range $i, $prop := .InterfaceProps -}}
+	{{if eq $i 0}}if{{else}} else if{{end}} {{$initial}}.{{$prop.FieldNames}}, err = {{$prop.UnmarshalerFunc}}(wrapper.{{$prop.FieldNames}}); err != nil {
 		return err
-	}{{ end }}
+	}{{end}}
 	return nil
 }
 {{ end -}}

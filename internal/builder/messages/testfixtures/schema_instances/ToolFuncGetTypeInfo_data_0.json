@@ -1,0 +1,6 @@
+
+{
+  "discriminator": "example",
+  "typeName": "ExampleType",
+  "pkgPath": "github.com/example/package"
+}
