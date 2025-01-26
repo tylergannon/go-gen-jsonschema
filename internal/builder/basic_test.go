@@ -2,11 +2,12 @@ package builder_test
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/tylergannon/go-gen-jsonschema/internal/testutils"
-	"os"
-	"path/filepath"
 )
 
 const cleanUp = true
@@ -116,6 +117,14 @@ var _ = Describe("Basic", func() {
 			false,
 			"jsonschema/StructType1.json",
 			"jsonschema/StructType2.json",
+		),
+		Entry(
+			"Interface types",
+			"builder/testfixtures/interfaces",
+			"test5-interfaces",
+			false,
+			"jsonschema/FancyStruct.json",
+			"jsonschema_gen.go",
 		),
 	)
 })
