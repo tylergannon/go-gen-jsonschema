@@ -7,13 +7,22 @@ package messages
 // when the type is a union type.  Look in the test data for the discriminator value
 // used to select the union type, and present that along with the type name.
 // Use the FULL package path of the type as found in the imports block of the file.
+// List all the union types found in the struct.
+// If the result of a function call also contains a union type, you can call this
+// function again with new union types as you find them.
+//
+// NOTE: Do not bother with union types in the schema that are not present in the test data.
+// Those will be handled by other test data.
 type ToolFuncGetTypeInfo struct {
-	// The value given in the test data that selects the union type.
-	Discriminator string `json:"discriminator"`
-	// The name of the interface type at the corresponding position of the struct, to the union type being instantiated.
-	TypeName string `json:"typeName"`
-	// The full package path of the type.  Leave blank if the type has no package alias (and is therefore defined in the current package).
-	PkgPath string `json:"pkgPath"`
+	// Include a separate entry for each union type instance found in the test data.
+	UnionTypesFound []struct {
+		// The value given in the test data that selects the union type.
+		Discriminator string `json:"discriminator"`
+		// The name of the interface type at the corresponding position of the struct, to the union type being instantiated.
+		TypeName string `json:"typeName"`
+		// The full package path of the type.  Leave blank if the type has no package alias (and is therefore defined in the current package).
+		PkgPath string `json:"pkgPath"`
+	} `json:"unionTypesFound"`
 }
 
 // A single assertion. There should be one assertion per value given in the test data.
