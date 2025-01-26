@@ -1,0 +1,12 @@
+
+{
+  "assertions": [
+    {
+      "path": ".Field1.NestedField1.Field2",
+      "value": {
+        "!type": "AssertStringValue",
+        "value": "test string"
+      }
+    }
+  ]
+}

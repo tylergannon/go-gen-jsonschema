@@ -52,17 +52,10 @@ func BuildTestDataAnthropic(ctx context.Context, inputFile, outputDir, apiKey st
 }
 
 func buildOneAnthropic(ctx context.Context, inputData json.RawMessage, schema *jsonschema.Schema, objectName, outputDir string, i int, client *anthropic.Client, forceCreate bool) (err error) {
-	outputPath := fmt.Sprintf("%s/%s_data_%d.json", outputDir, objectName, i)
-
-	// Check if file exists and matches schema, unless force create is enabled
-	if !forceCreate {
-		if existingData, err := os.ReadFile(outputPath); err == nil {
-			if err := schema.Validate(bytes.NewReader(existingData)); err == nil {
-				// File exists and is valid, skip generation
-				return nil
-			}
-		}
-	}
+	var (
+		outputPath = fmt.Sprintf("%s/%s_data_%d.json", outputDir, objectName, i)
+		outputData string
+	)
 
 	fmt.Printf("Building test data for %s, sample %d\n", objectName, i)
 	var sb strings.Builder
@@ -85,7 +78,7 @@ func buildOneAnthropic(ctx context.Context, inputData json.RawMessage, schema *j
 		if startPos == -1 || endPos == -1 {
 			return fmt.Errorf("no %s...%s tags found in response", jsonTag, jsonTagEnd)
 		}
-		outputData := res.Content[0].Text[startPos+len(jsonTag) : endPos]
+		outputData = res.Content[0].Text[startPos+len(jsonTag) : endPos]
 		if err := schema.Validate(bytes.NewReader([]byte(outputData))); err != nil {
 			return fmt.Errorf("invalid test data: %w", err)
 		}
@@ -93,6 +86,7 @@ func buildOneAnthropic(ctx context.Context, inputData json.RawMessage, schema *j
 			return fmt.Errorf("writing test data: %w", err)
 		}
 	}
+	// Make another request to get assertions.
 	return nil
 }
 

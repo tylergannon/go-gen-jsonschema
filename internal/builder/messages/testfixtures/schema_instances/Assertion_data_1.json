@@ -1,0 +1,8 @@
+
+{
+  "path": ".Field1.NestedField1",
+  "value": {
+    "!type": "AssertNumericValue",
+    "value": "123"
+  }
+}

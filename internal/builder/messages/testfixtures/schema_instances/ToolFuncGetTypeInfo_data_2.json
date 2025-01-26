@@ -1,0 +1,6 @@
+
+{
+  "discriminator": "some_value",
+  "typeName": "SomeInterface",
+  "pkgPath": "github.com/example/package/path"
+}
