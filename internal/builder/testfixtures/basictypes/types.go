@@ -1,13 +1,6 @@
 package basictypes
 
-//go:generate go run github.com/tylergannon/go-gen-jsonschema/gen-jsonschema/ --pretty --no-gen-test
-
-import (
-	_ "github.com/anthropics/anthropic-sdk-go"
-	_ "github.com/dave/dst"
-	_ "github.com/openai/openai-go"
-	_ "github.com/tylergannon/structtag"
-)
+//go:generate go run ./gen
 
 // TypeInItsOwnDecl is an integer type that is the only item in its GenDecl
 //

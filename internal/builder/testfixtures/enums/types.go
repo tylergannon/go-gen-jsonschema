@@ -1,12 +1,9 @@
 package basictypes
 
-//go:generate go run github.com/tylergannon/go-gen-jsonschema/gen-jsonschema/ --pretty --no-gen-test
+//go:generate go run ./gen
 
 import (
-	_ "github.com/dave/dst"
-	_ "github.com/openai/openai-go"
 	"github.com/tylergannon/go-gen-jsonschema/internal/builder/testfixtures/enums/enumsremote"
-	_ "github.com/tylergannon/structtag"
 )
 
 // EnumType is an enum type from enumsremote
