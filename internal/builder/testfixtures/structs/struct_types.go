@@ -1,14 +1,6 @@
 package structs
 
-import (
-	_ "github.com/anthropics/anthropic-sdk-go"
-	_ "github.com/dave/dst"
-	_ "github.com/openai/openai-go"
-	_ "github.com/santhosh-tekuri/jsonschema"
-	_ "github.com/tylergannon/structtag"
-)
-
-//go:generate go run github.com/tylergannon/go-gen-jsonschema/gen-jsonschema/ --pretty
+//go:generate go run ./gen
 
 // It's really that way
 type EnumType123 string
