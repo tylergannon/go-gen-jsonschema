@@ -670,7 +670,6 @@ func (s *SchemaBuilder) RenderGoCode() (err error) {
 				Pointer:            option.Indirection == syntax.Pointer,
 			})
 		}
-		fmt.Println("IFacePoop")
 		fmt.Println(InterfaceInfo{
 			TypeNameWithPrefix: importMap.PrefixExpr(ifaceProp.Interface.TypeSpec.Name(), ifacePkg),
 			TypeName:           ifaceProp.Interface.TypeSpec.Name(),

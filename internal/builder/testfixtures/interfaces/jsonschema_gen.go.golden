@@ -32,14 +32,17 @@ func (FancyStruct) Schema() json.RawMessage {
 // UnmarshalJSON is a generated custom json.Unmarshaler implementation for
 // FancyStruct.
 func (f *FancyStruct) UnmarshalJSON(b []byte) (err error) {
+	type Alias FancyStruct
 	type Wrapper struct {
-		*FancyStruct
+		Alias
 		IFace json.RawMessage `json:"iface"`
 	}
 	var wrapper Wrapper
 	if err = json.Unmarshal(b, &wrapper); err != nil {
 		return err
-	} else if f.IFace, err = __jsonUnmarshal__interfaces__TestInterface(wrapper.IFace); err != nil {
+	}
+	*f = FancyStruct(wrapper.Alias)
+	if f.IFace, err = __jsonUnmarshal__interfaces__TestInterface(wrapper.IFace); err != nil {
 		return err
 	}
 	return nil
