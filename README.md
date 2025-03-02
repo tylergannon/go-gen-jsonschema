@@ -24,14 +24,260 @@ Key benefits:
 go install github.com/tylergannon/go-gen-jsonschema/gen-jsonschema@latest
 ```
 
-## 🚀 Quick Start
+## 🚀 Quickstart
 
-1. **Add type definitions** to your Go project
-2. **Run the generator**:
-   ```bash
-   go-gen-jsonschema gen
-   ```
-3. **Use the generated schemas** with your LLM integration
+This quickstart guide will walk you through setting up go-gen-jsonschema and implementing various schema types including basic types, enums, and union types via interfaces.
+
+### 1. Set up your schema.go file
+
+Create a `schema.go` file in your package with the following build tags and imports:
+
+```go
+//go:build jsonschema
+// +build jsonschema
+
+package yourpackage
+
+import (
+	"encoding/json"
+	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+)
+```
+
+### 2. Define schema methods for your types
+
+For each type that needs a JSON schema, add a `Schema()` method stub:
+
+```go
+func (YourType) Schema() (json.RawMessage, error) {
+	panic("not implemented") // This will be replaced by the generator
+}
+```
+
+### 3. Register your types with marker functions
+
+Use the marker functions to register your types for schema generation:
+
+```go
+var (
+	// Register schema methods for your types
+	_ = jsonschema.NewJSONSchemaMethod(YourType.Schema)
+	
+	// For enums (string-based only for now)
+	_ = jsonschema.NewEnumType[EnumType]()
+	
+	// For union types via interfaces
+	_ = jsonschema.NewInterfaceImpl[YourInterface](Implementation1{}, Implementation2{}, (*PointerImplementation)(nil))
+)
+```
+
+### 4. Create a generator
+
+Create a folder named `gen` with a main.go file:
+
+```go
+package main
+
+import (
+	"log"
+	
+	"github.com/tylergannon/go-gen-jsonschema/gen-jsonschema/cmd"
+)
+
+func main() {
+	if err := cmd.Execute(); err != nil {
+		log.Fatal(err)
+	}
+}
+```
+
+### 5. Add a go:generate directive
+
+In your types.go file, add:
+
+```go
+//go:generate go run ./gen
+```
+
+### 6. Generate your schemas
+
+Run:
+
+```bash
+go generate ./...
+```
+
+The generator will create JSON schema files in a `jsonschema` directory and a `jsonschema_gen.go` file with functions to access these schemas at runtime.
+
+## 🔧 Marker Functions Explained
+
+`go-gen-jsonschema` uses marker functions to identify and configure types for schema generation.
+
+### NewJSONSchemaMethod
+
+```go
+_ = jsonschema.NewJSONSchemaMethod(YourType.Schema)
+```
+
+This marker registers a struct method as a stub that will be implemented with a proper JSON schema. Use this for all types that need schemas.
+
+### NewEnumType
+
+```go
+_ = jsonschema.NewEnumType[EnumType]()
+```
+
+Marks a type as an enum. This will generate an enum schema with all const values of this type defined in the same package. Currently only string-based enums are supported.
+
+### NewInterfaceImpl
+
+```go
+_ = jsonschema.NewInterfaceImpl[YourInterface](Implementation1{}, Implementation2{}, (*PointerImplementation)(nil))
+```
+
+Creates a union type from an interface. Pass all implementations of the interface as arguments. For pointer receivers, use `(*Type)(nil)` syntax.
+
+### NewJSONSchemaBuilder
+
+```go
+_ = jsonschema.NewJSONSchemaBuilder[YourType](SchemaFunction)
+```
+
+Similar to NewJSONSchemaMethod but for standalone functions rather than struct methods.
+
+## 📋 Examples
+
+### 🔰 Basic Types
+
+```go
+// types.go
+package example
+
+type UserID int
+type Username string
+
+type User struct {
+    ID       UserID   `json:"id"`
+    Username Username `json:"username"`
+    Email    string   `json:"email"`
+}
+
+// schema.go
+//go:build jsonschema
+// +build jsonschema
+
+package example
+
+import (
+    "encoding/json"
+    jsonschema "github.com/tylergannon/go-gen-jsonschema"
+)
+
+func (User) Schema() (json.RawMessage, error) {
+    panic("not implemented")
+}
+
+var (
+    _ = jsonschema.NewJSONSchemaMethod(User.Schema)
+)
+```
+
+### 🎯 Enum Types
+
+```go
+// types.go
+package example
+
+type Role string
+
+const (
+    RoleAdmin    Role = "admin"
+    RoleUser     Role = "user"
+    RoleGuest    Role = "guest"
+)
+
+type UserWithRole struct {
+    Username string `json:"username"`
+    Role     Role   `json:"role"`
+}
+
+// schema.go
+//go:build jsonschema
+// +build jsonschema
+
+package example
+
+import (
+    "encoding/json"
+    jsonschema "github.com/tylergannon/go-gen-jsonschema"
+)
+
+func (UserWithRole) Schema() (json.RawMessage, error) {
+    panic("not implemented")
+}
+
+var (
+    _ = jsonschema.NewJSONSchemaMethod(UserWithRole.Schema)
+    _ = jsonschema.NewEnumType[Role]()
+)
+```
+
+### 🔄 Union Types via Interfaces
+
+```go
+// types.go
+package example
+
+type PaymentMethod interface {
+    IsPaymentMethod()
+}
+
+type CreditCard struct {
+    CardNumber string `json:"cardNumber"`
+    Expiry     string `json:"expiry"`
+    CVV        string `json:"cvv"`
+}
+
+func (CreditCard) IsPaymentMethod() {}
+
+type BankTransfer struct {
+    AccountNumber string `json:"accountNumber"`
+    RoutingNumber string `json:"routingNumber"`
+}
+
+func (BankTransfer) IsPaymentMethod() {}
+
+type PayPal struct {
+    Email string `json:"email"`
+}
+
+func (*PayPal) IsPaymentMethod() {}
+
+type Payment struct {
+    Amount        float64       `json:"amount"`
+    PaymentMethod PaymentMethod `json:"paymentMethod"`
+}
+
+// schema.go
+//go:build jsonschema
+// +build jsonschema
+
+package example
+
+import (
+    "encoding/json"
+    jsonschema "github.com/tylergannon/go-gen-jsonschema"
+)
+
+func (Payment) Schema() (json.RawMessage, error) {
+    panic("not implemented")
+}
+
+var (
+    _ = jsonschema.NewJSONSchemaMethod(Payment.Schema)
+    _ = jsonschema.NewInterfaceImpl[PaymentMethod](CreditCard{}, BankTransfer{}, (*PayPal)(nil))
+)
+```
 
 ## 💻 Command Line Usage
 
@@ -59,37 +305,6 @@ Options:
 - `-out string`: Path to output file (empty or "--" means print to stdout)
 - `-pkg string`: Package name for generated file (defaults to current directory)
 - `-methods string`: Comma-separated list of methods to generate (format: TypeName=MethodName,TypeName2=MethodName2)
-
-## 📝 Examples
-
-### 🔰 Basic Usage
-
-1. Define your Go types:
-
-```go
-// User represents a system user
-type User struct {
-    ID        int    `json:"id"`
-    Username  string `json:"username"`
-    Email     string `json:"email"`
-    CreatedAt time.Time `json:"createdAt"`
-}
-```
-
-2. Run the generator:
-
-```bash
-go-gen-jsonschema gen
-```
-
-3. Use the generated schema with an LLM:
-
-```go
-schema, _ := schemas.UserSchema()
-llmResponse := callLLM(prompt, schema)
-var user User
-json.Unmarshal(llmResponse, &user)
-```
 
 ## ✨ Features
 
