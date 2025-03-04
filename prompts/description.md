@@ -125,7 +125,7 @@ import (
 	jsonschema "github.com/tylergannon/go-gen-jsonschema"
 )
 
-func (FancyStruct) Schema() (json.RawMessage, error) {
+func (FancyStruct) Schema() json.RawMessage {
 	panic("not implemented")
 }
 

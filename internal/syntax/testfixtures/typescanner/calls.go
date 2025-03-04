@@ -5,23 +5,24 @@ package typescanner
 
 import (
 	"encoding/json"
+
 	jsonschema "github.com/tylergannon/go-gen-jsonschema"
 	"github.com/tylergannon/go-gen-jsonschema/internal/syntax/testfixtures/typescanner/scannersubpkg"
 )
 
-func (TypeForSchemaMethod) Schema() (json.RawMessage, error) {
+func (TypeForSchemaMethod) Schema() json.RawMessage {
 	panic("not implemented")
 }
 
-func (*PointerTypeForSchemaMethod) Schema() (json.RawMessage, error) {
+func (*PointerTypeForSchemaMethod) Schema() json.RawMessage {
 	panic("not implemented")
 }
 
-func TypeSchema() (json.RawMessage, error) {
+func TypeSchema() json.RawMessage {
 	panic("not implemented")
 }
 
-func TypeSchema2() (json.RawMessage, error) {
+func TypeSchema2() json.RawMessage {
 	panic("not implemented")
 }
 

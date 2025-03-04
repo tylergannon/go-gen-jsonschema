@@ -9,7 +9,7 @@ import (
     jsonschema "github.com/tylergannon/go-gen-jsonschema"
 )
 {{ range .Methods }}
-func ({{.TypeName}}) {{.MethodName}}() (json.RawMessage, error) {
+func ({{.TypeName}}) {{.MethodName}}() json.RawMessage {
     panic("not implemented")
 }
 {{ end }}

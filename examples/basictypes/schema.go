@@ -11,33 +11,33 @@ import (
 
 // Schema method for SimpleInt.
 // This stub will be replaced with a proper implementation during code generation.
-// The method signature must match exactly: (json.RawMessage, error)
-func (SimpleInt) Schema() (json.RawMessage, error) {
+// The method signature must match exactly: json.RawMessage
+func (SimpleInt) Schema() json.RawMessage {
 	panic("not implemented") // This will be replaced by the generator
 }
 
 // Schema method for SimpleString.
-func (SimpleString) Schema() (json.RawMessage, error) {
+func (SimpleString) Schema() json.RawMessage {
 	panic("not implemented")
 }
 
 // Schema method for SimpleFloat.
-func (SimpleFloat) Schema() (json.RawMessage, error) {
+func (SimpleFloat) Schema() json.RawMessage {
 	panic("not implemented")
 }
 
 // Schema method for SimpleStruct.
-func (SimpleStruct) Schema() (json.RawMessage, error) {
+func (SimpleStruct) Schema() json.RawMessage {
 	panic("not implemented")
 }
 
 // Schema method for TypeInNestedDecl.
-func (TypeInNestedDecl) Schema() (json.RawMessage, error) {
+func (TypeInNestedDecl) Schema() json.RawMessage {
 	panic("not implemented")
 }
 
 // Schema method for AnotherNestedType.
-func (AnotherNestedType) Schema() (json.RawMessage, error) {
+func (AnotherNestedType) Schema() json.RawMessage {
 	panic("not implemented")
 }
 

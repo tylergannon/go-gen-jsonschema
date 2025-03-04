@@ -5,14 +5,15 @@ package structs
 
 import (
 	"encoding/json"
+
 	jsonschema "github.com/tylergannon/go-gen-jsonschema"
 )
 
-func (StructType1) Schema() (json.RawMessage, error) {
+func (StructType1) Schema() json.RawMessage {
 	panic("not implemented")
 }
 
-func (StructType2) Schema() (json.RawMessage, error) {
+func (StructType2) Schema() json.RawMessage {
 	panic("not implemented")
 }
 

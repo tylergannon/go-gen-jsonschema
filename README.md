@@ -49,7 +49,7 @@ import (
 For each type that needs a JSON schema, add a `Schema()` method stub:
 
 ```go
-func (YourType) Schema() (json.RawMessage, error) {
+func (YourType) Schema() json.RawMessage {
 	panic("not implemented") // This will be replaced by the generator
 }
 ```
@@ -173,7 +173,7 @@ import (
     jsonschema "github.com/tylergannon/go-gen-jsonschema"
 )
 
-func (User) Schema() (json.RawMessage, error) {
+func (User) Schema() json.RawMessage {
     panic("not implemented")
 }
 
@@ -212,7 +212,7 @@ import (
     jsonschema "github.com/tylergannon/go-gen-jsonschema"
 )
 
-func (UserWithRole) Schema() (json.RawMessage, error) {
+func (UserWithRole) Schema() json.RawMessage {
     panic("not implemented")
 }
 
@@ -269,7 +269,7 @@ import (
     jsonschema "github.com/tylergannon/go-gen-jsonschema"
 )
 
-func (Payment) Schema() (json.RawMessage, error) {
+func (Payment) Schema() json.RawMessage {
     panic("not implemented")
 }
 

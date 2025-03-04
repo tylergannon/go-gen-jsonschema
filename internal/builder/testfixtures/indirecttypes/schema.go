@@ -5,66 +5,67 @@ package basictypes
 
 import (
 	"encoding/json"
+
 	jsonschema "github.com/tylergannon/go-gen-jsonschema"
 )
 
-func (IntType) Schema() (json.RawMessage, error) {
+func (IntType) Schema() json.RawMessage {
 	panic("not implemented")
 }
 
-func (PointerToIntType) Schema() (json.RawMessage, error) {
+func (PointerToIntType) Schema() json.RawMessage {
 	panic("not implemented")
 }
 
-func (PointerToNamedType) Schema() (json.RawMessage, error) {
+func (PointerToNamedType) Schema() json.RawMessage {
 	panic("not implemented")
 }
 
-func (DefinedAsNamedType) Schema() (json.RawMessage, error) {
+func (DefinedAsNamedType) Schema() json.RawMessage {
 	panic("not implemented")
 }
 
-func (SliceOfPointerToInt) Schema() (json.RawMessage, error) {
+func (SliceOfPointerToInt) Schema() json.RawMessage {
 	panic("not implemented")
 }
 
-func (SliceOfPointerToNamedType) Schema() (json.RawMessage, error) {
+func (SliceOfPointerToNamedType) Schema() json.RawMessage {
 	panic("not implemented")
 }
 
-func (SliceOfNamedType) Schema() (json.RawMessage, error) {
+func (SliceOfNamedType) Schema() json.RawMessage {
 	panic("not implemented")
 }
 
-func (NamedSliceType) Schema() (json.RawMessage, error) {
+func (NamedSliceType) Schema() json.RawMessage {
 	panic("not implemented")
 }
 
-func (NamedNamedSliceType) Schema() (json.RawMessage, error) {
+func (NamedNamedSliceType) Schema() json.RawMessage {
 	panic("not implemented")
 }
 
-func (SliceOfNamedNamedSliceType) Schema() (json.RawMessage, error) {
+func (SliceOfNamedNamedSliceType) Schema() json.RawMessage {
 	panic("not implemented")
 }
 
-func (PointerToRemoteType) Schema() (json.RawMessage, error) {
+func (PointerToRemoteType) Schema() json.RawMessage {
 	panic("not implemented")
 }
 
-func (DefinedAsRemoteType) Schema() (json.RawMessage, error) {
+func (DefinedAsRemoteType) Schema() json.RawMessage {
 	panic("not implemented")
 }
 
-func (DefinedAsRemoteSliceType) Schema() (json.RawMessage, error) {
+func (DefinedAsRemoteSliceType) Schema() json.RawMessage {
 	panic("not implemented")
 }
 
-func (DefinedAsPointerToRemoteSliceType) Schema() (json.RawMessage, error) {
+func (DefinedAsPointerToRemoteSliceType) Schema() json.RawMessage {
 	panic("not implemented")
 }
 
-func (DefinedAsSliceOfRemoteSliceType) Schema() (json.RawMessage, error) {
+func (DefinedAsSliceOfRemoteSliceType) Schema() json.RawMessage {
 	panic("not implemented")
 }
 

@@ -5,22 +5,23 @@ package basictypes
 
 import (
 	"encoding/json"
+
 	jsonschema "github.com/tylergannon/go-gen-jsonschema"
 )
 
-func (TypeInItsOwnDecl) Schema() (json.RawMessage, error) {
+func (TypeInItsOwnDecl) Schema() json.RawMessage {
 	panic("not implemented")
 }
 
-func (TypeInNestedDecl) Schema() (json.RawMessage, error) {
+func (TypeInNestedDecl) Schema() json.RawMessage {
 	panic("not implemented")
 }
 
-func (TypeInSharedDecl) Schema() (json.RawMessage, error) {
+func (TypeInSharedDecl) Schema() json.RawMessage {
 	panic("not implemented")
 }
 
-func (StringTypeInSharedDecl) Schema() (json.RawMessage, error) {
+func (StringTypeInSharedDecl) Schema() json.RawMessage {
 	panic("not implemented")
 }
 

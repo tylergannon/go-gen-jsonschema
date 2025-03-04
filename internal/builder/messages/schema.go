@@ -9,15 +9,15 @@ import (
 	jsonschema "github.com/tylergannon/go-gen-jsonschema"
 )
 
-func (Assertion) Schema() (json.RawMessage, error) {
+func (Assertion) Schema() json.RawMessage {
 	panic("not implemented")
 }
 
-func (ToolFuncGetTypeInfo) Schema() (json.RawMessage, error) {
+func (ToolFuncGetTypeInfo) Schema() json.RawMessage {
 	panic("not implemented")
 }
 
-func (GeneratedTestResponse) Schema() (json.RawMessage, error) {
+func (GeneratedTestResponse) Schema() json.RawMessage {
 	panic("not implemented")
 }
 

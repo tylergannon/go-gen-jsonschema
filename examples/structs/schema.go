@@ -10,27 +10,27 @@ import (
 )
 
 // Schema method for Address.
-func (Address) Schema() (json.RawMessage, error) {
+func (Address) Schema() json.RawMessage {
 	panic("not implemented")
 }
 
 // Schema method for ContactInfo.
-func (ContactInfo) Schema() (json.RawMessage, error) {
+func (ContactInfo) Schema() json.RawMessage {
 	panic("not implemented")
 }
 
 // Schema method for Person.
-func (Person) Schema() (json.RawMessage, error) {
+func (Person) Schema() json.RawMessage {
 	panic("not implemented")
 }
 
 // Schema method for Organization.
-func (Organization) Schema() (json.RawMessage, error) {
+func (Organization) Schema() json.RawMessage {
 	panic("not implemented")
 }
 
 // Schema method for Department.
-func (Department) Schema() (json.RawMessage, error) {
+func (Department) Schema() json.RawMessage {
 	panic("not implemented")
 }
 

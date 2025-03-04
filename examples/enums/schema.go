@@ -11,22 +11,22 @@ import (
 
 // Schema method for Status.
 // This stub will be replaced with a proper implementation during code generation.
-func (Status) Schema() (json.RawMessage, error) {
+func (Status) Schema() json.RawMessage {
 	panic("not implemented")
 }
 
 // Schema method for Priority.
-func (Priority) Schema() (json.RawMessage, error) {
+func (Priority) Schema() json.RawMessage {
 	panic("not implemented")
 }
 
 // Schema method for Task.
-func (Task) Schema() (json.RawMessage, error) {
+func (Task) Schema() json.RawMessage {
 	panic("not implemented")
 }
 
 // Schema method for SliceOfStatus.
-func (SliceOfStatus) Schema() (json.RawMessage, error) {
+func (SliceOfStatus) Schema() json.RawMessage {
 	panic("not implemented")
 }
 

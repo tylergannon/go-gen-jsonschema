@@ -12,63 +12,63 @@ import (
 // Schema methods for all the types we want to generate schemas for.
 // Each method is a stub that will be replaced during code generation.
 
-func (SimpleInt) Schema() (json.RawMessage, error) {
+func (SimpleInt) Schema() json.RawMessage {
 	panic("not implemented")
 }
 
-func (PointerToInt) Schema() (json.RawMessage, error) {
+func (PointerToInt) Schema() json.RawMessage {
 	panic("not implemented")
 }
 
-func (PointerToSimpleInt) Schema() (json.RawMessage, error) {
+func (PointerToSimpleInt) Schema() json.RawMessage {
 	panic("not implemented")
 }
 
-func (SliceOfInt) Schema() (json.RawMessage, error) {
+func (SliceOfInt) Schema() json.RawMessage {
 	panic("not implemented")
 }
 
-func (SliceOfSimpleInt) Schema() (json.RawMessage, error) {
+func (SliceOfSimpleInt) Schema() json.RawMessage {
 	panic("not implemented")
 }
 
-func (SliceOfPointerToInt) Schema() (json.RawMessage, error) {
+func (SliceOfPointerToInt) Schema() json.RawMessage {
 	panic("not implemented")
 }
 
-func (SliceOfPointerToSimpleInt) Schema() (json.RawMessage, error) {
+func (SliceOfPointerToSimpleInt) Schema() json.RawMessage {
 	panic("not implemented")
 }
 
-func (NamedSliceType) Schema() (json.RawMessage, error) {
+func (NamedSliceType) Schema() json.RawMessage {
 	panic("not implemented")
 }
 
-func (Person) Schema() (json.RawMessage, error) {
+func (Person) Schema() json.RawMessage {
 	panic("not implemented")
 }
 
-func (PointerToPerson) Schema() (json.RawMessage, error) {
+func (PointerToPerson) Schema() json.RawMessage {
 	panic("not implemented")
 }
 
-func (SliceOfPerson) Schema() (json.RawMessage, error) {
+func (SliceOfPerson) Schema() json.RawMessage {
 	panic("not implemented")
 }
 
-func (SliceOfPointerToPerson) Schema() (json.RawMessage, error) {
+func (SliceOfPointerToPerson) Schema() json.RawMessage {
 	panic("not implemented")
 }
 
-func (MapOfStringToPerson) Schema() (json.RawMessage, error) {
+func (MapOfStringToPerson) Schema() json.RawMessage {
 	panic("not implemented")
 }
 
-func (MapOfStringToPointerToPerson) Schema() (json.RawMessage, error) {
+func (MapOfStringToPointerToPerson) Schema() json.RawMessage {
 	panic("not implemented")
 }
 
-func (ComplexStruct) Schema() (json.RawMessage, error) {
+func (ComplexStruct) Schema() json.RawMessage {
 	panic("not implemented")
 }
 

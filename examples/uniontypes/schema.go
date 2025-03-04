@@ -10,43 +10,43 @@ import (
 )
 
 // Schema method for Circle.
-func (Circle) Schema() (json.RawMessage, error) {
+func (Circle) Schema() json.RawMessage {
 	panic("not implemented")
 }
 
 // Schema method for Rectangle.
-func (Rectangle) Schema() (json.RawMessage, error) {
+func (Rectangle) Schema() json.RawMessage {
 	panic("not implemented")
 }
 
 // Schema method for Triangle.
-func (Triangle) Schema() (json.RawMessage, error) {
+func (Triangle) Schema() json.RawMessage {
 	panic("not implemented")
 }
 
 // Schema method for Drawing.
-func (Drawing) Schema() (json.RawMessage, error) {
+func (Drawing) Schema() json.RawMessage {
 	panic("not implemented")
 }
 
 // Schema method for CreditCard.
-func (CreditCard) Schema() (json.RawMessage, error) {
+func (CreditCard) Schema() json.RawMessage {
 	panic("not implemented")
 }
 
 // Schema method for BankTransfer.
-func (BankTransfer) Schema() (json.RawMessage, error) {
+func (BankTransfer) Schema() json.RawMessage {
 	panic("not implemented")
 }
 
 // Schema method for DigitalWallet.
 // Note that this matches the receiver type of the Process method.
-func (*DigitalWallet) Schema() (json.RawMessage, error) {
+func (*DigitalWallet) Schema() json.RawMessage {
 	panic("not implemented")
 }
 
 // Schema method for Payment.
-func (Payment) Schema() (json.RawMessage, error) {
+func (Payment) Schema() json.RawMessage {
 	panic("not implemented")
 }
 

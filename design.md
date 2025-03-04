@@ -121,7 +121,7 @@ return nil, fmt.Errorf("no transformer claimed %s.%s", id.PkgPath, id.Name)
 //go:embed jsonschema/*.json
 var schemaFS embed.FS
 
-func MyTypeSchema() (json.RawMessage, error) {
+func MyTypeSchema() json.RawMessage {
 data, err := schemaFS.ReadFile("jsonschema/MyType.json")
 if err != nil { ... }
 return data, nil

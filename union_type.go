@@ -10,9 +10,9 @@ type (
 
 	InterfaceMarker struct{}
 
-	SchemaFunction func() (json.RawMessage, error)
+	SchemaFunction func() json.RawMessage
 
-	SchemaMethod[T any] func(T) (json.RawMessage, error)
+	SchemaMethod[T any] func(T) json.RawMessage
 )
 
 // NewJSONSchemaBuilder registers a function as being a stub that should be

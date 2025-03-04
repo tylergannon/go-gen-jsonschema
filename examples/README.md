@@ -83,7 +83,7 @@ All `schema.go` files use build tags to ensure they're only compiled during sche
 Each type that needs a schema requires a method stub:
 
 ```go
-func (YourType) Schema() (json.RawMessage, error) {
+func (YourType) Schema() json.RawMessage {
     panic("not implemented")
 }
 ```
