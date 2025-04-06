@@ -44,7 +44,7 @@ var _ = Describe("FlattenTypes", Ordered, func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(flattened).To(BeAssignableToTypeOf(StructType{}))
 		file := &dst.File{Name: dst.NewIdent(scanResult.Pkg.Name)}
-		ts := flattened.TypeSpec.Concrete
+		ts := flattened.Concrete
 		ts.Type = flattened.Expr
 
 		file.Decls = append(file.Decls, &dst.GenDecl{Tok: token.TYPE, Specs: []dst.Spec{

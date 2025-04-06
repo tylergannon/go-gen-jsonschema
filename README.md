@@ -279,6 +279,67 @@ var (
 )
 ```
 
+## 🏗️ Manual Schema Construction
+
+For when a statically generated schema just won't cut it, `go-gen-jsonschema`
+provides a set of helper functions to manually build JSON schemas:
+
+### 🔧 Core Schema Objects
+
+```go
+// JSONSchema - the main schema definition type
+schema := &jsonschema.JSONSchema{
+    Type:        jsonschema.Object,
+    Description: "A user object",
+    Properties: map[string]json.Marshaler{
+        "username": jsonschema.StringSchema("User's username"),
+        "age":      jsonschema.IntSchema("User's age"),
+    },
+    Required: []string{"username"},
+    AdditionalProperties: false,
+}
+
+// Use the Strict field to automatically set additionalProperties: false
+// and make all properties required
+strictSchema := &jsonschema.JSONSchema{
+    Type:        jsonschema.Object,
+    Description: "A user with strict validation",
+    Properties: map[string]json.Marshaler{
+        "username": jsonschema.StringSchema("User's username"),
+        "email":    jsonschema.StringSchema("User's email"),
+    },
+    Strict: true, // Automatically adds all properties to Required and sets AdditionalProperties to false
+}
+```
+
+### 📝 Basic Schemas
+
+```go
+// Create primitive type schemas
+stringSchema := jsonschema.StringSchema("A string description")
+boolSchema := jsonschema.BoolSchema("A boolean description")
+intSchema := jsonschema.IntSchema("An integer description")
+```
+
+### 🌟 Specialized Schemas
+
+```go
+// Create an array schema
+arraySchema := jsonschema.ArraySchema(stringSchema, "An array of strings")
+
+// Create an enum schema
+roleSchema := jsonschema.EnumSchema("User role", "admin", "user", "guest")
+
+// Create a const schema (fixed value)
+adminSchema := jsonschema.ConstSchema("admin", "Administrator role")
+
+// Create a reference to another schema
+refSchema := jsonschema.RefSchemaEl("#/$defs/Role")
+
+// Create a union type (anyOf)
+unionSchema := jsonschema.UnionSchemaEl(stringSchema, intSchema)
+```
+
 ## 💻 Command Line Usage
 
 ### 🔨 Generate Schemas

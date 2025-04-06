@@ -138,7 +138,7 @@ func (s SchemaBuilder) getFormattedTypeInfo(typeName, pkgPath string) (string, e
 	}
 
 	file := &dst.File{Name: dst.NewIdent(scan.Pkg.Name)}
-	ts := st.TypeSpec.Concrete
+	ts := st.Concrete
 	ts.Type = st.Expr
 
 	file.Decls = append(file.Decls, &dst.GenDecl{Tok: token.TYPE, Specs: []dst.Spec{
@@ -519,7 +519,7 @@ func (s SchemaBuilder) renderSchema(t syntax.TypeExpr, description string, seen 
 	case *dst.StructType:
 		return s.renderStructSchema(syntax.NewStructType(node, *t.TypeSpec), description, seen)
 	case *dst.InterfaceType:
-		return nil, fmt.Errorf("Interface types are not supported. Found on %s at %s\n", t.ID(), t.Position())
+		return nil, fmt.Errorf("interface types are not supported. Found on %s at %s", t.ID(), t.Position())
 	default:
 		fmt.Printf("Node mapper found unrecognized node type %s at %s\n", t.ToExpr().Details(), t.ToExpr().Position())
 		return nil, errors.New("unhandled node type")
@@ -541,18 +541,27 @@ func (s SchemaBuilder) writeSchema(t syntax.TypeID, targetDir string, noChanges 
 		ok       bool
 		filePath = filepath.Join(targetDir, fmt.Sprintf("%s.json", t.TypeName))
 		sumPath  = filePath + ".sum"
+		tmpFile  *os.File
 	)
 
 	// Create temp file in same directory to ensure same filesystem
-	tmpFile, err := os.CreateTemp(targetDir, fmt.Sprintf("%s.*.json.tmp", t.TypeName))
-	if err != nil {
+	if tmpFile, err = os.CreateTemp(targetDir, fmt.Sprintf("%s.*.json.tmp", t.TypeName)); err != nil {
 		return false, fmt.Errorf("could not create temp file: %w", err)
 	}
 	defer func() {
-		tmpFile.Close()
+		if fCloseErr := tmpFile.Close(); fCloseErr != nil && !errors.Is(fCloseErr, os.ErrClosed) {
+			err = errors.Join(err, fmt.Errorf("could not close temp file: %w", fCloseErr))
+		}
 		// Clean up temp file if we're returning with an error or if we didn't use it
-		if err != nil || wroteNew && noChanges {
-			os.Remove(tmpFile.Name())
+		_, statErr := os.Stat(tmpFile.Name())
+		if os.IsNotExist(statErr) {
+			return
+		} else if statErr != nil {
+			err = errors.Join(err, fmt.Errorf("could not stat temp file: %w", statErr))
+			return
+		}
+		if rmErr := os.Remove(tmpFile.Name()); rmErr != nil && !errors.Is(rmErr, os.ErrNotExist) {
+			err = errors.Join(err, fmt.Errorf("could not remove temp file: %w", rmErr))
 		}
 	}()
 

@@ -235,6 +235,6 @@ func parseLitForType(expr Expr) (TypeID, error) {
 		return parseFuncFromExpr(expr.NewExpr(p.X)), nil
 	default:
 		fmt.Printf("Unrecognized -- %T %#v\n", expr, expr)
-		return TypeID{}, fmt.Errorf("Unrecognized -- %T %#v\n", expr, expr)
+		return TypeID{}, fmt.Errorf("unrecognized -- %T %#v", expr, expr)
 	}
 }
