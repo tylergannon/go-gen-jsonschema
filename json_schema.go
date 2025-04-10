@@ -1,6 +1,7 @@
 package jsonschema
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 )
@@ -43,6 +44,93 @@ func UnionSchemaEl(alts ...json.Marshaler) json.Marshaler {
 // A ref into definitions
 func RefSchemaEl(ref string) json.Marshaler {
 	return basicMarshaler{"$ref": ref}
+}
+
+type SchemaProperty struct {
+	Key   string
+	Value json.Marshaler
+}
+
+type ObjectSchema struct {
+	// May be elided; will be set to "object"
+	Properties           []SchemaProperty
+	Strict               bool
+	Required             []string
+	Description          string
+	AdditionalProperties any
+}
+
+func (s *ObjectSchema) AddProperty(key string, value json.Marshaler) {
+	s.Properties = append(s.Properties, SchemaProperty{Key: key, Value: value})
+}
+
+func (s *ObjectSchema) AddRequiredProperty(key string, value json.Marshaler) {
+	s.Required = append(s.Required, key)
+	s.AddProperty(key, value)
+}
+
+func (s ObjectSchema) MarshalJSON() ([]byte, error) {
+	var (
+		requiredSlice        []string
+		additionalProperties any
+	)
+	if !s.Strict {
+		requiredSlice = s.Required
+		additionalProperties = s.AdditionalProperties
+	} else {
+		additionalProperties = false
+		for _, prop := range s.Properties {
+			requiredSlice = append(requiredSlice, prop.Key)
+		}
+	}
+
+	buf := bytes.NewBuffer(nil)
+	_, _ = buf.WriteString(`{"type":"object"`)
+	// Write description if not empty.
+	if s.Description != "" {
+		description, err := json.Marshal(s.Description)
+		if err != nil {
+			return nil, err
+		}
+		_, _ = buf.WriteString(`,"description":`)
+		_, _ = buf.Write(description)
+	}
+	if len(s.Properties) > 0 {
+		_, _ = buf.WriteString(`,"properties":{`)
+		for i, prop := range s.Properties {
+			propBytes, err := json.Marshal(prop.Value)
+			if err != nil {
+				return nil, err
+			}
+			if i > 0 {
+				_, _ = buf.WriteRune(',')
+			}
+			_, _ = buf.WriteRune('"')
+			_, _ = buf.WriteString(prop.Key)
+			_, _ = buf.WriteRune('"')
+			_, _ = buf.WriteRune(':')
+			_, _ = buf.Write(propBytes)
+		}
+		_, _ = buf.WriteRune('}')
+	}
+	if len(requiredSlice) > 0 {
+		requiredBytes, err := json.Marshal(requiredSlice)
+		if err != nil {
+			return nil, err
+		}
+		_, _ = buf.WriteString(`,"required":`)
+		_, _ = buf.Write(requiredBytes)
+	}
+	if additionalProperties != nil {
+		additionalPropertiesBytes, err := json.Marshal(additionalProperties)
+		if err != nil {
+			return nil, err
+		}
+		_, _ = buf.WriteString(`,"additionalProperties":`)
+		_, _ = buf.Write(additionalPropertiesBytes)
+	}
+	_, _ = buf.WriteRune('}')
+	return buf.Bytes(), nil
 }
 
 // JSONSchema is a struct for describing a JSON Schema. It is fairly limited,
