@@ -60,20 +60,24 @@ func BuildAssertions(ctx context.Context, testData, flattenedStruct, pkgPath str
 	)
 	for !done {
 		if res, err := client.Messages.New(ctx, anthropic.MessageNewParams{
-			Model:     anthropic.F(common.AnthropicModel),
-			MaxTokens: anthropic.F(int64(1024)),
-			System: anthropic.F([]anthropic.TextBlockParam{
-				anthropic.NewTextBlock(systemMessage),
-				anthropic.NewTextBlock(userMessage1 + string(GeneratedTestResponse{}.Schema())),
-			}),
-			Messages: anthropic.F(userMessages),
-			Tools: anthropic.F([]anthropic.ToolUnionUnionParam{
-				anthropic.ToolParam{
-					Name:        anthropic.F("ResolveTypeInfo"),
-					Description: anthropic.F("Resolve the type information for one or more union type instances found in the test data."),
-					InputSchema: anthropic.F[any](ToolFuncGetTypeInfo{}.Schema()),
+			Model:     common.AnthropicModel,
+			MaxTokens: int64(1024),
+			System: []anthropic.TextBlockParam{
+				{Text: systemMessage},
+				{Text: userMessage1 + string(GeneratedTestResponse{}.Schema())},
+			},
+			Messages: userMessages,
+			Tools: []anthropic.ToolUnionParam{
+				{
+					OfTool: &anthropic.ToolParam{
+						Name:        "ResolveTypeInfo",
+						Description: anthropic.Opt("Resolve the type information for one or more union type instances found in the test data."),
+						InputSchema: anthropic.ToolInputSchemaParam{
+							Properties: ToolFuncGetTypeInfo{}.Schema(),
+						},
+					},
 				},
-			}),
+			},
 		}); err != nil {
 			return GeneratedTestResponse{}, fmt.Errorf("building assertions: %w", err)
 		} else if res.StopReason == anthropic.MessageStopReasonToolUse {
@@ -81,23 +85,18 @@ func BuildAssertions(ctx context.Context, testData, flattenedStruct, pkgPath str
 			fmt.Println("Tool use", string(foo))
 			var toolResults []anthropic.ContentBlockParamUnion
 			for _, data := range res.Content {
-				if data.Type == anthropic.ContentBlockTypeToolUse {
+				if data.Type == "tool_use" {
 					switch data.Name {
 					case "ResolveTypeInfo":
 						var arg ToolFuncGetTypeInfo
 						if err := json.Unmarshal([]byte(data.Input), &arg); err != nil {
 							return GeneratedTestResponse{}, fmt.Errorf("unmarshalling tool call argument: %w", err)
 						}
-						var toolResult anthropic.ToolResultBlockParam
 						if result, err := toolFunc(arg); err != nil {
-							toolResult = anthropic.NewToolResultBlock(data.ID, err.Error(), true)
+							toolResults = append(toolResults, anthropic.NewToolResultBlock(data.ID, err.Error(), true))
 						} else {
-							fmt.Println("Data for type", string(data.Input), result)
-							toolResult = anthropic.NewToolResultBlock(data.ID, result, false)
+							toolResults = append(toolResults, anthropic.NewToolResultBlock(data.ID, result, false))
 						}
-						foo, _ = json.MarshalIndent(toolResult, "", "  ")
-						fmt.Println("Tool result", string(foo))
-						toolResults = append(toolResults, toolResult)
 					}
 				}
 			}

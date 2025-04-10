@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	AnthropicModel = anthropic.ModelClaude3_5SonnetLatest
-	OpenAIModel    = openai.ChatModelGPT4o2024_08_06
+	AnthropicModel = anthropic.ModelClaude3_7SonnetLatest
+	OpenAIModel    = openai.ChatModelGPT4oMini2024_07_18
 	JSONTag        = "<json>"
 	JSONTagEnd     = "</json>"
 )

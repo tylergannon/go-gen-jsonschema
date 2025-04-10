@@ -41,7 +41,7 @@ func BuildTestDataAnthropic(ctx context.Context, inputFile, outputDir, apiKey st
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			errs[i] = buildOneAnthropic(ctx, inputData, schema, fileNameWithoutExtension(inputFile), outputDir, i, client)
+			errs[i] = buildOneAnthropic(ctx, inputData, schema, fileNameWithoutExtension(inputFile), outputDir, i, &client)
 		}(i)
 	}
 	wg.Wait()
@@ -56,7 +56,7 @@ func BuildAssertionsAnthropic(ctx context.Context, typeName, pkgPath, typeInfo, 
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			errs[i] = buildOneAssertion(ctx, typeName, pkgPath, typeInfo, dataDir, i, client, toolFn)
+			errs[i] = buildOneAssertion(ctx, typeName, pkgPath, typeInfo, dataDir, i, &client, toolFn)
 		}(i)
 	}
 	wg.Wait()
@@ -109,11 +109,11 @@ func buildOneAnthropic(ctx context.Context, inputData json.RawMessage, schema *j
 	sb.WriteString("The schema is:\n")
 	sb.Write(inputData)
 	if res, err := client.Messages.New(ctx, anthropic.MessageNewParams{
-		Model:     anthropic.F(common.AnthropicModel),
-		MaxTokens: anthropic.F(int64(1024)),
-		Messages: anthropic.F([]anthropic.MessageParam{
+		Model:     common.AnthropicModel,
+		MaxTokens: 1024,
+		Messages: []anthropic.MessageParam{
 			anthropic.NewUserMessage(anthropic.NewTextBlock(sb.String())),
-		}),
+		},
 	}); err != nil {
 		return fmt.Errorf("generating test data: %w", err)
 	} else {
@@ -142,20 +142,19 @@ func BuildTestDataOpenAI(ctx context.Context, inputFile, outputDir, apiKey strin
 	var client = openai.NewClient(option.WithAPIKey(apiKey))
 	for i := 0; i < numSamples; i++ {
 		if res, err := client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
-			Model: openai.F(common.OpenAIModel),
-			Messages: openai.F([]openai.ChatCompletionMessageParamUnion{
+			Model: common.OpenAIModel,
+			Messages: []openai.ChatCompletionMessageParamUnion{
 				openai.SystemMessage("You are a helpful assistant that generates test data for a JSON schema."),
 				openai.UserMessage(fmt.Sprintf("Wherever there is a union type, choose the %d-th option, modulo the number of options.", i)),
-			}),
-			ResponseFormat: openai.F[openai.ChatCompletionNewParamsResponseFormatUnion](
-				openai.ResponseFormatJSONSchemaParam{
-					Type: openai.F(openai.ResponseFormatJSONSchemaTypeJSONSchema),
-					JSONSchema: openai.F(openai.ResponseFormatJSONSchemaJSONSchemaParam{
-						Name:   openai.F(fmt.Sprintf("build-test-data-%d", i)),
-						Schema: openai.F[any](inputData),
-					}),
+			},
+			ResponseFormat: openai.ChatCompletionNewParamsResponseFormatUnion{
+				OfJSONSchema: &openai.ResponseFormatJSONSchemaParam{
+					JSONSchema: openai.ResponseFormatJSONSchemaJSONSchemaParam{
+						Name:   fmt.Sprintf("build-test-data-%d", i),
+						Schema: inputData,
+					},
 				},
-			),
+			},
 		}); err != nil {
 			return fmt.Errorf("generating test data: %w", err)
 		} else {
