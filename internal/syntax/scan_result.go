@@ -534,6 +534,22 @@ func (r *ScanResult) resolveTypeExpr(_expr Expr, seen SeenTypes) error {
 	return nil
 }
 
+// skipField determines whether the type traversal should descend into a given
+// field.  There are three cases for skipping:
+//
+// 1. The field is annotated as jsonschema:"-"
+// 2. The field not exported (lower case name)
+// 3. The field is annotated as a "ref"
+//
+// Ref example:
+// ```go
+//
+//	type User struct {
+//	    ID       UserID   `json:"id"`
+//	    Username Username `json:"username" jsonschema:"ref=definitions/User"`
+//	}
+//
+// ```
 func skipField(field *dst.Field) bool {
 	if len(field.Names) == 0 { // don't skip embedded
 		return false
@@ -547,8 +563,19 @@ func skipField(field *dst.Field) bool {
 		return false
 	}
 	tags, _ := structtag.Parse(strings.Trim(field.Tag.Value, "`"))
-	jsonTag, _ := tags.Get("json")
-	return len(jsonTag.Options) == 0 || jsonTag.Options[0] == "-"
+	tagEntry, err := tags.Get("json")
+	if err == nil {
+		if len(tagEntry.Options) > 0 && tagEntry.Options[0] == "-" {
+			return true
+		}
+	}
+	tagEntry, err = tags.Get("jsonschema")
+	if err == nil {
+		if _, ok := tagEntry.GetOptValue("ref"); ok {
+			return true
+		}
+	}
+	return false
 }
 
 func (r *ScanResult) resolveTypes() error {

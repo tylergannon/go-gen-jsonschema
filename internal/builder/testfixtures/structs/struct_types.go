@@ -45,3 +45,8 @@ type StructType2 struct {
 	// NestedStruct is very interesting
 	NestedStruct []StructType1 `json:"nestedStruct"`
 }
+
+type StructWithRefs struct {
+	Ref1 StructType1 `json:"ref1" jsonschema:"optional,ref=definitions/StructType1"`
+	Ref2 StructType2 `json:"ref2" jsonschema:"ref=definitions/StructType2"`
+}

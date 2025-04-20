@@ -1,0 +1,14 @@
+{
+  "type": "object",
+  "properties": {
+    "ref1": {
+      "$ref": "definitions/StructType1"
+    },
+    "ref2": {
+      "$ref": "definitions/StructType2"
+    }
+  },
+  "required": [
+    "ref2"
+  ]
+}

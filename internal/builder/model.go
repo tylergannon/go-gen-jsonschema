@@ -3,9 +3,10 @@ package builder
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/tylergannon/go-gen-jsonschema/internal/syntax"
 	"strconv"
 	"strings"
+
+	"github.com/tylergannon/go-gen-jsonschema/internal/syntax"
 )
 
 const (
@@ -15,7 +16,7 @@ const (
 type (
 	JSONSchema interface {
 		json.Marshaler
-		jsonSchemaMarker()
+		implementsJSONSchema()
 		TypeID() syntax.TypeID
 	}
 
@@ -73,7 +74,27 @@ type (
 		Options               []ObjectNode
 		TypeID_               syntax.TypeID `json:"-"`
 	}
+
+	RefNode struct {
+		Ref string
+	}
 )
+
+// MarshalJSON implements JSONSchema.
+func (r RefNode) MarshalJSON() ([]byte, error) {
+	return fmt.Appendf(nil, `{"$ref":"%s"}`, r.Ref), nil
+}
+
+// TypeID implements JSONSchema.
+func (r RefNode) TypeID() syntax.TypeID {
+	return syntax.TypeID{
+		TypeName: r.Ref,
+		PkgPath:  "",
+	}
+}
+
+// implementsJSONSchema implements JSONSchema.
+func (r RefNode) implementsJSONSchema() {}
 
 //---------------------------------------------------------------------
 // Ensure each node satisfies the schemaNode or JSONSchema interface
@@ -84,6 +105,7 @@ var (
 	_ schemaNode = ArrayNode{}
 	_ schemaNode = PropertyNode[int]{}
 	_ schemaNode = ObjectNode{}
+	_ JSONSchema = RefNode{}
 )
 
 //---------------------------------------------------------------------
@@ -100,7 +122,7 @@ func (o ObjectNode) Description() string {
 	return o.Desc
 }
 
-func (o ObjectNode) jsonSchemaMarker() {}
+func (o ObjectNode) implementsJSONSchema() {}
 
 func (o ObjectNode) setDescription(s string) schemaNode {
 	o.Desc = s
@@ -177,7 +199,7 @@ func (p PropertyNode[T]) Description() string {
 	return p.Desc
 }
 
-func (p PropertyNode[T]) jsonSchemaMarker() {}
+func (p PropertyNode[T]) implementsJSONSchema() {}
 
 func (p PropertyNode[T]) setDescription(s string) schemaNode {
 	p.Desc = s
@@ -266,7 +288,7 @@ func (a ArrayNode) Description() string {
 	return a.Desc
 }
 
-func (a ArrayNode) jsonSchemaMarker() {}
+func (a ArrayNode) implementsJSONSchema() {}
 
 // Marshal as:
 //
@@ -308,7 +330,7 @@ func (a ArrayNode) MarshalJSON() ([]byte, error) {
 
 func (u UnionTypeNode) TypeID() syntax.TypeID { return u.TypeID_ }
 
-func (u UnionTypeNode) jsonSchemaMarker() {}
+func (u UnionTypeNode) implementsJSONSchema() {}
 
 // Marshal as:
 //

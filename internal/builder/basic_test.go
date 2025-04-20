@@ -16,7 +16,6 @@ var _ = Describe("Basic", func() {
 	// Function to assert successful command execution
 	var CmdSuccessAssertions = func(stdout, stderr string, exitCode int) {
 		Expect(stderr).To(BeEmpty())
-		//fmt.Println(stdout)
 		//Expect(stdout).NotTo(BeEmpty())
 		Expect(exitCode).To(Equal(0))
 	}
@@ -117,6 +116,7 @@ var _ = Describe("Basic", func() {
 			false,
 			"jsonschema/StructType1.json",
 			"jsonschema/StructType2.json",
+			"jsonschema/StructWithRefs.json",
 		),
 		Entry(
 			"Interface types",

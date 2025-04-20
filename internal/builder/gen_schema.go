@@ -19,11 +19,14 @@ import (
 
 	"hash/fnv"
 
+	"slices"
+
 	"github.com/dave/dst"
 	"github.com/dave/dst/decorator"
 	"github.com/dave/dst/decorator/resolver/gopackages"
 	"github.com/tylergannon/go-gen-jsonschema/internal/builder/messages"
 	"github.com/tylergannon/go-gen-jsonschema/internal/syntax"
+	"github.com/tylergannon/structtag"
 )
 
 //go:embed schemas.go.tmpl
@@ -762,7 +765,7 @@ func (s SchemaBuilder) resolveEmbeddedType(t syntax.TypeExpr, seen syntax.SeenTy
 }
 
 func (s SchemaBuilder) renderStructProps(t syntax.StructType, seenProps syntax.SeenProps, seen syntax.SeenTypes) (props ObjectPropSet, err error) {
-	var myProps = append(syntax.SeenProps{}, seenProps...)
+	var myProps = slices.Clone(seenProps)
 	for _, prop := range t.Fields() {
 		if prop.Skip() {
 			continue
@@ -796,8 +799,22 @@ func (s SchemaBuilder) renderStructField(f syntax.StructField, seen syntax.SeenT
 		schema JSONSchema
 		name   string
 	)
-	if schema, err = s.renderSchema(f.Derive(f.Type()), f.Comments(), seen); err != nil {
-		return nil, fmt.Errorf("rendering schema: %w", err)
+	if f.Field.Tag != nil && f.Field.Tag.Value != "" {
+		val := f.Field.Tag.Value
+		tags, err := structtag.Parse(val[1 : len(val)-1])
+		if err == nil {
+			tagEntry, err := tags.Get("jsonschema")
+			if err == nil {
+				if ref, ok := tagEntry.GetOptValue("ref"); ok {
+					schema = RefNode{Ref: ref}
+				}
+			}
+		}
+	}
+	if schema == nil {
+		if schema, err = s.renderSchema(f.Derive(f.Type()), f.Comments(), seen); err != nil {
+			return nil, fmt.Errorf("rendering schema: %w", err)
+		}
 	}
 	for _, name = range f.PropNames() {
 		props = append(props, ObjectProp{

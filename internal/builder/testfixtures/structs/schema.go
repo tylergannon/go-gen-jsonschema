@@ -17,8 +17,13 @@ func (StructType2) Schema() json.RawMessage {
 	panic("not implemented")
 }
 
+func (StructWithRefs) Schema() json.RawMessage {
+	panic("not implemented")
+}
+
 var (
 	_ = jsonschema.NewJSONSchemaMethod(StructType1.Schema)
 	_ = jsonschema.NewJSONSchemaMethod(StructType2.Schema)
+	_ = jsonschema.NewJSONSchemaMethod(StructWithRefs.Schema)
 	_ = jsonschema.NewEnumType[EnumType123]()
 )

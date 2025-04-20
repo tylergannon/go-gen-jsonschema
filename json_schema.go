@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 )
 
 type DataType string
@@ -54,17 +55,60 @@ type SchemaProperty struct {
 }
 
 type ParentSchema struct {
-	ObjectSchema
-	Definitions map[string]SchemaNode
+	*ObjectSchema
+	Definitions []SchemaProperty
 	// The key name for the definitions map.  Defaults to "definitions"
-	DefinitionsKeyName string
+	DefinitionsKeyName string `json:"-"`
+	Title              string `json:"title,omitzero"`
+}
+
+func (s ParentSchema) MarshalJSON() ([]byte, error) {
+	buf := bytes.NewBuffer(nil)
+	_, _ = buf.WriteString(`{"type":"object"`)
+	if s.Title != "" {
+		_, _ = buf.WriteString(`,"title":`)
+		title, err := json.Marshal(s.Title)
+		if err != nil {
+			return nil, err
+		}
+		_, _ = buf.Write(title)
+	}
+	var err error
+	if err = writeObjectSchema(buf, s.ObjectSchema); err != nil {
+		return nil, err
+	}
+	if len(s.Definitions) > 0 {
+		_, _ = buf.WriteRune(',')
+		name := "definitions"
+		if s.DefinitionsKeyName != "" {
+			name = s.DefinitionsKeyName
+		}
+		val, _ := json.Marshal(name)
+		_, _ = buf.Write(val)
+		_, _ = buf.WriteRune(':')
+		_, _ = buf.WriteRune('{')
+		for i, def := range s.Definitions {
+			if i > 0 {
+				_, _ = buf.WriteRune(',')
+			}
+			if val, err = json.Marshal(def.Key); err != nil {
+				return nil, fmt.Errorf("marshaling value %v: %w", def.Key, err)
+			}
+			_, _ = buf.Write(val)
+			_, _ = buf.WriteRune(':')
+			if val, err = json.Marshal(def.Value); err != nil {
+				return nil, fmt.Errorf("marshaling value %v: %w", def.Value, err)
+			}
+			_, _ = buf.Write(val)
+		}
+		_, _ = buf.WriteRune('}')
+	}
+	buf.WriteRune('}')
+	return buf.Bytes(), nil
 }
 
 func (s *ParentSchema) AddDefinition(key string, value SchemaNode) {
-	if s.Definitions == nil {
-		s.Definitions = map[string]SchemaNode{}
-	}
-	s.Definitions[key] = value
+	s.Definitions = append(s.Definitions, SchemaProperty{Key: key, Value: value})
 }
 
 type ObjectSchema struct {
@@ -84,7 +128,9 @@ func (s *ObjectSchema) AddRequiredProperty(key string, value SchemaNode) {
 	s.AddProperty(key, value)
 }
 
-func (s ObjectSchema) MarshalJSON() ([]byte, error) {
+// writeObjectSchema writes the body ObjectSchema to a buffer.
+// It does not write the opening `{"type":"object"` or closing `}`
+func writeObjectSchema(buf *bytes.Buffer, s *ObjectSchema) error {
 	var (
 		requiredSlice        []string
 		additionalProperties any
@@ -99,13 +145,11 @@ func (s ObjectSchema) MarshalJSON() ([]byte, error) {
 		}
 	}
 
-	buf := bytes.NewBuffer(nil)
-	_, _ = buf.WriteString(`{"type":"object"`)
 	// Write description if not empty.
 	if s.Description != "" {
 		description, err := json.Marshal(s.Description)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		_, _ = buf.WriteString(`,"description":`)
 		_, _ = buf.Write(description)
@@ -115,7 +159,7 @@ func (s ObjectSchema) MarshalJSON() ([]byte, error) {
 		for i, prop := range s.Properties {
 			propBytes, err := json.Marshal(prop.Value)
 			if err != nil {
-				return nil, err
+				return err
 			}
 			if i > 0 {
 				_, _ = buf.WriteRune(',')
@@ -131,7 +175,7 @@ func (s ObjectSchema) MarshalJSON() ([]byte, error) {
 	if len(requiredSlice) > 0 {
 		requiredBytes, err := json.Marshal(requiredSlice)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		_, _ = buf.WriteString(`,"required":`)
 		_, _ = buf.Write(requiredBytes)
@@ -139,10 +183,19 @@ func (s ObjectSchema) MarshalJSON() ([]byte, error) {
 	if additionalProperties != nil {
 		additionalPropertiesBytes, err := json.Marshal(additionalProperties)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		_, _ = buf.WriteString(`,"additionalProperties":`)
 		_, _ = buf.Write(additionalPropertiesBytes)
+	}
+	return nil
+}
+
+func (s ObjectSchema) MarshalJSON() ([]byte, error) {
+	buf := bytes.NewBuffer(nil)
+	_, _ = buf.WriteString(`{"type":"object"`)
+	if err := writeObjectSchema(buf, &s); err != nil {
+		return nil, err
 	}
 	_, _ = buf.WriteRune('}')
 	return buf.Bytes(), nil

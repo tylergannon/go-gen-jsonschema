@@ -7,6 +7,39 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestParentSchema_MarshalJSON(t *testing.T) {
+	testData := []struct {
+		item     ParentSchema
+		expected string
+	}{{
+		item: ParentSchema{
+			ObjectSchema: &ObjectSchema{
+				Strict: true,
+				Properties: []SchemaProperty{
+					{
+						Key:   "Foo",
+						Value: RefSchemaEl("$defs/FooBarBaz"),
+					},
+				},
+			},
+			DefinitionsKeyName: "$defs",
+			Definitions: []SchemaProperty{
+				{
+					Key:   "FooBarBaz",
+					Value: EnumSchema("Foo Bar Baz!!!", "Nice", "Awesome", "Excellent"),
+				},
+			},
+		},
+		expected: `{"type":"object","properties":{"Foo":{"$ref":"$defs/FooBarBaz"}},"required":["Foo"],"additionalProperties":false,"$defs":{"FooBarBaz":{"description":"Foo Bar Baz!!!","enum":["Nice","Awesome","Excellent"],"type":"string"}}}`,
+	}}
+
+	for _, data := range testData {
+		marshaled, err := json.Marshal(data.item)
+		assert.NoError(t, err)
+		assert.JSONEq(t, data.expected, string(marshaled))
+	}
+}
+
 func TestObjectSchema_MarshalJSON_Empty(t *testing.T) {
 	schema := &ObjectSchema{}
 	bytes, err := json.Marshal(schema)

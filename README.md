@@ -246,6 +246,39 @@ By default, all nodes are expressed inline and none are moved into
 `definitions`.  This naturally produces a requirement against cyclic types and
 can produce a lot of repetition.
 
+You can manually set a struct field to be represented as a ref in the output,
+using the `jsonschema` tag element `ref`:
+
+```go
+
+type StructWithRefs struct {
+	Ref1 StructType1 `json:"ref1" jsonschema:"optional,ref=definitions/StructType1"`
+	Ref2 StructType2 `json:"ref2" jsonschema:"ref=definitions/StructType2"`
+}
+
+```
+
+yields the following schema:
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "ref1": {
+      "$ref": "definitions/StructType1"
+    },
+    "ref2": {
+      "$ref": "definitions/StructType2"
+    }
+  },
+  "required": [
+    "ref2"
+  ]
+}
+```
+
+**NOTE** you have to define the referenced types manually.
+
 ### 🎯 Enum Types
 
 ```go
