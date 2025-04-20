@@ -632,6 +632,14 @@ func (f StructField) TypeAsExpr() Expr {
 	return NewExpr(f.Field.Type, f.pkg, f.file)
 }
 
+func (f StructField) Required() bool {
+	var tag = f.structTag("jsonschema")
+	if tag == nil {
+		return true
+	}
+	return !slices.Contains(tag.Options, "optional")
+}
+
 func (f StructField) PropNames() (names []string) {
 	switch len(f.Field.Names) {
 	case 0:
@@ -650,7 +658,7 @@ func (f StructField) PropNames() (names []string) {
 	return names
 }
 
-func (f StructField) JSONTag() *structtag.Tag {
+func (f StructField) structTag(name string) *structtag.Tag {
 	if f.Field.Tag == nil {
 		return nil
 	}
@@ -658,7 +666,7 @@ func (f StructField) JSONTag() *structtag.Tag {
 	if err != nil {
 		return nil
 	}
-	tag, err := tags.Get("json")
+	tag, err := tags.Get(name)
 	if err != nil {
 		return nil
 	}
@@ -666,6 +674,10 @@ func (f StructField) JSONTag() *structtag.Tag {
 		return tag
 	}
 	return nil
+}
+
+func (f StructField) JSONTag() *structtag.Tag {
+	return f.structTag("json")
 }
 
 func (f StructField) Skip() bool {

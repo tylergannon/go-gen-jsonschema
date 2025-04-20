@@ -182,6 +182,34 @@ var (
 )
 ```
 
+### Optional Attributes
+
+By default all fields are considered _required_ and will be labeled as such in
+the generated schema.  To make a field _optional_, mark it with a `jsonschema`
+section in the struct tag:
+
+```go
+type User struct {
+    ID       UserID   `json:"id"`
+    Username Username `json:"username" jsonschema:"optional"`
+    Email    string   `json:"email" jsonschema:"optional"`
+}
+```
+
+The above configuration leads to the following schema:
+
+```json
+{
+    "type": "object",
+    "required": ["id"],
+    "properties": {
+        "id": {"type": "string"},
+        "username": {"type": "string"},
+        "email": {"type": "string"}
+    }
+}
+```
+
 ### 🎯 Enum Types
 
 ```go

@@ -803,7 +803,7 @@ func (s SchemaBuilder) renderStructField(f syntax.StructField, seen syntax.SeenT
 		props = append(props, ObjectProp{
 			Name:     name,
 			Schema:   schema,
-			Optional: false,
+			Optional: !f.Required(),
 		})
 	}
 	return props, nil

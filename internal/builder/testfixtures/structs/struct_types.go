@@ -33,9 +33,9 @@ type StructType1 struct {
 		Field3 struct {
 			Field9 []*EnumType123 `json:"field9"`
 			// foobar is just a field where you do things
-			Foobar string `json:"foobar"`
+			Foobar string `json:"foobar" jsonschema:"optional"`
 		}
-	} `json:"field5"`
+	} `json:"field5" jsonschema:"optional"`
 }
 
 // Tell me a story about fairy tails and other things
