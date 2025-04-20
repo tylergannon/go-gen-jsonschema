@@ -210,6 +210,42 @@ The above configuration leads to the following schema:
 }
 ```
 
+### Optional Description
+
+By default, struct fields will take their descriptions from the comments
+attached to each field.  But you may attach a `description` struct tag to any
+field if you prefer to have comments that do not translate into the schema.
+
+```go
+type User struct {
+    // ID string for the user
+    ID       UserID   `json:"id"`
+    // Some notes specific to developers on the project
+    Username Username `json:"username" jsonschema:"optional" description:"Instructions specific to the LLM prompt"`
+    Email    string   `json:"email" jsonschema:"optional"`
+}
+```
+
+Resulting JSON Schema
+
+```json
+{
+    "type": "object",
+    "required": ["id"],
+    "properties": {
+        "id": {"type": "string", "description": "ID string for the user"},
+        "username": {"type": "string", "description": "Instructions specific to the LLM prompt"},
+        "email": {"type": "string"}
+    }
+}
+```
+
+### $ref
+
+By default, all nodes are expressed inline and none are moved into
+`definitions`.  This naturally produces a requirement against cyclic types and
+can produce a lot of repetition.
+
 ### 🎯 Enum Types
 
 ```go

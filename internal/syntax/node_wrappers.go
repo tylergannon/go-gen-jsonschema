@@ -614,6 +614,11 @@ func (s SeenProps) Add(t string) (SeenProps, bool) {
  */
 
 func (f StructField) Comments() string {
+	tag := f.structTag("description")
+	if tag != nil {
+		return tag.Value
+	}
+
 	return BuildComments(f.Field.Decorations())
 }
 
@@ -670,7 +675,7 @@ func (f StructField) structTag(name string) *structtag.Tag {
 	if err != nil {
 		return nil
 	}
-	if len(tag.Options) > 0 {
+	if len(tag.Value) > 0 {
 		return tag
 	}
 	return nil

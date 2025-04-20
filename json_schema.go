@@ -8,6 +8,8 @@ import (
 
 type DataType string
 
+type SchemaNode = json.Marshaler
+
 const (
 	Object  DataType = "object"
 	Number  DataType = "number"
@@ -32,27 +34,40 @@ func (j JSONUnionType) MarshalJSON() ([]byte, error) {
 	return json.Marshal(toMarshal)
 }
 
-var _ json.Marshaler = JSONUnionType{}
+var _ SchemaNode = JSONUnionType{}
 
 // An anyOf element
-func UnionSchemaEl(alts ...json.Marshaler) json.Marshaler {
+func UnionSchemaEl(alts ...SchemaNode) SchemaNode {
 	return basicMarshaler{
 		"anyOf": alts,
 	}
 }
 
 // A ref into definitions
-func RefSchemaEl(ref string) json.Marshaler {
+func RefSchemaEl(ref string) SchemaNode {
 	return basicMarshaler{"$ref": ref}
 }
 
 type SchemaProperty struct {
 	Key   string
-	Value json.Marshaler
+	Value SchemaNode
+}
+
+type ParentSchema struct {
+	ObjectSchema
+	Definitions map[string]SchemaNode
+	// The key name for the definitions map.  Defaults to "definitions"
+	DefinitionsKeyName string
+}
+
+func (s *ParentSchema) AddDefinition(key string, value SchemaNode) {
+	if s.Definitions == nil {
+		s.Definitions = map[string]SchemaNode{}
+	}
+	s.Definitions[key] = value
 }
 
 type ObjectSchema struct {
-	// May be elided; will be set to "object"
 	Properties           []SchemaProperty
 	Strict               bool
 	Required             []string
@@ -60,11 +75,11 @@ type ObjectSchema struct {
 	AdditionalProperties any
 }
 
-func (s *ObjectSchema) AddProperty(key string, value json.Marshaler) {
+func (s *ObjectSchema) AddProperty(key string, value SchemaNode) {
 	s.Properties = append(s.Properties, SchemaProperty{Key: key, Value: value})
 }
 
-func (s *ObjectSchema) AddRequiredProperty(key string, value json.Marshaler) {
+func (s *ObjectSchema) AddRequiredProperty(key string, value SchemaNode) {
 	s.Required = append(s.Required, key)
 	s.AddProperty(key, value)
 }
@@ -148,20 +163,20 @@ type JSONSchema struct {
 	Enum []any `json:"enum,omitempty" yaml:"enum,omitempty"`
 	// Properties describes the properties of an object, if the schema type is
 	// Object.
-	Properties map[string]json.Marshaler `json:"properties,omitempty" yaml:"properties,omitempty"`
+	Properties map[string]SchemaNode `json:"properties,omitempty" yaml:"properties,omitempty"`
 	// Required specifies which properties are required, if the schema type is
 	// Object.
 	Required []string `json:"required,omitempty" yaml:"required,omitempty"`
 	// Items specifies which data type an array contains, if the schema type is
 	// Array.
-	Items json.Marshaler `json:"items,omitempty" yaml:"items,omitempty"`
+	Items SchemaNode `json:"items,omitempty" yaml:"items,omitempty"`
 	// AdditionalProperties is used to control the handling of properties in an
 	// object that are not explicitly defined in the properties section of the
 	// schema. example: additionalProperties: true additionalProperties: false
 	// additionalProperties: jsonschema.Definition{Type: jsonschema.String}
-	AdditionalProperties any                       `json:"additionalProperties,omitempty" yaml:"additionalProperties,omitempty"`
-	Definitions          map[string]json.Marshaler `json:"$defs,omitzero" yaml:"$defs,omitempty"`
-	Const                any                       `json:"const,omitempty"` // Provide a const value
+	AdditionalProperties any                   `json:"additionalProperties,omitempty" yaml:"additionalProperties,omitempty"`
+	Definitions          map[string]SchemaNode `json:"$defs,omitzero" yaml:"$defs,omitempty"`
+	Const                any                   `json:"const,omitempty"` // Provide a const value
 	// Strict will make all properties required and additionalProperties: false if
 	// not already set. pplies only if Type = "object".
 	Strict bool `json:"-" yaml:"-"`
@@ -190,7 +205,7 @@ func (s JSONSchema) MarshalJSON() ([]byte, error) {
 
 var _ json.Marshaler = JSONSchema{}
 
-func ConstSchema[T ~int | ~string](val T, description string) json.Marshaler {
+func ConstSchema[T ~int | ~string](val T, description string) SchemaNode {
 	var schemaType DataType
 	if _, ok := any(val).(int); ok {
 		schemaType = "integer"
@@ -208,7 +223,7 @@ func ConstSchema[T ~int | ~string](val T, description string) json.Marshaler {
 	return res
 }
 
-func EnumSchema[T ~int | ~string](description string, vals ...T) json.Marshaler {
+func EnumSchema[T ~int | ~string](description string, vals ...T) SchemaNode {
 	var schemaType DataType
 	if _, ok := any(vals[0]).(int); ok {
 		schemaType = "integer"
@@ -225,7 +240,7 @@ func EnumSchema[T ~int | ~string](description string, vals ...T) json.Marshaler 
 	return res
 }
 
-func ArraySchema(items json.Marshaler, description string) json.Marshaler {
+func ArraySchema(items SchemaNode, description string) SchemaNode {
 	var res = basicMarshaler{
 		"type":  "array",
 		"items": items,
@@ -236,21 +251,21 @@ func ArraySchema(items json.Marshaler, description string) json.Marshaler {
 	return res
 }
 
-func StringSchema(description string) json.Marshaler {
+func StringSchema(description string) SchemaNode {
 	return basicMarshaler{
 		"type":        String,
 		"description": description,
 	}
 }
 
-func BoolSchema(description string) json.Marshaler {
+func BoolSchema(description string) SchemaNode {
 	return basicMarshaler{
 		"type":        Boolean,
 		"description": description,
 	}
 }
 
-func IntSchema(description string) json.Marshaler {
+func IntSchema(description string) SchemaNode {
 	return basicMarshaler{
 		"type":        Integer,
 		"description": description,
@@ -264,4 +279,4 @@ func (b basicMarshaler) MarshalJSON() ([]byte, error) {
 	return json.Marshal(map[string]any(b))
 }
 
-var _ json.Marshaler = basicMarshaler{}
+var _ SchemaNode = basicMarshaler{}

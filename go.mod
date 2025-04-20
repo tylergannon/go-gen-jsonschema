@@ -10,7 +10,7 @@ require (
 	github.com/openai/openai-go v0.1.0-beta.10
 	github.com/santhosh-tekuri/jsonschema v1.2.4
 	github.com/stretchr/testify v1.10.0
-	github.com/tylergannon/structtag v0.0.1
+	github.com/tylergannon/structtag v0.1.0
 	golang.org/x/tools v0.32.0
 )
 
