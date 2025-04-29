@@ -180,8 +180,8 @@ func (o ObjectNode) MarshalJSON() ([]byte, error) {
 		}
 		sb.WriteByte(']')
 	}
+	sb.WriteString(`,"additionalProperties":false}`)
 
-	sb.WriteByte('}')
 	return []byte(sb.String()), nil
 }
 

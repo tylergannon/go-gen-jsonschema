@@ -44,7 +44,8 @@
             "field1",
             "field2",
             "field3"
-          ]
+          ],
+          "additionalProperties": false
         },
         {
           "type": "object",
@@ -69,7 +70,8 @@
             "fork3",
             "fork4",
             "fork5"
-          ]
+          ],
+          "additionalProperties": false
         },
         {
           "type": "object",
@@ -93,7 +95,8 @@
             "fork99",
             "fork10",
             "fork11"
-          ]
+          ],
+          "additionalProperties": false
         }
       ]
     },
@@ -126,7 +129,8 @@
           "Foo",
           "Bar",
           "enumVal"
-        ]
+        ],
+        "additionalProperties": false
       }
     }
   },
@@ -134,5 +138,6 @@
     "enumVal",
     "iface",
     "Details"
-  ]
+  ],
+  "additionalProperties": false
 }

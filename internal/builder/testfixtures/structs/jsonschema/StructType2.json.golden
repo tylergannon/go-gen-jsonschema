@@ -62,13 +62,15 @@
               },
               "required": [
                 "field9"
-              ]
+              ],
+              "additionalProperties": false
             }
           },
           "required": [
             "field2",
             "Field3"
-          ]
+          ],
+          "additionalProperties": false
         }
       }
     },
@@ -139,13 +141,15 @@
                     },
                     "required": [
                       "field9"
-                    ]
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
                   "field2",
                   "Field3"
-                ]
+                ],
+                "additionalProperties": false
               }
             }
           }
@@ -155,7 +159,8 @@
           "field2",
           "field3",
           "field4"
-        ]
+        ],
+        "additionalProperties": false
       }
     }
   },
@@ -165,5 +170,6 @@
     "field3",
     "field4",
     "nestedStruct"
-  ]
+  ],
+  "additionalProperties": false
 }
