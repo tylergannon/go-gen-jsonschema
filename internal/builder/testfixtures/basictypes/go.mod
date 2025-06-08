@@ -1,6 +1,6 @@
 module github.com/tylergannon/go-gen-jsonschema/internal/builder/testfixtures/basictypes
 
-go 1.24.2
+go 1.24.4
 
 require github.com/tylergannon/go-gen-jsonschema v0.2.1
 

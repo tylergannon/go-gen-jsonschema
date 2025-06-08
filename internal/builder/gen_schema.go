@@ -1,8 +1,6 @@
 package builder
 
 import (
-	"bytes"
-	"context"
 	_ "embed"
 	"encoding/hex"
 	"encoding/json"
@@ -15,7 +13,6 @@ import (
 	"runtime/debug"
 	"strconv"
 	"strings"
-	"time"
 
 	"hash/fnv"
 
@@ -23,8 +20,6 @@ import (
 
 	"github.com/dave/dst"
 	"github.com/dave/dst/decorator"
-	"github.com/dave/dst/decorator/resolver/gopackages"
-	"github.com/tylergannon/go-gen-jsonschema/internal/builder/messages"
 	"github.com/tylergannon/go-gen-jsonschema/internal/syntax"
 	"github.com/tylergannon/structtag"
 )
@@ -34,7 +29,6 @@ var schemasTemplate string
 
 const maxNestingDepth = 100 // This is not the JSON Schema nesting depth but recursion depth...
 const defaultSubdir = "jsonschema"
-const testDataDir = "testfixtures/schema_instances"
 
 func New(pkg *decorator.Package) (SchemaBuilder, error) {
 	data, err := syntax.LoadPackage(pkg)
@@ -113,144 +107,12 @@ type SchemaBuilder struct {
 	customTypes       map[string][]InterfaceProp
 	Subdir            string
 	Pretty            bool
-	GenerateTests     bool
 	NumTestSamples    int
 	BuildTag          string
 	Imports           []string
 	SpecialTypes      []CustomMarshaledType
 	Interfaces        []InterfaceInfo
 	DiscriminatorProp string
-}
-
-func (s SchemaBuilder) getFormattedTypeInfo(typeName, pkgPath string) (string, error) {
-	scan, ok := s.Scan.GetPackage(pkgPath)
-	if !ok {
-		return "", fmt.Errorf("package %s not found", pkgPath)
-	}
-	typeSpec, ok := scan.LocalNamedTypes[typeName]
-	if !ok {
-		return "", fmt.Errorf("type %s not found in package %s", typeName, pkgPath)
-	}
-	st, err := s.resolveEmbeddedType(typeSpec.Derive().Derive(typeSpec.Concrete.Name), nil)
-	if err != nil {
-		return "", err
-	}
-
-	if st, err = st.FlattenScan(scan.Pkg.PkgPath, scan, nil); err != nil {
-		return "", err
-	}
-
-	file := &dst.File{Name: dst.NewIdent(scan.Pkg.Name)}
-	ts := st.Concrete
-	ts.Type = st.Expr
-
-	file.Decls = append(file.Decls, &dst.GenDecl{Tok: token.TYPE, Specs: []dst.Spec{
-		ts,
-	}})
-	buf := bytes.Buffer{}
-	printer := decorator.NewRestorerWithImports(
-		pkgPath,
-		gopackages.New(""),
-	)
-	err = printer.Fprint(&buf, file)
-	if err != nil {
-		return "", err
-	}
-	formatted, err := FormatCodeWithGoimports(buf.Bytes())
-	if err != nil {
-		return "", err
-	}
-
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("## %s\n", typeName))
-	sb.WriteString(fmt.Sprintf("Type Name: %s\n", typeName))
-	sb.WriteString(fmt.Sprintf("Pkg Path: %s\n", pkgPath))
-	sb.WriteString("```go\n")
-	sb.WriteString(string(formatted))
-	sb.WriteString("\n```\n\n")
-
-	return sb.String(), nil
-}
-
-// getFlattenedTypeInfo is the fulfillment function for the tool function used
-// by LLM to resolve union types in the test data.
-func (s SchemaBuilder) getFlattenedTypeInfo(msg messages.ToolFuncGetTypeInfo) (string, error) {
-	var sb strings.Builder
-	fmt.Println(s.Interfaces)
-	fmt.Println("getFlattenedTypeInfo", msg)
-	for _, typeInfo := range msg.UnionTypesFound {
-		fmt.Println("typeInfo", typeInfo.Discriminator, typeInfo.TypeName, typeInfo.PkgPath)
-		for _, iface := range s.Interfaces {
-			fmt.Println("iface", iface.TypeName, iface.PkgPath)
-			if iface.TypeName != typeInfo.TypeName || iface.PkgPath != typeInfo.PkgPath {
-				fmt.Println("skipping", iface.TypeName, iface.PkgPath)
-				continue
-			}
-			var (
-				found  bool
-				choice InterfaceOptionInfo
-			)
-
-			for _, impl := range iface.Options {
-				if impl.Discriminator == typeInfo.Discriminator {
-					found = true
-					choice = impl
-					break
-				}
-			}
-			if !found {
-				return "", fmt.Errorf("no impl found for type %s.%s, discriminator %s", typeInfo.PkgPath, typeInfo.TypeName, typeInfo.Discriminator)
-			}
-
-			formatted, err := s.getFormattedTypeInfo(choice.TypeName, choice.PkgPath)
-			if err != nil {
-				return "", err
-			}
-			sb.WriteString(formatted)
-		}
-	}
-	return sb.String(), nil
-}
-
-func (s SchemaBuilder) RenderTestCodeAnthropic(changedSchemas map[string]bool) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-	defer cancel()
-	anthropicAPIKey := os.Getenv("ANTHROPIC_API_KEY")
-	if anthropicAPIKey == "" {
-		return fmt.Errorf("env ANTHROPIC_API_KEY is not set")
-	}
-	for _, method := range s.Scan.SchemaMethods {
-		// Skip if schema hasn't changed
-		if !changedSchemas[method.Receiver.TypeName] {
-			continue
-		}
-		var err error
-		var typeInfo string
-		if err = BuildTestDataAnthropic(ctx, filepath.Join(s.Subdir, fmt.Sprintf("%s.json", method.Receiver.TypeName)), testDataDir, anthropicAPIKey, s.NumTestSamples); err != nil {
-			return err
-		} else if typeInfo, err = s.getFormattedTypeInfo(method.Receiver.TypeName, method.Receiver.PkgPath); err != nil {
-			return err
-		} else if err = BuildAssertionsAnthropic(ctx, method.Receiver.TypeName, method.Receiver.PkgPath, typeInfo, testDataDir, anthropicAPIKey, s.NumTestSamples, s.getFlattenedTypeInfo); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (s SchemaBuilder) RenderTestCodeOpenAI() error {
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
-	defer cancel()
-	openaiAPIKey := os.Getenv("OPENAI_API_KEY")
-	if openaiAPIKey == "" {
-		return fmt.Errorf("env OPENAI_API_KEY is not set")
-	}
-	for _, method := range s.Scan.SchemaMethods {
-		err := BuildTestDataOpenAI(ctx, filepath.Join(s.Subdir, fmt.Sprintf("%s.json", method.Receiver.TypeName)), testDataDir, openaiAPIKey, s.NumTestSamples)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func (s SchemaBuilder) HaveInterfaces() bool {

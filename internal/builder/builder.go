@@ -11,7 +11,6 @@ import (
 type BuilderArgs struct {
 	TargetDir      string
 	Pretty         bool
-	GenerateTests  bool
 	NumTestSamples int
 	NoChanges      bool // If true, fail if any schema changes are detected
 	Force          bool // If true, force regeneration of schemas even if no changes are detected
@@ -32,7 +31,6 @@ func Run(args BuilderArgs) (err error) {
 		return err
 	}
 	builder.Pretty = args.Pretty
-	builder.GenerateTests = args.GenerateTests
 	builder.NumTestSamples = args.NumTestSamples
 
 	var changedSchemas map[string]bool
@@ -55,11 +53,6 @@ func Run(args BuilderArgs) (err error) {
 
 	if err = builder.RenderGoCode(); err != nil {
 		return err
-	}
-	if args.GenerateTests {
-		if err = builder.RenderTestCodeAnthropic(changedSchemas); err != nil {
-			return err
-		}
 	}
 	return nil
 }

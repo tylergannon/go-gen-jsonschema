@@ -60,7 +60,6 @@ func handleGen(firstArg int) {
 		genCmd         = flag.NewFlagSet("gen", flag.ExitOnError)
 		pretty         = genCmd.Bool("pretty", false, "Enable pretty output")
 		target         = genCmd.String("target", "", "Path to target package (default to local wd)")
-		noGenTests     = genCmd.Bool("no-gen-test", true, "Disable test generation")
 		numTestSamples = genCmd.Int("num-test-samples", 5, "Number of test samples to generate")
 		noChanges      = genCmd.Bool("no-changes", false, "Fail if any schema changes are detected")
 		force          = genCmd.Bool("force", false, "Force regeneration of schemas even if no changes are detected")
@@ -96,7 +95,6 @@ func handleGen(firstArg int) {
 	if err = builder.Run(builder.BuilderArgs{
 		TargetDir:      *target,
 		Pretty:         *pretty,
-		GenerateTests:  !*noGenTests,
 		NumTestSamples: *numTestSamples,
 		NoChanges:      *noChanges,
 		Force:          *force,

@@ -8,9 +8,8 @@ import (
 
 func main() {
 	err := builder.Run(builder.BuilderArgs{
-		TargetDir:     ".",
-		Pretty:        true,
-		GenerateTests: false,
+		TargetDir: ".",
+		Pretty:    true,
 	})
 	if err != nil {
 		log.Fatal(err)
