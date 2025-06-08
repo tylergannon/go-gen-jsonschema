@@ -80,7 +80,7 @@ func BuildAssertions(ctx context.Context, testData, flattenedStruct, pkgPath str
 			},
 		}); err != nil {
 			return GeneratedTestResponse{}, fmt.Errorf("building assertions: %w", err)
-		} else if res.StopReason == anthropic.MessageStopReasonToolUse {
+		} else if res.StopReason == anthropic.StopReasonToolUse {
 			foo, _ := json.MarshalIndent(res.Content, "", "  ")
 			fmt.Println("Tool use", string(foo))
 			var toolResults []anthropic.ContentBlockParamUnion
