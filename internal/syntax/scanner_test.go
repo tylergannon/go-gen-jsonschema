@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"go/token"
 	"path/filepath"
+	"testing"
 
 	"github.com/dave/dst"
 	"github.com/dave/dst/decorator"
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -26,12 +26,16 @@ type fileSpecs struct {
 func LoadDecls(path, fileName string, tok token.Token) []fileSpecs {
 	var result []fileSpecs
 	pkgs, err := Load(path)
-	Expect(err).NotTo(HaveOccurred())
+	if err != nil {
+		panic(err)
+	}
 	for _, pkg := range pkgs {
 		_, err = LoadPackage(pkg)
-		Expect(err).NotTo(HaveOccurred())
+		if err != nil {
+			panic(err)
+		}
 		for _, file := range pkg.Syntax {
-			var pos = nodePosition(pkg, file)
+			pos := nodePosition(pkg, file)
 			if filepath.Base(pos.Filename) != fileName {
 				continue
 			}
@@ -54,167 +58,142 @@ func LoadDecls(path, fileName string, tok token.Token) []fileSpecs {
 	return result
 }
 
-var _ = Describe("FuncCallParser", Ordered, func() {
-	var (
-		specs     []fileSpecs
-		calls     []MarkerFunctionCall
-		valueSpec = func(idx int) ValueSpec {
-			return NewValueSpec(specs[0].genDecl, specs[0].specs[idx].(*dst.ValueSpec), specs[0].pkg, specs[0].file)
-		}
-	)
+func TestFuncCallParser(t *testing.T) {
+	specs := LoadDecls("./testfixtures/typescanner", "calls.go", token.VAR)
+	require.Len(t, specs, 1)
+	require.Len(t, specs[0].specs, 10)
+	valueSpec := func(idx int) ValueSpec {
+		return NewValueSpec(specs[0].genDecl, specs[0].specs[idx].(*dst.ValueSpec), specs[0].pkg, specs[0].file)
+	}
 
-	BeforeAll(func() {
-		specs = LoadDecls("./testfixtures/typescanner", "calls.go", token.VAR)
-		Expect(specs).To(HaveLen(1))
-		Expect(specs[0].specs).To(HaveLen(10))
+	var calls []MarkerFunctionCall
+	for _, spec := range specs[0].specs {
+		calls = append(calls, ParseValueExprForMarkerFunctionCall(NewValueSpec(specs[0].genDecl, spec.(*dst.ValueSpec), specs[0].pkg, specs[0].file))...)
+	}
+	require.Len(t, calls, 10)
+
+	t.Run("Call number 1", func(t *testing.T) {
+		call := ParseValueExprForMarkerFunctionCall(valueSpec(0))[0]
+		require.Equal(t, MarkerFuncNewJSONSchemaMethod, call.CallExpr.MustIdentifyFunc().TypeName)
+		require.Len(t, call.CallExpr.Args(), 1)
+		require.Nil(t, call.TypeArgument())
+		schemaMethod, err := call.ParseSchemaMethod()
+		require.NoError(t, err)
+		require.Equal(t, "Schema", schemaMethod.SchemaMethodName)
+		require.Equal(t, NormalConcrete, schemaMethod.Receiver.Indirection)
+		require.Equal(t, pkgPath, schemaMethod.Receiver.PkgPath)
+		require.Equal(t, "TypeForSchemaMethod", schemaMethod.Receiver.TypeName)
 	})
 
-	It("Figures them all out", func() {
-		for _, spec := range specs[0].specs {
-			_calls := ParseValueExprForMarkerFunctionCall(NewValueSpec(specs[0].genDecl, spec.(*dst.ValueSpec), specs[0].pkg, specs[0].file))
-			calls = append(calls, _calls...)
-		}
-		Expect(calls).To(HaveLen(10))
+	t.Run("Call number 2", func(t *testing.T) {
+		call := ParseValueExprForMarkerFunctionCall(valueSpec(1))[0]
+		require.Equal(t, MarkerFuncNewJSONSchemaMethod, call.CallExpr.MustIdentifyFunc().TypeName)
+		require.Len(t, call.CallExpr.Args(), 1)
+		require.Nil(t, call.TypeArgument())
+		schemaMethod, err := call.ParseSchemaMethod()
+		require.NoError(t, err)
+		require.Equal(t, "Schema", schemaMethod.SchemaMethodName)
+		require.Equal(t, Pointer, schemaMethod.Receiver.Indirection)
+		require.Equal(t, pkgPath, schemaMethod.Receiver.PkgPath)
+		require.Equal(t, "PointerTypeForSchemaMethod", schemaMethod.Receiver.TypeName)
 	})
 
-	It("Call number 1", func() {
-		_call := ParseValueExprForMarkerFunctionCall(valueSpec(0))[0]
-		Expect(_call.CallExpr.MustIdentifyFunc().TypeName).To(Equal(MarkerFuncNewJSONSchemaMethod))
-		Expect(_call.CallExpr.Args()).To(HaveLen(1))
-		Expect(_call.TypeArgument()).To(BeNil())
-
-		schemaMethod, err := _call.ParseSchemaMethod()
-
-		Expect(err).NotTo(HaveOccurred())
-		Expect(schemaMethod.SchemaMethodName).To(Equal("Schema"))
-		Expect(schemaMethod.Receiver.Indirection).To(Equal(NormalConcrete))
-		Expect(schemaMethod.Receiver.PkgPath).To(Equal(pkgPath))
-		Expect(schemaMethod.Receiver.TypeName).To(Equal("TypeForSchemaMethod"))
-	})
-	It("Call number 2", func() {
-		_call := ParseValueExprForMarkerFunctionCall(valueSpec(1))[0]
-		Expect(_call.CallExpr.MustIdentifyFunc().TypeName).To(Equal(MarkerFuncNewJSONSchemaMethod))
-		Expect(_call.CallExpr.Args()).To(HaveLen(1))
-		Expect(_call.TypeArgument()).To(BeNil())
-		schemaMethod, err := _call.ParseSchemaMethod()
-
-		Expect(err).NotTo(HaveOccurred())
-		Expect(schemaMethod.SchemaMethodName).To(Equal("Schema"))
-		Expect(schemaMethod.Receiver.Indirection).To(Equal(Pointer))
-		Expect(schemaMethod.Receiver.PkgPath).To(Equal(pkgPath))
-		Expect(schemaMethod.Receiver.TypeName).To(Equal("PointerTypeForSchemaMethod"))
-	})
-	It("Call number 3", func() {
-		_call := ParseValueExprForMarkerFunctionCall(valueSpec(2))[0]
-		Expect(_call.CallExpr.MustIdentifyFunc().TypeName).To(Equal(MarkerFuncNewJSONSchemaBuilder))
-		Expect(_call.CallExpr.Args()).To(HaveLen(1))
-		Expect(_call.MustTypeArgument()).NotTo(BeNil())
-		Expect(_call.MustTypeArgument().TypeName).To(Equal("TypeForSchemaFunction"))
-		Expect(_call.MustTypeArgument()).ToNot(BeNil())
-		Expect(_call.MustTypeArgument().PkgPath).To(Equal(pkgPath))
-	})
-	It("Call number 4", func() {
-		_call := ParseValueExprForMarkerFunctionCall(valueSpec(3))[0]
-		Expect(_call.CallExpr.MustIdentifyFunc().TypeName).To(Equal(MarkerFuncNewJSONSchemaBuilder))
-		Expect(_call.CallExpr.Args()).To(HaveLen(1))
-		Expect(_call.MustTypeArgument()).NotTo(BeNil())
-		Expect(_call.MustTypeArgument().TypeName).To(Equal("PointerTypeForSchemaFunction"))
-		Expect(_call.MustTypeArgument().Indirection).To(Equal(Pointer))
-		Expect(_call.MustTypeArgument()).ToNot(BeNil())
-		Expect(_call.MustTypeArgument().PkgPath).To(Equal(pkgPath))
+	t.Run("Call number 3", func(t *testing.T) {
+		call := ParseValueExprForMarkerFunctionCall(valueSpec(2))[0]
+		require.Equal(t, MarkerFuncNewJSONSchemaBuilder, call.CallExpr.MustIdentifyFunc().TypeName)
+		require.Len(t, call.CallExpr.Args(), 1)
+		require.NotNil(t, call.MustTypeArgument())
+		require.Equal(t, "TypeForSchemaFunction", call.MustTypeArgument().TypeName)
+		require.Equal(t, pkgPath, call.MustTypeArgument().PkgPath)
 	})
 
-	It("Call number 5", func() {
-		_call := ParseValueExprForMarkerFunctionCall(valueSpec(4))[0]
-		Expect(_call.CallExpr.MustIdentifyFunc().TypeName).To(Equal(MarkerFuncNewInterfaceImpl))
-		Expect(_call.CallExpr.Args()).To(HaveLen(4))
-		Expect(_call.MustTypeArgument()).NotTo(BeNil())
-		Expect(_call.MustTypeArgument().TypeName).To(Equal("MarkerInterface"))
-		Expect(_call.MustTypeArgument().Indirection).To(Equal(NormalConcrete))
-		Expect(_call.MustTypeArgument()).ToNot(BeNil())
-		Expect(_call.MustTypeArgument().PkgPath).To(Equal(pkgPath))
-
-		callArgs, err := _call.ParseTypesFromArgs()
-		Expect(err).NotTo(HaveOccurred())
-		Expect(callArgs).NotTo(BeEmpty())
-		Expect(callArgs[0].TypeName).To(Equal("Type001"))
-		Expect(callArgs[1].TypeName).To(Equal("Type002"))
-		Expect(callArgs[2].TypeName).To(Equal("Type003"))
-		Expect(callArgs[3].TypeName).To(Equal("Type004"))
-
-	})
-	It("Call number 6", func() {
-		_call := ParseValueExprForMarkerFunctionCall(valueSpec(5))[0]
-		Expect(_call.CallExpr.MustIdentifyFunc().TypeName).To(Equal(MarkerFuncNewEnumType))
-		Expect(_call.CallExpr.Args()).To(HaveLen(0))
-		Expect(_call.MustTypeArgument()).NotTo(BeNil())
-		Expect(_call.MustTypeArgument().TypeName).To(Equal("NiceEnumType"))
-		Expect(_call.MustTypeArgument().Indirection).To(Equal(NormalConcrete))
-		Expect(_call.MustTypeArgument()).ToNot(BeNil())
-		Expect(_call.MustTypeArgument().PkgPath).To(Equal(pkgPath))
+	t.Run("Call number 4", func(t *testing.T) {
+		call := ParseValueExprForMarkerFunctionCall(valueSpec(3))[0]
+		require.Equal(t, MarkerFuncNewJSONSchemaBuilder, call.CallExpr.MustIdentifyFunc().TypeName)
+		require.Len(t, call.CallExpr.Args(), 1)
+		require.NotNil(t, call.MustTypeArgument())
+		require.Equal(t, "PointerTypeForSchemaFunction", call.MustTypeArgument().TypeName)
+		require.Equal(t, Pointer, call.MustTypeArgument().Indirection)
+		require.Equal(t, pkgPath, call.MustTypeArgument().PkgPath)
 	})
 
-	It("Call number 7", func() {
-		_call := ParseValueExprForMarkerFunctionCall(valueSpec(6))[0]
-		Expect(_call.CallExpr.MustIdentifyFunc().TypeName).To(Equal(MarkerFuncNewJSONSchemaBuilder))
-		Expect(_call.CallExpr.Args()).To(HaveLen(1))
-		Expect(_call.MustTypeArgument()).NotTo(BeNil())
-		Expect(_call.MustTypeArgument().TypeName).To(Equal("TypeForSchemaFunction"))
-		Expect(_call.MustTypeArgument().Indirection).To(Equal(NormalConcrete))
-		Expect(_call.MustTypeArgument()).NotTo(BeNil())
-		Expect(_call.MustTypeArgument().PkgPath).To(Equal(subpkg))
+	t.Run("Call number 5", func(t *testing.T) {
+		call := ParseValueExprForMarkerFunctionCall(valueSpec(4))[0]
+		require.Equal(t, MarkerFuncNewInterfaceImpl, call.CallExpr.MustIdentifyFunc().TypeName)
+		require.Len(t, call.CallExpr.Args(), 4)
+		require.NotNil(t, call.MustTypeArgument())
+		require.Equal(t, "MarkerInterface", call.MustTypeArgument().TypeName)
+		require.Equal(t, NormalConcrete, call.MustTypeArgument().Indirection)
+		require.Equal(t, pkgPath, call.MustTypeArgument().PkgPath)
+		callArgs, err := call.ParseTypesFromArgs()
+		require.NoError(t, err)
+		require.NotEmpty(t, callArgs)
+		require.Equal(t, "Type001", callArgs[0].TypeName)
+		require.Equal(t, "Type002", callArgs[1].TypeName)
+		require.Equal(t, "Type003", callArgs[2].TypeName)
+		require.Equal(t, "Type004", callArgs[3].TypeName)
 	})
 
-	It("Call number 8", func() {
-		_call := ParseValueExprForMarkerFunctionCall(valueSpec(7))[0]
-		Expect(_call.CallExpr.MustIdentifyFunc().TypeName).To(Equal(MarkerFuncNewJSONSchemaBuilder))
-		Expect(_call.CallExpr.Args()).To(HaveLen(1))
-		Expect(_call.MustTypeArgument()).NotTo(BeNil())
-		Expect(_call.MustTypeArgument().TypeName).To(Equal("PointerTypeForSchemaFunction"))
-		Expect(_call.MustTypeArgument().Indirection).To(Equal(Pointer))
-		Expect(_call.MustTypeArgument()).NotTo(BeNil())
-		Expect(_call.MustTypeArgument().PkgPath).To(Equal(subpkg))
+	t.Run("Call number 6", func(t *testing.T) {
+		call := ParseValueExprForMarkerFunctionCall(valueSpec(5))[0]
+		require.Equal(t, MarkerFuncNewEnumType, call.CallExpr.MustIdentifyFunc().TypeName)
+		require.Len(t, call.CallExpr.Args(), 0)
+		require.NotNil(t, call.MustTypeArgument())
+		require.Equal(t, "NiceEnumType", call.MustTypeArgument().TypeName)
+		require.Equal(t, NormalConcrete, call.MustTypeArgument().Indirection)
+		require.Equal(t, pkgPath, call.MustTypeArgument().PkgPath)
 	})
 
-	It("Call number 9", func() {
-		_call := ParseValueExprForMarkerFunctionCall(valueSpec(8))[0]
-		Expect(_call.CallExpr.MustIdentifyFunc().TypeName).To(Equal(MarkerFuncNewInterfaceImpl))
-		Expect(_call.CallExpr.Args()).To(HaveLen(4))
-		Expect(_call.MustTypeArgument()).NotTo(BeNil())
-		Expect(_call.MustTypeArgument().TypeName).To(Equal("MarkerInterface"))
-		Expect(_call.MustTypeArgument().Indirection).To(Equal(NormalConcrete))
-		Expect(_call.MustTypeArgument()).NotTo(BeNil())
-		Expect(_call.MustTypeArgument().PkgPath).To(Equal(subpkg))
-
-		callArgs, err := _call.ParseTypesFromArgs()
-		Expect(err).NotTo(HaveOccurred())
-		Expect(callArgs).NotTo(BeEmpty())
-		Expect(callArgs[0].TypeName).To(Equal("Type001"))
-		Expect(callArgs[0].PkgPath).To(Equal(subpkg))
-		Expect(callArgs[1].TypeName).To(Equal("Type002"))
-		Expect(callArgs[2].TypeName).To(Equal("Type003"))
-		Expect(callArgs[2].Indirection).To(Equal(Pointer))
-		Expect(callArgs[3].TypeName).To(Equal("Type004"))
-		Expect(callArgs[3].Indirection).To(Equal(Pointer))
+	t.Run("Call number 7", func(t *testing.T) {
+		call := ParseValueExprForMarkerFunctionCall(valueSpec(6))[0]
+		require.Equal(t, MarkerFuncNewJSONSchemaBuilder, call.CallExpr.MustIdentifyFunc().TypeName)
+		require.Len(t, call.CallExpr.Args(), 1)
+		require.NotNil(t, call.MustTypeArgument())
+		require.Equal(t, "TypeForSchemaFunction", call.MustTypeArgument().TypeName)
+		require.Equal(t, NormalConcrete, call.MustTypeArgument().Indirection)
+		require.Equal(t, subpkg, call.MustTypeArgument().PkgPath)
 	})
 
-	It("Call number 10", func() {
-		_call := ParseValueExprForMarkerFunctionCall(valueSpec(9))[0]
-		Expect(_call.CallExpr.MustIdentifyFunc().TypeName).To(Equal(MarkerFuncNewEnumType))
-		Expect(_call.CallExpr.Args()).To(HaveLen(0))
-		Expect(_call.MustTypeArgument()).NotTo(BeNil())
-		Expect(_call.MustTypeArgument().TypeName).To(Equal("NiceEnumType"))
-		Expect(_call.MustTypeArgument().Indirection).To(Equal(NormalConcrete))
-		Expect(_call.MustTypeArgument()).ToNot(BeNil())
-		Expect(_call.MustTypeArgument().PkgPath).To(Equal(subpkg))
+	t.Run("Call number 8", func(t *testing.T) {
+		call := ParseValueExprForMarkerFunctionCall(valueSpec(7))[0]
+		require.Equal(t, MarkerFuncNewJSONSchemaBuilder, call.CallExpr.MustIdentifyFunc().TypeName)
+		require.Len(t, call.CallExpr.Args(), 1)
+		require.NotNil(t, call.MustTypeArgument())
+		require.Equal(t, "PointerTypeForSchemaFunction", call.MustTypeArgument().TypeName)
+		require.Equal(t, Pointer, call.MustTypeArgument().Indirection)
+		require.Equal(t, subpkg, call.MustTypeArgument().PkgPath)
 	})
-})
 
-var _ = Describe("Scanner", func() {
-	It("Basically does stuff", func() {
-		//loadPackage()
+	t.Run("Call number 9", func(t *testing.T) {
+		call := ParseValueExprForMarkerFunctionCall(valueSpec(8))[0]
+		require.Equal(t, MarkerFuncNewInterfaceImpl, call.CallExpr.MustIdentifyFunc().TypeName)
+		require.Len(t, call.CallExpr.Args(), 4)
+		require.NotNil(t, call.MustTypeArgument())
+		require.Equal(t, "MarkerInterface", call.MustTypeArgument().TypeName)
+		require.Equal(t, NormalConcrete, call.MustTypeArgument().Indirection)
+		require.Equal(t, subpkg, call.MustTypeArgument().PkgPath)
+		callArgs, err := call.ParseTypesFromArgs()
+		require.NoError(t, err)
+		require.NotEmpty(t, callArgs)
+		require.Equal(t, subpkg, callArgs[0].PkgPath)
+		require.Equal(t, "Type001", callArgs[0].TypeName)
+		require.Equal(t, "Type002", callArgs[1].TypeName)
+		require.Equal(t, "Type003", callArgs[2].TypeName)
+		require.Equal(t, Pointer, callArgs[2].Indirection)
+		require.Equal(t, "Type004", callArgs[3].TypeName)
+		require.Equal(t, Pointer, callArgs[3].Indirection)
 	})
-})
+
+	t.Run("Call number 10", func(t *testing.T) {
+		call := ParseValueExprForMarkerFunctionCall(valueSpec(9))[0]
+		require.Equal(t, MarkerFuncNewEnumType, call.CallExpr.MustIdentifyFunc().TypeName)
+		require.Len(t, call.CallExpr.Args(), 0)
+		require.NotNil(t, call.MustTypeArgument())
+		require.Equal(t, "NiceEnumType", call.MustTypeArgument().TypeName)
+		require.Equal(t, NormalConcrete, call.MustTypeArgument().Indirection)
+		require.Equal(t, subpkg, call.MustTypeArgument().PkgPath)
+	})
+}
 
 func printStuff(it any) {
 	fmt.Printf("%T %#v\n", it, it)
