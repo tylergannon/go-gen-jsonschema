@@ -36,3 +36,7 @@ type InvalidDueToInterfaceField3 struct {
 type InvalidDueToPrivateField struct {
 	privateField int
 }
+
+func (i InvalidDueToPrivateField) GetPrivateField() int {
+	return i.privateField
+}

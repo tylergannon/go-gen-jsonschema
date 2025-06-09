@@ -119,3 +119,11 @@ type (
 		}
 	}
 )
+
+func (i PointersStructTypeWithIgnoreFields) GetBap() *int {
+	return i.bap
+}
+
+func (i PointersStructTypeWithIgnoreFields) GetBaz() *string {
+	return i.baz
+}

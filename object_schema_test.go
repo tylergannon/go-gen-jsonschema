@@ -12,7 +12,7 @@ func TestObjectSchema(t *testing.T) {
 		schema := &ObjectSchema{Description: "Test schema"}
 		data, err := json.Marshal(schema)
 		assert.NoError(t, err)
-		var result map[string]interface{}
+		var result map[string]any
 		err = json.Unmarshal(data, &result)
 		assert.NoError(t, err)
 		assert.Equal(t, "object", result["type"])
@@ -24,13 +24,13 @@ func TestObjectSchema(t *testing.T) {
 		schema.AddProperty("bar", StringSchema("A string property"))
 		data, err := json.Marshal(schema)
 		assert.NoError(t, err)
-		var result map[string]interface{}
+		var result map[string]any
 		err = json.Unmarshal(data, &result)
 		assert.NoError(t, err)
-		props, ok := result["properties"].(map[string]interface{})
+		props, ok := result["properties"].(map[string]any)
 		assert.True(t, ok)
-		foo := props["foo"].(map[string]interface{})
-		bar := props["bar"].(map[string]interface{})
+		foo := props["foo"].(map[string]any)
+		bar := props["bar"].(map[string]any)
 		assert.Equal(t, "boolean", foo["type"])
 		assert.Equal(t, "A boolean property", foo["description"])
 		assert.Equal(t, "string", bar["type"])
@@ -43,10 +43,10 @@ func TestObjectSchema(t *testing.T) {
 		schema.AddRequiredProperty("bar", StringSchema("A required string property"))
 		data, err := json.Marshal(schema)
 		assert.NoError(t, err)
-		var result map[string]interface{}
+		var result map[string]any
 		err = json.Unmarshal(data, &result)
 		assert.NoError(t, err)
-		required, ok := result["required"].([]interface{})
+		required, ok := result["required"].([]any)
 		assert.True(t, ok)
 		assert.Len(t, required, 1)
 		assert.Equal(t, "bar", required[0])
@@ -56,7 +56,7 @@ func TestObjectSchema(t *testing.T) {
 		schema := &ObjectSchema{Description: "Test schema description"}
 		data, err := json.Marshal(schema)
 		assert.NoError(t, err)
-		var result map[string]interface{}
+		var result map[string]any
 		err = json.Unmarshal(data, &result)
 		assert.NoError(t, err)
 		assert.Equal(t, "Test schema description", result["description"])
@@ -66,7 +66,7 @@ func TestObjectSchema(t *testing.T) {
 		schema := &ObjectSchema{Description: "Test schema", AdditionalProperties: true}
 		data, err := json.Marshal(schema)
 		assert.NoError(t, err)
-		var result map[string]interface{}
+		var result map[string]any
 		err = json.Unmarshal(data, &result)
 		assert.NoError(t, err)
 		assert.Equal(t, true, result["additionalProperties"])
@@ -81,11 +81,11 @@ func TestObjectSchema(t *testing.T) {
 			assert.NoError(t, err)
 			expected := []byte(`{"type":"object","description":"Test schema with strict mode","properties":{"foo":{"description":"A boolean property","type":"boolean"},"bar":{"description":"A string property","type":"string"}},"required":["foo","bar"],"additionalProperties":false}`)
 			assert.Equal(t, string(expected), string(data))
-			var result map[string]interface{}
+			var result map[string]any
 			err = json.Unmarshal(data, &result)
 			assert.NoError(t, err)
 			assert.Equal(t, false, result["additionalProperties"])
-			required, ok := result["required"].([]interface{})
+			required, ok := result["required"].([]any)
 			assert.True(t, ok)
 			assert.Len(t, required, 2)
 			assert.Contains(t, required, "foo")
@@ -97,7 +97,7 @@ func TestObjectSchema(t *testing.T) {
 			schema.AddProperty("foo", BoolSchema("A boolean property"))
 			data, err := json.Marshal(schema)
 			assert.NoError(t, err)
-			var result map[string]interface{}
+			var result map[string]any
 			err = json.Unmarshal(data, &result)
 			assert.NoError(t, err)
 			assert.Equal(t, false, result["additionalProperties"])
@@ -109,10 +109,10 @@ func TestObjectSchema(t *testing.T) {
 			schema.AddProperty("bar", StringSchema("A string property"))
 			data, err := json.Marshal(schema)
 			assert.NoError(t, err)
-			var result map[string]interface{}
+			var result map[string]any
 			err = json.Unmarshal(data, &result)
 			assert.NoError(t, err)
-			required, ok := result["required"].([]interface{})
+			required, ok := result["required"].([]any)
 			assert.True(t, ok)
 			assert.Len(t, required, 2)
 			assert.Contains(t, required, "foo")
@@ -124,7 +124,7 @@ func TestObjectSchema(t *testing.T) {
 		schema := &ObjectSchema{Description: "Test schema", Strict: true}
 		data, err := json.Marshal(schema)
 		assert.NoError(t, err)
-		var result map[string]interface{}
+		var result map[string]any
 		err = json.Unmarshal(data, &result)
 		assert.NoError(t, err)
 		_, hasStrict := result["Strict"]

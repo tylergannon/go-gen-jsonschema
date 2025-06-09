@@ -3,8 +3,9 @@ package builder
 import (
 	"bytes"
 	"fmt"
-	"golang.org/x/tools/imports"
 	"text/template"
+
+	"golang.org/x/tools/imports"
 )
 
 // renderTemplate renders a template with the given data and returns the resulting string.

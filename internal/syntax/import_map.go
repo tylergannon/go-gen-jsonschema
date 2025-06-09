@@ -1,9 +1,10 @@
 package syntax
 
 import (
-	"github.com/dave/dst"
 	"path/filepath"
 	"strings"
+
+	"github.com/dave/dst"
 )
 
 const (

@@ -154,7 +154,7 @@ func handleNew() {
 		PkgName:  pkgName,
 	}
 
-	for _, methodArg := range strings.Split(*methods, ",") {
+	for methodArg := range strings.SplitSeq(*methods, ",") {
 		if len(methodArg) == 0 {
 			continue
 		}

@@ -599,7 +599,7 @@ func (s SeenProps) See(t string) SeenProps {
 }
 
 func (s SeenProps) Copy() SeenProps {
-	return append(SeenProps{}, s...)
+	return slices.Clone(s)
 }
 
 func (s SeenProps) Add(t string) (SeenProps, bool) {

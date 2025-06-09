@@ -61,7 +61,7 @@ type Person struct {
 
 	// Metadata contains any additional information.
 	// Using map[string]interface{} allows for arbitrary JSON.
-	Metadata map[string]interface{} `json:"metadata,omitempty"`
+	Metadata map[string]any `json:"metadata,omitempty"`
 }
 
 // Organization demonstrates a complex struct with nested person references.

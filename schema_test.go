@@ -21,7 +21,7 @@ func TestJSONSchemaStrict(t *testing.T) {
 	t.Run("Sets additionalProperties to false when Strict is true", func(t *testing.T) {
 		data, err := json.Marshal(schema)
 		assert.NoError(t, err)
-		var result map[string]interface{}
+		var result map[string]any
 		err = json.Unmarshal(data, &result)
 		assert.NoError(t, err)
 		assert.Equal(t, false, result["additionalProperties"])
@@ -30,10 +30,10 @@ func TestJSONSchemaStrict(t *testing.T) {
 	t.Run("Includes all property keys in the required array when Strict is true", func(t *testing.T) {
 		data, err := json.Marshal(schema)
 		assert.NoError(t, err)
-		var result map[string]interface{}
+		var result map[string]any
 		err = json.Unmarshal(data, &result)
 		assert.NoError(t, err)
-		required, ok := result["required"].([]interface{})
+		required, ok := result["required"].([]any)
 		assert.True(t, ok)
 		assert.Len(t, required, 2)
 		assert.Contains(t, required, "foo")
@@ -43,7 +43,7 @@ func TestJSONSchemaStrict(t *testing.T) {
 	t.Run("Does not include the Strict field in the marshaled output", func(t *testing.T) {
 		data, err := json.Marshal(schema)
 		assert.NoError(t, err)
-		var result map[string]interface{}
+		var result map[string]any
 		err = json.Unmarshal(data, &result)
 		assert.NoError(t, err)
 		_, hasStrict := result["Strict"]

@@ -1,8 +1,10 @@
 package syntax
 
 import (
-	"github.com/dave/dst"
+	"slices"
 	"strings"
+
+	"github.com/dave/dst"
 )
 
 func BuildComments(decs *dst.NodeDecs) string {
@@ -61,6 +63,6 @@ func clipCommentsString(decs dst.Decorations) dst.Decorations {
 }
 
 func appendDecorations(start dst.Decorations, end dst.Decorations) dst.Decorations {
-	result := append(dst.Decorations{}, start...)
+	result := slices.Clone(start)
 	return append(result, end...)
 }

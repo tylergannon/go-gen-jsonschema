@@ -31,6 +31,10 @@ type SimpleStruct struct {
 	quux string `json:"-"`
 }
 
+func (s SimpleStruct) GetQuux() string {
+	return s.quux
+}
+
 // Build this struct in order to really get a lot of meaning out of life.
 // It's really essential that you get all of this down.
 type SimpleStructWithPointer struct {
@@ -43,6 +47,10 @@ type SimpleStructWithPointer struct {
 	Baz *string `json:"baz"` // But in that case, this will be ignored.
 	// Fields marked as "-" will be ignored.
 	quux *string `json:"-"`
+}
+
+func (s SimpleStructWithPointer) GetQuux() *string {
+	return s.quux
 }
 
 type AnotherStruct struct {
