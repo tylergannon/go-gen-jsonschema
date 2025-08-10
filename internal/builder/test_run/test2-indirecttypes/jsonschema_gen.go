@@ -29,24 +29,6 @@ func (IntType) Schema() json.RawMessage {
 	return data
 }
 
-func (PointerToIntType) Schema() json.RawMessage {
-	const fileName = "jsonschema/PointerToIntType.json"
-	data, err := __gen_jsonschema_fs.ReadFile(fileName)
-	if err != nil {
-		__gen_jsonschema_panic(fileName, err)
-	}
-	return data
-}
-
-func (PointerToNamedType) Schema() json.RawMessage {
-	const fileName = "jsonschema/PointerToNamedType.json"
-	data, err := __gen_jsonschema_fs.ReadFile(fileName)
-	if err != nil {
-		__gen_jsonschema_panic(fileName, err)
-	}
-	return data
-}
-
 func (DefinedAsNamedType) Schema() json.RawMessage {
 	const fileName = "jsonschema/DefinedAsNamedType.json"
 	data, err := __gen_jsonschema_fs.ReadFile(fileName)
@@ -110,15 +92,6 @@ func (SliceOfNamedNamedSliceType) Schema() json.RawMessage {
 	return data
 }
 
-func (PointerToRemoteType) Schema() json.RawMessage {
-	const fileName = "jsonschema/PointerToRemoteType.json"
-	data, err := __gen_jsonschema_fs.ReadFile(fileName)
-	if err != nil {
-		__gen_jsonschema_panic(fileName, err)
-	}
-	return data
-}
-
 func (DefinedAsRemoteType) Schema() json.RawMessage {
 	const fileName = "jsonschema/DefinedAsRemoteType.json"
 	data, err := __gen_jsonschema_fs.ReadFile(fileName)
@@ -130,15 +103,6 @@ func (DefinedAsRemoteType) Schema() json.RawMessage {
 
 func (DefinedAsRemoteSliceType) Schema() json.RawMessage {
 	const fileName = "jsonschema/DefinedAsRemoteSliceType.json"
-	data, err := __gen_jsonschema_fs.ReadFile(fileName)
-	if err != nil {
-		__gen_jsonschema_panic(fileName, err)
-	}
-	return data
-}
-
-func (DefinedAsPointerToRemoteSliceType) Schema() json.RawMessage {
-	const fileName = "jsonschema/DefinedAsPointerToRemoteSliceType.json"
 	data, err := __gen_jsonschema_fs.ReadFile(fileName)
 	if err != nil {
 		__gen_jsonschema_panic(fileName, err)
