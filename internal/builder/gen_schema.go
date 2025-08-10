@@ -42,7 +42,44 @@ func New(pkg *decorator.Package) (SchemaBuilder, error) {
 		Subdir:            defaultSubdir,
 		BuildTag:          syntax.BuildTag,
 		DiscriminatorProp: DefaultDiscriminatorPropName,
+		TypeProvidersMap:  map[string][]FieldProvider{},
 	}
+	// First, collect providers so they're available during mapping
+	for _, m := range data.SchemaMethods {
+		if len(m.Options) > 0 {
+			for _, opt := range m.Options {
+				builder.TypeProvidersMap[m.Receiver.TypeName] = append(builder.TypeProvidersMap[m.Receiver.TypeName], FieldProvider{
+					FieldName:        opt.FieldName,
+					Kind:             string(opt.Kind),
+					ProviderName:     opt.ProviderName,
+					ProviderIsMethod: opt.ProviderIsMethod,
+				})
+			}
+		}
+	}
+	// Build TypeProviders slice for template convenience, computing JSON names for fields
+	for typeName, providers := range builder.TypeProvidersMap {
+		// compute json names from type spec
+		if ts, ok := builder.Scan.LocalNamedTypes[typeName]; ok {
+			if st, ok2 := ts.Type().Expr().(*dst.StructType); ok2 {
+				stWrap := syntax.NewStructType(st, ts)
+				for i := range providers {
+					for _, f := range stWrap.Fields() {
+						for _, name := range f.Field.Names {
+							if name.Name == providers[i].FieldName {
+								jsonNames := f.PropNames()
+								if len(jsonNames) > 0 {
+									providers[i].JSONName = jsonNames[0]
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		builder.TypeProviders = append(builder.TypeProviders, TypeProviders{TypeName: typeName, Providers: providers})
+	}
+	// Now map types
 	for _, m := range data.SchemaMethods {
 		if err = builder.mapType(m.Receiver, syntax.SeenTypes{}); err != nil {
 			return builder, err
@@ -70,6 +107,20 @@ type InterfaceOptionInfo struct {
 	TypeName           string
 	PkgPath            string
 	Pointer            bool
+}
+
+type FieldProvider struct {
+	FieldName        string
+	JSONName         string
+	Kind             string
+	ProviderName     string
+	ProviderIsMethod bool
+}
+
+type TypeProviders struct {
+	TypeName  string
+	IsPointer bool
+	Providers []FieldProvider
 }
 
 type InterfaceInfo struct {
@@ -113,6 +164,10 @@ type SchemaBuilder struct {
 	SpecialTypes      []CustomMarshaledType
 	Interfaces        []InterfaceInfo
 	DiscriminatorProp string
+
+	// Field provider options per type (by receiver type name)
+	TypeProvidersMap map[string][]FieldProvider
+	TypeProviders    []TypeProviders
 }
 
 func (s SchemaBuilder) HaveInterfaces() bool {
@@ -437,13 +492,26 @@ func (s SchemaBuilder) writeSchema(t syntax.TypeID, targetDir string, noChanges 
 
 	hash := fnv.New64a()
 	writer := io.MultiWriter(tmpFile, hash)
-	encoder := json.NewEncoder(writer)
-	if s.Pretty {
-		encoder.SetIndent("", "  ")
-	}
-
-	if err = encoder.Encode(schema); err != nil {
-		return false, fmt.Errorf("could not encode schema: %w", err)
+	// If this type uses providers, the schema is a template; write raw without pretty/validation
+	if _, templated := s.TypeProvidersMap[t.TypeName]; templated {
+		var b []byte
+		if b, err = schema.MarshalJSON(); err != nil {
+			return false, fmt.Errorf("could not marshal template schema: %w", err)
+		}
+		if _, err = writer.Write(b); err != nil {
+			return false, fmt.Errorf("could not write template schema: %w", err)
+		}
+		if _, err = writer.Write([]byte("\n")); err != nil {
+			return false, fmt.Errorf("could not write newline: %w", err)
+		}
+	} else {
+		encoder := json.NewEncoder(writer)
+		if s.Pretty {
+			encoder.SetIndent("", "  ")
+		}
+		if err = encoder.Encode(schema); err != nil {
+			return false, fmt.Errorf("could not encode schema: %w", err)
+		}
 	}
 
 	newChecksum := hex.EncodeToString(hash.Sum(nil))
@@ -656,6 +724,17 @@ func (s SchemaBuilder) renderStructProps(t syntax.StructType, seenProps syntax.S
 	return props, nil
 }
 
+func hasProviderForGoField(list []FieldProvider, goFieldNames []string) bool {
+	for _, it := range list {
+		for _, n := range goFieldNames {
+			if it.FieldName == n {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func (s SchemaBuilder) renderStructField(f syntax.StructField, seen syntax.SeenTypes) (props []ObjectProp, err error) {
 	var (
 		schema JSONSchema
@@ -668,8 +747,25 @@ func (s SchemaBuilder) renderStructField(f syntax.StructField, seen syntax.SeenT
 		}
 	}
 	if schema == nil {
-		if schema, err = s.renderSchema(f.Derive(f.Type()), f.Comments(), seen); err != nil {
-			return nil, fmt.Errorf("rendering schema: %w", err)
+		// If this field has a provider override, emit a template hole
+		if providers, ok := s.TypeProvidersMap[f.Name()]; ok {
+			// Use Go field names for matching
+			var goNames []string
+			for _, ident := range f.Field.Names {
+				goNames = append(goNames, ident.Name)
+			}
+			if hasProviderForGoField(providers, goNames) {
+				// Use JSON property name as placeholder key for template
+				jsonNames := f.PropNames()
+				if len(jsonNames) > 0 {
+					schema = TemplateHoleNode{Name: jsonNames[0]}
+				}
+			}
+		}
+		if schema == nil {
+			if schema, err = s.renderSchema(f.Derive(f.Type()), f.Comments(), seen); err != nil {
+				return nil, fmt.Errorf("rendering schema: %w", err)
+			}
 		}
 	}
 	for _, name = range f.PropNames() {

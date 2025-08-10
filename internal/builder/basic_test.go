@@ -10,8 +10,6 @@ import (
 	"github.com/tylergannon/go-gen-jsonschema/internal/testutils"
 )
 
-const cleanUp = true
-
 type testCase struct {
 	inputDir  string
 	testName  string
@@ -29,9 +27,7 @@ func TestBasic(t *testing.T) {
 		cwd, err := os.Getwd()
 		require.NoError(t, err)
 		tempDir := filepath.Join(cwd, "test_run", tc.testName)
-		if cleanUp {
-			defer os.RemoveAll(tempDir)
-		}
+
 		require.NoError(t, os.RemoveAll(tempDir))
 		require.NoError(t, os.MkdirAll(tempDir, 0755))
 		inputPathFull := filepath.Clean(filepath.Join(cwd, "..", tc.inputDir))
@@ -118,6 +114,15 @@ func TestBasic(t *testing.T) {
 			runGinkgo: false,
 			files: []string{
 				"jsonschema/FancyStruct.json",
+				"jsonschema_gen.go",
+			},
+		},
+		{
+			inputDir:  "builder/testfixtures/providers",
+			testName:  "test6-providers",
+			runGinkgo: false,
+			files: []string{
+				"jsonschema/Example.json",
 				"jsonschema_gen.go",
 			},
 		},
