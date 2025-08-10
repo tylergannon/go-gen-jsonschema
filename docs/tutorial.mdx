@@ -16,6 +16,9 @@ Quickstart
 3) Use the generated `jsonschema/*.json` at build time, or the generated `(T) Schema()`/`RenderedSchema()` at runtime.
 
 Entry points (choose one)
+
+<img alt="Entry points" src="./images/entrypoints.svg" width="680" />
+
 - Method receiver (existing)
   - Example: internal/builder/testfixtures/basictypes/schema.go
   - Pattern:
@@ -46,6 +49,9 @@ Consolidated options
 Attach options to the registration call.
 
 Providers (field schema overrides)
+
+<img alt="Providers rendering" src="./images/providers.svg" width="740" />
+
 - Examples:
   - Integration fixture: internal/builder/testfixtures/providers
   - Tutorial example: examples/v1/providers_rendering
@@ -61,6 +67,9 @@ Providers (field schema overrides)
   - With `WithRenderProviders()`: generator also emits `(T) RenderedSchema() (json.RawMessage, error)` that executes providers and renders the template into concrete JSON.
 
 Enums (including iota)
+
+<img alt="Enums" src="./images/enums.svg" width="680" />
+
 - Examples:
   - Legacy: internal/builder/testfixtures/enums
   - String mode (tutorial): examples/v1/enums_stringmode
@@ -75,6 +84,9 @@ Enums (including iota)
   - String mode names resolve in order: WithEnumName > T.String() > const identifier; duplicates error.
 
 Interfaces (discriminated unions)
+
+<img alt="Interfaces" src="./images/interfaces.svg" width="740" />
+
 - Examples:
   - Legacy: internal/builder/testfixtures/interfaces
   - v1 options: examples/v1/interfaces_options
