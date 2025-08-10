@@ -1,0 +1,8 @@
+{
+  "type": "array",
+  "description": "NamedNamedSliceType is another level of indirection from NamedSliceType",
+  "items": {
+    "type": "integer",
+    "description": "IntType is Foobarbax"
+  }
+}

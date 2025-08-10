@@ -1,0 +1,4 @@
+{
+  "type": "integer",
+  "description": "TypeInNestedDecl is an integer type that's nested in a GenDecl"
+}

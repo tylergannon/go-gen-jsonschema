@@ -1,0 +1,8 @@
+{
+  "type": "array",
+  "description": "NamedSliceType is a slice of a named type.",
+  "items": {
+    "type": "integer",
+    "description": "IntType is Foobarbax"
+  }
+}
