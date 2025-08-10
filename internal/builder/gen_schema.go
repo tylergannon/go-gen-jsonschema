@@ -682,6 +682,13 @@ func (s SchemaBuilder) RenderSchemas(noChanges, force bool) (changedSchemas map[
 		}
 		changedSchemas[method.Receiver.TypeName] = changed || force
 	}
+	for _, fn := range s.Scan.SchemaFuncs {
+		var changed bool
+		if changed, err = s.writeSchema(fn.Receiver, targetDir, noChanges); err != nil {
+			return nil, err
+		}
+		changedSchemas[fn.Receiver.TypeName] = changed || force
+	}
 	return changedSchemas, nil
 }
 

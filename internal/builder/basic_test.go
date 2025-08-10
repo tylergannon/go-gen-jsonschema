@@ -142,6 +142,16 @@ func TestBasic(t *testing.T) {
 				"jsonschema_gen.go",
 			},
 		},
+		{
+			inputDir:  "builder/testfixtures/entrypoints",
+			testName:  "test7-entrypoints",
+			runGinkgo: false,
+			files: []string{
+				"jsonschema/MethodType.json",
+				"jsonschema/FuncType.json",
+				"jsonschema_gen.go",
+			},
+		},
 	}
 
 	for _, tc := range cases {
