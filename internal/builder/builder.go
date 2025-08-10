@@ -33,6 +33,11 @@ func Run(args BuilderArgs) (err error) {
 	builder.Pretty = args.Pretty
 	builder.NumTestSamples = args.NumTestSamples
 
+	// Allow registered transforms to mutate the model before render (no-ops by default)
+	if err = (&builder).applyTransforms(); err != nil {
+		return err
+	}
+
 	var changedSchemas map[string]bool
 	if changedSchemas, err = builder.RenderSchemas(args.NoChanges, args.Force); err != nil {
 		return err

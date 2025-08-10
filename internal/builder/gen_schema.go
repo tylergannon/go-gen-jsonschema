@@ -20,8 +20,8 @@ import (
 
 	"github.com/dave/dst"
 	"github.com/dave/dst/decorator"
+	"github.com/tylergannon/go-gen-jsonschema/internal/common"
 	"github.com/tylergannon/go-gen-jsonschema/internal/syntax"
-	"github.com/tylergannon/structtag"
 )
 
 //go:embed schemas.go.tmpl
@@ -661,16 +661,10 @@ func (s SchemaBuilder) renderStructField(f syntax.StructField, seen syntax.SeenT
 		schema JSONSchema
 		name   string
 	)
+	// Prefer centralized tag parsing
 	if f.Field.Tag != nil && f.Field.Tag.Value != "" {
-		val := f.Field.Tag.Value
-		tags, err := structtag.Parse(val[1 : len(val)-1])
-		if err == nil {
-			tagEntry, err := tags.Get("jsonschema")
-			if err == nil {
-				if ref, ok := tagEntry.GetOptValue("ref"); ok {
-					schema = RefNode{Ref: ref}
-				}
-			}
+		if tag := common.ParseJSONSchemaTag(f.Field.Tag.Value); tag.HasRef {
+			schema = RefNode{Ref: tag.Ref}
 		}
 	}
 	if schema == nil {
