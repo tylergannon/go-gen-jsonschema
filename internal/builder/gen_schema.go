@@ -43,28 +43,140 @@ func New(pkg *decorator.Package) (SchemaBuilder, error) {
 		BuildTag:          syntax.BuildTag,
 		DiscriminatorProp: DefaultDiscriminatorPropName,
 		TypeProvidersMap:  map[string][]FieldProvider{},
-		RenderedTypes:     []string{},
-		Rendered:          map[string]bool{},
+		IfaceV1: make(map[string]map[string]struct {
+			Impls []syntax.TypeID
+			Disc  string
+		}),
+		EnumV1: make(map[string]map[string]struct {
+			Mode  string
+			Names map[string]string
+		}),
+		RenderedTypes: []string{},
+		Rendered:      map[string]bool{},
 	}
 	// First, collect providers so they're available during mapping
+	var foundNewInterfaceOpts bool
+	collectOpts := func(recvName string, opts []syntax.SchemaMethodOptionInfo) {
+		if len(opts) == 0 {
+			return
+		}
+		for _, opt := range opts {
+			switch string(opt.Kind) {
+			case "WithRenderProviders":
+				builder.RenderedTypes = append(builder.RenderedTypes, recvName)
+				builder.Rendered[recvName] = true
+				continue
+			case "WithInterface", "WithInterfaceImpls", "WithDiscriminator":
+				foundNewInterfaceOpts = true
+				continue
+			}
+			builder.TypeProvidersMap[recvName] = append(builder.TypeProvidersMap[recvName], FieldProvider{
+				FieldName:        opt.FieldName,
+				Kind:             string(opt.Kind),
+				ProviderName:     opt.ProviderName,
+				ProviderIsMethod: opt.ProviderIsMethod,
+			})
+		}
+	}
 	for _, m := range data.SchemaMethods {
-		if len(m.Options) > 0 {
-			for _, opt := range m.Options {
-				if string(opt.Kind) == "WithRenderProviders" {
-					builder.RenderedTypes = append(builder.RenderedTypes, m.Receiver.TypeName)
-					builder.Rendered[m.Receiver.TypeName] = true
-					continue
+		collectOpts(m.Receiver.TypeName, m.Options)
+	}
+	for _, f := range data.SchemaFuncs {
+		collectOpts(f.Receiver.TypeName, f.Options)
+	}
+	// Disallow mixing legacy NewInterfaceImpl with new interface options in same package
+	if foundNewInterfaceOpts && len(data.Interfaces) > 0 {
+		return builder, fmt.Errorf("invalid configuration: cannot mix legacy NewInterfaceImpl with v1 interface options in package %s", data.Pkg.PkgPath)
+	}
+
+	// Collect v1 interface options per receiver/field and enum options
+	applyInterfaceOpts := func(recv string, opts []syntax.SchemaMethodOptionInfo) {
+		for _, opt := range opts {
+			switch string(opt.Kind) {
+			case "WithInterface":
+				if builder.IfaceV1[recv] == nil {
+					builder.IfaceV1[recv] = make(map[string]struct {
+						Impls []syntax.TypeID
+						Disc  string
+					})
 				}
-				builder.TypeProvidersMap[m.Receiver.TypeName] = append(builder.TypeProvidersMap[m.Receiver.TypeName], FieldProvider{
-					FieldName:        opt.FieldName,
-					Kind:             string(opt.Kind),
-					ProviderName:     opt.ProviderName,
-					ProviderIsMethod: opt.ProviderIsMethod,
-				})
+				if _, ok := builder.IfaceV1[recv][opt.FieldName]; !ok {
+					builder.IfaceV1[recv][opt.FieldName] = struct {
+						Impls []syntax.TypeID
+						Disc  string
+					}{Impls: nil, Disc: ""}
+				}
+			case "WithEnum":
+				if builder.EnumV1[recv] == nil {
+					builder.EnumV1[recv] = make(map[string]struct {
+						Mode  string
+						Names map[string]string
+					})
+				}
+				if _, ok := builder.EnumV1[recv][opt.FieldName]; !ok {
+					builder.EnumV1[recv][opt.FieldName] = struct {
+						Mode  string
+						Names map[string]string
+					}{Mode: "", Names: map[string]string{}}
+				}
+			case "WithEnumMode":
+				if builder.EnumV1[recv] == nil {
+					builder.EnumV1[recv] = make(map[string]struct {
+						Mode  string
+						Names map[string]string
+					})
+				}
+				cfg := builder.EnumV1[recv][opt.FieldName]
+				cfg.Mode = opt.EnumMode
+				builder.EnumV1[recv][opt.FieldName] = cfg
+			case "WithEnumName":
+				if builder.EnumV1[recv] == nil {
+					builder.EnumV1[recv] = make(map[string]struct {
+						Mode  string
+						Names map[string]string
+					})
+				}
+				cfg := builder.EnumV1[recv][opt.FieldName]
+				if cfg.Names == nil {
+					cfg.Names = map[string]string{}
+				}
+				if opt.EnumConst.TypeName != "" {
+					cfg.Names[opt.EnumConst.TypeName] = opt.EnumName
+				}
+				builder.EnumV1[recv][opt.FieldName] = cfg
+			case "WithDiscriminator":
+
+				if builder.IfaceV1[recv] == nil {
+					builder.IfaceV1[recv] = make(map[string]struct {
+						Impls []syntax.TypeID
+						Disc  string
+					})
+				}
+				curr := builder.IfaceV1[recv][opt.FieldName]
+				curr.Disc = opt.Discriminator
+				builder.IfaceV1[recv][opt.FieldName] = curr
+			case "WithInterfaceImpls":
+				if builder.IfaceV1[recv] == nil {
+					builder.IfaceV1[recv] = make(map[string]struct {
+						Impls []syntax.TypeID
+						Disc  string
+					})
+				}
+				curr := builder.IfaceV1[recv][opt.FieldName]
+				curr.Impls = slices.Clone(opt.ImplTypes)
+				builder.IfaceV1[recv][opt.FieldName] = curr
 			}
 		}
 	}
+	for _, m := range data.SchemaMethods {
+		applyInterfaceOpts(m.Receiver.TypeName, m.Options)
+	}
+	for _, f := range data.SchemaFuncs {
+		applyInterfaceOpts(f.Receiver.TypeName, f.Options)
+	}
+
 	// Build TypeProviders slice for template convenience, computing JSON names for fields
+
 	for typeName, providers := range builder.TypeProvidersMap {
 		// compute json names from type spec
 		if ts, ok := builder.Scan.LocalNamedTypes[typeName]; ok {
@@ -131,11 +243,12 @@ type TypeProviders struct {
 }
 
 type InterfaceInfo struct {
-	TypeNameWithPrefix string
-	TypeName           string
-	PkgPath            string
-	UnmarshalerFunc    string
-	Options            []InterfaceOptionInfo
+	TypeNameWithPrefix    string
+	TypeName              string
+	PkgPath               string
+	UnmarshalerFunc       string
+	DiscriminatorPropName string
+	Options               []InterfaceOptionInfo
 }
 
 func (c *CustomMarshaledType) UnmarshalJSON(data []byte) (err error) {
@@ -175,6 +288,18 @@ type SchemaBuilder struct {
 	// Field provider options per type (by receiver type name)
 	TypeProvidersMap map[string][]FieldProvider
 	TypeProviders    []TypeProviders
+
+	// V1 interface options: receiver -> field -> config
+	IfaceV1 map[string]map[string]struct {
+		Impls []syntax.TypeID
+		Disc  string
+	}
+
+	// Enum options: receiver -> field -> config
+	EnumV1 map[string]map[string]struct {
+		Mode  string            // "strings" or ""
+		Names map[string]string // const ident -> name override
+	}
 
 	// Types requesting rendered provider execution
 	RenderedTypes []string
@@ -579,7 +704,6 @@ func (s SchemaBuilder) writeSchema(t syntax.TypeID, targetDir string, noChanges 
 }
 
 func (s *SchemaBuilder) RenderGoCode() (err error) {
-	var interfaces = map[syntax.TypeID]InterfaceProp{}
 	importMap := s.imports()
 	s.Imports = importMap.ImportStatements()
 
@@ -617,52 +741,46 @@ func (s *SchemaBuilder) RenderGoCode() (err error) {
 			InterfaceProps: itsProps,
 			Initial:        strings.ToLower(n[0:1]),
 		})
-		for _, prop := range itsProps {
-			interfaces[prop.Interface.TypeSpec.ID()] = prop
-		}
-	}
-	for _, ifaceProp := range interfaces {
-		var (
-			discriminators = map[string]bool{}
-			ifacePkg       = ifaceProp.Interface.TypeSpec.Pkg()
-		)
-		var props []InterfaceOptionInfo
-		for _, option := range ifaceProp.Interface.Impls {
-			pkg, ok := s.Scan.GetPackage(option.PkgPath)
-			if !ok {
-				panic("could not find package at RenderGoCode: " + option.PkgPath)
-			}
+		for _, ifaceProp := range itsProps {
 			var (
-				discriminator = option.TypeName
-				i             = 1
+				discriminators = map[string]bool{}
+				ifacePkg       = ifaceProp.Interface.TypeSpec.Pkg()
 			)
-			for discriminators[discriminator] {
-				discriminator = strings.TrimSuffix(discriminator, strconv.Itoa(i-1))
-				discriminator = fmt.Sprintf("%s%d", discriminator, i)
+			var opts []InterfaceOptionInfo
+			for _, option := range ifaceProp.Interface.Impls {
+				pkg, ok := s.Scan.GetPackage(option.PkgPath)
+				if !ok {
+					panic("could not find package at RenderGoCode: " + option.PkgPath)
+				}
+				var (
+					disc = option.TypeName
+					i    = 1
+				)
+				for discriminators[disc] {
+					disc = strings.TrimSuffix(disc, strconv.Itoa(i-1))
+					disc = fmt.Sprintf("%s%d", disc, i)
+				}
+				discriminators[disc] = true
+				opts = append(opts, InterfaceOptionInfo{
+					TypeNameWithPrefix: importMap.PrefixExpr(option.TypeName, pkg.Pkg),
+					Discriminator:      disc,
+					TypeName:           option.TypeName,
+					PkgPath:            option.PkgPath,
+					Pointer:            option.Indirection == syntax.Pointer,
+				})
 			}
-			discriminators[discriminator] = true
-			props = append(props, InterfaceOptionInfo{
-				TypeNameWithPrefix: importMap.PrefixExpr(option.TypeName, pkg.Pkg),
-				Discriminator:      discriminator,
-				TypeName:           option.TypeName,
-				PkgPath:            option.PkgPath,
-				Pointer:            option.Indirection == syntax.Pointer,
+			// Determine discriminator property name for this field-specific unmarshaler (only if overridden)
+			discProp := ifaceProp.DiscPropName
+			s.Interfaces = append(s.Interfaces, InterfaceInfo{
+
+				TypeNameWithPrefix:    importMap.PrefixExpr(ifaceProp.Interface.TypeSpec.Name(), ifacePkg),
+				TypeName:              ifaceProp.Interface.TypeSpec.Name(),
+				PkgPath:               ifacePkg.PkgPath,
+				UnmarshalerFunc:       ifaceProp.UnmarshalerFunc(),
+				DiscriminatorPropName: discProp,
+				Options:               opts,
 			})
 		}
-		fmt.Println(InterfaceInfo{
-			TypeNameWithPrefix: importMap.PrefixExpr(ifaceProp.Interface.TypeSpec.Name(), ifacePkg),
-			TypeName:           ifaceProp.Interface.TypeSpec.Name(),
-			PkgPath:            ifacePkg.PkgPath,
-			UnmarshalerFunc:    ifaceProp.UnmarshalerFunc(),
-			Options:            props,
-		})
-		s.Interfaces = append(s.Interfaces, InterfaceInfo{
-			TypeNameWithPrefix: importMap.PrefixExpr(ifaceProp.Interface.TypeSpec.Name(), ifacePkg),
-			TypeName:           ifaceProp.Interface.TypeSpec.Name(),
-			PkgPath:            ifacePkg.PkgPath,
-			UnmarshalerFunc:    ifaceProp.UnmarshalerFunc(),
-			Options:            props,
-		})
 	}
 	data, err := RenderTemplate(schemasTemplate, s)
 	if err != nil {
@@ -760,7 +878,7 @@ func (s SchemaBuilder) renderStructProps(t syntax.StructType, seenProps syntax.S
 			} else if tempProps, err = s.renderStructProps(embeddedType, myProps, seen); err != nil {
 				return nil, fmt.Errorf("rendering embedded type: %w", err)
 			}
-		} else if tempProps, err = s.renderStructField(prop, seen); err != nil {
+		} else if tempProps, err = s.renderStructField(t, prop, seen); err != nil {
 			return nil, fmt.Errorf("rendering struct field: %w", err)
 		}
 		props = append(props, tempProps...)
@@ -770,16 +888,14 @@ func (s SchemaBuilder) renderStructProps(t syntax.StructType, seenProps syntax.S
 
 func hasProviderForGoField(list []FieldProvider, goFieldNames []string) bool {
 	for _, it := range list {
-		for _, n := range goFieldNames {
-			if it.FieldName == n {
-				return true
-			}
+		if slices.Contains(goFieldNames, it.FieldName) {
+			return true
 		}
 	}
 	return false
 }
 
-func (s SchemaBuilder) renderStructField(f syntax.StructField, seen syntax.SeenTypes) (props []ObjectProp, err error) {
+func (s SchemaBuilder) renderStructField(owner syntax.StructType, f syntax.StructField, seen syntax.SeenTypes) (props []ObjectProp, err error) {
 	var (
 		schema JSONSchema
 		name   string
@@ -791,21 +907,100 @@ func (s SchemaBuilder) renderStructField(f syntax.StructField, seen syntax.SeenT
 		}
 	}
 	if schema == nil {
-		// If this field has a provider override, emit a template hole
-		if providers, ok := s.TypeProvidersMap[f.Name()]; ok {
-			// Use Go field names for matching
-			var goNames []string
-			for _, ident := range f.Field.Names {
-				goNames = append(goNames, ident.Name)
+		// Enums v1
+		if cfgs, okEnum := s.EnumV1[owner.Name()]; okEnum {
+			for _, goField := range f.Field.Names {
+				cfg, ok2 := cfgs[goField.Name]
+				if !ok2 {
+					continue
+				}
+				ident, ok := f.Field.Type.(*dst.Ident)
+				if !ok {
+					continue
+				}
+				pkgPath := ident.Path
+				if pkgPath == "" {
+					pkgPath = s.Scan.Pkg.PkgPath
+				}
+				scanRes, okp := s.Scan.GetPackage(pkgPath)
+				if !okp {
+					continue
+				}
+				enumSet, okE := scanRes.Constants[ident.Name]
+				if !okE {
+					continue
+				}
+				if cfg.Mode == "strings" {
+					var vals []string
+					for _, v := range enumSet.Values {
+						name := v.Value().Names[0].Name
+						if override, okn := cfg.Names[name]; okn {
+							name = override
+						}
+						vals = append(vals, name)
+					}
+					schema = PropertyNode[string]{Typ: "string", Enum: vals, TypeID_: f.ID()}
+				} else {
+					var vals []int
+					iotaVal := 0
+					for _, v := range enumSet.Values {
+						if len(v.Value().Values) > 0 {
+							if bl, ok := v.Value().Values[0].(*dst.BasicLit); ok && bl.Kind == token.INT {
+								if n, err := strconv.Atoi(bl.Value); err == nil {
+									iotaVal = n
+								}
+							}
+						}
+						vals = append(vals, iotaVal)
+						iotaVal++
+					}
+					schema = PropertyNode[int]{Typ: "integer", Enum: vals, TypeID_: f.ID()}
+				}
+				break
 			}
-			if hasProviderForGoField(providers, goNames) {
-				// Use JSON property name as placeholder key for template
-				jsonNames := f.PropNames()
-				if len(jsonNames) > 0 {
-					schema = TemplateHoleNode{Name: jsonNames[0]}
+		}
+		// Interfaces v1
+		if cfgs, okV1 := s.IfaceV1[owner.Name()]; okV1 {
+			for _, goField := range f.Field.Names {
+				if cfg, ok2 := cfgs[goField.Name]; ok2 {
+					var union = UnionTypeNode{DiscriminatorPropName: cfg.Disc, TypeID_: f.ID()}
+					for _, impl := range cfg.Impls {
+						if err = s.mapType(impl, seen); err != nil {
+							return nil, fmt.Errorf("rendering interface impl: %w", err)
+						}
+						implSchema, ok := s.GetSchema(impl)
+						if !ok {
+							return nil, fmt.Errorf("type %s is not a known schema", impl)
+						}
+						obj, ok2b := implSchema.(ObjectNode)
+						if !ok2b {
+							return nil, fmt.Errorf("expected %s to be an object-type schema", impl.TypeName)
+						}
+						obj2 := obj
+						obj2.Discriminator = impl.TypeName
+						union.Options = append(union.Options, obj2)
+					}
+					schema = union
+					break
 				}
 			}
 		}
+		// Providers
+		if schema == nil {
+			if providers, ok := s.TypeProvidersMap[f.Name()]; ok {
+				var goNames []string
+				for _, ident := range f.Field.Names {
+					goNames = append(goNames, ident.Name)
+				}
+				if hasProviderForGoField(providers, goNames) {
+					jsonNames := f.PropNames()
+					if len(jsonNames) > 0 {
+						schema = TemplateHoleNode{Name: jsonNames[0]}
+					}
+				}
+			}
+		}
+		// Fallback
 		if schema == nil {
 			if schema, err = s.renderSchema(f.Derive(f.Type()), f.Comments(), seen); err != nil {
 				return nil, fmt.Errorf("rendering schema: %w", err)
@@ -823,11 +1018,16 @@ func (s SchemaBuilder) renderStructField(f syntax.StructField, seen syntax.SeenT
 }
 
 type InterfaceProp struct {
-	Field     syntax.StructField
-	Interface syntax.IfaceImplementations
+	Field         syntax.StructField
+	Interface     syntax.IfaceImplementations
+	DiscPropName  string
+	FuncNameAlias string
 }
 
 func (s InterfaceProp) UnmarshalerFunc() string {
+	if s.FuncNameAlias != "" {
+		return s.FuncNameAlias
+	}
 	return fmt.Sprintf("__jsonUnmarshal__%s__%s", s.Interface.TypeSpec.Pkg().Name, s.Interface.TypeSpec.Name())
 }
 
@@ -896,6 +1096,40 @@ func (s SchemaBuilder) resolveLocalInterfaceProps(t syntax.StructType, seenProps
 			if !ok {
 				continue
 			}
+			// Prefer v1 interface options if present for this receiver field
+			if cfgs, okMap := s.IfaceV1[t.Name()]; okMap {
+				var handled bool
+				for _, goField := range prop.Field.Names {
+					if cfg, ok2 := cfgs[goField.Name]; ok2 {
+						// Resolve interface TypeSpec for ident
+						pkgPath := ident.Path
+						if pkgPath == "" {
+							pkgPath = s.Scan.Pkg.PkgPath
+						}
+						scanRes, okp := s.Scan.GetPackage(pkgPath)
+						if !okp {
+							return nil, fmt.Errorf("could not find package for interface %s", ident.Name)
+						}
+						ts, okts := scanRes.LocalNamedTypes[ident.Name]
+						if !okts {
+							return nil, fmt.Errorf("could not resolve interface type %s", ident.Name)
+						}
+						iface := syntax.IfaceImplementations{TypeSpec: ts, Impls: cfg.Impls}
+						if len(prop.Field.Names) != 1 {
+							return nil, fmt.Errorf("interface prop %s has more than one field name at %s", strings.Join(prop.PropNames(), ","), prop.Position())
+						}
+						funcAlias := fmt.Sprintf("__jsonUnmarshal__%s__%s__%s__%s", ts.Pkg().Name, ts.Name(), t.Name(), goField.Name)
+						props = append(props, InterfaceProp{Field: prop, Interface: iface, DiscPropName: cfg.Disc, FuncNameAlias: funcAlias})
+						handled = true
+						break
+					}
+				}
+				if handled {
+					continue
+				}
+			}
+			// Legacy interface resolution
+
 			iface, ok := s.findInterfaceImpl(ident, s.Scan.Pkg)
 			if !ok {
 				continue
