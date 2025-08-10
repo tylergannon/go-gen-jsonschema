@@ -1,0 +1,27 @@
+---
+title: go-gen-jsonschema
+description: Get started building your docs site with Starlight.
+template: splash
+hero:
+  tagline: Generate JSON Schema from Go types with confidence.
+  image:
+    file: ../../assets/houston.webp
+  actions:
+    - text: Spec
+      link: /spec/v1/
+    - text: Examples
+      link: /examples/
+    - text: API Reference
+      link: /api/
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+## Explore the docs
+
+<CardGrid stagger>
+  <Card title="Spec" icon="open-book" href="/spec/v1/">Authoritative schema and behavior specification.</Card>
+  <Card title="Examples" icon="code" href="/examples/">Real, runnable examples mirroring the spec.</Card>
+  <Card title="Implementation" icon="setting" href="/implementation/">Design notes and internal architecture.</Card>
+  <Card title="API Reference" icon="right-arrow" href="/api/">Generated Go API docs (godoc → Markdown).</Card>
+</CardGrid>

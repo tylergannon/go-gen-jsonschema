@@ -6,6 +6,8 @@ Generate Golang-friendly JSON schemas for structured LLM responses.
   <img src="gopher-front.svg" alt="Gopher mascot" width="200" height="auto">
 </p>
 
+Docs: https://go-gen-jsonschema.tylergannon.com
+
 ## 🔍 Overview
 
 `go-gen-jsonschema` automatically generates JSON Schema definitions from your Go type definitions, optimized for LLM function calling (OpenAI, Anthropic, etc). It eliminates the need to manually write and maintain JSON schemas, keeping them perfectly in sync with your Go types.
@@ -129,13 +131,23 @@ _ = jsonschema.NewEnumType[EnumType]()
 
 Marks a type as an enum. This will generate an enum schema with all const values of this type defined in the same package. Currently only string-based enums are supported.
 
-### NewInterfaceImpl
+### NewInterfaceImpl (legacy) and v1 interface options
 
 ```go
+// Legacy: global interface registration
 _ = jsonschema.NewInterfaceImpl[YourInterface](Implementation1{}, Implementation2{}, (*PointerImplementation)(nil))
+
+// v1 per-field options (recommended)
+var _ = jsonschema.NewJSONSchemaMethod(
+    ContainerType.Schema,
+    jsonschema.WithInterface(ContainerType{}.Field),                       // mark a specific struct field as a discriminated union
+    jsonschema.WithInterfaceImpls(ContainerType{}.Field, Impl1{}, Impl2{}), // explicit impl set
+    jsonschema.WithDiscriminator(ContainerType{}.Field, "!kind"),          // per-field discriminator property name
+)
 ```
 
-Creates a union type from an interface. Pass all implementations of the interface as arguments. For pointer receivers, use `(*Type)(nil)` syntax.
+- v1 options allow configuring union behavior per struct field, including a custom discriminator property used in both anyOf emission and generated unmarshaler code.
+- You cannot mix legacy NewInterfaceImpl and v1 interface options in the same package.
 
 ### NewJSONSchemaBuilder
 
@@ -280,6 +292,8 @@ yields the following schema:
 **NOTE** you have to define the referenced types manually.
 
 ### 🎯 Enum Types
+
+Note: v1 introduces optional per-field enum configuration helpers (WithEnum, WithEnumMode(EnumStrings), WithEnumName), which will be documented post-v1. The legacy NewEnumType[Role]() remains supported.
 
 ```go
 // types.go
