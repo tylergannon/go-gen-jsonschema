@@ -1,11 +1,12 @@
 test:
-    ginkgo ./...
+    go test ./...
 
 watch focus:
-    ginkgo watch --focus "{{focus}}" ./...
+    # no ginkgo; use `go test` with -run for focus
+    go test ./... -run '{{focus}}'
 
 testregistry:
-    cd internal/typeregistry && ginkgo
+    cd internal/typeregistry && go test ./...
 
 lint:
     go mod tidy
