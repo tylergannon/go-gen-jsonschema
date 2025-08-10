@@ -43,11 +43,18 @@ func New(pkg *decorator.Package) (SchemaBuilder, error) {
 		BuildTag:          syntax.BuildTag,
 		DiscriminatorProp: DefaultDiscriminatorPropName,
 		TypeProvidersMap:  map[string][]FieldProvider{},
+		RenderedTypes:     []string{},
+		Rendered:          map[string]bool{},
 	}
 	// First, collect providers so they're available during mapping
 	for _, m := range data.SchemaMethods {
 		if len(m.Options) > 0 {
 			for _, opt := range m.Options {
+				if string(opt.Kind) == "WithRenderProviders" {
+					builder.RenderedTypes = append(builder.RenderedTypes, m.Receiver.TypeName)
+					builder.Rendered[m.Receiver.TypeName] = true
+					continue
+				}
 				builder.TypeProvidersMap[m.Receiver.TypeName] = append(builder.TypeProvidersMap[m.Receiver.TypeName], FieldProvider{
 					FieldName:        opt.FieldName,
 					Kind:             string(opt.Kind),
@@ -168,6 +175,10 @@ type SchemaBuilder struct {
 	// Field provider options per type (by receiver type name)
 	TypeProvidersMap map[string][]FieldProvider
 	TypeProviders    []TypeProviders
+
+	// Types requesting rendered provider execution
+	RenderedTypes []string
+	Rendered      map[string]bool
 }
 
 func (s SchemaBuilder) HaveInterfaces() bool {

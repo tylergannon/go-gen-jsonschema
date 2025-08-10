@@ -318,6 +318,11 @@ func parseSchemaMethodOptions(args []Expr, receiver TypeID, m MarkerFunctionCall
 		if funID.PkgPath != SchemaPackagePath {
 			continue
 		}
+		// Special-case zero-arg option WithRenderProviders()
+		if funID.TypeName == "WithRenderProviders" {
+			out = append(out, SchemaMethodOptionInfo{Kind: SchemaMethodOptionKind("WithRenderProviders")})
+			continue
+		}
 		if len(ce.Args) != 2 {
 			continue
 		}
