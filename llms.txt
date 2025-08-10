@@ -1,0 +1,81 @@
+Project: go-gen-jsonschema
+
+Purpose
+- Generate JSON Schemas from Go types for reliable LLM tool/function calling.
+- Outputs:
+  - jsonschema/*.json (or template files with placeholders when provider overrides exist)
+  - jsonschema_gen.go (generated, embeds schema files and provides runtime helpers)
+
+Key Concepts
+- Build tag jsonschema gates stubs and markers used only during generation.
+- Marker calls (in schema.go):
+  - NewJSONSchemaMethod(T.Schema [, options...])
+  - NewEnumType[Enum]()
+  - NewInterfaceImpl[Interface](Impls...)
+- Sentinel options (type-safe provider API):
+  - WithFunction(fieldExpr, func(FieldType) json.Marshaler)
+  - WithStructAccessorMethod(fieldExpr, (Receiver).Method)
+  - WithStructFunctionMethod(fieldExpr, (Receiver).Method)
+- Provider invocations happen in generated code using the ACTUAL receiver instance.
+
+How to Add/Update Schemas
+1) Create/modify schema.go (build-tagged):
+   - Add stub methods: func (T) Schema() json.RawMessage { panic("not implemented") }
+   - Register marker(s):
+     - _ = jsonschema.NewJSONSchemaMethod(T.Schema)
+     - Optional sentinel options for specific struct fields (see above).
+     - _ = jsonschema.NewEnumType[YourEnum]()
+     - _ = jsonschema.NewInterfaceImpl[YourInterface](Impl1{}, (*Impl2)(nil))
+2) Add //go:generate go run ./gen (or equivalent) to your package.
+3) Run: go generate ./...
+4) Generated artifacts:
+   - jsonschema/<Type>.json (.sum) — or a text/template if providers were specified
+   - jsonschema_gen.go — embeds schemas and provides methods + unmarshal helpers
+
+Struct Tags
+- json: standard naming/skip semantics apply
+- jsonschema:"optional" — omit from required
+- jsonschema:"ref=..." — field serialized as $ref
+- description:"..." — override description from comments
+
+Union (Interfaces)
+- NewInterfaceImpl declares allowed implementations.
+- Schema emits anyOf with discriminator property (default: !type).
+- Generated code includes discriminator-based unmarshal helper.
+
+Provider Overrides (Sentinel API)
+- Specify per-field schema providers in NewJSONSchemaMethod options.
+- Codegen emits schema templates with {{.jsonFieldName}} placeholders.
+- Generated Schema method:
+  - Builds a map[string]string by calling providers on the actual receiver
+  - Renders the embedded template with those values
+
+Development
+- Run tests: go test ./...
+- Golden tests live under internal/builder/testfixtures/*
+- Do not edit generated files by hand.
+
+Conventions for LLM Contributions
+- Always run tests before and after changes.
+- When adding features, document in docs/internal-dev-notes.md (Changelog section).
+- Prefer incremental changes; keep golden tests passing.
+- If modifying generation behavior, verify:
+  - jsonschema_gen.go still compiles for fixtures
+  - Templates render correctly (no invalid JSON unless placeholders are unresolved)
+- For provider features, ensure:
+  - Placeholder keys use JSON field names
+  - Providers are invoked with the actual receiver and proper field values
+
+Common Tasks
+- Add a new type schema:
+  - Add stub method + marker in schema.go (build-tagged)
+  - go generate ./...
+- Add a provider override:
+  - Reference field via composite literal (Type{}.Field)
+  - Pass method expr (Receiver).Method or free func as per API
+  - Run generator and tests
+
+Notes
+- The internal schema model (internal/builder/model.go) is used for file emission.
+- For provider-backed fields, JSON files are templates and not validated as JSON at generation time.
+- Discriminator property name can be configured (default: !type).
