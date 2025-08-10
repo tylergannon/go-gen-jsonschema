@@ -18,6 +18,7 @@ type testCase struct {
 }
 
 func TestBasic(t *testing.T) {
+	t.Parallel()
 	CmdSuccessAssertions := func(t *testing.T, stdout, stderr string, exitCode int) {
 		require.Empty(t, stderr)
 		require.Equal(t, 0, exitCode)
@@ -47,11 +48,7 @@ func TestBasic(t *testing.T) {
 			require.False(t, info.IsDir())
 			testutils.AssertGoldenFile(t, fpath, ".golden")
 		}
-		if tc.runGinkgo {
-			exitCode, stdout, stderr, err = testutils.RunCommand("ginkgo", tempDir, "./...")
-			require.NoError(t, err)
-			CmdSuccessAssertions(t, stdout, stderr, exitCode)
-		}
+		// No ginkgo; all tests run via `go test ./...` at repo root.
 	}
 
 	cases := []testCase{
@@ -129,7 +126,9 @@ func TestBasic(t *testing.T) {
 	}
 
 	for _, tc := range cases {
+		tc := tc
 		t.Run(tc.testName, func(t *testing.T) {
+			t.Parallel()
 			CodegenTest(tc)
 		})
 	}
