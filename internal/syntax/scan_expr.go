@@ -13,6 +13,7 @@ import (
 const (
 	MarkerFuncNewJSONSchemaBuilder = "NewJSONSchemaBuilder" // NewJSONSchemaBuilder
 	MarkerFuncNewJSONSchemaMethod  = "NewJSONSchemaMethod"  // NewJSONSchemaMethod
+	MarkerFuncNewJSONSchemaFunc    = "NewJSONSchemaFunc"    // NewJSONSchemaFunc
 	MarkerFuncNewInterfaceImpl     = "NewInterfaceImpl"     // NewInterfaceImpl
 	MarkerFuncNewEnumType          = "NewEnumType"          // NewEnumType
 )
@@ -59,6 +60,7 @@ func (m MarkerFunctionCall) String() string {
 var markerFunctions = []string{
 	MarkerFuncNewJSONSchemaBuilder,
 	MarkerFuncNewJSONSchemaMethod,
+	MarkerFuncNewJSONSchemaFunc,
 	MarkerFuncNewInterfaceImpl,
 	MarkerFuncNewEnumType,
 }
