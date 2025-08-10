@@ -459,12 +459,21 @@ func (s SchemaBuilder) renderStructSchema(t syntax.StructType, description strin
 func (s SchemaBuilder) writeSchema(t syntax.TypeID, targetDir string, noChanges bool) (wroteNew bool, err error) {
 	var (
 		ok       bool
-		filePath = filepath.Join(targetDir, fmt.Sprintf("%s.json", t.TypeName))
-		sumPath  = filePath + ".sum"
+		filePath string
+		sumPath  string
 		tmpFile  *os.File
 	)
 
+	// Decide target file extension based on whether schema is templated
+	if _, templated := s.TypeProvidersMap[t.TypeName]; templated {
+		filePath = filepath.Join(targetDir, fmt.Sprintf("%s.json.tmpl", t.TypeName))
+	} else {
+		filePath = filepath.Join(targetDir, fmt.Sprintf("%s.json", t.TypeName))
+	}
+	sumPath = filePath + ".sum"
+
 	// Create temp file in same directory to ensure same filesystem
+
 	if tmpFile, err = os.CreateTemp(targetDir, fmt.Sprintf("%s.*.json.tmp", t.TypeName)); err != nil {
 		return false, fmt.Errorf("could not create temp file: %w", err)
 	}
