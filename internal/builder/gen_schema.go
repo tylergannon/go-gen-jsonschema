@@ -194,16 +194,22 @@ func (s SchemaBuilder) imports() *ImportMap {
 }
 
 func (s SchemaBuilder) SchemaMethods() []syntax.SchemaMethod {
-	// Filter out methods for invalid receiver base types: underlying pointer or interface types
+	// Merge methods and funcs, then filter out invalid receiver base types (underlying pointer/interface)
 	var out []syntax.SchemaMethod
-	for _, m := range s.Scan.SchemaMethods {
+	appendIfValid := func(m syntax.SchemaMethod) {
 		if ts, ok := s.Scan.LocalNamedTypes[m.Receiver.TypeName]; ok {
 			switch ts.Type().Expr().(type) {
 			case *dst.StarExpr, *dst.InterfaceType:
-				continue
+				return
 			}
 		}
 		out = append(out, m)
+	}
+	for _, m := range s.Scan.SchemaMethods {
+		appendIfValid(m)
+	}
+	for _, f := range s.Scan.SchemaFuncs {
+		appendIfValid(syntax.SchemaMethod(f))
 	}
 	return out
 }
