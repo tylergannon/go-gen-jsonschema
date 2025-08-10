@@ -55,7 +55,7 @@ jobs:
           # If you set a repo variable named CF_PAGES_PROJECT_NAME it will be used.
           # Otherwise this falls back to the package name.
           command: >-
-            pages deploy ./dist --project-name=${{ vars.CF_PAGES_PROJECT_NAME }}
+            pages deploy ./dist --project-name=${{ vars.CF_PAGES_PROJECT_NAME }} --commit-dirty=true
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Output deployment URLs
