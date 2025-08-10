@@ -194,7 +194,18 @@ func (s SchemaBuilder) imports() *ImportMap {
 }
 
 func (s SchemaBuilder) SchemaMethods() []syntax.SchemaMethod {
-	return s.Scan.SchemaMethods
+	// Filter out methods for invalid receiver base types: underlying pointer or interface types
+	var out []syntax.SchemaMethod
+	for _, m := range s.Scan.SchemaMethods {
+		if ts, ok := s.Scan.LocalNamedTypes[m.Receiver.TypeName]; ok {
+			switch ts.Type().Expr().(type) {
+			case *dst.StarExpr, *dst.InterfaceType:
+				continue
+			}
+		}
+		out = append(out, m)
+	}
+	return out
 }
 
 type schemaMap map[string]map[string]JSONSchema
