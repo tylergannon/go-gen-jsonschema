@@ -187,6 +187,96 @@ func (m MarkerFunctionCall) ParseSchemaFunc() (SchemaFunction, error) {
 	}, nil
 }
 
+// ParseSchemaBuilder supports two forms:
+//  1. Back-compat: NewJSONSchemaBuilder[T](Func)
+//  2. v1 form:     NewJSONSchemaBuilder(Func, options...) where T is inferred
+//     from the first consolidated option that references a field via
+//     ExampleType{}.Field. When no such option is present, returns an error.
+func (m MarkerFunctionCall) ParseSchemaBuilder() (SchemaFunction, error) {
+	args := m.CallExpr.Args()
+	if len(args) < 1 {
+		return SchemaFunction{}, fmt.Errorf("schema Builder expects at least one argument (the func), at %s", m.CallExpr.Position())
+	}
+	// Prefer explicit type argument when present (back-compat)
+	if ta := m.TypeArgument(); ta != nil {
+		return SchemaFunction{
+			MarkerCall:       m,
+			Receiver:         *ta,
+			SchemaMethodName: args[0].Expr().(*dst.Ident).Name,
+		}, nil
+	}
+	// Infer from options: scan variadic args beyond the first for With* calls
+	var inferred TypeID
+	var options []SchemaMethodOptionInfo
+	if len(args) > 1 {
+		for _, a := range args[1:] {
+			ce, ok := a.Expr().(*dst.CallExpr)
+			if !ok {
+				continue
+			}
+			funID := parseFuncFromExpr(a.NewExpr(ce.Fun))
+			if funID.PkgPath != SchemaPackagePath {
+				continue
+			}
+			if len(ce.Args) != 2 {
+				continue
+			}
+			// Expect first arg as ExampleType{}.Field
+			fieldSel, ok := ce.Args[0].(*dst.SelectorExpr)
+			if !ok {
+				continue
+			}
+			lit, ok := fieldSel.X.(*dst.CompositeLit)
+			if !ok {
+				continue
+			}
+			if id, ok := lit.Type.(*dst.Ident); ok {
+				if inferred.TypeName == "" {
+					inferred = TypeID{PkgPath: m.CallExpr.pkg.PkgPath, TypeName: id.Name}
+				}
+			}
+			// Collect option metadata similar to parseSchemaMethodOptions, but without receiver filtering
+			var providerName string
+			providerIsMethod := false
+			switch p := ce.Args[1].(type) {
+			case *dst.SelectorExpr:
+				providerIsMethod = true
+				providerName = p.Sel.Name
+			case *dst.Ident:
+				providerName = p.Name
+			}
+			var kind SchemaMethodOptionKind
+			switch funID.TypeName {
+			case "WithFunction":
+				kind = SchemaMethodOptionKind("WithFunction")
+			case "WithStructAccessorMethod":
+				kind = SchemaMethodOptionKind("WithStructAccessorMethod")
+			case "WithStructFunctionMethod":
+				kind = SchemaMethodOptionKind("WithStructFunctionMethod")
+			default:
+				// Unknown option kinds ignored for inference
+			}
+			if kind != "" {
+				options = append(options, SchemaMethodOptionInfo{
+					Kind:             kind,
+					FieldName:        fieldSel.Sel.Name,
+					ProviderName:     providerName,
+					ProviderIsMethod: providerIsMethod,
+				})
+			}
+		}
+	}
+	if inferred.TypeName == "" {
+		return SchemaFunction{}, fmt.Errorf("unable to infer receiver type for NewJSONSchemaBuilder at %s: add a consolidated option like WithFunction(T{}.Field, Provider)", m.CallExpr.Position())
+	}
+	return SchemaFunction{
+		MarkerCall:       m,
+		Receiver:         inferred,
+		SchemaMethodName: args[0].Expr().(*dst.Ident).Name,
+		Options:          options,
+	}, nil
+}
+
 func (m MarkerFunctionCall) Args() []Expr {
 	return m.CallExpr.Args()
 }

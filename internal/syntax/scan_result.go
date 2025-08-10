@@ -408,7 +408,7 @@ func (r *ScanResult) loadPackageInternal(seen seenPackages, typesToMap map[strin
 			typesToMap[method.Receiver.TypeName] = true
 			r.SchemaMethods = append(r.SchemaMethods, method)
 		case MarkerFuncNewJSONSchemaBuilder:
-			fn, err := decl.ParseSchemaFunc()
+			fn, err := decl.ParseSchemaBuilder()
 			if err != nil {
 				return err
 			}

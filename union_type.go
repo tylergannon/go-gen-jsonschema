@@ -69,6 +69,13 @@ func NewJSONSchemaMethod[T any](SchemaMethod[T], ...SchemaMethodOption) SchemaMa
 	return SchemaMarker{}
 }
 
+// NewJSONSchemaFunc registers a free function that takes the receiver as its
+// sole parameter as a schema entrypoint. It is equivalent to NewJSONSchemaMethod.
+func NewJSONSchemaFunc[T any](f SchemaMethod[T], _ ...SchemaMethodOption) SchemaMarker { // options parsed by scanner only for now
+	_ = f
+	return SchemaMarker{}
+}
+
 var _ SchemaMarker = NewJSONSchemaMethod(
 	exampleStruct.JSONSchema,
 	WithStructAccessorMethod(exampleStruct{}.Field1, exampleStruct.field1Schema),
