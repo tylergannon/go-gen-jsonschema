@@ -16,5 +16,5 @@ func BuilderTypeSchema() json.RawMessage { panic("not implemented") }
 var (
 	_ = jsonschema.NewJSONSchemaMethod(MethodType.Schema)
 	_ = jsonschema.NewJSONSchemaFunc[FuncType](FuncTypeSchema)
-	_ = jsonschema.NewJSONSchemaBuilder[BuilderType](BuilderTypeSchema)
+	_ = jsonschema.NewJSONSchemaBuilderFor(BuilderType{}, BuilderTypeSchema)
 )

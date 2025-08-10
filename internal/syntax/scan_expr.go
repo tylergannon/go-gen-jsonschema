@@ -11,11 +11,12 @@ import (
 )
 
 const (
-	MarkerFuncNewJSONSchemaBuilder = "NewJSONSchemaBuilder" // NewJSONSchemaBuilder
-	MarkerFuncNewJSONSchemaMethod  = "NewJSONSchemaMethod"  // NewJSONSchemaMethod
-	MarkerFuncNewJSONSchemaFunc    = "NewJSONSchemaFunc"    // NewJSONSchemaFunc
-	MarkerFuncNewInterfaceImpl     = "NewInterfaceImpl"     // NewInterfaceImpl
-	MarkerFuncNewEnumType          = "NewEnumType"          // NewEnumType
+	MarkerFuncNewJSONSchemaBuilder    = "NewJSONSchemaBuilder"    // NewJSONSchemaBuilder
+	MarkerFuncNewJSONSchemaBuilderFor = "NewJSONSchemaBuilderFor" // NewJSONSchemaBuilderFor
+	MarkerFuncNewJSONSchemaMethod     = "NewJSONSchemaMethod"     // NewJSONSchemaMethod
+	MarkerFuncNewJSONSchemaFunc       = "NewJSONSchemaFunc"       // NewJSONSchemaFunc
+	MarkerFuncNewInterfaceImpl        = "NewInterfaceImpl"        // NewInterfaceImpl
+	MarkerFuncNewEnumType             = "NewEnumType"             // NewEnumType
 )
 
 // TypeID is our structured representation of a type. It can represent named types,
@@ -59,6 +60,7 @@ func (m MarkerFunctionCall) String() string {
 
 var markerFunctions = []string{
 	MarkerFuncNewJSONSchemaBuilder,
+	MarkerFuncNewJSONSchemaBuilderFor,
 	MarkerFuncNewJSONSchemaMethod,
 	MarkerFuncNewJSONSchemaFunc,
 	MarkerFuncNewInterfaceImpl,
@@ -274,6 +276,30 @@ func (m MarkerFunctionCall) ParseSchemaBuilder() (SchemaFunction, error) {
 		Receiver:         inferred,
 		SchemaMethodName: args[0].Expr().(*dst.Ident).Name,
 		Options:          options,
+	}, nil
+}
+
+// ParseSchemaBuilderFor expects two args: an example composite literal of the
+// target type (e.g., TypeName{}), followed by a builder func identifier.
+func (m MarkerFunctionCall) ParseSchemaBuilderFor() (SchemaFunction, error) {
+	args := m.CallExpr.Args()
+	if len(args) < 2 {
+		return SchemaFunction{}, fmt.Errorf("schema BuilderFor expects two arguments (example value, func), at %s", m.CallExpr.Position())
+	}
+	// First arg: composite literal of the type
+	typeID, err := parseLitForType(args[0])
+	if err != nil {
+		return SchemaFunction{}, fmt.Errorf("could not parse example value type at %s: %w", args[0].Position(), err)
+	}
+	// Second arg: builder func name
+	builderIdent, ok := args[1].Expr().(*dst.Ident)
+	if !ok {
+		return SchemaFunction{}, fmt.Errorf("expected identifier for builder function at %s", args[1].Position())
+	}
+	return SchemaFunction{
+		MarkerCall:       m,
+		Receiver:         typeID,
+		SchemaMethodName: builderIdent.Name,
 	}, nil
 }
 
