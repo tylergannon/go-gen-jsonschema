@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -37,8 +38,20 @@ func TestBasic(t *testing.T) {
 		require.True(t, fi.IsDir())
 		require.NoError(t, testutils.CopyDir(inputPathFull, tempDir))
 
+		// Ensure the temp module's dependencies are tidy before generation.
+		preExit, preStdout, preStderr, err := testutils.RunCommand("go", tempDir, "mod", "tidy")
+		require.NoError(t, err)
+		CmdSuccessAssertions(t, preStdout, preStderr, preExit)
+
 		exitCode, stdout, stderr, err := testutils.RunCommand("go", tempDir, "generate", "./...")
 		require.NoError(t, err)
+		// Some Go versions emit a hint to run 'go mod tidy' on fresh copies; handle that gracefully.
+		if exitCode == 0 && strings.Contains(stderr, "go: updates to go.mod needed") {
+			_, _, _, _ = testutils.RunCommand("go", tempDir, "mod", "tidy")
+			// Re-run generate to get clean stderr
+			exitCode, stdout, stderr, err = testutils.RunCommand("go", tempDir, "generate", "./...")
+			require.NoError(t, err)
+		}
 		CmdSuccessAssertions(t, stdout, stderr, exitCode)
 
 		for _, fname := range tc.files {
@@ -48,6 +61,12 @@ func TestBasic(t *testing.T) {
 			require.False(t, info.IsDir())
 			testutils.AssertGoldenFile(t, fpath, ".golden")
 		}
+
+		// Ensure generated code compiles in the temp module.
+		buildExit, buildStdout, buildStderr, err := testutils.RunCommand("go", tempDir, "build", "./...")
+		require.NoError(t, err)
+		CmdSuccessAssertions(t, buildStdout, buildStderr, buildExit)
+
 		// No ginkgo; all tests run via `go test ./...` at repo root.
 	}
 
