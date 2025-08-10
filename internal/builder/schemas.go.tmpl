@@ -132,21 +132,23 @@ func (t {{if .IsPointer}}*{{end}}{{.Receiver.TypeName}}) RenderedSchema() (json.
 		{{ if eq .TypeName $recv -}}
 			{{ range .Providers -}}
 			// provider for {{.FieldName}}
-			var __prov json.Marshaler
-			{{- if .ProviderIsMethod }}
-				{{- if eq .Kind "WithStructAccessorMethod" }}
-			__prov = t.{{.ProviderName}}()
-				{{- else if eq .Kind "WithStructFunctionMethod" }}
-			__prov = t.{{.ProviderName}}(t.{{.FieldName}})
+			{
+				var __prov json.Marshaler
+				{{- if .ProviderIsMethod }}
+					{{- if eq .Kind "WithStructAccessorMethod" }}
+				__prov = t.{{.ProviderName}}()
+					{{- else if eq .Kind "WithStructFunctionMethod" }}
+				__prov = t.{{.ProviderName}}(t.{{.FieldName}})
+					{{- end }}
+				{{- else }}
+					{{- if eq .Kind "WithFunction" }}
+				__prov = {{.ProviderName}}(t.{{.FieldName}})
+					{{- end }}
 				{{- end }}
-			{{- else }}
-				{{- if eq .Kind "WithFunction" }}
-			__prov = {{.ProviderName}}(t.{{.FieldName}})
-				{{- end }}
-			{{- end }}
-			__b, __err := __prov.MarshalJSON()
-			if __err != nil { return nil, __err }
-			ctx["{{.JSONName}}"] = json.RawMessage(__b)
+				__b, __err := __prov.MarshalJSON()
+				if __err != nil { return nil, __err }
+				ctx["{{.JSONName}}"] = json.RawMessage(__b)
+			}
 			{{ end -}}
 		{{ end -}}
 	{{ end -}}

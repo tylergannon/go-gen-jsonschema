@@ -5,10 +5,12 @@
 package providers
 
 import (
+	"bytes"
 	"embed"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"text/template"
 )
 
 //go:embed jsonschema
@@ -27,4 +29,52 @@ func (Example) Schema() json.RawMessage {
 		__gen_jsonschema_panic(fileName, err)
 	}
 	return data
+}
+
+func (t Example) RenderedSchema() (json.RawMessage, error) {
+	const fileName = "jsonschema/Example.json.tmpl"
+	data, err := __gen_jsonschema_fs.ReadFile(fileName)
+	if err != nil {
+		__gen_jsonschema_panic(fileName, err)
+	}
+	ctx := map[string]json.RawMessage{}
+	// provider for A
+	{
+		var __prov json.Marshaler
+		__prov = t.ASchema()
+		__b, __err := __prov.MarshalJSON()
+		if __err != nil {
+			return nil, __err
+		}
+		ctx["a"] = json.RawMessage(__b)
+	}
+	// provider for B
+	{
+		var __prov json.Marshaler
+		__prov = t.BSchema(t.B)
+		__b, __err := __prov.MarshalJSON()
+		if __err != nil {
+			return nil, __err
+		}
+		ctx["b"] = json.RawMessage(__b)
+	}
+	// provider for C
+	{
+		var __prov json.Marshaler
+		__prov = BoolSchemaFunc(t.C)
+		__b, __err := __prov.MarshalJSON()
+		if __err != nil {
+			return nil, __err
+		}
+		ctx["c"] = json.RawMessage(__b)
+	}
+	tpl, err := template.New("schema").Option("missingkey=error").Parse(string(data))
+	if err != nil {
+		return nil, err
+	}
+	var buf bytes.Buffer
+	if err := tpl.Execute(&buf, ctx); err != nil {
+		return nil, err
+	}
+	return json.RawMessage(buf.Bytes()), nil
 }
