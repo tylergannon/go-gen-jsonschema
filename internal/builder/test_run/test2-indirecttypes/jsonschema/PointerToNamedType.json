@@ -1,0 +1,4 @@
+{
+  "type": "integer",
+  "description": "PointerToIntType is a pointer to a named type"
+}
