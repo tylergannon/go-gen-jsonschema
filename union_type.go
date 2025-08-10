@@ -21,6 +21,13 @@ func NewJSONSchemaBuilder[T any](SchemaFunction) SchemaMarker {
 	return SchemaMarker{}
 }
 
+// NewJSONSchemaBuilderFor registers a zero-arg builder function for the given
+// example instance value (e.g., TypeName{}), allowing type inference without
+// generics.
+func NewJSONSchemaBuilderFor(_ any, _ SchemaFunction, _ ...SchemaMethodOption) SchemaMarker {
+	return SchemaMarker{}
+}
+
 type SchemaMethodOption interface {
 	implementsSchemaMethodOption()
 }

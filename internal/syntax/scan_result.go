@@ -415,6 +415,14 @@ func (r *ScanResult) loadPackageInternal(seen seenPackages, typesToMap map[strin
 			r.localTypeNames[fn.Receiver.TypeName] = true
 			typesToMap[fn.Receiver.TypeName] = true
 			r.SchemaFuncs = append(r.SchemaFuncs, fn)
+		case MarkerFuncNewJSONSchemaBuilderFor:
+			fn, err := decl.ParseSchemaBuilderFor()
+			if err != nil {
+				return err
+			}
+			r.localTypeNames[fn.Receiver.TypeName] = true
+			typesToMap[fn.Receiver.TypeName] = true
+			r.SchemaFuncs = append(r.SchemaFuncs, fn)
 		case MarkerFuncNewJSONSchemaFunc:
 			fn, err := decl.ParseSchemaFunc()
 			if err != nil {
