@@ -30,10 +30,6 @@ jobs:
 
       - name: Use Node.js 20
         uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: website/package-lock.json
 
       - name: Set up Go (for gomarkdoc prebuild)
         uses: actions/setup-go@v5
@@ -44,7 +40,7 @@ jobs:
         run: go install github.com/princjef/gomarkdoc/cmd/gomarkdoc@latest
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Build website (runs prebuild to generate API docs)
         run: npm run build
@@ -59,7 +55,7 @@ jobs:
           # If you set a repo variable named CF_PAGES_PROJECT_NAME it will be used.
           # Otherwise this falls back to the package name.
           command: >-
-            pages deploy ./dist --project-name=${{ vars.CF_PAGES_PROJECT_NAME || 'go-gen-jsonschema-docs' }}
+            pages deploy ./dist --project-name=${{ vars.CF_PAGES_PROJECT_NAME }}
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Output deployment URLs
