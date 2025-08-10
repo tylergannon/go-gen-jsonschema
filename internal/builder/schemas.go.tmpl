@@ -9,6 +9,10 @@ import (
     "encoding/json"
 	"errors"
     "fmt"
+	{{- if gt (len .RenderedTypes) 0 }}
+	"bytes"
+	"text/template"
+	{{- end }}
 	{{ range .Imports}}
 	{{.}}
 	{{ end -}}
@@ -55,6 +59,7 @@ func ({{if .IsPointer}}*{{end}}{{.Receiver.TypeName}}) {{.SchemaMethodName}}() j
 }
     {{ end -}}
 {{ end -}}
+
 {{ range .SpecialTypes -}}
 {{$initial := .Initial -}}
 // UnmarshalJSON is a generated custom json.Unmarshaler implementation for
@@ -109,7 +114,47 @@ func {{.UnmarshalerFunc}}(data []byte) ({{.TypeNameWithPrefix}}, error) {
 }
 {{ end }}
 {{ if .HaveInterfaces -}}
-func __jsonschema__unmarshalDiscriminatorError(discriminator json.RawMessage, err error) error {
-	return fmt.Errorf("unable to unmarshal discriminator value %v: %w", discriminator, err)
+ func __jsonschema__unmarshalDiscriminatorError(discriminator json.RawMessage, err error) error {
+ 	return fmt.Errorf("unable to unmarshal discriminator value %v: %w", discriminator, err)
+ }
+ {{ end -}}
+
+{{/* Generate RenderedSchema() for types that requested it */}}
+{{ range .SchemaMethods -}}
+{{ $recv := .Receiver.TypeName -}}
+{{ if index $.Rendered $recv -}}
+func (t {{if .IsPointer}}*{{end}}{{.Receiver.TypeName}}) RenderedSchema() (json.RawMessage, error) {
+	const fileName = "{{$subdir}}/{{.Receiver.TypeName}}.json.tmpl"
+	data, err := __gen_jsonschema_fs.ReadFile(fileName)
+	if err != nil { __gen_jsonschema_panic(fileName, err) }
+	ctx := map[string]json.RawMessage{}
+	{{ range $.TypeProviders -}}
+		{{ if eq .TypeName $recv -}}
+			{{ range .Providers -}}
+			// provider for {{.FieldName}}
+			var __prov json.Marshaler
+			{{- if .ProviderIsMethod }}
+				{{- if eq .Kind "WithStructAccessorMethod" }}
+			__prov = t.{{.ProviderName}}()
+				{{- else if eq .Kind "WithStructFunctionMethod" }}
+			__prov = t.{{.ProviderName}}(t.{{.FieldName}})
+				{{- end }}
+			{{- else }}
+				{{- if eq .Kind "WithFunction" }}
+			__prov = {{.ProviderName}}(t.{{.FieldName}})
+				{{- end }}
+			{{- end }}
+			__b, __err := __prov.MarshalJSON()
+			if __err != nil { return nil, __err }
+			ctx["{{.JSONName}}"] = json.RawMessage(__b)
+			{{ end -}}
+		{{ end -}}
+	{{ end -}}
+	tpl, err := template.New("schema").Option("missingkey=error").Parse(string(data))
+	if err != nil { return nil, err }
+	var buf bytes.Buffer
+	if err := tpl.Execute(&buf, ctx); err != nil { return nil, err }
+	return json.RawMessage(buf.Bytes()), nil
 }
+{{ end -}}
 {{ end -}}

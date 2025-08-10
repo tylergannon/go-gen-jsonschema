@@ -15,6 +15,9 @@ type (
 	SchemaMethod[T any] func(T) json.RawMessage
 )
 
+// WithRenderProviders requests generation of RenderedSchema() and provider execution at runtime.
+func WithRenderProviders() SchemaMethodOption { return SchemaMethodOptionObj{} }
+
 // NewJSONSchemaBuilder registers a function as being a stub that should be
 // implemented with a proper json schema and, as needed, unmarshaler functionality.
 func NewJSONSchemaBuilder[T any](SchemaFunction) SchemaMarker {
