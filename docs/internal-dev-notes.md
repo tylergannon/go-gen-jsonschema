@@ -6,7 +6,7 @@ applyTo: '**'
 
 Owner: opencode
 
-Last updated: 2025-08-09
+Last updated: 2025-08-10
 
 Changelog
 - Added internal/common/tags.go: centralized JSONSchema tag parsing (optional, ref, param plan groundwork).
@@ -158,8 +158,28 @@ Back-compat: unchanged when no options/tags present.
 - Interface unmarshaler function name format: `__jsonUnmarshal__<pkgName>__<TypeName>`.
 
 ## 12) TODO (engineering roadmap)
+- [ ] v1: implement new entry points
+  - [ ] NewJSONSchemaFunc(Func(T) json.RawMessage) scanning
+  - [ ] NewJSONSchemaBuilder(Func() json.RawMessage) scanning
+  - [ ] Goldens for both forms matching method output
+- [ ] v1: consolidated options parsing on registrations
+  - [ ] WithEnum / WithEnumMode(EnumStrings) / WithEnumName
+  - [ ] WithInterface / WithInterfaceImpls / WithDiscriminator
+  - [ ] WithRenderProviders (generate RenderedSchema())
+  - [ ] Conflict detection with legacy NewEnumType/NewInterfaceImpl
+- [ ] v1: provider rendering
+  - [ ] Generate RenderedSchema() when WithRenderProviders is set
+  - [ ] Provider collection and invocation (accessor, struct-func, free func)
+  - [ ] Template execution with map[string]json.RawMessage
+  - [ ] Deterministic tests for rendered output
+- [ ] v1: enums incl. iota
+  - [ ] Detect iota blocks; numeric mode default
+  - [ ] String mode with String() fallback and WithEnumName overrides
+  - [ ] Generate (un)marshalers where applicable
+- [ ] v1: docs parity
+  - [x] Draft v1 spec
+  - [ ] Fill error message examples and migration
 - [ ] Decide on schema model unification (public vs internal) and implement.
-- [ ] Implement parameterized fields (tags, scanner, template emission, method signature capture, codegen runtime rendering).
 - [ ] Add focused unit tests for tag parsing and field rendering logic.
 - [ ] Review and address CLI option drift (NumTestSamples).
-- [ ] Document parameterized fields in README.
+- [ ] Document v1 features in README and examples.
