@@ -103,6 +103,13 @@ type (
 		FieldName        string
 		ProviderName     string
 		ProviderIsMethod bool
+		// v1 interface options support
+		Discriminator string
+		ImplTypes     []TypeID
+		// v1 enum options support
+		EnumMode  string
+		EnumConst TypeID
+		EnumName  string
 	}
 
 	TypeDecls struct {

@@ -29,5 +29,6 @@ var (
 		jsonschema.WithStructAccessorMethod(Example{}.A, (Example).ASchema),
 		jsonschema.WithStructFunctionMethod(Example{}.B, (Example).BSchema),
 		jsonschema.WithFunction(Example{}.C, BoolSchemaFunc),
+		jsonschema.WithRenderProviders(),
 	)
 )

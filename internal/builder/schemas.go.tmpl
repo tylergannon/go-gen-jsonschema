@@ -22,7 +22,7 @@ import (
 //go:embed {{$subdir}}
 var __gen_jsonschema_fs embed.FS
 
-var errNoDiscriminator = errors.New("no discriminator property '{{$discriminatorProp}}' found")
+var errNoDiscriminator = errors.New("no discriminator property '!type' found")
 
 func __gen_jsonschema_panic(fname string, err error) {
 	panic(fmt.Sprintf("error reading %s from embedded FS: %s", fname, err.Error()))
@@ -94,8 +94,14 @@ func {{.UnmarshalerFunc}}(data []byte) ({{.TypeNameWithPrefix}}, error) {
 
 	if err != nil {
 		return nil, err
+	{{- if .DiscriminatorPropName }}
+	} else if _tempDiscriminator, ok := temp["{{.DiscriminatorPropName}}"]; !ok {
+		// per-field discriminator property
+		return nil, fmt.Errorf("no discriminator property '%s' found", "{{.DiscriminatorPropName}}")
+	{{- else }}
 	} else if _tempDiscriminator, ok := temp["{{$discriminatorProp}}"]; !ok {
 		return nil, errNoDiscriminator
+	{{- end }}
 	} else if err = json.Unmarshal(_tempDiscriminator, &discriminator); err != nil {
 		return nil, __jsonschema__unmarshalDiscriminatorError(_tempDiscriminator, err)
 	}

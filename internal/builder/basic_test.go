@@ -152,6 +152,23 @@ func TestBasic(t *testing.T) {
 				"jsonschema_gen.go",
 			},
 		},
+		{
+			inputDir:  "builder/testfixtures/providers_builder",
+			testName:  "test8-providers-builder",
+			runGinkgo: false,
+			files: []string{
+				"jsonschema/Example.json.tmpl",
+				"jsonschema_gen.go",
+			},
+		},
+		{
+			inputDir:  "builder/testfixtures/v1_interfaces_options",
+			testName:  "test9-v1-interfaces-options",
+			runGinkgo: false,
+			files: []string{
+				"jsonschema/Owner.json",
+			},
+		},
 	}
 
 	for _, tc := range cases {

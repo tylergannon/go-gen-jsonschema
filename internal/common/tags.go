@@ -49,7 +49,7 @@ func ParseJSONSchemaTag(raw string) JSONSchemaTag {
 			// idx usage will be validated by callers when needed
 			// convert only if numeric
 			var n int
-			for i := 0; i < len(v); i++ {
+			for i := range len(v) {
 				if v[i] < '0' || v[i] > '9' {
 					n = -1
 					break
@@ -58,7 +58,7 @@ func ParseJSONSchemaTag(raw string) JSONSchemaTag {
 			if n != -1 {
 				// simple atoi
 				n = 0
-				for i := 0; i < len(v); i++ {
+				for i := range len(v) {
 					n = n*10 + int(v[i]-'0')
 				}
 				res.ParamIdx = n

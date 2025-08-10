@@ -73,6 +73,26 @@ type SchemaMethodOptionObj struct{}
 
 func (SchemaMethodOptionObj) implementsSchemaMethodOption() {}
 
+// Interface options (v1) - stubs for scanning/type-checking; parsed by scanner
+func WithInterface[T any](field T) SchemaMethodOption { return SchemaMethodOptionObj{} }
+func WithInterfaceImpls[T any](field T, impls ...any) SchemaMethodOption {
+	return SchemaMethodOptionObj{}
+}
+func WithDiscriminator[T any](field T, name string) SchemaMethodOption {
+	return SchemaMethodOptionObj{}
+}
+
+// Enum options (v1) - stubs for scanning/type-checking; parsed by scanner
+type EnumMode int
+
+const (
+	EnumStrings EnumMode = iota + 1
+)
+
+func WithEnum[T any](field T) SchemaMethodOption                  { return SchemaMethodOptionObj{} }
+func WithEnumMode(mode EnumMode) SchemaMethodOption               { return SchemaMethodOptionObj{} }
+func WithEnumName[T any](value T, name string) SchemaMethodOption { return SchemaMethodOptionObj{} }
+
 // NewJSONSchemaMethod registers a struct method as a stub that will be implemented
 // with a proper json schema and, as needed, unmarshaler functionality.
 func NewJSONSchemaMethod[T any](SchemaMethod[T], ...SchemaMethodOption) SchemaMarker {

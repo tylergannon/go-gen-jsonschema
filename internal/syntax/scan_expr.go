@@ -182,11 +182,19 @@ func (m MarkerFunctionCall) ParseSchemaFunc() (SchemaFunction, error) {
 	if typeArg == nil {
 		return SchemaFunction{}, fmt.Errorf("expected a type argument to denote schema func at %s", m.CallExpr.Position())
 	}
-	return SchemaFunction{
+	// Build base schema function from type arg and first argument (func ident)
+	sf := SchemaFunction{
 		MarkerCall:       m,
 		Receiver:         *typeArg,
 		SchemaMethodName: m.CallExpr.Args()[0].Expr().(*dst.Ident).Name,
-	}, nil
+	}
+	// Parse optional consolidated options (variadic args beyond the first)
+	if len(m.CallExpr.Args()) > 1 {
+		if opts, err := parseSchemaMethodOptions(m.CallExpr.Args()[1:], *typeArg, m); err == nil {
+			sf.Options = opts
+		}
+	}
+	return sf, nil
 }
 
 // ParseSchemaBuilder supports two forms:
@@ -248,7 +256,8 @@ func (m MarkerFunctionCall) ParseSchemaBuilder() (SchemaFunction, error) {
 				providerName = p.Name
 			}
 			var kind SchemaMethodOptionKind
-			switch funID.TypeName {
+			funName := funID.TypeName
+			switch funName {
 			case "WithFunction":
 				kind = SchemaMethodOptionKind("WithFunction")
 			case "WithStructAccessorMethod":
@@ -296,11 +305,18 @@ func (m MarkerFunctionCall) ParseSchemaBuilderFor() (SchemaFunction, error) {
 	if !ok {
 		return SchemaFunction{}, fmt.Errorf("expected identifier for builder function at %s", args[1].Position())
 	}
-	return SchemaFunction{
+	sf := SchemaFunction{
 		MarkerCall:       m,
 		Receiver:         typeID,
 		SchemaMethodName: builderIdent.Name,
-	}, nil
+	}
+	// Parse optional consolidated options (variadic args beyond the two fixed)
+	if len(args) > 2 {
+		if opts, err := parseSchemaMethodOptions(args[2:], typeID, m); err == nil {
+			sf.Options = opts
+		}
+	}
+	return sf, nil
 }
 
 func (m MarkerFunctionCall) Args() []Expr {
@@ -323,11 +339,32 @@ func parseSchemaMethodOptions(args []Expr, receiver TypeID, m MarkerFunctionCall
 			out = append(out, SchemaMethodOptionInfo{Kind: SchemaMethodOptionKind("WithRenderProviders")})
 			continue
 		}
-		if len(ce.Args) != 2 {
+		// WithDiscriminator(field, "name") has 2 args, second is string literal
+		if funID.TypeName == "WithDiscriminator" && len(ce.Args) == 2 {
+			fieldSel, ok := ce.Args[0].(*dst.SelectorExpr)
+			if !ok {
+				continue
+			}
+			lit, ok := fieldSel.X.(*dst.CompositeLit)
+			if !ok {
+				continue
+			}
+			recvIdent, ok := lit.Type.(*dst.Ident)
+			if !ok || recvIdent.Name != receiver.TypeName {
+				continue
+			}
+			if str, ok := ce.Args[1].(*dst.BasicLit); ok && str.Kind == token.STRING {
+				name := strings.Trim(str.Value, "\"")
+				out = append(out, SchemaMethodOptionInfo{Kind: SchemaMethodOptionKind("WithDiscriminator"), FieldName: fieldSel.Sel.Name, Discriminator: name})
+			}
+			continue
+		}
+		if len(ce.Args) < 1 {
 			continue
 		}
 		// First arg: exampleStruct{}.FieldX
 		fieldSel, ok := ce.Args[0].(*dst.SelectorExpr)
+
 		if !ok {
 			continue
 		}
@@ -340,51 +377,88 @@ func parseSchemaMethodOptions(args []Expr, receiver TypeID, m MarkerFunctionCall
 			continue
 		}
 		fieldName := fieldSel.Sel.Name
-		// Second arg: provider
-		provExpr := ce.Args[1]
 		var providerName string
 		providerIsMethod := false
-		switch p := provExpr.(type) {
-		case *dst.SelectorExpr:
-			// Expect ReceiverType.MethodName or (ReceiverType).MethodName
-			switch x := p.X.(type) {
-			case *dst.Ident:
-				if x.Name != receiver.TypeName {
-					continue
-				}
-				providerIsMethod = true
-				providerName = p.Sel.Name
-			case *dst.ParenExpr:
-				if id, ok := x.X.(*dst.Ident); ok && id.Name == receiver.TypeName {
-					providerIsMethod = true
-					providerName = p.Sel.Name
-				} else {
-					continue
-				}
-			default:
-				continue
-			}
-		case *dst.Ident:
-			providerName = p.Name
-		default:
-			continue
-		}
 		var kind SchemaMethodOptionKind
-		switch funID.TypeName {
+		var enumMode string
+		var enumConst TypeID
+		var enumName string
+		funName := funID.TypeName
+		switch funName {
 		case "WithFunction":
 			kind = SchemaMethodOptionKind("WithFunction")
 		case "WithStructAccessorMethod":
 			kind = SchemaMethodOptionKind("WithStructAccessorMethod")
 		case "WithStructFunctionMethod":
 			kind = SchemaMethodOptionKind("WithStructFunctionMethod")
+		case "WithInterface":
+			kind = SchemaMethodOptionKind("WithInterface")
+		case "WithInterfaceImpls":
+			kind = SchemaMethodOptionKind("WithInterfaceImpls")
+		case "WithEnum":
+			kind = SchemaMethodOptionKind("WithEnum")
+		case "WithEnumMode":
+			kind = SchemaMethodOptionKind("WithEnumMode")
+			// Expect one arg: jsonschema.EnumStrings
+			enumMode = "strings"
+		case "WithEnumName":
+			kind = SchemaMethodOptionKind("WithEnumName")
+			// Args: ConstIdent, "name"
+			if len(ce.Args) == 2 {
+				if tid, err := parseLitForType(NewExpr(ce.Args[0], m.CallExpr.pkg, m.CallExpr.file)); err == nil {
+					enumConst = tid
+				}
+				if str, ok := ce.Args[1].(*dst.BasicLit); ok && str.Kind == token.STRING {
+					enumName = strings.Trim(str.Value, "\"")
+				}
+			}
 		default:
 			continue
+		}
+		// Only parse provider if applicable
+		if (funName == "WithFunction" || funName == "WithStructAccessorMethod" || funName == "WithStructFunctionMethod") && len(ce.Args) > 1 {
+			provExpr := ce.Args[1]
+			switch p := provExpr.(type) {
+			case *dst.SelectorExpr:
+				// Expect ReceiverType.MethodName or (ReceiverType).MethodName
+				switch x := p.X.(type) {
+				case *dst.Ident:
+					if x.Name != receiver.TypeName {
+						continue
+					}
+					providerIsMethod = true
+					providerName = p.Sel.Name
+				case *dst.ParenExpr:
+					if id, ok := x.X.(*dst.Ident); ok && id.Name == receiver.TypeName {
+						providerIsMethod = true
+						providerName = p.Sel.Name
+					} else {
+						continue
+					}
+				default:
+					continue
+				}
+			case *dst.Ident:
+				providerName = p.Name
+			}
+		}
+		var impls []TypeID
+		if funID.TypeName == "WithInterfaceImpls" && len(ce.Args) > 1 {
+			for _, a2 := range ce.Args[1:] {
+				if tid, err := parseLitForType(NewExpr(a2, m.CallExpr.pkg, m.CallExpr.file)); err == nil {
+					impls = append(impls, tid)
+				}
+			}
 		}
 		out = append(out, SchemaMethodOptionInfo{
 			Kind:             kind,
 			FieldName:        fieldName,
 			ProviderName:     providerName,
 			ProviderIsMethod: providerIsMethod,
+			ImplTypes:        impls,
+			EnumMode:         enumMode,
+			EnumConst:        enumConst,
+			EnumName:         enumName,
 		})
 	}
 	return out, nil

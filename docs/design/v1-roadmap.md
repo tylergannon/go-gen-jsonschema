@@ -19,7 +19,7 @@ Status key: [ ] pending  [~] in progress  [x] done
 - [x] Scanner: NewJSONSchemaFunc (free func) → infer T from func param
 - [ ] Scanner: NewJSONSchemaBuilder (builder func) → infer T from registration site
 - [ ] Options: WithEnum/WithEnumMode/WithEnumName
-- [ ] Options: WithInterface/WithInterfaceImpls/WithDiscriminator
+- [x] Options: WithInterface/WithInterfaceImpls/WithDiscriminator
 - [ ] Options: WithRenderProviders
 - [ ] Builder/codegen: generate RenderedSchema() alongside Schema() when requested
 - [ ] Enums: iota support and string mode (with String() and overrides)
