@@ -185,13 +185,94 @@ func (m MarkerFunctionCall) ParseSchemaFunc() (SchemaFunction, error) {
 	}, nil
 }
 
+func (m MarkerFunctionCall) Args() []Expr {
+	return m.CallExpr.Args()
+}
+
+func parseSchemaMethodOptions(args []Expr, receiver TypeID, m MarkerFunctionCall) ([]SchemaMethodOptionInfo, error) {
+	var out []SchemaMethodOptionInfo
+	for _, a := range args {
+		ce, ok := a.Expr().(*dst.CallExpr)
+		if !ok {
+			continue
+		}
+		funID := parseFuncFromExpr(a.NewExpr(ce.Fun))
+		if funID.PkgPath != SchemaPackagePath {
+			continue
+		}
+		if len(ce.Args) != 2 {
+			continue
+		}
+		// First arg: exampleStruct{}.FieldX
+		fieldSel, ok := ce.Args[0].(*dst.SelectorExpr)
+		if !ok {
+			continue
+		}
+		lit, ok := fieldSel.X.(*dst.CompositeLit)
+		if !ok {
+			continue
+		}
+		recvIdent, ok := lit.Type.(*dst.Ident)
+		if !ok || recvIdent.Name != receiver.TypeName {
+			continue
+		}
+		fieldName := fieldSel.Sel.Name
+		// Second arg: provider
+		provExpr := ce.Args[1]
+		var providerName string
+		providerIsMethod := false
+		switch p := provExpr.(type) {
+		case *dst.SelectorExpr:
+			// Expect ReceiverType.MethodName or (ReceiverType).MethodName
+			switch x := p.X.(type) {
+			case *dst.Ident:
+				if x.Name != receiver.TypeName {
+					continue
+				}
+				providerIsMethod = true
+				providerName = p.Sel.Name
+			case *dst.ParenExpr:
+				if id, ok := x.X.(*dst.Ident); ok && id.Name == receiver.TypeName {
+					providerIsMethod = true
+					providerName = p.Sel.Name
+				} else {
+					continue
+				}
+			default:
+				continue
+			}
+		case *dst.Ident:
+			providerName = p.Name
+		default:
+			continue
+		}
+		var kind SchemaMethodOptionKind
+		switch funID.TypeName {
+		case "WithFunction":
+			kind = SchemaMethodOptionKind("WithFunction")
+		case "WithStructAccessorMethod":
+			kind = SchemaMethodOptionKind("WithStructAccessorMethod")
+		case "WithStructFunctionMethod":
+			kind = SchemaMethodOptionKind("WithStructFunctionMethod")
+		default:
+			continue
+		}
+		out = append(out, SchemaMethodOptionInfo{
+			Kind:             kind,
+			FieldName:        fieldName,
+			ProviderName:     providerName,
+			ProviderIsMethod: providerIsMethod,
+		})
+	}
+	return out, nil
+}
+
 func (m MarkerFunctionCall) ParseSchemaMethod() (SchemaMethod, error) {
 	// There's only one result object because we only accept a single
 	// argument to the NewJSONSchema method.
 	var funcArgs = m.CallExpr.Args()
-	if len(funcArgs) != 1 {
-		err := fmt.Errorf("schema Method expects one argument but got %d, at %s", len(funcArgs), m.CallExpr.Position())
-		return SchemaMethod{}, err
+	if len(funcArgs) < 1 {
+		return SchemaMethod{}, fmt.Errorf("schema Method expects at least one argument (the method), at %s", m.CallExpr.Position())
 	}
 	switch expr := funcArgs[0].Expr().(type) {
 	// Must be a selector expression, in which X is either an Ident or a ParenExpr with a StarExpr to an Ident.
@@ -200,11 +281,18 @@ func (m MarkerFunctionCall) ParseSchemaMethod() (SchemaMethod, error) {
 		if err != nil {
 			return SchemaMethod{}, err
 		}
-		return SchemaMethod{
+		res := SchemaMethod{
 			Receiver:         receiver,
 			SchemaMethodName: expr.Sel.Name,
 			MarkerCall:       m,
-		}, nil
+		}
+		// Parse optional sentinel options (variadic args beyond the first)
+		if len(funcArgs) > 1 {
+			if opts, err := parseSchemaMethodOptions(funcArgs[1:], receiver, m); err == nil {
+				res.Options = opts
+			}
+		}
+		return res, nil
 	default:
 		fmt.Printf("ArgBoo --> %T %#v", expr, expr)
 	}

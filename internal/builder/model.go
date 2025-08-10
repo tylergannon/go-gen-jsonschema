@@ -78,6 +78,11 @@ type (
 	RefNode struct {
 		Ref string
 	}
+
+	// TemplateHoleNode writes a raw template placeholder like {{.FieldName}}
+	TemplateHoleNode struct {
+		Name string
+	}
 )
 
 // MarshalJSON implements JSONSchema.
@@ -96,6 +101,14 @@ func (r RefNode) TypeID() syntax.TypeID {
 // implementsJSONSchema implements JSONSchema.
 func (r RefNode) implementsJSONSchema() {}
 
+// MarshalJSON for TemplateHoleNode emits an unquoted template placeholder.
+func (t TemplateHoleNode) MarshalJSON() ([]byte, error) {
+	return []byte("{{." + t.Name + "}}"), nil
+}
+
+func (t TemplateHoleNode) TypeID() syntax.TypeID { return syntax.TypeID{} }
+func (t TemplateHoleNode) implementsJSONSchema() {}
+
 //---------------------------------------------------------------------
 // Ensure each node satisfies the schemaNode or JSONSchema interface
 //---------------------------------------------------------------------
@@ -106,6 +119,7 @@ var (
 	_ schemaNode = PropertyNode[int]{}
 	_ schemaNode = ObjectNode{}
 	_ JSONSchema = RefNode{}
+	_ JSONSchema = TemplateHoleNode{}
 )
 
 //---------------------------------------------------------------------

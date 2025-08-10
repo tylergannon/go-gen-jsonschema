@@ -11,6 +11,8 @@ Last updated: 2025-08-09
 Changelog
 - Added internal/common/tags.go: centralized JSONSchema tag parsing (optional, ref, param plan groundwork).
 - Added builder pipeline hook (Transform) with RegisterTransform and applyTransforms in Run (no-op default). Tests remain green.
+- Scanner now exposes MarkerFunctionCall.Args() and allows variadic options on NewJSONSchemaMethod; added parsing scaffold for sentinel options (WithFunction, WithStructAccessorMethod, WithStructFunctionMethod) into SchemaMethod.Options. Not yet used by builder; no behavior change.
+- Introduced TemplateHoleNode to emit raw template placeholders; added TypeProviders plumbing in SchemaBuilder (now used in codegen template generation), and prepped template imports (bytes, text/template). Tests still green.
 
 
 This is an internal, living document for deep understanding, navigation, and refactoring of go-gen-jsonschema. It is deliberately exhaustive. Keep this up to date.
@@ -118,14 +120,33 @@ This is an internal, living document for deep understanding, navigation, and ref
 7) Testing granularity
 - Add unit tests for small pieces (renderStructField rules, tag parsing). Fewer golden surprises.
 
-## 9) Parameterized fields plan (preview)
+## 9) Parameterized fields and sentinel API plan (preview)
+Two approaches that can coexist:
+
+A) Tag-driven parameters (caller-supplied args at runtime)
 - Tag: `jsonschema:"param=Name[,idx=N][,optional]"`
-- Stub method: can accept parameters (typed as json.Marshaler) in a defined order (by idx else by discovery order).
-- Generation:
-  - If any parameterized fields exist for a type, write jsonschema/<Type>.json as a text/template with `{{.Name}}` placeholders where field schemas go.
-  - Generated method will read template from embed, render it with provided args (MarshalJSON → string), and return json.RawMessage.
-- Scanner: relax NewJSONSchemaMethod(fn any), capture the actual signature from FuncDecl, enforce return type json.RawMessage.
-- Back-compat: unchanged for non-parameterized types.
+- Stub method accepts json.Marshaler params.
+- Generator emits text/template schema and runtime rendering using provided args.
+
+B) Sentinel-option API (type-safe provider functions)
+- NewJSONSchemaMethod(T.JSONSchema, options...)
+- Options:
+  - WithFunction(fieldExpr, func(TField) json.Marshaler)
+  - WithStructAccessorMethod(fieldExpr, methodExpr func(Receiver) json.Marshaler)
+  - WithStructFunctionMethod(fieldExpr, methodExpr func(Receiver, TField) json.Marshaler)
+- At runtime, generator invokes providers to build per-field schema fragments.
+- IMPORTANT: pass the actual receiver instance, not a zero value. For method expressions, we call f(receiver, value) or f(receiver) as appropriate.
+
+Scanner updates
+- Variadic args captured from MarkerFunctionCall.Args(); parse which With* sentinel is used, extract:
+  - Targeted field (from composite literal field selector).
+  - Provider function expression (free or method expr) and argument expectations.
+
+Codegen updates
+- For fields with overrides: use template placeholders in JSON file and, in generated method, compute placeholder values by calling providers with the actual receiver instance and field value expression, then execute the template.
+
+Back-compat: unchanged when no options/tags present.
+
 
 ## 10) Open questions
 - Allow parameterization of interface fields (overriding union)? Initially no; keep union machinery.

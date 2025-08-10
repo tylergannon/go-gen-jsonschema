@@ -96,6 +96,15 @@ func (t typeInfo) GetPkg() *packages.Package {
 }
 
 type (
+	SchemaMethodOptionKind string
+
+	SchemaMethodOptionInfo struct {
+		Kind             SchemaMethodOptionKind
+		FieldName        string
+		ProviderName     string
+		ProviderIsMethod bool
+	}
+
 	TypeDecls struct {
 		Pkg  *decorator.Package
 		File *dst.File
@@ -115,6 +124,7 @@ type (
 		Receiver         TypeID
 		SchemaMethodName string
 		MarkerCall       MarkerFunctionCall
+		Options          []SchemaMethodOptionInfo
 	}
 	SchemaFunction SchemaMethod
 
