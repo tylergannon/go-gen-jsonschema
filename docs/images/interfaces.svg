@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="860" height="260" viewBox="0 0 860 260">
+  <rect width="100%" height="100%" fill="#ffffff"/>
+  <g font-family="Segoe UI, Roboto, Helvetica, Arial, sans-serif" fill="#222" font-size="14">
+    <rect x="20" y="20" width="260" height="70" rx="8" fill="#e8f0fe" stroke="#4285f4"/>
+    <text x="30" y="46">Owner{ IF IFace }</text>
+    <text x="30" y="66">WithInterface(Owner{}.IF)</text>
+
+    <rect x="300" y="20" width="220" height="70" rx="8" fill="#e6f4ea" stroke="#34a853"/>
+    <text x="310" y="46">WithInterfaceImpls(...)</text>
+    <text x="310" y="66">WithDiscriminator("!kind")</text>
+
+    <polygon points="540,55 580,55 580,45 610,65 580,85 580,75 540,75" fill="#34a853"/>
+
+    <rect x="620" y="20" width="220" height="70" rx="8" fill="#fef7e0" stroke="#f9ab00"/>
+    <text x="630" y="46">anyOf with discriminator</text>
+    <text x="630" y="66">switch on !kind</text>
+
+    <rect x="20" y="120" width="820" height="110" rx="8" fill="#f1f3f4" stroke="#5f6368"/>
+    <text x="30" y="146">Generated UnmarshalJSON helpers</text>
+    <text x="30" y="166">Owner side helper decodes IF by discriminator and unmarshals into concrete Impl type</text>
+    <text x="30" y="186">Error for missing or unknown discriminator</text>
+  </g>
+</svg>
