@@ -122,7 +122,7 @@ func TestBasic(t *testing.T) {
 			testName:  "test6-providers",
 			runGinkgo: false,
 			files: []string{
-				"jsonschema/Example.json",
+				"jsonschema/Example.json.tmpl",
 				"jsonschema_gen.go",
 			},
 		},
