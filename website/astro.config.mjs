@@ -10,30 +10,17 @@ export default defineConfig({
 	},
 	integrations: [
 		starlight({
-			title: 'go-gen-jsonschema',
-			social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/tylergannon/go-gen-jsonschema' }],
-			sidebar: [
-				{
-					label: 'Overview',
-					items: [{ label: 'Introduction', slug: '' }],
-				},
-				{
-					label: 'Spec',
-					autogenerate: { directory: 'spec' },
-				},
-				{
-					label: 'Examples',
-					items: [{ label: 'Examples Index', slug: 'examples' }],
-				},
-				{
-					label: 'Implementation',
-					autogenerate: { directory: 'implementation' },
-				},
-				{
-					label: 'API Reference',
-					autogenerate: { directory: 'api' },
-				},
-			],
+				title: 'go-gen-jsonschema',
+				description: 'Generate JSON Schema from Go types with confidence. Enums, interfaces, providers, deterministic outputs.',
+				logo: { src: './src/assets/gopher-front.svg', replacesTitle: true },
+				favicon: '/favicon.svg',
+				social: [
+					{ icon: 'github', label: 'GitHub', href: 'https://github.com/tylergannon/go-gen-jsonschema' },
+				],
+				customCss: [
+					'./src/fonts/font-face.css',
+					'./src/styles/custom.css'
+				],
 		}),
 	],
 });

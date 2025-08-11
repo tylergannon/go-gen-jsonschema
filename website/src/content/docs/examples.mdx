@@ -3,7 +3,7 @@ title: Examples
 description: Practical examples demonstrating SPEC → EXAMPLES → IMPLEMENTATION.
 ---
 
-import { Tabs, TabItem, FileTree, Card, CardGrid } from '@astrojs/starlight/components';
+import { Tabs, TabItem, FileTree, Card, CardGrid, Code } from '@astrojs/starlight/components';
 
 > The three pillars of our methodology: SPEC, EXAMPLES, IMPLEMENTATION.
 
@@ -21,15 +21,11 @@ import basicTypes from '../../../../examples/basictypes/types.go?raw';
 <Tabs>
   <TabItem label="schema.go">
 
-```go
-{basicSchema}
-```
+<Code code={basicSchema} lang="go" title="schema.go" />
   </TabItem>
   <TabItem label="types.go">
 
-```go
-{basicTypes}
-```
+<Code code={basicTypes} lang="go" title="types.go" />
   </TabItem>
 </Tabs>
 
@@ -41,15 +37,11 @@ import enumsTypes from '../../../../examples/enums/types.go?raw';
 <Tabs>
   <TabItem label="schema.go">
 
-```go
-{enumsSchema}
-```
+<Code code={enumsSchema} lang="go" title="schema.go" />
   </TabItem>
   <TabItem label="types.go">
 
-```go
-{enumsTypes}
-```
+<Code code={enumsTypes} lang="go" title="types.go" />
   </TabItem>
 </Tabs>
 

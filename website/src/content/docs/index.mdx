@@ -1,14 +1,16 @@
 ---
 title: go-gen-jsonschema
-description: Get started building your docs site with Starlight.
+description: Generate JSON Schema from Go types. Deterministic. Composable. Tested.
 template: splash
 hero:
-  tagline: Generate JSON Schema from Go types with confidence.
+  tagline: Generate JSON Schema from Go types — deterministic, composable, tested.
   image:
-    file: ../../assets/houston.webp
+    file: ../../assets/gopher-front.svg
   actions:
+    - text: Getting Started
+      link: /getting-started/
     - text: Spec
-      link: /spec/v1/
+      link: /spec/
     - text: Examples
       link: /examples/
     - text: API Reference
@@ -17,11 +19,20 @@ hero:
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
 
-## Explore the docs
+## Why go-gen-jsonschema
 
-<CardGrid stagger>
-  <Card title="Spec" icon="open-book" href="/spec/v1/">Authoritative schema and behavior specification.</Card>
-  <Card title="Examples" icon="code" href="/examples/">Real, runnable examples mirroring the spec.</Card>
-  <Card title="Implementation" icon="setting" href="/implementation/">Design notes and internal architecture.</Card>
+- Deterministic JSON Schema generation from Go types.
+- First-class enums, discriminated interfaces, and provider-rendered schemas.
+- Compile-verified codegen. Golden tests. CI-friendly.
+
+## Quickstart
+
+import { Code } from '@astrojs/starlight/components';
+
+<Code code={`go get github.com/tylergannon/go-gen-jsonschema\n\n# In your package\n//go:generate gen-jsonschema\n\n# Run codegen\ngo generate ./...\n`} lang="bash" title="Install & generate" />
+
+<CardGrid>
+  <Card title="Read the Spec" icon="open-book" href="/spec/">Authoritative schema and behavior specification.</Card>
+  <Card title="Browse Examples" icon="code" href="/examples/">Real, runnable examples mirroring the spec.</Card>
   <Card title="API Reference" icon="right-arrow" href="/api/">Generated Go API docs (godoc → Markdown).</Card>
 </CardGrid>

@@ -1,0 +1,35 @@
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/600.css';
+@import '@fontsource/jetbrains-mono/400.css';
+@import '@fontsource/jetbrains-mono/600.css';
+
+:root {
+  --sl-border-radius: 10px;
+  --sl-font: 'InterVariable', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  --sl-font-mono: "JetBrainsMono Nerd Font", "FiraCode Nerd Font", "Hack Nerd Font", "MesloLGS NF", "CaskaydiaCove Nerd Font", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+}
+
+/* Light theme palette */
+:root[data-theme="light"] {
+  /* Accessible indigo (WCAG AA+ friendly) */
+  --sl-color-accent-low: hsl(248 100% 96%);
+  --sl-color-accent: hsl(248 100% 42%);
+  --sl-color-accent-high: hsl(248 100% 32%);
+}
+
+/* Dark theme palette */
+:root[data-theme="dark"] {
+  --sl-color-accent-low: hsl(248 40% 22%);
+  --sl-color-accent: hsl(248 75% 70%);
+  --sl-color-accent-high: hsl(248 85% 78%);
+}
+
+/* Header logo sizing */
+.header .site-title img { height: 32px; width: auto; }
+
+/* Cards & code frames rounding */
+.card { border-radius: var(--sl-border-radius); }
+.expressive-code .frame { border-radius: 8px; overflow: hidden; }
+
+/* Improve hero spacing on splash */
+main .astro-7q3lir66 ~ .main-frame .astro-zntqmydn { gap: 2rem; }

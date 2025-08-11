@@ -1,0 +1,21 @@
+/* Local Nerd Font faces (provide the woff2 files in /public/fonts) */
+@font-face {
+  font-family: 'JetBrains Mono Nerd';
+  src: url('/fonts/JetBrainsMonoNerdFont-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'JetBrains Mono Nerd';
+  src: url('/fonts/JetBrainsMonoNerdFont-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --font-nerd: 'JetBrains Mono Nerd', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+}
+
+code, pre, .expressive-code { font-family: var(--font-nerd) !important; }
