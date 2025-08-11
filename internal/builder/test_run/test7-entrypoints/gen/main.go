@@ -1,8 +1,9 @@
 package main
 
 import (
-	"github.com/tylergannon/go-gen-jsonschema/internal/builder"
 	"log"
+
+	"github.com/tylergannon/go-gen-jsonschema/internal/builder"
 )
 
 func main() {

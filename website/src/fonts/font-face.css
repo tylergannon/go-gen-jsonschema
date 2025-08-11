@@ -1,14 +1,14 @@
-/* Local Nerd Font faces (provide the woff2 files in /public/fonts) */
+/* Local Nerd Font faces via Astro assets (bundled & fingerprinted). */
 @font-face {
   font-family: 'JetBrains Mono Nerd';
-  src: url('/fonts/JetBrainsMonoNerdFont-Regular.woff2') format('woff2');
+  src: url("/src/assets/fonts/JetBrainsMonoNerdFont-Regular.woff2") format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: 'JetBrains Mono Nerd';
-  src: url('/fonts/JetBrainsMonoNerdFont-Bold.woff2') format('woff2');
+  src: url("/src/assets/fonts/JetBrainsMonoNerdFont-Bold.woff2") format('woff2');
   font-weight: 700;
   font-style: normal;
   font-display: swap;

@@ -21,6 +21,29 @@ export default defineConfig({
 					'./src/fonts/font-face.css',
 					'./src/styles/custom.css'
 				],
-		}),
-	],
+				sidebar: [
+					{ label: 'Getting Started', link: '/getting-started/' },
+					{ label: 'Spec', link: '/spec/' },
+					{ label: 'Examples', link: '/examples/' },
+					{ label: 'API', link: '/api/' },
+					{ label: 'Guides', autogenerate: { directory: 'guides' } },
+					{
+						label: 'Overview',
+						items: [
+							{ label: 'Home', link: '/' },
+							{ label: 'Getting Started', link: '/getting-started/' },
+						],
+					},
+					{
+						label: 'Guides',
+						autogenerate: { directory: 'guides' },
+					},
+					{ label: 'Spec', link: '/spec/' },
+					{ label: 'Examples', link: '/examples/' },
+					{
+						label: 'API Reference',
+						items: [ { label: 'Index', link: '/api/' } ],
+					},
+				],
+			}),	],
 });

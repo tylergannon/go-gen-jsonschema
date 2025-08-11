@@ -4,6 +4,7 @@ package v1_interfaces_options
 
 import (
 	"encoding/json"
+
 	jsonschema "github.com/tylergannon/go-gen-jsonschema"
 )
 
