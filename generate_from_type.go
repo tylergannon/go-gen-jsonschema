@@ -1,4 +1,4 @@
-package jschema
+package jsonschema
 
 // GenerateSchemaForType is a stub for Phase 1.
 // It will be implemented to produce JSON Schema from a synthesized dst.Node type.
