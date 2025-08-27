@@ -1,0 +1,42 @@
+{
+  "type": "object",
+  "description": "Team represents a team of people",
+  "properties": {
+    "teamName": {
+      "type": "string",
+      "description": "TeamName is the name of the team"
+    },
+    "members": {
+      "type": "array",
+      "description": "Members is a list of people in the team",
+      "items": {
+        "type": "object",
+        "description": "Person represents a person with basic information",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name is the person's full name"
+          },
+          "age": {
+            "type": "integer",
+            "description": "Age is the person's age in years"
+          },
+          "email": {
+            "type": "string",
+            "description": "Email is an optional email address"
+          }
+        },
+        "required": [
+          "name",
+          "age"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "teamName",
+    "members"
+  ],
+  "additionalProperties": false
+}

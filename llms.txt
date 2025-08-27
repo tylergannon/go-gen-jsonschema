@@ -1,114 +1,356 @@
-Guide for Coding Agents: Using go-gen-jsonschema
+# Complete Guide: go-gen-jsonschema for AI Coding Assistants
 
-Goal
-- Turn Go types into JSON Schemas reliably for LLM tools/function-calling.
-- You focus on Go types and brief annotations; this tool generates the rest.
+## What This Tool Does
+Generates JSON Schema files from Go type definitions, perfect for LLM function calling (OpenAI, Anthropic, etc).
+The generated schemas are embedded in your Go binary for runtime access.
 
-Quick start (copy/paste recipe)
-1) Create schema.go with build tag and imports:
-   //go:build jsonschema
-   // +build jsonschema
-   package yourpkg
-   import (
-     "encoding/json"
-     jsonschema "github.com/tylergannon/go-gen-jsonschema"
-   )
+## Installation & Usage
 
-2) Add a stub method for each type you want a schema for:
-   func (T) Schema() json.RawMessage { panic("not implemented") }
+### Install the CLI tool:
+```bash
+go install github.com/tylergannon/go-gen-jsonschema/gen-jsonschema@latest
+```
 
-3) Register schema generation (one line per type):
-   var _ = jsonschema.NewJSONSchemaMethod(T.Schema)
+### Command to generate schemas:
+```bash
+# Run in directory with schema.go files
+go run github.com/tylergannon/go-gen-jsonschema/gen-jsonschema --pretty
 
-4) Optional: register enums and union types
-   // Enums (string-based)
-   var _ = jsonschema.NewEnumType[YourEnum]()
-   // Interface unions
-   var _ = jsonschema.NewInterfaceImpl[YourInterface](Impl1{}, Impl2{}, (*PtrImpl3)(nil))
+# Or with go generate
+//go:generate go run github.com/tylergannon/go-gen-jsonschema/gen-jsonschema --pretty
+```
 
-5) Optional: override specific field schemas with providers (type-safe)
-   // Use Go field reference and a provider
-   var _ = jsonschema.NewJSONSchemaMethod(
-     T.Schema,
-     jsonschema.WithStructAccessorMethod(T{}.FieldA, (T).FieldASchema),      // provider: method() json.Marshaler
-     jsonschema.WithStructFunctionMethod(T{}.FieldB, (T).FieldBSchema),      // provider: method(FieldType) json.Marshaler
-     jsonschema.WithFunction(T{}.FieldC, FreeFuncForFieldC),                 // provider: func(FieldType) json.Marshaler
-   )
-   // Providers are invoked on the ACTUAL receiver at runtime. You return any json.Marshaler that produces a valid schema node for that field.
+## Complete Working Example 1: Basic Types
 
-6) Generate
-   // Add this to a file in your package (e.g., types.go)
-   //go:generate go run ./gen
-   // Create ./gen/main.go that calls the generator
-   package main
-   import (
-     "log"
-     "github.com/tylergannon/go-gen-jsonschema/internal/builder"
-   )
-   func main() {
-     if err := builder.Run(builder.BuilderArgs{TargetDir: ".", Pretty: true}); err != nil { log.Fatal(err) }
-   }
-   // Then run:
-   //   go generate ./...
+### Step 1: Create types.go
+```go
+package myapp
 
-What gets generated
-- jsonschema/<Type>.json
-  - If you used field providers, this is a template with placeholders like {{.fieldName}} (fieldName is the JSON name from the struct tag or field name).
-  - Otherwise it is plain JSON.
-- jsonschema_gen.go
-  - Implements your Schema() methods by embedding files.
-  - If providers are present, it renders the template by calling your providers on the actual receiver and substituting the returned schema fragments.
-  - If you used interface unions, includes discriminator-based unmarshaling helpers (discriminator key: "!type").
+// Person represents a person with contact info
+type Person struct {
+	// Full name of the person
+	Name string `json:"name"`
+	
+	// Age in years
+	Age int `json:"age"`
+	
+	// Email address (optional field)
+	Email string `json:"email,omitempty" jsonschema:"optional"`
+	
+	// Phone number
+	Phone string `json:"phone" jsonschema:"optional" description:"Contact phone number"`
+}
 
-How comments map to schema
-- Field descriptions: taken from the field doc comment.
-- You can override with a struct tag: description:"...".
-- Required vs optional: fields are required by default unless jsonschema:"optional" is set.
-- JSON names: taken from `json:"name"`; otherwise the exported Go field name.
+// Team represents a group of people
+type Team struct {
+	TeamName string   `json:"team_name"`
+	Members  []Person `json:"members"`
+	LeadID   int      `json:"lead_id"`
+}
+```
 
-Struct tags you may need
-- json: standard naming or "-" to skip.
-- jsonschema:
-  - optional: mark the field as not required.
-  - ref=...: emit field as a $ref.
-- description: overrides doc comment as description text.
+### Step 2: Create schema.go
+```go
+//go:build jsonschema
+// +build jsonschema
 
-Enums
-- Register string enums with NewEnumType[YourEnum]().
-- Declare const values of that enum type; their string values populate the enum schema.
+package myapp
 
-Union types (interfaces)
-- Register implementations with NewInterfaceImpl[YourInterface](impls...).
-- Schema uses anyOf with a required discriminator property "!type" set to the implementation type name.
-- Generated code includes a helper to unmarshal by discriminator.
+import (
+	"encoding/json"
+	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+)
 
-Provider overrides (when you need precise field schemas)
-- Use one of:
-  - WithStructAccessorMethod(T{}.Field, (T).Provider)            // Provider signature: func (T) json.Marshaler
-  - WithStructFunctionMethod(T{}.Field, (T).Provider)            // Provider signature: func (T, FieldType) json.Marshaler
-  - WithFunction(T{}.Field, FreeFunc)                            // Provider signature: func (FieldType) json.Marshaler
-- The generator:
-  - Replaces that field’s schema in the JSON file with a template placeholder.
-  - Generates code to call your provider(s) on the actual receiver instance at runtime.
+// Schema method stubs (will be replaced by generator)
+func (Person) Schema() json.RawMessage { panic("not implemented") }
+func (Team) Schema() json.RawMessage   { panic("not implemented") }
 
-Checklist (use this before running generate)
-- Did you add schema.go with the jsonschema build tag and imports?
-- Did you add a Schema() stub for each type?
-- Did you register each type with NewJSONSchemaMethod(Type.Schema)?
-- If using enums, did you call NewEnumType[Enum]() and declare const values?
-- If using unions, did you call NewInterfaceImpl[Interface](impls...)?
-- If overriding fields, did you reference the field as Type{}.Field and pass the right provider function/method?
-- Do your provider functions return json.Marshaler values that are valid schema nodes (object/array/enum/ref/etc.)?
-- Did you add //go:generate and a ./gen that runs builder.Run?
+// Register types for schema generation
+var (
+	_ = jsonschema.NewJSONSchemaMethod(Person.Schema)
+	_ = jsonschema.NewJSONSchemaMethod(Team.Schema)
+)
+```
 
-Common mistakes (and fixes)
-- Forgetting build tag jsonschema on schema.go: the generator won’t see stubs/markers.
-- Forgetting to register types/enums/interfaces: nothing is generated.
-- Provider not applied: ensure you referenced the Go field by Type{}.Field and the provider expression matches one of the supported forms.
-- Template placeholders don’t match: remember placeholders use JSON field names (from struct tag or field name).
+### Step 3: Generate
+```bash
+go run github.com/tylergannon/go-gen-jsonschema/gen-jsonschema --pretty
+```
 
-Why this is easy for you (the agent)
-- You don’t write JSON Schemas by hand.
-- You describe types in Go, annotate minimally, and call the marker(s).
-- If a field needs a special schema, you write a small provider returning json.Marshaler.
-- Run go generate; your schemas are embedded and returned by compiled code.
+### Step 4: Results
+Creates:
+- `jsonschema/Person.json` - JSON schema for Person
+- `jsonschema/Team.json` - JSON schema for Team
+- `jsonschema_gen.go` - Go code to access schemas at runtime
+
+## Complete Working Example 2: Enums
+
+### types.go
+```go
+package myapp
+
+// Status represents task status
+type Status string
+
+const (
+	StatusPending  Status = "pending"
+	StatusActive   Status = "active"
+	StatusComplete Status = "complete"
+	StatusCanceled Status = "canceled"
+)
+
+// Priority level for tasks
+type Priority int
+
+const (
+	PriorityLow Priority = iota
+	PriorityMedium
+	PriorityHigh
+	PriorityUrgent
+)
+
+// Task with enum fields
+type Task struct {
+	Title    string   `json:"title"`
+	Status   Status   `json:"status"`
+	Priority Priority `json:"priority"`
+}
+```
+
+### schema.go
+```go
+//go:build jsonschema
+// +build jsonschema
+
+package myapp
+
+import (
+	"encoding/json"
+	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+)
+
+func (Task) Schema() json.RawMessage { panic("not implemented") }
+
+var (
+	_ = jsonschema.NewJSONSchemaMethod(Task.Schema)
+	
+	// Register string enum (uses const values)
+	_ = jsonschema.NewEnumType[Status]()
+	
+	// Register int enum  
+	_ = jsonschema.NewEnumType[Priority]()
+)
+```
+
+## Complete Working Example 3: Union Types (Interfaces)
+
+### types.go
+```go
+package myapp
+
+// PaymentMethod is implemented by different payment types
+type PaymentMethod interface {
+	isPaymentMethod()
+}
+
+// CreditCard payment
+type CreditCard struct {
+	CardNumber string `json:"card_number"`
+	CVV        string `json:"cvv"`
+}
+
+func (CreditCard) isPaymentMethod() {}
+
+// BankTransfer payment
+type BankTransfer struct {
+	AccountNum string `json:"account_num"`
+	RoutingNum string `json:"routing_num"`
+}
+
+func (BankTransfer) isPaymentMethod() {}
+
+// PayPal payment (note: pointer receiver)
+type PayPal struct {
+	Email string `json:"email"`
+}
+
+func (*PayPal) isPaymentMethod() {}
+
+// Order with polymorphic payment field
+type Order struct {
+	ID      string        `json:"id"`
+	Amount  float64       `json:"amount"`
+	Payment PaymentMethod `json:"payment"`
+}
+```
+
+### schema.go (v1 per-field interface configuration)
+```go
+//go:build jsonschema
+// +build jsonschema
+
+package myapp
+
+import (
+	"encoding/json"
+	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+)
+
+func (Order) Schema() json.RawMessage { panic("not implemented") }
+
+// v1 style: Configure interface per struct field
+var _ = jsonschema.NewJSONSchemaMethod(
+	Order.Schema,
+	// Mark the Payment field as a discriminated union
+	jsonschema.WithInterface(Order{}.Payment),
+	// Specify implementations
+	jsonschema.WithInterfaceImpls(Order{}.Payment, 
+		CreditCard{}, 
+		BankTransfer{}, 
+		(*PayPal)(nil),  // Use nil pointer for pointer receivers
+	),
+	// Custom discriminator property (default is "!type")
+	jsonschema.WithDiscriminator(Order{}.Payment, "!kind"),
+)
+```
+
+### Alternative: Legacy global interface registration
+```go
+// Legacy style (still works, but can't customize discriminator)
+var (
+	_ = jsonschema.NewJSONSchemaMethod(Order.Schema)
+	_ = jsonschema.NewInterfaceImpl[PaymentMethod](
+		CreditCard{}, 
+		BankTransfer{}, 
+		(*PayPal)(nil),
+	)
+)
+```
+
+## Complete Working Example 4: Field Schema Providers
+
+When you need precise control over specific field schemas (e.g., for dynamic schemas):
+
+### types.go
+```go
+package myapp
+
+import "encoding/json"
+
+type Config struct {
+	Name     string          `json:"name"`
+	Settings json.RawMessage `json:"settings"` // Dynamic based on Name
+}
+
+// Provider methods for custom field schemas
+func (c Config) SettingsSchema() json.Marshaler {
+	// Return different schema based on actual value
+	switch c.Name {
+	case "database":
+		return jsonschema.ObjectSchema(map[string]json.Marshaler{
+			"host": jsonschema.StringSchema("Database host"),
+			"port": jsonschema.IntSchema("Database port"),
+		}, "Database settings", true)
+	case "cache":
+		return jsonschema.ObjectSchema(map[string]json.Marshaler{
+			"ttl": jsonschema.IntSchema("Cache TTL in seconds"),
+		}, "Cache settings", true)
+	default:
+		return jsonschema.ObjectSchema(nil, "Custom settings", false)
+	}
+}
+```
+
+### schema.go
+```go
+//go:build jsonschema
+// +build jsonschema
+
+package myapp
+
+import (
+	"encoding/json"
+	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+)
+
+func (Config) Schema() json.RawMessage { panic("not implemented") }
+
+var _ = jsonschema.NewJSONSchemaMethod(
+	Config.Schema,
+	// Use provider for Settings field
+	jsonschema.WithStructAccessorMethod(Config{}.Settings, (Config).SettingsSchema),
+)
+```
+
+This generates a template that calls your provider at runtime:
+- `jsonschema/Config.json` contains `{{.settings}}` placeholder
+- At runtime, Schema() method calls SettingsSchema() on the actual receiver
+- The returned schema replaces the placeholder
+
+## Key Points for Success
+
+### 1. Build Tags Are Critical
+The `//go:build jsonschema` tag isolates schema definitions from production builds.
+Without it, the generator won't find your registrations.
+
+### 2. Method Signatures Must Match
+- Schema methods: `func (T) Schema() json.RawMessage`
+- Provider methods must return `json.Marshaler`
+- Interface implementations must implement the interface
+
+### 3. Field Tags Control Output
+- `json:"name"` - JSON field name
+- `jsonschema:"optional"` - Field not required
+- `jsonschema:"ref=path"` - Use $ref instead of inline
+- `description:"text"` - Override doc comment
+
+### 4. Comments Become Descriptions
+Field and type doc comments automatically become JSON Schema descriptions.
+
+### 5. Generation Process
+1. Generator reads files with `jsonschema` build tag
+2. Finds all NewJSONSchemaMethod/NewEnumType/etc. registrations
+3. Analyzes Go types using AST
+4. Generates JSON schemas in jsonschema/ directory
+5. Creates jsonschema_gen.go with Schema() implementations
+
+### 6. The Options Pattern Works
+The v1 Options pattern (WithInterface, WithInterfaceImpls, WithDiscriminator, etc.) 
+is functional and recommended for per-field configuration of unions and enums.
+
+## Common Errors & Solutions
+
+### "No packages found for open file"
+Your IDE doesn't recognize the jsonschema build tag. This is normal and doesn't affect generation.
+
+### "panic: not implemented" 
+You're calling Schema() in code with the jsonschema build tag active. 
+The real implementation is in jsonschema_gen.go (without the tag).
+
+### Schema not generated
+- Check build tag: `//go:build jsonschema`
+- Verify registration: `var _ = jsonschema.NewJSONSchemaMethod(T.Schema)`
+- Method signature: `func (T) Schema() json.RawMessage`
+
+### Interface unions not working
+- All implementations must be registered
+- Use `(*PointerType)(nil)` for pointer receivers
+- Can't mix legacy and v1 interface styles in same package
+
+## Testing Your Schemas
+
+```go
+// In your test file
+func TestSchema(t *testing.T) {
+	person := Person{Name: "Alice", Age: 30}
+	schema := person.Schema()
+	
+	// schema is valid JSON that can be used with OpenAI, Anthropic, etc.
+	var js map[string]interface{}
+	if err := json.Unmarshal(schema, &js); err != nil {
+		t.Fatal(err)
+	}
+	
+	// Use schema with your LLM client
+}
+```
