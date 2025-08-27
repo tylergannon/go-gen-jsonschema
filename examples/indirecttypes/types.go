@@ -58,13 +58,14 @@ type SliceOfPerson []Person
 // In the schema, this will be an array of nullable Person objects.
 type SliceOfPointerToPerson []*Person
 
-// MapOfStringToPerson is a map with string keys and Person values.
-// In the schema, this will be an object with string keys and Person values.
-type MapOfStringToPerson map[string]Person
+// COMMENTED OUT: Map types are not yet supported by the generator
+// // MapOfStringToPerson is a map with string keys and Person values.
+// // In the schema, this will be an object with string keys and Person values.
+// type MapOfStringToPerson map[string]Person
 
-// MapOfStringToPointerToPerson is a map with string keys and Person pointer values.
-// In the schema, this will be an object with string keys and nullable Person values.
-type MapOfStringToPointerToPerson map[string]*Person
+// // MapOfStringToPointerToPerson is a map with string keys and Person pointer values.
+// // In the schema, this will be an object with string keys and nullable Person values.
+// type MapOfStringToPointerToPerson map[string]*Person
 
 // ComplexStruct demonstrates using all these indirect types in a struct.
 type ComplexStruct struct {
@@ -95,9 +96,10 @@ type ComplexStruct struct {
 	// PeoplePointerValue is an array of nullable Person objects.
 	PeoplePointerValue SliceOfPointerToPerson `json:"peoplePointerValue,omitempty"`
 
-	// PeopleMapValue is an object with string keys and Person values.
-	PeopleMapValue MapOfStringToPerson `json:"peopleMapValue,omitempty"`
+	// COMMENTED OUT: Map types are not yet supported
+	// // PeopleMapValue is an object with string keys and Person values.
+	// PeopleMapValue MapOfStringToPerson `json:"peopleMapValue,omitempty"`
 
-	// PeoplePointerMapValue is an object with string keys and nullable Person values.
-	PeoplePointerMapValue MapOfStringToPointerToPerson `json:"peoplePointerMapValue,omitempty"`
+	// // PeoplePointerMapValue is an object with string keys and nullable Person values.
+	// PeoplePointerMapValue MapOfStringToPointerToPerson `json:"peoplePointerMapValue,omitempty"`
 }

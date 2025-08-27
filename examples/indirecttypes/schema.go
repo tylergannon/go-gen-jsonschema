@@ -60,13 +60,14 @@ func (SliceOfPointerToPerson) Schema() json.RawMessage {
 	panic("not implemented")
 }
 
-func (MapOfStringToPerson) Schema() json.RawMessage {
-	panic("not implemented")
-}
+// COMMENTED OUT: Map types are not yet supported
+// func (MapOfStringToPerson) Schema() json.RawMessage {
+// 	panic("not implemented")
+// }
 
-func (MapOfStringToPointerToPerson) Schema() json.RawMessage {
-	panic("not implemented")
-}
+// func (MapOfStringToPointerToPerson) Schema() json.RawMessage {
+// 	panic("not implemented")
+// }
 
 func (ComplexStruct) Schema() json.RawMessage {
 	panic("not implemented")
@@ -87,7 +88,8 @@ var (
 	_ = jsonschema.NewJSONSchemaMethod(PointerToPerson.Schema)
 	_ = jsonschema.NewJSONSchemaMethod(SliceOfPerson.Schema)
 	_ = jsonschema.NewJSONSchemaMethod(SliceOfPointerToPerson.Schema)
-	_ = jsonschema.NewJSONSchemaMethod(MapOfStringToPerson.Schema)
-	_ = jsonschema.NewJSONSchemaMethod(MapOfStringToPointerToPerson.Schema)
+	// COMMENTED OUT: Map types are not yet supported
+	// _ = jsonschema.NewJSONSchemaMethod(MapOfStringToPerson.Schema)
+	// _ = jsonschema.NewJSONSchemaMethod(MapOfStringToPointerToPerson.Schema)
 	_ = jsonschema.NewJSONSchemaMethod(ComplexStruct.Schema)
 )

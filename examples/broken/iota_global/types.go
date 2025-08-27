@@ -1,5 +1,7 @@
 package iota_global
 
+//go:generate gen-jsonschema
+
 // Priority represents task priority levels using iota
 type Priority int
 

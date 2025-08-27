@@ -27,16 +27,6 @@ var _ = jsonschema.NewJSONSchemaMethod(
 // Register Task with its enums (Note: Severity and WeekDay will fail as global enums)
 // var _ = jsonschema.NewJSONSchemaMethod(Task.Schema)
 
-// Register WorkItem with field-level enum configuration (v1 pattern)
-var _ = jsonschema.NewJSONSchemaMethod(
-	WorkItem.Schema,
-	// Configure Priority enum at field level with string mode
-	jsonschema.WithEnum(WorkItem{}.Priority),
-	jsonschema.WithEnumMode(jsonschema.EnumStrings),
-	// Configure Severity enum at field level
-	jsonschema.WithEnum(WorkItem{}.Level),
-)
-
 // Register enum types globally
 var (
 	// String-based enums work globally
@@ -44,5 +34,5 @@ var (
 	_ = jsonschema.NewEnumType[Priority]()
 
 	// Note: Pure iota enums (Severity, WeekDay) can't be registered globally
-	// They must use field-level configuration with WithEnum and WithEnumMode
+	// They must use field-level configuration with WithEnum
 )

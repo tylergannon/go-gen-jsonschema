@@ -7,12 +7,11 @@ import (
 	jsonschema "github.com/tylergannon/go-gen-jsonschema"
 )
 
-func ExampleSchema() json.RawMessage { panic("not implemented") }
+func (Example) Schema() json.RawMessage { panic("not implemented") }
 
-// Register via builder form with providers and rendered
-var _ = jsonschema.NewJSONSchemaBuilderFor(
-	Example{},
-	ExampleSchema,
+// Register via method form with providers and rendered
+var _ = jsonschema.NewJSONSchemaMethod(
+	Example.Schema,
 	jsonschema.WithStructAccessorMethod(Example{}.A, (Example).ASchema),
 	jsonschema.WithStructFunctionMethod(Example{}.B, (Example).BSchema),
 	jsonschema.WithFunction(Example{}.C, BoolSchemaFunc),

@@ -11,12 +11,11 @@ import (
 )
 
 const (
-	MarkerFuncNewJSONSchemaBuilder    = "NewJSONSchemaBuilder"    // NewJSONSchemaBuilder
-	MarkerFuncNewJSONSchemaBuilderFor = "NewJSONSchemaBuilderFor" // NewJSONSchemaBuilderFor
-	MarkerFuncNewJSONSchemaMethod     = "NewJSONSchemaMethod"     // NewJSONSchemaMethod
-	MarkerFuncNewJSONSchemaFunc       = "NewJSONSchemaFunc"       // NewJSONSchemaFunc
-	MarkerFuncNewInterfaceImpl        = "NewInterfaceImpl"        // NewInterfaceImpl
-	MarkerFuncNewEnumType             = "NewEnumType"             // NewEnumType
+	MarkerFuncNewJSONSchemaBuilder = "NewJSONSchemaBuilder" // NewJSONSchemaBuilder
+	MarkerFuncNewJSONSchemaMethod  = "NewJSONSchemaMethod"  // NewJSONSchemaMethod
+	MarkerFuncNewJSONSchemaFunc    = "NewJSONSchemaFunc"    // NewJSONSchemaFunc
+	MarkerFuncNewInterfaceImpl     = "NewInterfaceImpl"     // NewInterfaceImpl
+	MarkerFuncNewEnumType          = "NewEnumType"          // NewEnumType
 )
 
 // TypeID is our structured representation of a type. It can represent named types,
@@ -60,7 +59,6 @@ func (m MarkerFunctionCall) String() string {
 
 var markerFunctions = []string{
 	MarkerFuncNewJSONSchemaBuilder,
-	MarkerFuncNewJSONSchemaBuilderFor,
 	MarkerFuncNewJSONSchemaMethod,
 	MarkerFuncNewJSONSchemaFunc,
 	MarkerFuncNewInterfaceImpl,
@@ -288,37 +286,6 @@ func (m MarkerFunctionCall) ParseSchemaBuilder() (SchemaFunction, error) {
 	}, nil
 }
 
-// ParseSchemaBuilderFor expects two args: an example composite literal of the
-// target type (e.g., TypeName{}), followed by a builder func identifier.
-func (m MarkerFunctionCall) ParseSchemaBuilderFor() (SchemaFunction, error) {
-	args := m.CallExpr.Args()
-	if len(args) < 2 {
-		return SchemaFunction{}, fmt.Errorf("schema BuilderFor expects two arguments (example value, func), at %s", m.CallExpr.Position())
-	}
-	// First arg: composite literal of the type
-	typeID, err := parseLitForType(args[0])
-	if err != nil {
-		return SchemaFunction{}, fmt.Errorf("could not parse example value type at %s: %w", args[0].Position(), err)
-	}
-	// Second arg: builder func name
-	builderIdent, ok := args[1].Expr().(*dst.Ident)
-	if !ok {
-		return SchemaFunction{}, fmt.Errorf("expected identifier for builder function at %s", args[1].Position())
-	}
-	sf := SchemaFunction{
-		MarkerCall:       m,
-		Receiver:         typeID,
-		SchemaMethodName: builderIdent.Name,
-	}
-	// Parse optional consolidated options (variadic args beyond the two fixed)
-	if len(args) > 2 {
-		if opts, err := parseSchemaMethodOptions(args[2:], typeID, m); err == nil {
-			sf.Options = opts
-		}
-	}
-	return sf, nil
-}
-
 func (m MarkerFunctionCall) Args() []Expr {
 	return m.CallExpr.Args()
 }
@@ -380,9 +347,6 @@ func parseSchemaMethodOptions(args []Expr, receiver TypeID, m MarkerFunctionCall
 		var providerName string
 		providerIsMethod := false
 		var kind SchemaMethodOptionKind
-		var enumMode string
-		var enumConst TypeID
-		var enumName string
 		funName := funID.TypeName
 		switch funName {
 		case "WithFunction":
@@ -397,21 +361,8 @@ func parseSchemaMethodOptions(args []Expr, receiver TypeID, m MarkerFunctionCall
 			kind = SchemaMethodOptionKind("WithInterfaceImpls")
 		case "WithEnum":
 			kind = SchemaMethodOptionKind("WithEnum")
-		case "WithEnumMode":
-			kind = SchemaMethodOptionKind("WithEnumMode")
-			// Expect one arg: jsonschema.EnumStrings
-			enumMode = "strings"
-		case "WithEnumName":
-			kind = SchemaMethodOptionKind("WithEnumName")
-			// Args: ConstIdent, "name"
-			if len(ce.Args) == 2 {
-				if tid, err := parseLitForType(NewExpr(ce.Args[0], m.CallExpr.pkg, m.CallExpr.file)); err == nil {
-					enumConst = tid
-				}
-				if str, ok := ce.Args[1].(*dst.BasicLit); ok && str.Kind == token.STRING {
-					enumName = strings.Trim(str.Value, "\"")
-				}
-			}
+		case "WithStringerEnum":
+			kind = SchemaMethodOptionKind("WithStringerEnum")
 		default:
 			continue
 		}
@@ -456,9 +407,6 @@ func parseSchemaMethodOptions(args []Expr, receiver TypeID, m MarkerFunctionCall
 			ProviderName:     providerName,
 			ProviderIsMethod: providerIsMethod,
 			ImplTypes:        impls,
-			EnumMode:         enumMode,
-			EnumConst:        enumConst,
-			EnumName:         enumName,
 		})
 	}
 	return out, nil

@@ -24,13 +24,6 @@ func NewJSONSchemaBuilder[T any](SchemaFunction) SchemaMarker {
 	return SchemaMarker{}
 }
 
-// NewJSONSchemaBuilderFor registers a zero-arg builder function for the given
-// example instance value (e.g., TypeName{}), allowing type inference without
-// generics.
-func NewJSONSchemaBuilderFor(_ any, _ SchemaFunction, _ ...SchemaMethodOption) SchemaMarker {
-	return SchemaMarker{}
-}
-
 type SchemaMethodOption interface {
 	implementsSchemaMethodOption()
 }
@@ -83,15 +76,8 @@ func WithDiscriminator[T any](field T, name string) SchemaMethodOption {
 }
 
 // Enum options (v1) - stubs for scanning/type-checking; parsed by scanner
-type EnumMode int
-
-const (
-	EnumStrings EnumMode = iota + 1
-)
-
-func WithEnum[T any](field T) SchemaMethodOption                  { return SchemaMethodOptionObj{} }
-func WithEnumMode(mode EnumMode) SchemaMethodOption               { return SchemaMethodOptionObj{} }
-func WithEnumName[T any](value T, name string) SchemaMethodOption { return SchemaMethodOptionObj{} }
+func WithEnum[T any](field T) SchemaMethodOption         { return SchemaMethodOptionObj{} }
+func WithStringerEnum[T any](field T) SchemaMethodOption { return SchemaMethodOptionObj{} }
 
 // NewJSONSchemaMethod registers a struct method as a stub that will be implemented
 // with a proper json schema and, as needed, unmarshaler functionality.

@@ -1,356 +1,532 @@
-# Complete Guide: go-gen-jsonschema for AI Coding Assistants
+# go-gen-jsonschema
 
-## What This Tool Does
-Generates JSON Schema files from Go type definitions, perfect for LLM function calling (OpenAI, Anthropic, etc).
-The generated schemas are embedded in your Go binary for runtime access.
+A Go code generator that creates JSON Schema definitions from Go types. This tool analyzes your Go structs, interfaces, and enums to automatically generate corresponding JSON Schema files that can be used for validation, documentation, and API contracts.
 
-## Installation & Usage
+## Key Features
 
-### Install the CLI tool:
+- **Automatic Schema Generation**: Generates JSON Schema from Go structs with support for nested types, arrays, and pointers
+- **Enum Support**: Auto-discovers and handles both string and integer (iota) enums
+- **Interface/Union Types**: Supports interface-based union types with discriminators
+- **Type Comments**: Preserves Go comments as JSON Schema descriptions
+- **Template Providers**: Support for runtime schema customization via template rendering
+- **Build Tag Separation**: Keeps schema registration separate from production code using build tags
+
+## Installation
+
+Install the CLI tool:
 ```bash
 go install github.com/tylergannon/go-gen-jsonschema/gen-jsonschema@latest
 ```
 
-### Command to generate schemas:
-```bash
-# Run in directory with schema.go files
-go run github.com/tylergannon/go-gen-jsonschema/gen-jsonschema --pretty
+## Basic Usage
 
-# Or with go generate
-//go:generate go run github.com/tylergannon/go-gen-jsonschema/gen-jsonschema --pretty
-```
+### Step 1: Add Generate Directive
 
-## Complete Working Example 1: Basic Types
+Add a `//go:generate` directive to your types file:
 
-### Step 1: Create types.go
 ```go
-package myapp
+// types.go
+package mypackage
 
-// Person represents a person with contact info
+//go:generate gen-jsonschema
+
+// Or if not installed globally:
+//go:generate go run github.com/tylergannon/go-gen-jsonschema/gen-jsonschema
+
 type Person struct {
-	// Full name of the person
-	Name string `json:"name"`
-	
-	// Age in years
-	Age int `json:"age"`
-	
-	// Email address (optional field)
-	Email string `json:"email,omitempty" jsonschema:"optional"`
-	
-	// Phone number
-	Phone string `json:"phone" jsonschema:"optional" description:"Contact phone number"`
-}
-
-// Team represents a group of people
-type Team struct {
-	TeamName string   `json:"team_name"`
-	Members  []Person `json:"members"`
-	LeadID   int      `json:"lead_id"`
+    // Name is the person's full name
+    Name string `json:"name"`
+    
+    // Age in years
+    Age int `json:"age"`
+    
+    // Email address (optional)
+    Email string `json:"email,omitempty"`
 }
 ```
 
-### Step 2: Create schema.go
-```go
-//go:build jsonschema
-// +build jsonschema
+### Step 2: Create Schema Registration File
 
-package myapp
+Create a `schema.go` file with the `jsonschema` build tag:
+
+```go
+// schema.go
+//go:build jsonschema
+
+package mypackage
 
 import (
-	"encoding/json"
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+    "encoding/json"
+    jsonschema "github.com/tylergannon/go-gen-jsonschema"
 )
 
-// Schema method stubs (will be replaced by generator)
-func (Person) Schema() json.RawMessage { panic("not implemented") }
-func (Team) Schema() json.RawMessage   { panic("not implemented") }
+// Schema method stub - will be implemented by code generation
+func (Person) Schema() json.RawMessage { 
+    panic("not implemented") 
+}
 
-// Register types for schema generation
-var (
-	_ = jsonschema.NewJSONSchemaMethod(Person.Schema)
-	_ = jsonschema.NewJSONSchemaMethod(Team.Schema)
-)
+// Register the type for schema generation
+var _ = jsonschema.NewJSONSchemaMethod(Person.Schema)
 ```
 
-### Step 3: Generate
+### Step 3: Generate Schemas
+
+Run the generator:
 ```bash
-go run github.com/tylergannon/go-gen-jsonschema/gen-jsonschema --pretty
+go generate ./...
 ```
 
-### Step 4: Results
-Creates:
-- `jsonschema/Person.json` - JSON schema for Person
-- `jsonschema/Team.json` - JSON schema for Team
-- `jsonschema_gen.go` - Go code to access schemas at runtime
+This creates:
+- `jsonschema/Person.json` - The JSON Schema file
+- `jsonschema_gen.go` - Generated code implementing the Schema() method
 
-## Complete Working Example 2: Enums
+## Complete Examples
 
-### types.go
+### Example 1: Basic Struct with Nested Types
+
 ```go
-package myapp
+// types.go
+package store
 
-// Status represents task status
+//go:generate gen-jsonschema
+
+// Address represents a physical address
+type Address struct {
+    // Street address including number
+    Street string `json:"street"`
+    
+    // City name
+    City string `json:"city"`
+    
+    // State or province
+    State string `json:"state"`
+    
+    // Postal/ZIP code
+    PostalCode string `json:"postalCode"`
+}
+
+// Customer represents a store customer
+type Customer struct {
+    // Unique customer ID
+    ID string `json:"id"`
+    
+    // Customer's full name
+    Name string `json:"name"`
+    
+    // Customer's primary address
+    Address Address `json:"address"`
+    
+    // Additional addresses (optional)
+    OtherAddresses []Address `json:"otherAddresses,omitempty"`
+    
+    // VIP status
+    IsVIP bool `json:"isVip"`
+}
+```
+
+```go
+// schema.go
+//go:build jsonschema
+
+package store
+
+import (
+    "encoding/json"
+    jsonschema "github.com/tylergannon/go-gen-jsonschema"
+)
+
+func (Address) Schema() json.RawMessage { panic("not implemented") }
+func (Customer) Schema() json.RawMessage { panic("not implemented") }
+
+var (
+    _ = jsonschema.NewJSONSchemaMethod(Address.Schema)
+    _ = jsonschema.NewJSONSchemaMethod(Customer.Schema)
+)
+```
+
+Generated `jsonschema/Customer.json`:
+```json
+{
+  "type": "object",
+  "description": "Customer represents a store customer",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique customer ID"
+    },
+    "name": {
+      "type": "string",
+      "description": "Customer's full name"
+    },
+    "address": {
+      "$ref": "#/definitions/Address",
+      "description": "Customer's primary address"
+    },
+    "otherAddresses": {
+      "type": "array",
+      "description": "Additional addresses (optional)",
+      "items": {
+        "$ref": "#/definitions/Address"
+      }
+    },
+    "isVip": {
+      "type": "boolean",
+      "description": "VIP status"
+    }
+  },
+  "required": ["id", "name", "address", "isVip"],
+  "additionalProperties": false
+}
+```
+
+### Example 2: String Enums with Auto-Discovery
+
+```go
+// types.go
+package tasks
+
+//go:generate gen-jsonschema
+
+// Status represents the state of a task
 type Status string
 
 const (
-	StatusPending  Status = "pending"
-	StatusActive   Status = "active"
-	StatusComplete Status = "complete"
-	StatusCanceled Status = "canceled"
+    // Task is waiting to be started
+    StatusPending Status = "pending"
+    // Task is currently being worked on
+    StatusInProgress Status = "in_progress"
+    // Task has been completed
+    StatusCompleted Status = "completed"
+    // Task has been cancelled
+    StatusCancelled Status = "cancelled"
 )
 
-// Priority level for tasks
-type Priority int
+// Priority represents task importance
+type Priority string
 
 const (
-	PriorityLow Priority = iota
-	PriorityMedium
-	PriorityHigh
-	PriorityUrgent
+    PriorityLow    Priority = "low"
+    PriorityMedium Priority = "medium"
+    PriorityHigh   Priority = "high"
 )
 
-// Task with enum fields
+// Task represents a work item
 type Task struct {
-	Title    string   `json:"title"`
-	Status   Status   `json:"status"`
-	Priority Priority `json:"priority"`
+    // Unique task identifier
+    ID string `json:"id"`
+    
+    // Task title
+    Title string `json:"title"`
+    
+    // Current status
+    Status Status `json:"status"`
+    
+    // Task priority
+    Priority Priority `json:"priority"`
 }
 ```
 
-### schema.go
 ```go
+// schema.go
 //go:build jsonschema
-// +build jsonschema
 
-package myapp
+package tasks
 
 import (
-	"encoding/json"
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+    "encoding/json"
+    jsonschema "github.com/tylergannon/go-gen-jsonschema"
 )
 
 func (Task) Schema() json.RawMessage { panic("not implemented") }
 
-var (
-	_ = jsonschema.NewJSONSchemaMethod(Task.Schema)
-	
-	// Register string enum (uses const values)
-	_ = jsonschema.NewEnumType[Status]()
-	
-	// Register int enum  
-	_ = jsonschema.NewEnumType[Priority]()
-)
-```
-
-## Complete Working Example 3: Union Types (Interfaces)
-
-### types.go
-```go
-package myapp
-
-// PaymentMethod is implemented by different payment types
-type PaymentMethod interface {
-	isPaymentMethod()
-}
-
-// CreditCard payment
-type CreditCard struct {
-	CardNumber string `json:"card_number"`
-	CVV        string `json:"cvv"`
-}
-
-func (CreditCard) isPaymentMethod() {}
-
-// BankTransfer payment
-type BankTransfer struct {
-	AccountNum string `json:"account_num"`
-	RoutingNum string `json:"routing_num"`
-}
-
-func (BankTransfer) isPaymentMethod() {}
-
-// PayPal payment (note: pointer receiver)
-type PayPal struct {
-	Email string `json:"email"`
-}
-
-func (*PayPal) isPaymentMethod() {}
-
-// Order with polymorphic payment field
-type Order struct {
-	ID      string        `json:"id"`
-	Amount  float64       `json:"amount"`
-	Payment PaymentMethod `json:"payment"`
-}
-```
-
-### schema.go (v1 per-field interface configuration)
-```go
-//go:build jsonschema
-// +build jsonschema
-
-package myapp
-
-import (
-	"encoding/json"
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
-)
-
-func (Order) Schema() json.RawMessage { panic("not implemented") }
-
-// v1 style: Configure interface per struct field
+// WithEnum auto-discovers the enum type - no NewEnumType needed!
 var _ = jsonschema.NewJSONSchemaMethod(
-	Order.Schema,
-	// Mark the Payment field as a discriminated union
-	jsonschema.WithInterface(Order{}.Payment),
-	// Specify implementations
-	jsonschema.WithInterfaceImpls(Order{}.Payment, 
-		CreditCard{}, 
-		BankTransfer{}, 
-		(*PayPal)(nil),  // Use nil pointer for pointer receivers
-	),
-	// Custom discriminator property (default is "!type")
-	jsonschema.WithDiscriminator(Order{}.Payment, "!kind"),
+    Task.Schema,
+    jsonschema.WithEnum(Task{}.Status),
+    jsonschema.WithEnum(Task{}.Priority),
 )
 ```
 
-### Alternative: Legacy global interface registration
+Generated schema includes enum values with descriptions from comments.
+
+### Example 3: Integer (iota) Enums with Stringer
+
 ```go
-// Legacy style (still works, but can't customize discriminator)
-var (
-	_ = jsonschema.NewJSONSchemaMethod(Order.Schema)
-	_ = jsonschema.NewInterfaceImpl[PaymentMethod](
-		CreditCard{}, 
-		BankTransfer{}, 
-		(*PayPal)(nil),
-	)
+// types.go
+package logging
+
+//go:generate gen-jsonschema
+
+import "fmt"
+
+// LogLevel represents the severity of log messages
+type LogLevel int
+
+const (
+    // Detailed diagnostic information
+    LogDebug LogLevel = iota
+    // General informational messages
+    LogInfo
+    // Warning messages
+    LogWarning
+    // Error messages
+    LogError
+    // Fatal errors that cause termination
+    LogFatal
 )
-```
 
-## Complete Working Example 4: Field Schema Providers
+// String implements the Stringer interface
+func (l LogLevel) String() string {
+    return [...]string{"DEBUG", "INFO", "WARNING", "ERROR", "FATAL"}[l]
+}
 
-When you need precise control over specific field schemas (e.g., for dynamic schemas):
-
-### types.go
-```go
-package myapp
-
-import "encoding/json"
-
+// Config represents application configuration
 type Config struct {
-	Name     string          `json:"name"`
-	Settings json.RawMessage `json:"settings"` // Dynamic based on Name
-}
-
-// Provider methods for custom field schemas
-func (c Config) SettingsSchema() json.Marshaler {
-	// Return different schema based on actual value
-	switch c.Name {
-	case "database":
-		return jsonschema.ObjectSchema(map[string]json.Marshaler{
-			"host": jsonschema.StringSchema("Database host"),
-			"port": jsonschema.IntSchema("Database port"),
-		}, "Database settings", true)
-	case "cache":
-		return jsonschema.ObjectSchema(map[string]json.Marshaler{
-			"ttl": jsonschema.IntSchema("Cache TTL in seconds"),
-		}, "Cache settings", true)
-	default:
-		return jsonschema.ObjectSchema(nil, "Custom settings", false)
-	}
+    // Application name
+    AppName string `json:"appName"`
+    
+    // Minimum log level to record
+    LogLevel LogLevel `json:"logLevel"`
 }
 ```
 
-### schema.go
 ```go
+// schema.go
 //go:build jsonschema
-// +build jsonschema
 
-package myapp
+package logging
 
 import (
-	"encoding/json"
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+    "encoding/json"
+    jsonschema "github.com/tylergannon/go-gen-jsonschema"
 )
 
 func (Config) Schema() json.RawMessage { panic("not implemented") }
 
 var _ = jsonschema.NewJSONSchemaMethod(
-	Config.Schema,
-	// Use provider for Settings field
-	jsonschema.WithStructAccessorMethod(Config{}.Settings, (Config).SettingsSchema),
+    Config.Schema,
+    // Use WithStringerEnum to use constant names instead of integer values
+    jsonschema.WithStringerEnum(Config{}.LogLevel),
 )
 ```
 
-This generates a template that calls your provider at runtime:
-- `jsonschema/Config.json` contains `{{.settings}}` placeholder
-- At runtime, Schema() method calls SettingsSchema() on the actual receiver
-- The returned schema replaces the placeholder
+With `WithStringerEnum`, the schema will use string enum values: ["LogDebug", "LogInfo", ...].
+Without it (using `WithEnum`), it uses integer values: [0, 1, 2, 3, 4].
 
-## Key Points for Success
-
-### 1. Build Tags Are Critical
-The `//go:build jsonschema` tag isolates schema definitions from production builds.
-Without it, the generator won't find your registrations.
-
-### 2. Method Signatures Must Match
-- Schema methods: `func (T) Schema() json.RawMessage`
-- Provider methods must return `json.Marshaler`
-- Interface implementations must implement the interface
-
-### 3. Field Tags Control Output
-- `json:"name"` - JSON field name
-- `jsonschema:"optional"` - Field not required
-- `jsonschema:"ref=path"` - Use $ref instead of inline
-- `description:"text"` - Override doc comment
-
-### 4. Comments Become Descriptions
-Field and type doc comments automatically become JSON Schema descriptions.
-
-### 5. Generation Process
-1. Generator reads files with `jsonschema` build tag
-2. Finds all NewJSONSchemaMethod/NewEnumType/etc. registrations
-3. Analyzes Go types using AST
-4. Generates JSON schemas in jsonschema/ directory
-5. Creates jsonschema_gen.go with Schema() implementations
-
-### 6. The Options Pattern Works
-The v1 Options pattern (WithInterface, WithInterfaceImpls, WithDiscriminator, etc.) 
-is functional and recommended for per-field configuration of unions and enums.
-
-## Common Errors & Solutions
-
-### "No packages found for open file"
-Your IDE doesn't recognize the jsonschema build tag. This is normal and doesn't affect generation.
-
-### "panic: not implemented" 
-You're calling Schema() in code with the jsonschema build tag active. 
-The real implementation is in jsonschema_gen.go (without the tag).
-
-### Schema not generated
-- Check build tag: `//go:build jsonschema`
-- Verify registration: `var _ = jsonschema.NewJSONSchemaMethod(T.Schema)`
-- Method signature: `func (T) Schema() json.RawMessage`
-
-### Interface unions not working
-- All implementations must be registered
-- Use `(*PointerType)(nil)` for pointer receivers
-- Can't mix legacy and v1 interface styles in same package
-
-## Testing Your Schemas
+### Example 4: Interface-Based Union Types
 
 ```go
-// In your test file
-func TestSchema(t *testing.T) {
-	person := Person{Name: "Alice", Age: 30}
-	schema := person.Schema()
-	
-	// schema is valid JSON that can be used with OpenAI, Anthropic, etc.
-	var js map[string]interface{}
-	if err := json.Unmarshal(schema, &js); err != nil {
-		t.Fatal(err)
-	}
-	
-	// Use schema with your LLM client
+// types.go
+package payments
+
+//go:generate gen-jsonschema
+
+// PaymentMethod is an interface for different payment types
+type PaymentMethod interface {
+    Validate() error
+}
+
+// CreditCard payment method
+type CreditCard struct {
+    // Card number (masked)
+    Number string `json:"number"`
+    // Cardholder name
+    Name string `json:"name"`
+    // Expiry in MM/YY format
+    Expiry string `json:"expiry"`
+}
+
+func (c CreditCard) Validate() error { return nil }
+
+// BankTransfer payment method
+type BankTransfer struct {
+    // Bank account number
+    AccountNumber string `json:"accountNumber"`
+    // Routing number
+    RoutingNumber string `json:"routingNumber"`
+}
+
+func (b BankTransfer) Validate() error { return nil }
+
+// Payment represents a payment transaction
+type Payment struct {
+    // Payment ID
+    ID string `json:"id"`
+    
+    // Payment amount in cents
+    Amount int64 `json:"amount"`
+    
+    // Payment method used
+    Method PaymentMethod `json:"method"`
 }
 ```
+
+```go
+// schema.go
+//go:build jsonschema
+
+package payments
+
+import (
+    "encoding/json"
+    jsonschema "github.com/tylergannon/go-gen-jsonschema"
+)
+
+func (Payment) Schema() json.RawMessage { panic("not implemented") }
+func (CreditCard) Schema() json.RawMessage { panic("not implemented") }
+func (BankTransfer) Schema() json.RawMessage { panic("not implemented") }
+
+var (
+    _ = jsonschema.NewJSONSchemaMethod(Payment.Schema)
+    _ = jsonschema.NewJSONSchemaMethod(CreditCard.Schema)
+    _ = jsonschema.NewJSONSchemaMethod(BankTransfer.Schema)
+    
+    // Register interface implementations
+    _ = jsonschema.NewInterfaceImpl[PaymentMethod](
+        CreditCard{},
+        BankTransfer{},
+    )
+)
+```
+
+### Example 5: Template Providers for Runtime Customization
+
+```go
+// types.go
+package api
+
+//go:generate gen-jsonschema
+
+import "encoding/json"
+
+// Config with runtime-provided schemas
+type Config struct {
+    Name string `json:"name"`
+    Port int    `json:"port"`
+    TLS  bool   `json:"tls"`
+}
+
+// Provider methods must be in types.go (not behind build tags)
+// so they're available at runtime for RenderedSchema()
+func (Config) NameSchema() json.Marshaler {
+    return json.RawMessage(`{"type":"string","minLength":1,"maxLength":100}`)
+}
+
+func (Config) PortSchema(_ int) json.Marshaler {
+    return json.RawMessage(`{"type":"integer","minimum":1,"maximum":65535}`)
+}
+
+func BoolSchema(_ bool) json.Marshaler {
+    return json.RawMessage(`{"type":"boolean","description":"Enable TLS"}`)
+}
+```
+
+```go
+// schema.go
+//go:build jsonschema
+
+package api
+
+import (
+    "encoding/json"
+    jsonschema "github.com/tylergannon/go-gen-jsonschema"
+)
+
+func ConfigSchema() json.RawMessage { panic("not implemented") }
+
+var _ = jsonschema.NewJSONSchemaBuilderFor(
+    Config{},
+    ConfigSchema,
+    jsonschema.WithStructAccessorMethod(Config{}.Name, (Config).NameSchema),
+    jsonschema.WithStructFunctionMethod(Config{}.Port, (Config).PortSchema),
+    jsonschema.WithFunction(Config{}.TLS, BoolSchema),
+    jsonschema.WithRenderProviders(), // Enables runtime template rendering
+)
+```
+
+This generates both:
+- `ConfigSchema()` - Returns the template
+- `(Config) RenderedSchema()` - Executes providers at runtime
+
+## Known Limitations
+
+1. **Map Types**: Not supported in type definitions or struct fields
+   ```go
+   type MyMap map[string]string // NOT SUPPORTED
+   type Struct struct {
+       Fields map[string]any `json:"fields"` // NOT SUPPORTED
+   }
+   ```
+
+2. **Circular/Recursive References**: Not supported
+   ```go
+   type Node struct {
+       Children []Node `json:"children"` // NOT SUPPORTED - circular reference
+   }
+   ```
+
+3. **External Package Types**: Limited support. `time.Time` requires special handling
+   ```go
+   type Event struct {
+       When time.Time `json:"when"` // Requires special case implementation
+   }
+   ```
+
+## Build and Test
+
+```bash
+# Generate all schemas
+go generate ./...
+
+# Build (excluding schema registration code)
+go build ./...
+
+# Build with schema registration (for testing)
+go build -tags=jsonschema ./...
+
+# Run tests
+go test ./...
+```
+
+## Project Structure
+
+```
+myproject/
+├── types.go              # Your Go types with //go:generate directive
+├── schema.go             # Schema registration (build tag: jsonschema)
+├── jsonschema/          # Generated JSON Schema files (created by tool)
+│   ├── Person.json
+│   └── Task.json
+└── jsonschema_gen.go    # Generated implementation (created by tool)
+```
+
+## API Reference
+
+### Registration Functions
+
+- `NewJSONSchemaMethod(method)` - Register a type with a Schema() method
+- `NewJSONSchemaBuilderFor(example, builder, ...options)` - Register with builder function
+- `NewInterfaceImpl[T](implementations...)` - Register interface implementations
+
+### Options
+
+- `WithEnum(field)` - Auto-discover and configure enum field (string or int)
+- `WithStringerEnum(field)` - Use string representation for integer enums with Stringer
+- `WithInterface(field)` - Configure interface field
+- `WithInterfaceImpls(field, ...impls)` - Specify interface implementations
+- `WithDiscriminator(field, property)` - Set discriminator property for unions
+- `WithRenderProviders()` - Enable runtime template rendering
+
+### Provider Options
+
+- `WithFunction(field, func)` - Map field to provider function
+- `WithStructAccessorMethod(field, method)` - Map field to accessor method
+- `WithStructFunctionMethod(field, method)` - Map field to function method
+
+## Debugging
+
+If generation fails:
+1. Check that all types in schema.go are defined in types.go
+2. Ensure build tags are correct (`//go:build jsonschema`)
+3. Verify that circular references are avoided
+4. For enums, use WithEnum for auto-discovery instead of NewEnumType

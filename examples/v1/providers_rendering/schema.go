@@ -9,11 +9,6 @@ import (
 
 func (Example) Schema() json.RawMessage { panic("not implemented") }
 
-// Provider implementations
-func (Example) ASchema() json.Marshaler      { return json.RawMessage(`{"type":"string"}`) }
-func (Example) BSchema(_ int) json.Marshaler { return json.RawMessage(`{"type":"integer"}`) }
-func BoolSchema(_ bool) json.Marshaler       { return json.RawMessage(`{"type":"boolean"}`) }
-
 var _ = jsonschema.NewJSONSchemaMethod(
 	Example.Schema,
 	jsonschema.WithStructAccessorMethod(Example{}.A, (Example).ASchema),

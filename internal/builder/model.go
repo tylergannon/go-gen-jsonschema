@@ -54,7 +54,6 @@ type (
 		Enum    []T           `json:"enum,omitempty"`
 		Const   *T            `json:"const,omitempty"`
 		Typ     string        `json:"type,omitempty"`
-		Format  string        `json:"format,omitempty"`
 		TypeID_ syntax.TypeID `json:"-"`
 	}
 

@@ -11,8 +11,6 @@ func (Paint) Schema() json.RawMessage { panic("not implemented") }
 
 // v1 enum string mode example
 var _ = jsonschema.NewJSONSchemaMethod(
-	Paint.Schema,
-	jsonschema.WithEnum(Paint{}.C),
-	jsonschema.WithEnumMode(jsonschema.EnumStrings),
-	// Optionally: jsonschema.WithEnumName(ColorRed, "red")
+	TestCase.Schema,
+	jsonschema.WithEnum(TestCase{}.Priority),
 )

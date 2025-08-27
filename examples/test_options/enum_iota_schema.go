@@ -16,21 +16,13 @@ func (Configuration) Schema() json.RawMessage { panic("not implemented") }
 // var _ = jsonschema.NewJSONSchemaMethod(Product.Schema)
 // This would crash because iota enums can't be used without field-level config
 
-// Register Configuration with field-level enum configuration to use string mode
-var _ = jsonschema.NewJSONSchemaMethod(
-	Configuration.Schema,
-	// Configure LogLevel enum to use string representations
-	jsonschema.WithEnum(Configuration{}.LogLevel),
-	jsonschema.WithEnumMode(jsonschema.EnumStrings),
-	// Configure Color enum to use string representations
-	jsonschema.WithEnum(Configuration{}.Theme),
-	jsonschema.WithEnumMode(jsonschema.EnumStrings),
-	// You can also map specific values to custom names
-	jsonschema.WithEnumName(ColorRed, "red"),
-	jsonschema.WithEnumName(ColorGreen, "green"),
-	jsonschema.WithEnumName(ColorBlue, "blue"),
-)
+// COMMENTED OUT: EnumContainer type not defined
+// // Register Configuration with field-level enum configuration to use string mode
+// var _ = jsonschema.NewJSONSchemaMethod(
+// 	EnumContainer.Schema,
+// 	jsonschema.WithEnum(EnumContainer{}.MySimpleEnum),
+// )
 
 // IMPORTANT: Pure iota-based enums CANNOT be registered globally with NewEnumType
-// They must use field-level configuration with WithEnum and WithEnumMode(EnumStrings)
+// They must use field-level configuration with WithEnum
 // Only string-based enums can use NewEnumType globally

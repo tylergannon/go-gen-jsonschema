@@ -1,3 +1,4 @@
+//go:generate gen-jsonschema
 package stringer_enum
 
 import "fmt"

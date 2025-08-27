@@ -106,10 +106,6 @@ type (
 		// v1 interface options support
 		Discriminator string
 		ImplTypes     []TypeID
-		// v1 enum options support
-		EnumMode  string
-		EnumConst TypeID
-		EnumName  string
 	}
 
 	TypeDecls struct {
@@ -416,14 +412,6 @@ func (r *ScanResult) loadPackageInternal(seen seenPackages, typesToMap map[strin
 			r.SchemaMethods = append(r.SchemaMethods, method)
 		case MarkerFuncNewJSONSchemaBuilder:
 			fn, err := decl.ParseSchemaBuilder()
-			if err != nil {
-				return err
-			}
-			r.localTypeNames[fn.Receiver.TypeName] = true
-			typesToMap[fn.Receiver.TypeName] = true
-			r.SchemaFuncs = append(r.SchemaFuncs, fn)
-		case MarkerFuncNewJSONSchemaBuilderFor:
-			fn, err := decl.ParseSchemaBuilderFor()
 			if err != nil {
 				return err
 			}

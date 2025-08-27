@@ -19,10 +19,10 @@ var _ = jsonschema.NewJSONSchemaMethod(
 
 // CURRENT REALITY: Must also have these redundant registrations
 // Without these, the enums won't be properly generated
-var (
-	_ = jsonschema.NewEnumType[Priority]()
-	_ = jsonschema.NewEnumType[Severity]()
-)
+// var (
+// 	_ = jsonschema.NewEnumType[Priority]()
+// 	_ = jsonschema.NewEnumType[Severity]()
+// )
 
 // PROBLEM: The WithEnum options should make the global registrations unnecessary.
 // The whole point of the Options pattern is to be self-contained!
