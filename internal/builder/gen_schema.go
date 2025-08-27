@@ -48,8 +48,7 @@ func New(pkg *decorator.Package) (SchemaBuilder, error) {
 			Disc  string
 		}),
 		EnumV1: make(map[string]map[string]struct {
-			Mode  string
-			Names map[string]string
+			UseStringer bool
 		}),
 		RenderedTypes: []string{},
 		Rendered:      map[string]bool{},
@@ -69,7 +68,7 @@ func New(pkg *decorator.Package) (SchemaBuilder, error) {
 			case "WithInterface", "WithInterfaceImpls", "WithDiscriminator":
 				foundNewInterfaceOpts = true
 				continue
-			case "WithEnum", "WithEnumMode", "WithEnumName":
+			case "WithEnum", "WithStringerEnum":
 				// Enum options don't create providers, they're handled inline
 				continue
 			}
@@ -109,44 +108,19 @@ func New(pkg *decorator.Package) (SchemaBuilder, error) {
 						Disc  string
 					}{Impls: nil, Disc: ""}
 				}
-			case "WithEnum":
+			case "WithEnum", "WithStringerEnum":
 				if builder.EnumV1[recv] == nil {
 					builder.EnumV1[recv] = make(map[string]struct {
-						Mode  string
-						Names map[string]string
+						UseStringer bool
 					})
 				}
 				if _, ok := builder.EnumV1[recv][opt.FieldName]; !ok {
+					useStringer := opt.Kind == "WithStringerEnum"
 					builder.EnumV1[recv][opt.FieldName] = struct {
-						Mode  string
-						Names map[string]string
-					}{Mode: "", Names: map[string]string{}}
+						UseStringer bool
+					}{UseStringer: useStringer}
 				}
-			case "WithEnumMode":
-				if builder.EnumV1[recv] == nil {
-					builder.EnumV1[recv] = make(map[string]struct {
-						Mode  string
-						Names map[string]string
-					})
-				}
-				cfg := builder.EnumV1[recv][opt.FieldName]
-				cfg.Mode = opt.EnumMode
-				builder.EnumV1[recv][opt.FieldName] = cfg
-			case "WithEnumName":
-				if builder.EnumV1[recv] == nil {
-					builder.EnumV1[recv] = make(map[string]struct {
-						Mode  string
-						Names map[string]string
-					})
-				}
-				cfg := builder.EnumV1[recv][opt.FieldName]
-				if cfg.Names == nil {
-					cfg.Names = map[string]string{}
-				}
-				if opt.EnumConst.TypeName != "" {
-					cfg.Names[opt.EnumConst.TypeName] = opt.EnumName
-				}
-				builder.EnumV1[recv][opt.FieldName] = cfg
+
 			case "WithDiscriminator":
 
 				if builder.IfaceV1[recv] == nil {
@@ -300,8 +274,7 @@ type SchemaBuilder struct {
 
 	// Enum options: receiver -> field -> config
 	EnumV1 map[string]map[string]struct {
-		Mode  string            // "strings" or ""
-		Names map[string]string // const ident -> name override
+		UseStringer bool // WithStringerEnum was used
 	}
 
 	// Types requesting rendered provider execution
@@ -311,6 +284,58 @@ type SchemaBuilder struct {
 
 func (s SchemaBuilder) HaveInterfaces() bool {
 	return len(s.Interfaces) > 0
+}
+
+// discoverEnum auto-discovers an enum from const declarations in the package
+func (s SchemaBuilder) discoverEnum(typeName string, scanRes syntax.ScanResult) *syntax.EnumSet {
+	// Check if the type exists
+	typeSpec, ok := scanRes.LocalNamedTypes[typeName]
+	if !ok {
+		return nil
+	}
+
+	// Create a new EnumSet
+	enumSet := &syntax.EnumSet{
+		TypeSpec: typeSpec,
+	}
+
+	// Find all const declarations of this type in the decorated package files
+	for _, file := range scanRes.Pkg.Syntax {
+		for _, decl := range file.Decls {
+			genDecl, ok := decl.(*dst.GenDecl)
+			if !ok || genDecl.Tok != token.CONST {
+				continue
+			}
+
+			var currentType string
+			for _, spec := range genDecl.Specs {
+				valueSpec, ok := spec.(*dst.ValueSpec)
+				if !ok {
+					continue
+				}
+
+				// Check if this const has an explicit type
+				if valueSpec.Type != nil {
+					if ident, ok := valueSpec.Type.(*dst.Ident); ok {
+						currentType = ident.Name
+					}
+				}
+
+				// If this const is of our target type, add it to the enum
+				if currentType == typeName {
+					// Wrap the valueSpec in syntax.ValueSpec
+					wrapped := syntax.NewValueSpec(genDecl, valueSpec, scanRes.Pkg, file)
+					enumSet.Values = append(enumSet.Values, wrapped)
+				}
+			}
+		}
+	}
+
+	// Only return if we found values
+	if len(enumSet.Values) > 0 {
+		return enumSet
+	}
+	return nil
 }
 
 func (s SchemaBuilder) imports() *ImportMap {
@@ -490,6 +515,11 @@ func (s SchemaBuilder) mapEnumType(enum *syntax.EnumSet, seen syntax.SeenTypes) 
 
 		if len(enum.TypeSpec.Comments()) > 0 {
 			propType.Desc = enum.TypeSpec.Comments()
+			if sb.Len() > 0 {
+				propType.Desc = propType.Desc + "\n\n" + sb.String()
+			}
+		} else if sb.Len() > 0 {
+			propType.Desc = sb.String()
 		}
 		s.AddSchema(enum.TypeSpec.ID(), propType)
 	} else {
@@ -534,6 +564,11 @@ func (s SchemaBuilder) mapEnumType(enum *syntax.EnumSet, seen syntax.SeenTypes) 
 
 		if len(enum.TypeSpec.Comments()) > 0 {
 			propType.Desc = enum.TypeSpec.Comments()
+			if sb.Len() > 0 {
+				propType.Desc = propType.Desc + "\n\n" + sb.String()
+			}
+		} else if sb.Len() > 0 {
+			propType.Desc = sb.String()
 		}
 		s.AddSchema(enum.TypeSpec.ID(), propType)
 	}
@@ -610,12 +645,36 @@ func (s SchemaBuilder) renderSchema(t syntax.TypeExpr, description string, seen 
 		case "float32", "float64":
 			return PropertyNode[float64]{Desc: description, Typ: "number", TypeID_: t.ID()}, nil
 		default:
+			// Special handling for well-known external types
+			if node.Path == "time" && node.Name == "Time" {
+				// time.Time should be represented as a string with format "date-time"
+				return PropertyNode[string]{
+					Desc:    description,
+					Typ:     "string",
+					Format:  "date-time",
+					TypeID_: t.ID(),
+				}, nil
+			}
+
 			// Means it is another named type.
 			// Find it.
 			newType := syntax.TypeID{TypeName: node.Name, PkgPath: node.Path}
 			if newType.PkgPath == "" {
 				newType.PkgPath = t.Pkg().PkgPath
 			}
+
+			// Check if this is an external package that we haven't scanned
+			if newType.PkgPath != "" {
+				if _, ok := s.Scan.GetPackage(newType.PkgPath); !ok {
+					// External package not scanned - return an empty schema (allows any valid JSON)
+					// We return an empty ObjectNode which will be rendered as {}
+					return ObjectNode{
+						Desc:    description,
+						TypeID_: t.ID(),
+					}, nil
+				}
+			}
+
 			if err := s.mapType(newType, seen.See(t.ID())); err != nil {
 				return nil, err
 			}
@@ -986,20 +1045,24 @@ func (s SchemaBuilder) renderStructField(owner syntax.StructType, f syntax.Struc
 				}
 				enumSet, okE := scanRes.Constants[ident.Name]
 				if !okE {
-					continue
+					// Auto-discover enum from const declarations
+					enumSet = s.discoverEnum(ident.Name, scanRes)
+					if enumSet == nil {
+						continue
+					}
 				}
 
-				// Determine if the enum is string-based by checking the first value
+				// Determine if the enum is string-based by checking the type declaration
 				isStringEnum := false
-				if len(enumSet.Values) > 0 && len(enumSet.Values[0].Value().Values) > 0 {
-					if _, ok := enumSet.Values[0].Value().Values[0].(*dst.BasicLit); ok {
-						// It has a BasicLit value, likely a string
+				// Check the underlying type of the enum
+				if typeExpr := enumSet.TypeSpec.Derive(); typeExpr.Excerpt != nil {
+					if ident, ok := typeExpr.Excerpt.(*dst.Ident); ok && ident.Name == "string" {
 						isStringEnum = true
 					}
 				}
 
-				// Use string mode if explicitly set or if it's a string-based enum
-				if cfg.Mode == "strings" || (cfg.Mode == "" && isStringEnum) {
+				// Use string mode if it's a string-based enum or WithStringerEnum was used
+				if isStringEnum || cfg.UseStringer {
 					var vals []string
 					for _, v := range enumSet.Values {
 						var value string
@@ -1013,11 +1076,6 @@ func (s SchemaBuilder) renderStructField(owner syntax.StructType, f syntax.Struc
 						} else {
 							// For iota enums with string mode, use the constant name
 							value = v.Value().Names[0].Name
-						}
-
-						// Check for custom name override
-						if override, okn := cfg.Names[v.Value().Names[0].Name]; okn {
-							value = override
 						}
 						vals = append(vals, value)
 					}
@@ -1261,7 +1319,8 @@ func (s SchemaBuilder) findInterfaceImpl(ident *dst.Ident, localPkg *decorator.P
 	}
 	scan, ok := s.Scan.GetPackage(pkgPath)
 	if !ok {
-		panic(fmt.Sprintf("resolveLocalInterfaceProps could not resolve package for type %s at %s", ident.Name, pkgPath))
+		// Package not found - this is normal for external packages like "time"
+		return iface, false
 	}
 	iface, ok = scan.Interfaces[ident.Name]
 	return iface, ok

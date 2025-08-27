@@ -33,8 +33,9 @@ type ContactInfo struct {
 	// AlternateEmails contains additional email addresses.
 	AlternateEmails []string `json:"alternateEmails,omitempty"`
 
-	// AlternatePhones contains additional phone numbers with labels.
-	AlternatePhones map[string]string `json:"alternatePhones,omitempty"`
+	// COMMENTED OUT: Map fields are not yet supported
+	// // AlternatePhones contains additional phone numbers with labels.
+	// AlternatePhones map[string]string `json:"alternatePhones,omitempty"`
 }
 
 // Person demonstrates a complex struct with nested fields and embedded types.
@@ -49,8 +50,9 @@ type Person struct {
 	// This demonstrates using the time.Time type which will be properly handled.
 	BirthDate time.Time `json:"birthDate"`
 
-	// Addresses is a map of labeled addresses (e.g., "home", "work").
-	Addresses map[string]Address `json:"addresses,omitempty"`
+	// COMMENTED OUT: Map fields are not yet supported
+	// // Addresses is a map of labeled addresses (e.g., "home", "work").
+	// Addresses map[string]Address `json:"addresses,omitempty"`
 
 	// Embed the ContactInfo type.
 	// All fields from ContactInfo will be flattened into Person.
@@ -59,9 +61,10 @@ type Person struct {
 	// Tags are arbitrary labels associated with the person.
 	Tags []string `json:"tags,omitempty"`
 
-	// Metadata contains any additional information.
-	// Using map[string]interface{} allows for arbitrary JSON.
-	Metadata map[string]any `json:"metadata,omitempty"`
+	// COMMENTED OUT: Map fields are not yet supported
+	// // Metadata contains any additional information.
+	// // Using map[string]interface{} allows for arbitrary JSON.
+	// Metadata map[string]any `json:"metadata,omitempty"`
 }
 
 // Organization demonstrates a complex struct with nested person references.
@@ -76,7 +79,8 @@ type Organization struct {
 	Description string `json:"description,omitempty"`
 
 	// Founded is when the organization was established.
-	Founded time.Time `json:"founded"`
+	// COMMENTED OUT: External package types (time.Time) need special handling
+	// Founded time.Time `json:"founded"`
 
 	// HeadquartersAddress is the main address.
 	HeadquartersAddress Address `json:"headquartersAddress"`
@@ -99,7 +103,8 @@ type Department struct {
 	// ParentDepartment is the name of the parent department, if any.
 	ParentDepartment string `json:"parentDepartment,omitempty"`
 
-	// SubDepartments demonstrates recursive structures.
-	// This creates a tree structure of departments.
-	SubDepartments []Department `json:"subDepartments,omitempty"`
+	// COMMENTED OUT: Recursive/circular references are not yet supported
+	// // SubDepartments demonstrates recursive structures.
+	// // This creates a tree structure of departments.
+	// SubDepartments []Department `json:"subDepartments,omitempty"`
 }
