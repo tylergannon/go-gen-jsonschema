@@ -69,6 +69,9 @@ func New(pkg *decorator.Package) (SchemaBuilder, error) {
 			case "WithInterface", "WithInterfaceImpls", "WithDiscriminator":
 				foundNewInterfaceOpts = true
 				continue
+			case "WithEnum", "WithEnumMode", "WithEnumName":
+				// Enum options don't create providers, they're handled inline
+				continue
 			}
 			builder.TypeProvidersMap[recvName] = append(builder.TypeProvidersMap[recvName], FieldProvider{
 				FieldName:        opt.FieldName,
@@ -440,46 +443,101 @@ func (s SchemaBuilder) mapEnumType(enum *syntax.EnumSet, seen syntax.SeenTypes) 
 		return err
 	}
 
-	propType := PropertyNode[string]{
-		TypeID_: enum.TypeSpec.ID(),
-		Typ:     "string",
+	// Determine if this is a string or int based enum
+	isIntEnum := false
+
+	// Check if there are any values to examine
+	if len(enum.Values) > 0 && len(enum.Values[0].Value().Values) > 0 {
+		// Check if the first value is an iota or integer
+		switch enum.Values[0].Value().Values[0].(type) {
+		case *dst.Ident: // iota
+			isIntEnum = true
+		}
 	}
+
 	var (
 		sb            strings.Builder
 		countComments int
 	)
 
-	for _, opt := range enum.Values {
-		var (
-			newValue = strings.Trim(opt.Value().Values[0].(*dst.BasicLit).Value, "\"")
-			comment  = opt.Comments()
-		)
-		if len(comment) > 0 {
-			if countComments > 0 {
-				sb.WriteString("\n\n")
-			}
-			countComments++
-			sb.WriteString(newValue)
-			sb.WriteString(": \n")
-			sb.WriteString(comment)
+	if isIntEnum {
+		// Handle integer enum
+		propType := PropertyNode[int]{
+			TypeID_: enum.TypeSpec.ID(),
+			Typ:     "integer",
 		}
-		propType.Enum = append(propType.Enum, newValue)
-	}
-	if enum.TypeSpec.Pkg() == nil {
-		panic("oh heck")
+
+		for i, opt := range enum.Values {
+			var (
+				intValue int
+				comment  = opt.Comments()
+			)
+
+			// For iota enums, use the index as the value
+			intValue = i
+
+			if len(comment) > 0 {
+				if countComments > 0 {
+					sb.WriteString("\n\n")
+				}
+				countComments++
+				sb.WriteString(fmt.Sprintf("%d", intValue))
+				sb.WriteString(": \n")
+				sb.WriteString(comment)
+			}
+			propType.Enum = append(propType.Enum, intValue)
+		}
+
+		if len(enum.TypeSpec.Comments()) > 0 {
+			propType.Desc = enum.TypeSpec.Comments()
+		}
+		s.AddSchema(enum.TypeSpec.ID(), propType)
+	} else {
+		// Handle string enum
+		propType := PropertyNode[string]{
+			TypeID_: enum.TypeSpec.ID(),
+			Typ:     "string",
+		}
+
+		for i, opt := range enum.Values {
+			var (
+				newValue string
+				comment  = opt.Comments()
+			)
+
+			// Handle different types of enum values
+			if len(opt.Value().Values) > 0 {
+				switch v := opt.Value().Values[0].(type) {
+				case *dst.BasicLit:
+					// String literal enum value
+					newValue = strings.Trim(v.Value, "\"")
+				default:
+					// Shouldn't happen for string enums, but fallback to index
+					newValue = fmt.Sprintf("%d", i)
+				}
+			} else {
+				// No explicit value, shouldn't happen for string enums
+				newValue = fmt.Sprintf("%d", i)
+			}
+
+			if len(comment) > 0 {
+				if countComments > 0 {
+					sb.WriteString("\n\n")
+				}
+				countComments++
+				sb.WriteString(newValue)
+				sb.WriteString(": \n")
+				sb.WriteString(comment)
+			}
+			propType.Enum = append(propType.Enum, newValue)
+		}
+
+		if len(enum.TypeSpec.Comments()) > 0 {
+			propType.Desc = enum.TypeSpec.Comments()
+		}
+		s.AddSchema(enum.TypeSpec.ID(), propType)
 	}
 
-	var comment = enum.TypeSpec.Comments()
-	if len(comment) > 0 {
-		if sb.Len() > 0 {
-			propType.Desc = comment + "\n\n" + sb.String()
-		} else {
-			propType.Desc = comment
-		}
-	} else if sb.Len() > 0 {
-		propType.Desc = sb.String()
-	}
-	s.AddSchema(enum.TypeSpec.ID(), propType)
 	return nil
 }
 
@@ -930,14 +988,38 @@ func (s SchemaBuilder) renderStructField(owner syntax.StructType, f syntax.Struc
 				if !okE {
 					continue
 				}
-				if cfg.Mode == "strings" {
+
+				// Determine if the enum is string-based by checking the first value
+				isStringEnum := false
+				if len(enumSet.Values) > 0 && len(enumSet.Values[0].Value().Values) > 0 {
+					if _, ok := enumSet.Values[0].Value().Values[0].(*dst.BasicLit); ok {
+						// It has a BasicLit value, likely a string
+						isStringEnum = true
+					}
+				}
+
+				// Use string mode if explicitly set or if it's a string-based enum
+				if cfg.Mode == "strings" || (cfg.Mode == "" && isStringEnum) {
 					var vals []string
 					for _, v := range enumSet.Values {
-						name := v.Value().Names[0].Name
-						if override, okn := cfg.Names[name]; okn {
-							name = override
+						var value string
+						if isStringEnum && len(v.Value().Values) > 0 {
+							// Get the actual string value
+							if lit, ok := v.Value().Values[0].(*dst.BasicLit); ok {
+								value = strings.Trim(lit.Value, "\"")
+							} else {
+								value = v.Value().Names[0].Name
+							}
+						} else {
+							// For iota enums with string mode, use the constant name
+							value = v.Value().Names[0].Name
 						}
-						vals = append(vals, name)
+
+						// Check for custom name override
+						if override, okn := cfg.Names[v.Value().Names[0].Name]; okn {
+							value = override
+						}
+						vals = append(vals, value)
 					}
 					schema = PropertyNode[string]{Typ: "string", Enum: vals, TypeID_: f.ID()}
 				} else {

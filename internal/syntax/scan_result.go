@@ -458,19 +458,28 @@ func (r *ScanResult) loadPackageInternal(seen seenPackages, typesToMap map[strin
 	}
 	// Find all locally defined enum values
 	for _, _constDecl := range _decls.constDecls {
+		var lastTypeName string // Track the last type seen in the const block
 		for _, spec := range _constDecl.Specs() {
-			if !spec.HasType() {
-				continue
-			}
-			if ident, ok := spec.Type().(*dst.Ident); ok {
-				typeID := TypeID{TypeName: ident.Name}
-				if ident.Path == "" {
-					typeID.PkgPath = r.Pkg.PkgPath
-				} else {
-					typeID.PkgPath = ident.Path
+			var typeName string
+
+			if spec.HasType() {
+				// This constant has an explicit type
+				if ident, ok := spec.Type().(*dst.Ident); ok {
+					typeName = ident.Name
+					lastTypeName = typeName // Remember this type for subsequent constants
 				}
-				// Only append to the enum set if r.Constants[typeID.TypeName] is non-nil:
-				if e, exists := r.Constants[typeID.TypeName]; exists && e != nil {
+			} else if lastTypeName != "" {
+				// This constant doesn't have an explicit type, use the last seen type
+				// This handles iota constants after the first one
+				typeName = lastTypeName
+			} else {
+				continue // No type information available
+			}
+
+			// Now we have a typeName, either explicit or inherited
+			if typeName != "" {
+				// Only append to the enum set if r.Constants[typeName] is non-nil:
+				if e, exists := r.Constants[typeName]; exists && e != nil {
 					e.Values = append(e.Values, spec)
 				}
 			}
