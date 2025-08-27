@@ -315,6 +315,8 @@ Without it (using `WithEnum`), it uses integer values: [0, 1, 2, 3, 4].
 
 ### Example 4: Interface-Based Union Types
 
+**Note:** Arrays of interfaces (e.g., `[]PaymentMethod`) are not currently supported. Use a single interface field instead.
+
 ```go
 // types.go
 package payments
@@ -432,11 +434,10 @@ import (
     jsonschema "github.com/tylergannon/go-gen-jsonschema"
 )
 
-func ConfigSchema() json.RawMessage { panic("not implemented") }
+func (Config) Schema() json.RawMessage { panic("not implemented") }
 
-var _ = jsonschema.NewJSONSchemaBuilderFor(
-    Config{},
-    ConfigSchema,
+var _ = jsonschema.NewJSONSchemaMethod(
+    Config.Schema,
     jsonschema.WithStructAccessorMethod(Config{}.Name, (Config).NameSchema),
     jsonschema.WithStructFunctionMethod(Config{}.Port, (Config).PortSchema),
     jsonschema.WithFunction(Config{}.TLS, BoolSchema),
@@ -444,9 +445,10 @@ var _ = jsonschema.NewJSONSchemaBuilderFor(
 )
 ```
 
-This generates both:
-- `ConfigSchema()` - Returns the template
-- `(Config) RenderedSchema()` - Executes providers at runtime
+This generates:
+- `jsonschema/Config.json.tmpl` - Template file with {{.name}}, {{.port}}, {{.tls}} placeholders
+- `(Config) Schema()` - Returns the raw template
+- `(Config) RenderedSchema()` - Executes providers at runtime and renders the template
 
 ## Known Limitations
 
@@ -465,10 +467,21 @@ This generates both:
    }
    ```
 
-3. **External Package Types**: Limited support. `time.Time` requires special handling
+3. **External Package Types**: Most external types not supported except:
+   - `time.Time` is automatically handled as a string with RFC3339 format guidance
    ```go
    type Event struct {
-       When time.Time `json:"when"` // Requires special case implementation
+       When time.Time `json:"when"` // Automatically generates string with RFC3339 description
+   }
+   ```
+   The generated schema will include description: "RFC3339 formatted date-time string (e.g., \"2006-01-02T15:04:05Z07:00\")"
+   
+4. **Arrays of Interfaces**: Not supported
+   ```go
+   type Container struct {
+       Items []MyInterface `json:"items"` // NOT SUPPORTED
+       // Workaround: Use single interface field instead
+       Item MyInterface `json:"item"` // SUPPORTED
    }
    ```
 
@@ -504,9 +517,11 @@ myproject/
 
 ### Registration Functions
 
-- `NewJSONSchemaMethod(method)` - Register a type with a Schema() method
-- `NewJSONSchemaBuilderFor(example, builder, ...options)` - Register with builder function
+- `NewJSONSchemaMethod(method, ...options)` - Register a type with a Schema() method
+- `NewJSONSchemaFunc(func, ...options)` - Register with a free function that takes receiver
+- `NewJSONSchemaBuilder[T](builder, ...options)` - Register with a no-arg builder function
 - `NewInterfaceImpl[T](implementations...)` - Register interface implementations
+- `NewEnumType[T]()` - Register an enum type (though WithEnum is preferred)
 
 ### Options
 
