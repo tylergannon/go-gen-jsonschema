@@ -37,7 +37,7 @@ func (t Example) RenderedSchema() (json.RawMessage, error) {
 	if err != nil {
 		__gen_jsonschema_panic(fileName, err)
 	}
-	ctx := map[string]json.RawMessage{}
+	ctx := map[string]string{}
 	// provider for A
 	{
 		var __prov json.Marshaler
@@ -46,7 +46,7 @@ func (t Example) RenderedSchema() (json.RawMessage, error) {
 		if __err != nil {
 			return nil, __err
 		}
-		ctx["a"] = json.RawMessage(__b)
+		ctx["a"] = string(__b)
 	}
 	// provider for B
 	{
@@ -56,7 +56,7 @@ func (t Example) RenderedSchema() (json.RawMessage, error) {
 		if __err != nil {
 			return nil, __err
 		}
-		ctx["b"] = json.RawMessage(__b)
+		ctx["b"] = string(__b)
 	}
 	// provider for C
 	{
@@ -66,7 +66,7 @@ func (t Example) RenderedSchema() (json.RawMessage, error) {
 		if __err != nil {
 			return nil, __err
 		}
-		ctx["c"] = json.RawMessage(__b)
+		ctx["c"] = string(__b)
 	}
 	tpl, err := template.New("schema").Option("missingkey=error").Parse(string(data))
 	if err != nil {
