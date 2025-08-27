@@ -1,0 +1,7 @@
+# .gitignore for broken examples - these demonstrate issues
+*.json
+*.json.tmpl
+*.json.sum
+*.json.tmpl.sum
+jsonschema_gen.go
+
