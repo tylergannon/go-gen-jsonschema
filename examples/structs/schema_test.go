@@ -104,3 +104,77 @@ func TestPersonJSONMarshalUnmarshal(t *testing.T) {
 			parsedTime, unmarshaled.BirthDate)
 	}
 }
+
+func TestValidate_ValidJSON(t *testing.T) {
+	validPerson := `{
+		"id": "123",
+		"name": "Jane Doe",
+		"birthDate": "1990-05-15T14:30:00Z",
+		"email": "jane@example.com",
+		"phone": "555-1234",
+		"alternateEmails": ["jane.doe@example.com"],
+		"tags": ["developer"]
+	}`
+
+	if err := (Person{}).ValidateJSON([]byte(validPerson)); err != nil {
+		t.Fatalf("Validate rejected valid Person JSON: %v", err)
+	}
+
+	validAddress := `{
+		"street": "123 Main St",
+		"city": "Springfield",
+		"state": "IL",
+		"postalCode": "62701",
+		"country": "US"
+	}`
+
+	if err := (Address{}).ValidateJSON([]byte(validAddress)); err != nil {
+		t.Fatalf("Validate rejected valid Address JSON: %v", err)
+	}
+}
+
+func TestValidate_InvalidJSON(t *testing.T) {
+	// Missing required field "name"
+	missingRequired := `{
+		"id": "123",
+		"birthDate": "1990-05-15T14:30:00Z",
+		"email": "jane@example.com"
+	}`
+
+	if err := (Person{}).ValidateJSON([]byte(missingRequired)); err == nil {
+		t.Fatal("Validate accepted Person JSON with missing required field 'name'")
+	}
+
+	// Wrong type for field
+	wrongType := `{
+		"street": 123,
+		"city": "Springfield",
+		"state": "IL",
+		"postalCode": "62701",
+		"country": "US"
+	}`
+
+	if err := (Address{}).ValidateJSON([]byte(wrongType)); err == nil {
+		t.Fatal("Validate accepted Address JSON with wrong type for 'street'")
+	}
+
+	// Additional property not allowed
+	extraField := `{
+		"street": "123 Main St",
+		"city": "Springfield",
+		"state": "IL",
+		"postalCode": "62701",
+		"country": "US",
+		"planet": "Earth"
+	}`
+
+	if err := (Address{}).ValidateJSON([]byte(extraField)); err == nil {
+		t.Fatal("Validate accepted Address JSON with additional property 'planet'")
+	}
+}
+
+func TestValidate_MalformedJSON(t *testing.T) {
+	if err := (Person{}).ValidateJSON([]byte(`not json`)); err == nil {
+		t.Fatal("Validate accepted malformed JSON")
+	}
+}

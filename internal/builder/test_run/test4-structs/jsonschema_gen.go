@@ -5,10 +5,12 @@
 package structs
 
 import (
+	"bytes"
 	"embed"
 	"encoding/json"
 	"errors"
 	"fmt"
+	jsonschema "github.com/santhosh-tekuri/jsonschema/v6"
 )
 
 //go:embed jsonschema
@@ -18,6 +20,47 @@ var errNoDiscriminator = errors.New("no discriminator property '!type' found")
 
 func __gen_jsonschema_panic(fname string, err error) {
 	panic(fmt.Sprintf("error reading %s from embedded FS: %s", fname, err.Error()))
+}
+
+// Compiled JSON schemas for validation, initialized once at startup.
+var (
+	__gen_jsonschema_compiled_StructType1    *jsonschema.Schema
+	__gen_jsonschema_compiled_StructType2    *jsonschema.Schema
+	__gen_jsonschema_compiled_StructWithRefs *jsonschema.Schema
+)
+
+func init() {
+	compile := func(typeName string, schemaData json.RawMessage) *jsonschema.Schema {
+		doc, err := jsonschema.UnmarshalJSON(bytes.NewReader(schemaData))
+		if err != nil {
+			panic(fmt.Sprintf("go-gen-jsonschema: failed to parse schema for %s: %s", typeName, err))
+		}
+		c := jsonschema.NewCompiler()
+		url := typeName + ".json"
+		if err := c.AddResource(url, doc); err != nil {
+			panic(fmt.Sprintf("go-gen-jsonschema: failed to add schema resource for %s: %s", typeName, err))
+		}
+		sch, err := c.Compile(url)
+		if err != nil {
+			panic(fmt.Sprintf("go-gen-jsonschema: failed to compile schema for %s: %s", typeName, err))
+		}
+		return sch
+	}
+
+	{
+		var __zero StructType1
+		__gen_jsonschema_compiled_StructType1 = compile("StructType1", __zero.Schema())
+	}
+
+	{
+		var __zero StructType2
+		__gen_jsonschema_compiled_StructType2 = compile("StructType2", __zero.Schema())
+	}
+
+	{
+		var __zero StructWithRefs
+		__gen_jsonschema_compiled_StructWithRefs = compile("StructWithRefs", __zero.Schema())
+	}
 }
 
 func (StructType1) Schema() json.RawMessage {
@@ -45,4 +88,31 @@ func (StructWithRefs) Schema() json.RawMessage {
 		__gen_jsonschema_panic(fileName, err)
 	}
 	return data
+}
+
+// ValidateJSON validates the given JSON bytes against the schema for StructType1.
+func (StructType1) ValidateJSON(data []byte) error {
+	inst, err := jsonschema.UnmarshalJSON(bytes.NewReader(data))
+	if err != nil {
+		return err
+	}
+	return __gen_jsonschema_compiled_StructType1.Validate(inst)
+}
+
+// ValidateJSON validates the given JSON bytes against the schema for StructType2.
+func (StructType2) ValidateJSON(data []byte) error {
+	inst, err := jsonschema.UnmarshalJSON(bytes.NewReader(data))
+	if err != nil {
+		return err
+	}
+	return __gen_jsonschema_compiled_StructType2.Validate(inst)
+}
+
+// ValidateJSON validates the given JSON bytes against the schema for StructWithRefs.
+func (StructWithRefs) ValidateJSON(data []byte) error {
+	inst, err := jsonschema.UnmarshalJSON(bytes.NewReader(data))
+	if err != nil {
+		return err
+	}
+	return __gen_jsonschema_compiled_StructWithRefs.Validate(inst)
 }

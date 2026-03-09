@@ -280,10 +280,31 @@ type SchemaBuilder struct {
 	// Types requesting rendered provider execution
 	RenderedTypes []string
 	Rendered      map[string]bool
+
 }
 
 func (s SchemaBuilder) HaveInterfaces() bool {
 	return len(s.Interfaces) > 0
+}
+
+// IsSpecialType returns true if the type has a custom UnmarshalJSON for union/interface fields.
+func (s SchemaBuilder) IsSpecialType(typeName string) bool {
+	for _, st := range s.SpecialTypes {
+		if st.Name == typeName {
+			return true
+		}
+	}
+	return false
+}
+
+// HasNonRenderedTypes returns true if at least one schema method is for a non-rendered type.
+func (s SchemaBuilder) HasNonRenderedTypes() bool {
+	for _, m := range s.SchemaMethods() {
+		if !s.Rendered[m.Receiver.TypeName] {
+			return true
+		}
+	}
+	return false
 }
 
 // discoverEnum auto-discovers an enum from const declarations in the package
@@ -506,7 +527,7 @@ func (s SchemaBuilder) mapEnumType(enum *syntax.EnumSet, seen syntax.SeenTypes) 
 					sb.WriteString("\n\n")
 				}
 				countComments++
-				sb.WriteString(fmt.Sprintf("%d", intValue))
+				fmt.Fprintf(&sb, "%d", intValue)
 				sb.WriteString(": \n")
 				sb.WriteString(comment)
 			}

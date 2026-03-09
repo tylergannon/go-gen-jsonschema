@@ -8,6 +8,8 @@ Generate Golang-friendly JSON schemas for structured LLM responses.
 
 Docs: https://go-gen-jsonschema.tylergannon.com
 
+LLM/Agent-friendly docs: https://github.com/tylergannon/go-gen-jsonschema/blob/main/llms.txt
+
 ## 🔍 Overview
 
 `go-gen-jsonschema` automatically generates JSON Schema definitions from your Go type definitions, optimized for LLM function calling (OpenAI, Anthropic, etc). It eliminates the need to manually write and maintain JSON schemas, keeping them perfectly in sync with your Go types.
@@ -477,6 +479,25 @@ Options:
 - `-out string`: Path to output file (empty or "--" means print to stdout)
 - `-pkg string`: Package name for generated file (defaults to current directory)
 - `-methods string`: Comma-separated list of methods to generate (format: TypeName=MethodName,TypeName2=MethodName2)
+
+## 🛡️ Validation
+
+Every type with a generated `Schema()` method also gets a `Validate([]byte) error` method, generated automatically — no stub needed. Schemas are compiled once at program startup using [santhosh-tekuri/jsonschema](https://github.com/santhosh-tekuri/jsonschema).
+
+```go
+var person Person
+data := []byte(`{"name": "Alice", "age": 30}`)
+
+// Validate before unmarshaling
+if err := person.ValidateJSON(data); err != nil {
+    log.Fatal(err) // *jsonschema.ValidationError with structured details
+}
+
+// Then unmarshal as usual
+json.Unmarshal(data, &person)
+```
+
+Validation catches missing required fields, wrong types, extra properties, and invalid enum values. Types using `WithRenderProviders()` do not get `Validate()` since their schemas depend on runtime values.
 
 ## ✨ Features
 

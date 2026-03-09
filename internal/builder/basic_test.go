@@ -62,6 +62,11 @@ func TestBasic(t *testing.T) {
 			testutils.AssertGoldenFile(t, fpath, ".golden")
 		}
 
+		// Generated code may introduce new imports (e.g. jsonschema/v6); tidy before build.
+		tidyExit, _, _, tidyErr := testutils.RunCommand("go", tempDir, "mod", "tidy")
+		require.NoError(t, tidyErr)
+		require.Equal(t, 0, tidyExit)
+
 		// Ensure generated code compiles in the temp module.
 		buildExit, buildStdout, buildStderr, err := testutils.RunCommand("go", tempDir, "build", "./...")
 		require.NoError(t, err)

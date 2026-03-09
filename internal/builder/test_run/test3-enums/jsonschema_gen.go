@@ -5,10 +5,12 @@
 package basictypes
 
 import (
+	"bytes"
 	"embed"
 	"encoding/json"
 	"errors"
 	"fmt"
+	jsonschema "github.com/santhosh-tekuri/jsonschema/v6"
 )
 
 //go:embed jsonschema
@@ -18,6 +20,53 @@ var errNoDiscriminator = errors.New("no discriminator property '!type' found")
 
 func __gen_jsonschema_panic(fname string, err error) {
 	panic(fmt.Sprintf("error reading %s from embedded FS: %s", fname, err.Error()))
+}
+
+// Compiled JSON schemas for validation, initialized once at startup.
+var (
+	__gen_jsonschema_compiled_EnumType                   *jsonschema.Schema
+	__gen_jsonschema_compiled_SliceOfEnumType            *jsonschema.Schema
+	__gen_jsonschema_compiled_SliceOfRemoteEnumType      *jsonschema.Schema
+	__gen_jsonschema_compiled_SliceOfPointerToRemoteEnum *jsonschema.Schema
+)
+
+func init() {
+	compile := func(typeName string, schemaData json.RawMessage) *jsonschema.Schema {
+		doc, err := jsonschema.UnmarshalJSON(bytes.NewReader(schemaData))
+		if err != nil {
+			panic(fmt.Sprintf("go-gen-jsonschema: failed to parse schema for %s: %s", typeName, err))
+		}
+		c := jsonschema.NewCompiler()
+		url := typeName + ".json"
+		if err := c.AddResource(url, doc); err != nil {
+			panic(fmt.Sprintf("go-gen-jsonschema: failed to add schema resource for %s: %s", typeName, err))
+		}
+		sch, err := c.Compile(url)
+		if err != nil {
+			panic(fmt.Sprintf("go-gen-jsonschema: failed to compile schema for %s: %s", typeName, err))
+		}
+		return sch
+	}
+
+	{
+		var __zero EnumType
+		__gen_jsonschema_compiled_EnumType = compile("EnumType", __zero.Schema())
+	}
+
+	{
+		var __zero SliceOfEnumType
+		__gen_jsonschema_compiled_SliceOfEnumType = compile("SliceOfEnumType", __zero.Schema())
+	}
+
+	{
+		var __zero SliceOfRemoteEnumType
+		__gen_jsonschema_compiled_SliceOfRemoteEnumType = compile("SliceOfRemoteEnumType", __zero.Schema())
+	}
+
+	{
+		var __zero SliceOfPointerToRemoteEnum
+		__gen_jsonschema_compiled_SliceOfPointerToRemoteEnum = compile("SliceOfPointerToRemoteEnum", __zero.Schema())
+	}
 }
 
 func (EnumType) Schema() json.RawMessage {
@@ -54,4 +103,40 @@ func (SliceOfPointerToRemoteEnum) Schema() json.RawMessage {
 		__gen_jsonschema_panic(fileName, err)
 	}
 	return data
+}
+
+// ValidateJSON validates the given JSON bytes against the schema for EnumType.
+func (EnumType) ValidateJSON(data []byte) error {
+	inst, err := jsonschema.UnmarshalJSON(bytes.NewReader(data))
+	if err != nil {
+		return err
+	}
+	return __gen_jsonschema_compiled_EnumType.Validate(inst)
+}
+
+// ValidateJSON validates the given JSON bytes against the schema for SliceOfEnumType.
+func (SliceOfEnumType) ValidateJSON(data []byte) error {
+	inst, err := jsonschema.UnmarshalJSON(bytes.NewReader(data))
+	if err != nil {
+		return err
+	}
+	return __gen_jsonschema_compiled_SliceOfEnumType.Validate(inst)
+}
+
+// ValidateJSON validates the given JSON bytes against the schema for SliceOfRemoteEnumType.
+func (SliceOfRemoteEnumType) ValidateJSON(data []byte) error {
+	inst, err := jsonschema.UnmarshalJSON(bytes.NewReader(data))
+	if err != nil {
+		return err
+	}
+	return __gen_jsonschema_compiled_SliceOfRemoteEnumType.Validate(inst)
+}
+
+// ValidateJSON validates the given JSON bytes against the schema for SliceOfPointerToRemoteEnum.
+func (SliceOfPointerToRemoteEnum) ValidateJSON(data []byte) error {
+	inst, err := jsonschema.UnmarshalJSON(bytes.NewReader(data))
+	if err != nil {
+		return err
+	}
+	return __gen_jsonschema_compiled_SliceOfPointerToRemoteEnum.Validate(inst)
 }

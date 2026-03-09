@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -106,10 +107,11 @@ func handleGen(firstArg int) {
 func handleNew() {
 	// Define the --out flag
 	var (
-		newCmd  = flag.NewFlagSet("new", flag.ExitOnError)
-		out     = newCmd.String("out", "", "Path to output file.  Empty val or '--' means print to stdout")
-		pkg     = newCmd.String("pkg", "", "Package for generated file. Default is current directory or using the package name for the package specified in --out")
-		methods = newCmd.String("methods", "", "Comma-separated list of methods to generate in the form of TypeName=MethodName,TypeName2=MethodName2")
+		newCmd      = flag.NewFlagSet("new", flag.ExitOnError)
+		out         = newCmd.String("out", "", "Path to output file.  Empty val or '--' means print to stdout")
+		pkg         = newCmd.String("pkg", "", "Package for generated file. Default is current directory or using the package name for the package specified in --out")
+		methods     = newCmd.String("methods", "", "Comma-separated list of methods to generate in the form of TypeName=MethodName,TypeName2=MethodName2")
+		runGenerate = newCmd.Bool("generate", false, "Run go generate in the target package after creating the stub file")
 	)
 
 	// Check if --help was requested
@@ -123,7 +125,6 @@ func handleNew() {
 	// Parse flags for the "new" subcommand
 	var (
 		err       = newCmd.Parse(os.Args[2:])
-		args      = newCmd.Args()
 		pkgName   string
 		useStdout = *out == "" || *out == "--"
 	)
@@ -188,13 +189,24 @@ func handleNew() {
 		log.Fatalln(err)
 	}
 
-	// Perform the "new" command action
-	if len(args) > 0 {
-		fmt.Printf("Creating new project: %s\n", args[0])
-	} else {
-		fmt.Println("Creating a new project.")
+	fmt.Printf("Output written to: %s\n", *out)
+
+	// Optionally run go generate in the target package
+	if *runGenerate && !useStdout {
+		targetDir := filepath.Dir(*out)
+		if targetDir == "" {
+			targetDir = "."
+		}
+		fmt.Printf("Running go generate in %s...\n", targetDir)
+		cmd := exec.Command("go", "generate", "./...")
+		cmd.Dir = targetDir
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
+			log.Fatalf("go generate failed: %v", err)
+		}
+		fmt.Println("Code generation complete.")
 	}
-	fmt.Printf("Output will be written to: %s\n", *out)
 }
 
 func getPackageName(path string) (string, error) {
