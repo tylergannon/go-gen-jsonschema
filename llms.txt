@@ -7,7 +7,7 @@ A Go code generator that creates JSON Schema definitions from Go types, optimize
 - **Deterministic property ordering**: Schema properties are emitted in exactly the order fields are declared in the Go struct. This gives you precise control over schema layout — important for LLM function calling, where property order influences output quality. Most other schema generators use map iteration, which produces random ordering.
 - **Automatic generation**: Schemas stay in sync with your Go types. Change a struct, re-run `go generate`, done.
 - **Built-in validation**: Generated `ValidateJSON()` methods with schemas compiled once at startup.
-- **LLM-optimized defaults**: `additionalProperties: false`, all fields required unless marked `omitempty`, Go doc comments become schema descriptions.
+- **LLM-optimized defaults**: `additionalProperties: false`, all fields required unless tagged `jsonschema:"optional"`, Go doc comments become schema descriptions.
 
 ## How It Works
 
