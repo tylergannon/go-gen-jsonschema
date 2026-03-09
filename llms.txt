@@ -34,15 +34,21 @@ The CLI can generate the stub file for you. This is the recommended approach, es
 gen-jsonschema new -out schema.go -methods 'Person=Schema,Address=Schema' --generate
 ```
 
-This creates `schema.go` with the correct build tags, panic stubs for both `Schema()` and `ValidateJSON()`, and `NewJSONSchemaMethod` registrations. The `--generate` flag then runs `go generate` automatically to produce the generated code.
+To also enable JSON validation (generates `ValidateJSON()` stubs and methods):
 
-If you omit `--generate`, you can run code generation yourself:
+```bash
+gen-jsonschema new -out schema.go -methods 'Person=Schema,Address=Schema' --validate --generate
+```
+
+The `--generate` flag runs `go generate` automatically after creating the stubs. If you omit it, run generation yourself:
 
 ```bash
 go generate ./...
 ```
 
-**Important**: Your `types.go` must have a `//go:generate gen-jsonschema` directive for `go generate` to work.
+**Important**: Your `types.go` must have a matching `//go:generate` directive:
+- Without validation: `//go:generate gen-jsonschema`
+- With validation: `//go:generate gen-jsonschema --validate`
 
 ## Manual Setup (Step by Step)
 
@@ -414,20 +420,20 @@ myproject/
 ### Generated Methods (on each registered type)
 
 - `(T) Schema() json.RawMessage` — Returns the JSON schema from the embedded file
-- `(T) ValidateJSON(data []byte) error` — Validates JSON against the compiled schema. Returns `*jsonschema.ValidationError` on failure.
+- `(T) ValidateJSON(data []byte) error` — Validates JSON against the compiled schema. Returns `*jsonschema.ValidationError` on failure. **Only generated when `--validate` flag is used.**
 
 ### CLI Commands
 
 ```bash
 # Generate schemas (default when run with no args)
 gen-jsonschema
-gen-jsonschema gen [-pretty] [-target DIR] [-no-changes] [-force]
+gen-jsonschema gen [-pretty] [-target DIR] [-no-changes] [-force] [--validate]
 
 # Create stub schema.go file
 gen-jsonschema new -out schema.go -methods 'TypeName=Schema,OtherType=Schema'
 
-# Create stubs and immediately run code generation
-gen-jsonschema new -out schema.go -methods 'TypeName=Schema' --generate
+# Create stubs with validation and immediately run code generation
+gen-jsonschema new -out schema.go -methods 'TypeName=Schema' --validate --generate
 ```
 
 ## Debugging

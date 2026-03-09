@@ -14,6 +14,7 @@ type BuilderArgs struct {
 	NumTestSamples int
 	NoChanges      bool // If true, fail if any schema changes are detected
 	Force          bool // If true, force regeneration of schemas even if no changes are detected
+	Validate       bool // If true, generate ValidateJSON() methods and schema compilation
 }
 
 func Run(args BuilderArgs) (err error) {
@@ -32,6 +33,7 @@ func Run(args BuilderArgs) (err error) {
 	}
 	builder.Pretty = args.Pretty
 	builder.NumTestSamples = args.NumTestSamples
+	builder.Validate = args.Validate
 
 	// Allow registered transforms to mutate the model before render (no-ops by default)
 	if err = (&builder).applyTransforms(); err != nil {

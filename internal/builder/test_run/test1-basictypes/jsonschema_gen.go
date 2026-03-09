@@ -5,12 +5,10 @@
 package basictypes
 
 import (
-	"bytes"
 	"embed"
 	"encoding/json"
 	"errors"
 	"fmt"
-	jsonschema "github.com/santhosh-tekuri/jsonschema/v6"
 )
 
 //go:embed jsonschema
@@ -20,53 +18,6 @@ var errNoDiscriminator = errors.New("no discriminator property '!type' found")
 
 func __gen_jsonschema_panic(fname string, err error) {
 	panic(fmt.Sprintf("error reading %s from embedded FS: %s", fname, err.Error()))
-}
-
-// Compiled JSON schemas for validation, initialized once at startup.
-var (
-	__gen_jsonschema_compiled_TypeInItsOwnDecl       *jsonschema.Schema
-	__gen_jsonschema_compiled_TypeInNestedDecl       *jsonschema.Schema
-	__gen_jsonschema_compiled_TypeInSharedDecl       *jsonschema.Schema
-	__gen_jsonschema_compiled_StringTypeInSharedDecl *jsonschema.Schema
-)
-
-func init() {
-	compile := func(typeName string, schemaData json.RawMessage) *jsonschema.Schema {
-		doc, err := jsonschema.UnmarshalJSON(bytes.NewReader(schemaData))
-		if err != nil {
-			panic(fmt.Sprintf("go-gen-jsonschema: failed to parse schema for %s: %s", typeName, err))
-		}
-		c := jsonschema.NewCompiler()
-		url := typeName + ".json"
-		if err := c.AddResource(url, doc); err != nil {
-			panic(fmt.Sprintf("go-gen-jsonschema: failed to add schema resource for %s: %s", typeName, err))
-		}
-		sch, err := c.Compile(url)
-		if err != nil {
-			panic(fmt.Sprintf("go-gen-jsonschema: failed to compile schema for %s: %s", typeName, err))
-		}
-		return sch
-	}
-
-	{
-		var __zero TypeInItsOwnDecl
-		__gen_jsonschema_compiled_TypeInItsOwnDecl = compile("TypeInItsOwnDecl", __zero.Schema())
-	}
-
-	{
-		var __zero TypeInNestedDecl
-		__gen_jsonschema_compiled_TypeInNestedDecl = compile("TypeInNestedDecl", __zero.Schema())
-	}
-
-	{
-		var __zero TypeInSharedDecl
-		__gen_jsonschema_compiled_TypeInSharedDecl = compile("TypeInSharedDecl", __zero.Schema())
-	}
-
-	{
-		var __zero StringTypeInSharedDecl
-		__gen_jsonschema_compiled_StringTypeInSharedDecl = compile("StringTypeInSharedDecl", __zero.Schema())
-	}
 }
 
 func (TypeInItsOwnDecl) Schema() json.RawMessage {
@@ -103,40 +54,4 @@ func (StringTypeInSharedDecl) Schema() json.RawMessage {
 		__gen_jsonschema_panic(fileName, err)
 	}
 	return data
-}
-
-// ValidateJSON validates the given JSON bytes against the schema for TypeInItsOwnDecl.
-func (TypeInItsOwnDecl) ValidateJSON(data []byte) error {
-	inst, err := jsonschema.UnmarshalJSON(bytes.NewReader(data))
-	if err != nil {
-		return err
-	}
-	return __gen_jsonschema_compiled_TypeInItsOwnDecl.Validate(inst)
-}
-
-// ValidateJSON validates the given JSON bytes against the schema for TypeInNestedDecl.
-func (TypeInNestedDecl) ValidateJSON(data []byte) error {
-	inst, err := jsonschema.UnmarshalJSON(bytes.NewReader(data))
-	if err != nil {
-		return err
-	}
-	return __gen_jsonschema_compiled_TypeInNestedDecl.Validate(inst)
-}
-
-// ValidateJSON validates the given JSON bytes against the schema for TypeInSharedDecl.
-func (TypeInSharedDecl) ValidateJSON(data []byte) error {
-	inst, err := jsonschema.UnmarshalJSON(bytes.NewReader(data))
-	if err != nil {
-		return err
-	}
-	return __gen_jsonschema_compiled_TypeInSharedDecl.Validate(inst)
-}
-
-// ValidateJSON validates the given JSON bytes against the schema for StringTypeInSharedDecl.
-func (StringTypeInSharedDecl) ValidateJSON(data []byte) error {
-	inst, err := jsonschema.UnmarshalJSON(bytes.NewReader(data))
-	if err != nil {
-		return err
-	}
-	return __gen_jsonschema_compiled_StringTypeInSharedDecl.Validate(inst)
 }

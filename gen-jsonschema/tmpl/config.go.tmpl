@@ -12,12 +12,12 @@ import (
 func ({{.TypeName}}) {{.MethodName}}() json.RawMessage {
     panic("not implemented")
 }
-
+{{ if $.Validate }}
 func ({{.TypeName}}) ValidateJSON(_ []byte) error {
     panic("not implemented")
 }
+{{ end -}}
 {{ end }}
-
 
 var (
 	{{ range .Methods -}}

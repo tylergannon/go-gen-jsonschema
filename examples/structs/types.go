@@ -1,6 +1,6 @@
 package structs
 
-//go:generate gen-jsonschema
+//go:generate gen-jsonschema --validate
 
 import "time"
 

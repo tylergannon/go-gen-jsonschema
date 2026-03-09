@@ -5,12 +5,10 @@
 package basictypes
 
 import (
-	"bytes"
 	"embed"
 	"encoding/json"
 	"errors"
 	"fmt"
-	jsonschema "github.com/santhosh-tekuri/jsonschema/v6"
 )
 
 //go:embed jsonschema
@@ -20,95 +18,6 @@ var errNoDiscriminator = errors.New("no discriminator property '!type' found")
 
 func __gen_jsonschema_panic(fname string, err error) {
 	panic(fmt.Sprintf("error reading %s from embedded FS: %s", fname, err.Error()))
-}
-
-// Compiled JSON schemas for validation, initialized once at startup.
-var (
-	__gen_jsonschema_compiled_IntType                         *jsonschema.Schema
-	__gen_jsonschema_compiled_DefinedAsNamedType              *jsonschema.Schema
-	__gen_jsonschema_compiled_SliceOfPointerToInt             *jsonschema.Schema
-	__gen_jsonschema_compiled_SliceOfPointerToNamedType       *jsonschema.Schema
-	__gen_jsonschema_compiled_SliceOfNamedType                *jsonschema.Schema
-	__gen_jsonschema_compiled_NamedSliceType                  *jsonschema.Schema
-	__gen_jsonschema_compiled_NamedNamedSliceType             *jsonschema.Schema
-	__gen_jsonschema_compiled_SliceOfNamedNamedSliceType      *jsonschema.Schema
-	__gen_jsonschema_compiled_DefinedAsRemoteType             *jsonschema.Schema
-	__gen_jsonschema_compiled_DefinedAsRemoteSliceType        *jsonschema.Schema
-	__gen_jsonschema_compiled_DefinedAsSliceOfRemoteSliceType *jsonschema.Schema
-)
-
-func init() {
-	compile := func(typeName string, schemaData json.RawMessage) *jsonschema.Schema {
-		doc, err := jsonschema.UnmarshalJSON(bytes.NewReader(schemaData))
-		if err != nil {
-			panic(fmt.Sprintf("go-gen-jsonschema: failed to parse schema for %s: %s", typeName, err))
-		}
-		c := jsonschema.NewCompiler()
-		url := typeName + ".json"
-		if err := c.AddResource(url, doc); err != nil {
-			panic(fmt.Sprintf("go-gen-jsonschema: failed to add schema resource for %s: %s", typeName, err))
-		}
-		sch, err := c.Compile(url)
-		if err != nil {
-			panic(fmt.Sprintf("go-gen-jsonschema: failed to compile schema for %s: %s", typeName, err))
-		}
-		return sch
-	}
-
-	{
-		var __zero IntType
-		__gen_jsonschema_compiled_IntType = compile("IntType", __zero.Schema())
-	}
-
-	{
-		var __zero DefinedAsNamedType
-		__gen_jsonschema_compiled_DefinedAsNamedType = compile("DefinedAsNamedType", __zero.Schema())
-	}
-
-	{
-		var __zero SliceOfPointerToInt
-		__gen_jsonschema_compiled_SliceOfPointerToInt = compile("SliceOfPointerToInt", __zero.Schema())
-	}
-
-	{
-		var __zero SliceOfPointerToNamedType
-		__gen_jsonschema_compiled_SliceOfPointerToNamedType = compile("SliceOfPointerToNamedType", __zero.Schema())
-	}
-
-	{
-		var __zero SliceOfNamedType
-		__gen_jsonschema_compiled_SliceOfNamedType = compile("SliceOfNamedType", __zero.Schema())
-	}
-
-	{
-		var __zero NamedSliceType
-		__gen_jsonschema_compiled_NamedSliceType = compile("NamedSliceType", __zero.Schema())
-	}
-
-	{
-		var __zero NamedNamedSliceType
-		__gen_jsonschema_compiled_NamedNamedSliceType = compile("NamedNamedSliceType", __zero.Schema())
-	}
-
-	{
-		var __zero SliceOfNamedNamedSliceType
-		__gen_jsonschema_compiled_SliceOfNamedNamedSliceType = compile("SliceOfNamedNamedSliceType", __zero.Schema())
-	}
-
-	{
-		var __zero DefinedAsRemoteType
-		__gen_jsonschema_compiled_DefinedAsRemoteType = compile("DefinedAsRemoteType", __zero.Schema())
-	}
-
-	{
-		var __zero DefinedAsRemoteSliceType
-		__gen_jsonschema_compiled_DefinedAsRemoteSliceType = compile("DefinedAsRemoteSliceType", __zero.Schema())
-	}
-
-	{
-		var __zero DefinedAsSliceOfRemoteSliceType
-		__gen_jsonschema_compiled_DefinedAsSliceOfRemoteSliceType = compile("DefinedAsSliceOfRemoteSliceType", __zero.Schema())
-	}
 }
 
 func (IntType) Schema() json.RawMessage {
@@ -208,103 +117,4 @@ func (DefinedAsSliceOfRemoteSliceType) Schema() json.RawMessage {
 		__gen_jsonschema_panic(fileName, err)
 	}
 	return data
-}
-
-// ValidateJSON validates the given JSON bytes against the schema for IntType.
-func (IntType) ValidateJSON(data []byte) error {
-	inst, err := jsonschema.UnmarshalJSON(bytes.NewReader(data))
-	if err != nil {
-		return err
-	}
-	return __gen_jsonschema_compiled_IntType.Validate(inst)
-}
-
-// ValidateJSON validates the given JSON bytes against the schema for DefinedAsNamedType.
-func (DefinedAsNamedType) ValidateJSON(data []byte) error {
-	inst, err := jsonschema.UnmarshalJSON(bytes.NewReader(data))
-	if err != nil {
-		return err
-	}
-	return __gen_jsonschema_compiled_DefinedAsNamedType.Validate(inst)
-}
-
-// ValidateJSON validates the given JSON bytes against the schema for SliceOfPointerToInt.
-func (SliceOfPointerToInt) ValidateJSON(data []byte) error {
-	inst, err := jsonschema.UnmarshalJSON(bytes.NewReader(data))
-	if err != nil {
-		return err
-	}
-	return __gen_jsonschema_compiled_SliceOfPointerToInt.Validate(inst)
-}
-
-// ValidateJSON validates the given JSON bytes against the schema for SliceOfPointerToNamedType.
-func (SliceOfPointerToNamedType) ValidateJSON(data []byte) error {
-	inst, err := jsonschema.UnmarshalJSON(bytes.NewReader(data))
-	if err != nil {
-		return err
-	}
-	return __gen_jsonschema_compiled_SliceOfPointerToNamedType.Validate(inst)
-}
-
-// ValidateJSON validates the given JSON bytes against the schema for SliceOfNamedType.
-func (SliceOfNamedType) ValidateJSON(data []byte) error {
-	inst, err := jsonschema.UnmarshalJSON(bytes.NewReader(data))
-	if err != nil {
-		return err
-	}
-	return __gen_jsonschema_compiled_SliceOfNamedType.Validate(inst)
-}
-
-// ValidateJSON validates the given JSON bytes against the schema for NamedSliceType.
-func (NamedSliceType) ValidateJSON(data []byte) error {
-	inst, err := jsonschema.UnmarshalJSON(bytes.NewReader(data))
-	if err != nil {
-		return err
-	}
-	return __gen_jsonschema_compiled_NamedSliceType.Validate(inst)
-}
-
-// ValidateJSON validates the given JSON bytes against the schema for NamedNamedSliceType.
-func (NamedNamedSliceType) ValidateJSON(data []byte) error {
-	inst, err := jsonschema.UnmarshalJSON(bytes.NewReader(data))
-	if err != nil {
-		return err
-	}
-	return __gen_jsonschema_compiled_NamedNamedSliceType.Validate(inst)
-}
-
-// ValidateJSON validates the given JSON bytes against the schema for SliceOfNamedNamedSliceType.
-func (SliceOfNamedNamedSliceType) ValidateJSON(data []byte) error {
-	inst, err := jsonschema.UnmarshalJSON(bytes.NewReader(data))
-	if err != nil {
-		return err
-	}
-	return __gen_jsonschema_compiled_SliceOfNamedNamedSliceType.Validate(inst)
-}
-
-// ValidateJSON validates the given JSON bytes against the schema for DefinedAsRemoteType.
-func (DefinedAsRemoteType) ValidateJSON(data []byte) error {
-	inst, err := jsonschema.UnmarshalJSON(bytes.NewReader(data))
-	if err != nil {
-		return err
-	}
-	return __gen_jsonschema_compiled_DefinedAsRemoteType.Validate(inst)
-}
-
-// ValidateJSON validates the given JSON bytes against the schema for DefinedAsRemoteSliceType.
-func (DefinedAsRemoteSliceType) ValidateJSON(data []byte) error {
-	inst, err := jsonschema.UnmarshalJSON(bytes.NewReader(data))
-	if err != nil {
-		return err
-	}
-	return __gen_jsonschema_compiled_DefinedAsRemoteSliceType.Validate(inst)
-}
-
-// ValidateJSON validates the given JSON bytes against the schema for DefinedAsSliceOfRemoteSliceType.
-func (DefinedAsSliceOfRemoteSliceType) ValidateJSON(data []byte) error {
-	inst, err := jsonschema.UnmarshalJSON(bytes.NewReader(data))
-	if err != nil {
-		return err
-	}
-	return __gen_jsonschema_compiled_DefinedAsSliceOfRemoteSliceType.Validate(inst)
 }

@@ -64,6 +64,7 @@ func handleGen(firstArg int) {
 		numTestSamples = genCmd.Int("num-test-samples", 5, "Number of test samples to generate")
 		noChanges      = genCmd.Bool("no-changes", false, "Fail if any schema changes are detected")
 		force          = genCmd.Bool("force", false, "Force regeneration of schemas even if no changes are detected")
+		validate       = genCmd.Bool("validate", false, "Generate ValidateJSON() methods for schema validation")
 		err            error
 	)
 
@@ -99,6 +100,7 @@ func handleGen(firstArg int) {
 		NumTestSamples: *numTestSamples,
 		NoChanges:      *noChanges,
 		Force:          *force,
+		Validate:       *validate,
 	}); err != nil {
 		log.Fatal(err)
 	}
@@ -107,11 +109,12 @@ func handleGen(firstArg int) {
 func handleNew() {
 	// Define the --out flag
 	var (
-		newCmd      = flag.NewFlagSet("new", flag.ExitOnError)
-		out         = newCmd.String("out", "", "Path to output file.  Empty val or '--' means print to stdout")
-		pkg         = newCmd.String("pkg", "", "Package for generated file. Default is current directory or using the package name for the package specified in --out")
-		methods     = newCmd.String("methods", "", "Comma-separated list of methods to generate in the form of TypeName=MethodName,TypeName2=MethodName2")
-		runGenerate = newCmd.Bool("generate", false, "Run go generate in the target package after creating the stub file")
+		newCmd       = flag.NewFlagSet("new", flag.ExitOnError)
+		out          = newCmd.String("out", "", "Path to output file.  Empty val or '--' means print to stdout")
+		pkg          = newCmd.String("pkg", "", "Package for generated file. Default is current directory or using the package name for the package specified in --out")
+		methods      = newCmd.String("methods", "", "Comma-separated list of methods to generate in the form of TypeName=MethodName,TypeName2=MethodName2")
+		runGenerate  = newCmd.Bool("generate", false, "Run go generate in the target package after creating the stub file")
+		newValidate  = newCmd.Bool("validate", false, "Include ValidateJSON() stubs in the generated file")
 	)
 
 	// Check if --help was requested
@@ -153,6 +156,7 @@ func handleNew() {
 	var tmplArg = configArg{
 		BuildTag: syntax.BuildTag,
 		PkgName:  pkgName,
+		Validate: *newValidate,
 	}
 
 	for methodArg := range strings.SplitSeq(*methods, ",") {
@@ -226,6 +230,7 @@ type methodDef struct {
 type configArg struct {
 	PkgName  string
 	BuildTag string
+	Validate bool
 	Methods  []methodDef
 }
 

@@ -5,12 +5,10 @@
 package interfaces
 
 import (
-	"bytes"
 	"embed"
 	"encoding/json"
 	"errors"
 	"fmt"
-	jsonschema "github.com/santhosh-tekuri/jsonschema/v6"
 )
 
 //go:embed jsonschema
@@ -22,35 +20,6 @@ func __gen_jsonschema_panic(fname string, err error) {
 	panic(fmt.Sprintf("error reading %s from embedded FS: %s", fname, err.Error()))
 }
 
-// Compiled JSON schemas for validation, initialized once at startup.
-var (
-	__gen_jsonschema_compiled_FancyStruct *jsonschema.Schema
-)
-
-func init() {
-	compile := func(typeName string, schemaData json.RawMessage) *jsonschema.Schema {
-		doc, err := jsonschema.UnmarshalJSON(bytes.NewReader(schemaData))
-		if err != nil {
-			panic(fmt.Sprintf("go-gen-jsonschema: failed to parse schema for %s: %s", typeName, err))
-		}
-		c := jsonschema.NewCompiler()
-		url := typeName + ".json"
-		if err := c.AddResource(url, doc); err != nil {
-			panic(fmt.Sprintf("go-gen-jsonschema: failed to add schema resource for %s: %s", typeName, err))
-		}
-		sch, err := c.Compile(url)
-		if err != nil {
-			panic(fmt.Sprintf("go-gen-jsonschema: failed to compile schema for %s: %s", typeName, err))
-		}
-		return sch
-	}
-
-	{
-		var __zero FancyStruct
-		__gen_jsonschema_compiled_FancyStruct = compile("FancyStruct", __zero.Schema())
-	}
-}
-
 func (FancyStruct) Schema() json.RawMessage {
 	const fileName = "jsonschema/FancyStruct.json"
 	data, err := __gen_jsonschema_fs.ReadFile(fileName)
@@ -58,15 +27,6 @@ func (FancyStruct) Schema() json.RawMessage {
 		__gen_jsonschema_panic(fileName, err)
 	}
 	return data
-}
-
-// ValidateJSON validates the given JSON bytes against the schema for FancyStruct.
-func (FancyStruct) ValidateJSON(data []byte) error {
-	inst, err := jsonschema.UnmarshalJSON(bytes.NewReader(data))
-	if err != nil {
-		return err
-	}
-	return __gen_jsonschema_compiled_FancyStruct.Validate(inst)
 }
 
 // UnmarshalJSON is a generated custom json.Unmarshaler implementation for

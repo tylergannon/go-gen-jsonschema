@@ -256,6 +256,7 @@ type SchemaBuilder struct {
 	Subdir            string
 	Pretty            bool
 	NumTestSamples    int
+	Validate          bool
 	BuildTag          string
 	Imports           []string
 	SpecialTypes      []CustomMarshaledType
