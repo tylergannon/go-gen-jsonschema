@@ -667,7 +667,7 @@ func (s SchemaBuilder) renderSchema(t syntax.TypeExpr, description string, seen 
 			return PropertyNode[float64]{Desc: description, Typ: "number", TypeID_: t.ID()}, nil
 		default:
 			// Special handling for well-known external types
-			if node.Path == "time" && node.Name == "Time" {
+			if syntax.IsTimeType(node.Path, node.Name) {
 				// time.Time should be represented as a string with RFC3339 format
 				// We add description to guide LLMs rather than using format field
 				timeDesc := "RFC3339 formatted date-time string (e.g., \"2006-01-02T15:04:05Z07:00\")"

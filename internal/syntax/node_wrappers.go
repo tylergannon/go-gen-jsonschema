@@ -5,7 +5,6 @@ import (
 	"go/token"
 	"slices"
 	"strings"
-	"unicode"
 
 	"github.com/dave/dst"
 	"github.com/dave/dst/decorator"
@@ -655,8 +654,7 @@ func (f StructField) PropNames() (names []string) {
 		}
 	}
 	for _, n := range f.Field.Names {
-		// Only exported
-		if unicode.IsUpper(rune(n.Name[0])) {
+		if isExportedFieldName(n) {
 			names = append(names, n.Name)
 		}
 	}
@@ -664,10 +662,14 @@ func (f StructField) PropNames() (names []string) {
 }
 
 func (f StructField) structTag(name string) *structtag.Tag {
-	if f.Field.Tag == nil {
+	return fieldStructTag(f.Field, name)
+}
+
+func fieldStructTag(field *dst.Field, name string) *structtag.Tag {
+	if field.Tag == nil {
 		return nil
 	}
-	tags, err := structtag.Parse(strings.Trim(f.Field.Tag.Value, "`"))
+	tags, err := structtag.Parse(strings.Trim(field.Tag.Value, "`"))
 	if err != nil {
 		return nil
 	}
@@ -688,29 +690,32 @@ func (f StructField) JSONTag() *structtag.Tag {
 func (f StructField) Skip() bool {
 	// If there's a name list, check if all are unexported or check if `json:"-"`
 	if len(f.Field.Names) > 0 {
-		exported := false
-		for _, ident := range f.Field.Names {
-			if unicode.IsUpper(rune(ident.Name[0])) {
-				exported = true
-				break
-			}
-		}
-		if !exported {
+		if !hasExportedFieldName(f.Field) {
 			return true
 		}
-		if tag := f.JSONTag(); tag != nil {
-			return tag.Options[0] == "-"
-		}
-		return false
+		return fieldJSONIgnored(f.Field)
 	}
 	// If embedded, do not skip unless it's unexported (i.e. an embedded private type).
 	// For embedded types, check if the type is an ident with uppercase name, etc.
 	if ident, ok := f.Field.Type.(*dst.Ident); ok {
-		if !unicode.IsUpper(rune(ident.Name[0])) {
+		if !isExportedFieldName(ident) {
 			return true
 		}
 	}
 	return false
+}
+
+func isExportedFieldName(ident *dst.Ident) bool {
+	return ident != nil && token.IsExported(ident.Name)
+}
+
+func hasExportedFieldName(field *dst.Field) bool {
+	return slices.ContainsFunc(field.Names, isExportedFieldName)
+}
+
+func fieldJSONIgnored(field *dst.Field) bool {
+	tag := fieldStructTag(field, "json")
+	return tag != nil && len(tag.Options) > 0 && tag.Options[0] == "-"
 }
 
 /**

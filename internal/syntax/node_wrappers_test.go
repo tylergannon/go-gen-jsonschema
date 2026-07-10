@@ -65,3 +65,29 @@ func TestStructFieldPropNames(t *testing.T) {
 		})
 	}
 }
+
+func TestStructFieldNamedVisibility(t *testing.T) {
+	tests := []struct {
+		name      string
+		names     []string
+		wantNames []string
+		wantSkip  bool
+	}{
+		{name: "exported", names: []string{"Exported"}, wantNames: []string{"Exported"}},
+		{name: "unexported", names: []string{"unexported"}, wantSkip: true},
+		{name: "mixed group", names: []string{"unexported", "Exported"}, wantNames: []string{"Exported"}},
+		{name: "unexported group", names: []string{"first", "second"}, wantSkip: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			field := StructField{Field: &dst.Field{Type: dst.NewIdent("string")}}
+			for _, name := range tt.names {
+				field.Field.Names = append(field.Field.Names, dst.NewIdent(name))
+			}
+
+			require.Equal(t, tt.wantNames, field.PropNames())
+			require.Equal(t, tt.wantSkip, field.Skip())
+		})
+	}
+}

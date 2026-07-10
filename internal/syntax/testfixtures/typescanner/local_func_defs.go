@@ -16,6 +16,13 @@ type (
 	Type002 struct{}
 	Type003 struct{}
 	Type004 struct{}
+
+	ResolutionHolder struct {
+		Basic     string
+		Named     Type001
+		Enum      NiceEnumType
+		Interface MarkerInterface
+	}
 )
 
 func (t Type001) coolio()  {}

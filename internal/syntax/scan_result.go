@@ -5,12 +5,9 @@ import (
 	"go/token"
 	"runtime/debug"
 	"slices"
-	"strings"
-	"unicode"
 
 	"github.com/dave/dst"
 	"github.com/dave/dst/decorator"
-	"github.com/tylergannon/structtag"
 	"golang.org/x/tools/go/packages"
 )
 
@@ -475,17 +472,8 @@ func (r *ScanResult) loadPackageInternal(seen seenPackages, typesToMap map[strin
 	}
 
 	for typeName := range typesToMap {
-		if _, ok := r.LocalNamedTypes[typeName]; !ok {
-			if r.Constants[typeName] != nil {
-				continue
-			}
-			if _, ok = r.Interfaces[typeName]; ok {
-				continue
-			}
-			return fmt.Errorf("undeclared local type found: %s", typeName)
-		} else {
-			// We'll queue it for resolution
-			r.resolveQueue = append(r.resolveQueue, r.LocalNamedTypes[typeName])
+		if err := r.requestType(typeName); err != nil {
+			return err
 		}
 	}
 
@@ -501,10 +489,20 @@ func (r *ScanResult) resolveTypeExpr(_expr Expr, seen SeenTypes) error {
 		return r.resolveTypeExpr(_expr.NewExpr(expr.X), seen)
 	case *dst.StarExpr:
 		return r.resolveTypeExpr(_expr.NewExpr(expr.X), seen)
-	case *dst.SliceExpr:
-		return r.resolveTypeExpr(_expr.NewExpr(expr.X), seen)
 	case *dst.ArrayType:
 		return r.resolveTypeExpr(_expr.NewExpr(expr.Elt), seen)
+	case *dst.MapType:
+		// This is a discovery boundary, not validation or rendering support.
+		// The renderer independently rejects maps. Discovery must not recurse
+		// into a shape that cannot be rendered, but it also must not prevent
+		// unrelated syntax operations such as flattening from loading a package.
+		return nil
+	case *dst.InterfaceType:
+		// This is a discovery boundary, not validation or rendering support.
+		// Named interfaces registered through v1 schema options remain in
+		// LocalNamedTypes and are resolved by the builder; unmatched interfaces
+		// are independently rejected by the renderer.
+		return nil
 	case *dst.StructType:
 		for _, field := range expr.Fields.List {
 			if skipField(field) {
@@ -520,14 +518,7 @@ func (r *ScanResult) resolveTypeExpr(_expr Expr, seen SeenTypes) error {
 			if BasicTypes[expr.Name] {
 				return nil // basic type
 			}
-			if named, ok := r.LocalNamedTypes[expr.Name]; !ok {
-				if r.Constants[expr.Name] != nil {
-					return nil
-				} else if _, ok := r.Interfaces[expr.Name]; !ok {
-					return nil
-				}
-				return fmt.Errorf("undeclared local %s type found: %s at %s", expr.Name, _expr.Details(), _expr.Position())
-			} else {
+			if named, ok := r.LocalNamedTypes[expr.Name]; ok {
 				var added bool
 				seen, added = seen.Add(named.ID())
 				if !added {
@@ -540,19 +531,32 @@ func (r *ScanResult) resolveTypeExpr(_expr Expr, seen SeenTypes) error {
 					return err
 				}
 				r.alreadyTraversedLocally[expr.Name] = true
+				return nil
 			}
+			if r.Constants[expr.Name] != nil {
+				return nil
+			}
+			if _, ok := r.Interfaces[expr.Name]; ok {
+				return nil
+			}
+			return fmt.Errorf("undeclared local %s type found: %s at %s", expr.Name, _expr.Details(), _expr.Position())
 		} else {
-			r.remoteTypes.addType(expr.Path, expr.Name)
+			if !IsTimeType(expr.Path, expr.Name) {
+				r.remoteTypes.addType(expr.Path, expr.Name)
+			}
 		}
 	case *dst.SelectorExpr:
 		// Instead of panicking, at least store the remote reference
 		if xIdent, ok := expr.X.(*dst.Ident); ok {
-			if xIdent.Path != "" {
-				r.remoteTypes.addType(xIdent.Path, expr.Sel.Name)
-			} else {
-				// Fallback if there's no path, treat the 'X' as the package name
-				r.remoteTypes.addType(xIdent.Name, expr.Sel.Name)
+			pkgPath := xIdent.Path
+			if pkgPath == "" {
+				// Fallback if there's no path, treat the 'X' as the package name.
+				pkgPath = xIdent.Name
 			}
+			if IsTimeType(pkgPath, expr.Sel.Name) {
+				return nil
+			}
+			r.remoteTypes.addType(pkgPath, expr.Sel.Name)
 		} else {
 			return fmt.Errorf("unhandled selector expression: %s", _expr.Details())
 		}
@@ -584,23 +588,13 @@ func skipField(field *dst.Field) bool {
 	if len(field.Names) == 0 { // don't skip embedded
 		return false
 	}
-	if idx := slices.IndexFunc(field.Names, func(ident *dst.Ident) bool {
-		return unicode.IsLower(rune(ident.Name[0]))
-	}); idx == -1 {
-		return true // skip if all names are lowercased (non-exported)
+	if !hasExportedFieldName(field) {
+		return true
 	}
-	if field.Tag == nil {
-		return false
+	if fieldJSONIgnored(field) {
+		return true
 	}
-	tags, _ := structtag.Parse(strings.Trim(field.Tag.Value, "`"))
-	tagEntry, err := tags.Get("json")
-	if err == nil {
-		if len(tagEntry.Options) > 0 && tagEntry.Options[0] == "-" {
-			return true
-		}
-	}
-	tagEntry, err = tags.Get("jsonschema")
-	if err == nil {
+	if tagEntry := fieldStructTag(field, "jsonschema"); tagEntry != nil {
 		if _, ok := tagEntry.GetOptValue("ref"); ok {
 			return true
 		}
@@ -623,12 +617,13 @@ func (r *ScanResult) resolveTypes() error {
 		if err = r.resolveTypeExpr(NewExpr(ts.Concrete.Type, ts.pkg, ts.file), nil); err != nil {
 			return fmt.Errorf("resolving Concrete at %s: %w", ts.Position(), err)
 		}
+		r.alreadyTraversedLocally[ts.Name()] = true
 	}
 	for pkgPath, typeNames := range r.remoteTypes {
 		if remote, ok := r.deps[pkgPath]; ok {
 			for typeName := range typeNames {
-				if !remote.alreadyTraversedLocally[typeName] {
-					remote.resolveQueue = append(remote.resolveQueue, remote.LocalNamedTypes[typeName])
+				if err = remote.requestType(typeName); err != nil {
+					return fmt.Errorf("resolving type at %s: %w", pkgPath, err)
 				}
 			}
 			if err = remote.resolveTypes(); err != nil {
@@ -645,6 +640,25 @@ func (r *ScanResult) resolveTypes() error {
 		}
 	}
 	return nil
+}
+
+func (r *ScanResult) requestType(typeName string) error {
+	if named, ok := r.LocalNamedTypes[typeName]; ok {
+		alreadyQueued := slices.ContainsFunc(r.resolveQueue, func(queued TypeSpec) bool {
+			return queued.Name() == typeName
+		})
+		if !r.alreadyTraversedLocally[typeName] && !alreadyQueued {
+			r.resolveQueue = append(r.resolveQueue, named)
+		}
+		return nil
+	}
+	if r.Constants[typeName] != nil {
+		return nil
+	}
+	if _, ok := r.Interfaces[typeName]; ok {
+		return nil
+	}
+	return fmt.Errorf("undeclared local type found: %s", typeName)
 }
 
 func loadPkgDecls(pkg *decorator.Package) *decls {
