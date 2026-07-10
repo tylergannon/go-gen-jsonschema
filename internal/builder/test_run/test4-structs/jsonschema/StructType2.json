@@ -61,7 +61,8 @@
                 }
               },
               "required": [
-                "field9"
+                "field9",
+                "foobar"
               ],
               "additionalProperties": false
             }
@@ -140,7 +141,8 @@
                       }
                     },
                     "required": [
-                      "field9"
+                      "field9",
+                      "foobar"
                     ],
                     "additionalProperties": false
                   }
@@ -158,7 +160,8 @@
           "field1",
           "field2",
           "field3",
-          "field4"
+          "field4",
+          "field5"
         ],
         "additionalProperties": false
       }
@@ -169,6 +172,7 @@
     "field2",
     "field3",
     "field4",
+    "field5",
     "nestedStruct"
   ],
   "additionalProperties": false

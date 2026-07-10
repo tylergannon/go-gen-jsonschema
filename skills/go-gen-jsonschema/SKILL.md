@@ -14,8 +14,9 @@ description: >
 Code generator that turns Go structs into JSON Schema files plus Go accessors
 (`Schema()`, optionally `ValidateJSON()`). Built for LLM function calling:
 properties are emitted in struct field order (deterministic, prompt-controllable),
-`additionalProperties: false`, every field required unless explicitly marked
-optional, and Go doc comments become the schema `description` fields.
+`additionalProperties: false`, ordinary and nullable fields required,
+`Optional[T]` fields optional, and Go doc comments become the schema
+`description` fields.
 
 Import path: `github.com/tylergannon/go-gen-jsonschema` (library markers) and
 `github.com/tylergannon/go-gen-jsonschema/gen-jsonschema` (CLI).
@@ -77,6 +78,8 @@ and the whole `jsonschema/` directory (each `T.json` schema comes with a
 // types.go
 package contacts
 
+import jsonschema "github.com/tylergannon/go-gen-jsonschema"
+
 //go:generate go tool gen-jsonschema --validate
 
 // Person is a single contact extracted from the document.
@@ -88,7 +91,10 @@ type Person struct {
     Age int `json:"age"`
 
     // Email address. Omit when not stated in the source text.
-    Email string `json:"email,omitempty" jsonschema:"optional"`
+    Email jsonschema.Optional[string] `json:"email,omitzero"`
+
+    // Required key; null means no phone number was supplied.
+    Phone jsonschema.Nullable[string] `json:"phone"`
 }
 ```
 
@@ -141,9 +147,22 @@ Timestamp string `json:"timestamp"`
 
 ## Required vs optional
 
-All fields are **required by default**. Mark optional fields with the
-`jsonschema:"optional"` struct tag — `json:",omitempty"` alone only affects Go
-marshaling, not the schema. Use both together for an optional field.
+Ordinary fields and `jsonschema.Nullable[T]` fields are required.
+`jsonschema.Optional[T]` fields are omitted from `required` and must use
+`json:",omitzero"`. Optional rejects JSON null; Nullable accepts null. Both
+preserve present zero and empty values through their `Present` and `Value`
+fields. Validate before unmarshaling when missing-vs-null matters, because plain
+`json.Unmarshal` cannot distinguish those states for Nullable.
+
+For OpenAI strict Structured Outputs, every property must be required. Use
+Nullable for OpenAI's documented required-plus-null pattern. Do not use
+Optional in a strict schema because it deliberately removes the property from
+`required`.
+
+Wrappers must be complete direct named field types. V1 Optional follows the
+ordinary renderer's scalar and named scalar, struct, pointer, array/slice,
+supported-ref, and registered-interface paths. V1 Nullable supports scalars,
+structs, and pointers to structs.
 
 ## Beyond flat structs
 

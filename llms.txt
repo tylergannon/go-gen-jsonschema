@@ -7,7 +7,7 @@ A Go code generator that creates JSON Schema definitions from Go types, optimize
 - **Deterministic property ordering**: Schema properties are emitted in exactly the order fields are declared in the Go struct. This gives you precise control over schema layout — important for LLM function calling, where property order influences output quality. Most other schema generators use map iteration, which produces random ordering.
 - **Automatic generation**: Schemas stay in sync with your Go types. Change a struct, re-run `go generate`, done.
 - **Built-in validation**: Generated `ValidateJSON()` methods with schemas compiled once at startup.
-- **LLM-optimized defaults**: `additionalProperties: false`, all fields required unless tagged `jsonschema:"optional"`, Go doc comments become schema descriptions.
+- **LLM-optimized defaults**: `additionalProperties: false`; ordinary and `Nullable[T]` fields are required, while `Optional[T]` fields are omitted from `required`; Go doc comments become schema descriptions.
 
 ## How It Works
 
@@ -58,6 +58,8 @@ go generate ./...
 // types.go
 package mypackage
 
+import jsonschema "github.com/tylergannon/go-gen-jsonschema"
+
 //go:generate gen-jsonschema
 
 type Person struct {
@@ -68,9 +70,22 @@ type Person struct {
     Age int `json:"age"`
 
     // Email address (optional)
-    Email string `json:"email,omitempty"`
+    Email jsonschema.Optional[string] `json:"email,omitzero"`
+
+    // Required key that accepts JSON null
+    Phone jsonschema.Nullable[string] `json:"phone"`
 }
 ```
+
+`Optional[T]` rejects JSON null and preserves present zero/empty values.
+`Nullable[T]` maps null to `Present == false`; generated `ValidateJSON` must be
+used to distinguish a missing required key from explicit null. Wrappers are
+supported only as complete direct named field types. V1 Nullable supports
+scalars, structs, and pointers to structs.
+
+OpenAI strict Structured Outputs requires every property to be required. Use
+Nullable for its documented required-plus-null pattern; Optional is not valid
+for that strict contract because it omits the property from `required`.
 
 ### Step 2: Create the schema registration file
 

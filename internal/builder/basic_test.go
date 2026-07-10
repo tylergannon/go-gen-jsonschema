@@ -74,7 +74,12 @@ func TestBasic(t *testing.T) {
 		require.NoError(t, err)
 		CmdSuccessAssertions(t, buildStdout, buildStderr, buildExit)
 
-		// No ginkgo; all tests run via `go test ./...` at repo root.
+		// Fixture modules are nested modules, so their runtime tests must be run
+		// explicitly after generation.
+		testExit, _, testStderr, err := testutils.RunCommand("go", tempDir, "test", "./...")
+		require.NoError(t, err)
+		require.Empty(t, testStderr)
+		require.Equal(t, 0, testExit)
 	}
 
 	cases := []testCase{
@@ -175,6 +180,7 @@ func TestBasic(t *testing.T) {
 			runGinkgo: false,
 			files: []string{
 				"jsonschema/Owner.json",
+				"jsonschema_gen.go",
 			},
 		},
 		{
@@ -183,6 +189,14 @@ func TestBasic(t *testing.T) {
 			runGinkgo: false,
 			files: []string{
 				"jsonschema/TraversalHolder.json",
+			},
+		},
+		{
+			inputDir: "builder/testfixtures/optionality",
+			testName: "test12-optionality",
+			files: []string{
+				"jsonschema/Config.json",
+				"jsonschema_gen.go",
 			},
 		},
 	}

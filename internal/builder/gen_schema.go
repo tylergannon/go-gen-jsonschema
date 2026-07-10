@@ -1049,13 +1049,26 @@ func hasProviderForGoField(list []FieldProvider, goFieldNames []string) bool {
 
 func (s SchemaBuilder) renderStructField(owner syntax.StructType, f syntax.StructField, seen syntax.SeenTypes) (props []ObjectProp, err error) {
 	var (
-		schema JSONSchema
-		name   string
+		schema        JSONSchema
+		name          string
+		specialSource string
 	)
+	wrapper, inner, err := f.Wrapper()
+	if err != nil {
+		return nil, err
+	}
+	if wrapper == syntax.WrapperOptional && !f.HasJSONOption("omitzero") {
+		return nil, fmt.Errorf("%s field %s requires json:\",omitzero\" at %s", wrapper, strings.Join(f.PropNames(), ","), f.Position())
+	}
+	renderType := f.Type()
+	if wrapper != syntax.WrapperNone {
+		renderType = inner
+	}
 	// Prefer centralized tag parsing
 	if f.Field.Tag != nil && f.Field.Tag.Value != "" {
 		if tag := common.ParseJSONSchemaTag(f.Field.Tag.Value); tag.HasRef {
 			schema = RefNode{Ref: tag.Ref}
+			specialSource = "explicit refs"
 		}
 	}
 	if schema == nil {
@@ -1066,7 +1079,7 @@ func (s SchemaBuilder) renderStructField(owner syntax.StructType, f syntax.Struc
 				if !ok2 {
 					continue
 				}
-				ident, ok := f.Field.Type.(*dst.Ident)
+				ident, ok := renderType.(*dst.Ident)
 				if !ok {
 					continue
 				}
@@ -1131,6 +1144,7 @@ func (s SchemaBuilder) renderStructField(owner syntax.StructType, f syntax.Struc
 					}
 					schema = PropertyNode[int]{Typ: "integer", Enum: vals, TypeID_: f.ID()}
 				}
+				specialSource = "enums"
 				break
 			}
 		}
@@ -1156,6 +1170,7 @@ func (s SchemaBuilder) renderStructField(owner syntax.StructType, f syntax.Struc
 						union.Options = append(union.Options, obj2)
 					}
 					schema = union
+					specialSource = "registered interfaces"
 					break
 				}
 			}
@@ -1171,15 +1186,27 @@ func (s SchemaBuilder) renderStructField(owner syntax.StructType, f syntax.Struc
 					jsonNames := f.PropNames()
 					if len(jsonNames) > 0 {
 						schema = TemplateHoleNode{Name: jsonNames[0]}
+						specialSource = "providers"
 					}
 				}
 			}
 		}
 		// Fallback
 		if schema == nil {
-			if schema, err = s.renderSchema(f.Derive(f.Type()), f.Comments(), seen); err != nil {
+			if schema, err = s.renderSchema(f.Derive(renderType), f.Comments(), seen); err != nil {
 				return nil, fmt.Errorf("rendering schema: %w", err)
 			}
+		}
+	}
+	if wrapper == syntax.WrapperNullable {
+		if _, isArrayOrSlice := renderType.(*dst.ArrayType); isArrayOrSlice {
+			return nil, fmt.Errorf("%s does not support arrays/slices at %s", wrapper, f.Position())
+		}
+		if specialSource != "" {
+			return nil, fmt.Errorf("%s does not support %s at %s", wrapper, specialSource, f.Position())
+		}
+		if schema, err = nullableSchema(schema); err != nil {
+			return nil, fmt.Errorf("%s field %s at %s: %w", wrapper, strings.Join(f.PropNames(), ","), f.Position(), err)
 		}
 	}
 	for _, name = range f.PropNames() {
@@ -1192,11 +1219,37 @@ func (s SchemaBuilder) renderStructField(owner syntax.StructType, f syntax.Struc
 	return props, nil
 }
 
+func nullableSchema(schema JSONSchema) (JSONSchema, error) {
+	switch value := schema.(type) {
+	case PropertyNode[int]:
+		return nullableProperty(value)
+	case PropertyNode[string]:
+		return nullableProperty(value)
+	case PropertyNode[bool]:
+		return nullableProperty(value)
+	case PropertyNode[float64]:
+		return nullableProperty(value)
+	case ObjectNode:
+		return NullableObjectNode{Object: value}, nil
+	default:
+		return nil, fmt.Errorf("inner schema shape %T is unsupported; V1 supports scalar values, structs, and pointers to structs", schema)
+	}
+}
+
+func nullableProperty[T ~int | ~string | ~bool | float32 | float64](value PropertyNode[T]) (JSONSchema, error) {
+	if len(value.Enum) > 0 || value.Const != nil {
+		return nil, errors.New("enums and consts are unsupported; V1 supports scalar values, structs, and pointers to structs")
+	}
+	value.Nullable = true
+	return value, nil
+}
+
 type InterfaceProp struct {
 	Field         syntax.StructField
 	Interface     syntax.IfaceImplementations
 	DiscPropName  string
 	FuncNameAlias string
+	Optional      bool
 }
 
 func (s InterfaceProp) UnmarshalerFunc() string {
@@ -1260,7 +1313,15 @@ func (s SchemaBuilder) resolveLocalInterfaceProps(t syntax.StructType, seenProps
 		if prop.Embedded() {
 			continue
 		}
-		if ident, ok := prop.Field.Type.(*dst.Ident); ok {
+		fieldType := prop.Field.Type
+		wrapper, inner, wrapperErr := prop.Wrapper()
+		if wrapperErr != nil {
+			return nil, wrapperErr
+		}
+		if wrapper != syntax.WrapperNone {
+			fieldType = inner
+		}
+		if ident, ok := fieldType.(*dst.Ident); ok {
 			ok = false
 			for _, name := range prop.PropNames() {
 				if !seenProps.Seen(name) {
@@ -1276,6 +1337,9 @@ func (s SchemaBuilder) resolveLocalInterfaceProps(t syntax.StructType, seenProps
 				var handled bool
 				for _, goField := range prop.Field.Names {
 					if cfg, ok2 := cfgs[goField.Name]; ok2 {
+						if wrapper == syntax.WrapperNullable {
+							return nil, fmt.Errorf("%s does not support registered interfaces at %s", wrapper, prop.Position())
+						}
 						// Resolve interface TypeSpec for ident
 						pkgPath := ident.Path
 						if pkgPath == "" {
@@ -1294,7 +1358,7 @@ func (s SchemaBuilder) resolveLocalInterfaceProps(t syntax.StructType, seenProps
 							return nil, fmt.Errorf("interface prop %s has more than one field name at %s", strings.Join(prop.PropNames(), ","), prop.Position())
 						}
 						funcAlias := fmt.Sprintf("__jsonUnmarshal__%s__%s__%s__%s", ts.Pkg().Name, ts.Name(), t.Name(), goField.Name)
-						props = append(props, InterfaceProp{Field: prop, Interface: iface, DiscPropName: cfg.Disc, FuncNameAlias: funcAlias})
+						props = append(props, InterfaceProp{Field: prop, Interface: iface, DiscPropName: cfg.Disc, FuncNameAlias: funcAlias, Optional: wrapper == syntax.WrapperOptional})
 						handled = true
 						break
 					}
@@ -1309,12 +1373,16 @@ func (s SchemaBuilder) resolveLocalInterfaceProps(t syntax.StructType, seenProps
 			if !ok {
 				continue
 			}
+			if wrapper == syntax.WrapperNullable {
+				return nil, fmt.Errorf("%s does not support registered interfaces at %s", wrapper, prop.Position())
+			}
 			if len(prop.Field.Names) != 1 {
 				return nil, fmt.Errorf("interface prop %s has more than one field name at %s", strings.Join(prop.PropNames(), ","), prop.Position())
 			}
 			props = append(props, InterfaceProp{
 				Field:     prop,
 				Interface: iface,
+				Optional:  wrapper == syntax.WrapperOptional,
 			})
 			continue
 		}

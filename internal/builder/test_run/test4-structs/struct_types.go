@@ -1,5 +1,7 @@
 package structs
 
+import jsonschema "github.com/tylergannon/go-gen-jsonschema"
+
 //go:generate go run ./gen
 
 // It's really that way
@@ -33,9 +35,9 @@ type StructType1 struct {
 		Field3 struct {
 			Field9 []*EnumType123 `json:"field9"`
 			// foobar is just a field where you do things
-			Foobar string `json:"foobar" jsonschema:"optional"`
+			Foobar string `json:"foobar"`
 		}
-	} `json:"field5" jsonschema:"optional"`
+	} `json:"field5"`
 }
 
 // Tell me a story about fairy tails and other things
@@ -47,8 +49,8 @@ type StructType2 struct {
 }
 
 type StructWithRefs struct {
-	Ref1 StructType1 `json:"ref1" jsonschema:"optional,ref=definitions/StructType1"`
-	Ref2 StructType2 `json:"ref2" jsonschema:"ref=definitions/StructType2"`
+	Ref1 jsonschema.Optional[StructType1] `json:"ref1,omitzero" jsonschema:"ref=definitions/StructType1"`
+	Ref2 StructType2                      `json:"ref2" jsonschema:"ref=definitions/StructType2"`
 }
 
 type JSONTagNames struct {

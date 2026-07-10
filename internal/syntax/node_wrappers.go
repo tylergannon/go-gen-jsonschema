@@ -12,6 +12,10 @@ import (
 )
 
 type (
+	// WrapperKind classifies the public presence wrappers supported on direct
+	// named struct fields.
+	WrapperKind uint8
+
 	STNode[T dst.Node] struct {
 		Concrete T
 		file     *dst.File
@@ -85,6 +89,12 @@ type (
 		STExpr[*dst.Ident]
 		InterfaceType bool
 	}
+)
+
+const (
+	WrapperNone WrapperKind = iota
+	WrapperOptional
+	WrapperNullable
 )
 
 func (s STNode[T]) Details() string {
@@ -637,11 +647,82 @@ func (f StructField) TypeAsExpr() Expr {
 }
 
 func (f StructField) Required() bool {
-	var tag = f.structTag("jsonschema")
-	if tag == nil {
-		return true
+	kind, _, _ := f.Wrapper()
+	return kind != WrapperOptional
+}
+
+// Wrapper reports whether the complete field type is Optional[T] or
+// Nullable[T] from this module's public package. Types with the same name from
+// any other package are ordinary types.
+func (f StructField) Wrapper() (WrapperKind, dst.Expr, error) {
+	kind, args, ok := wrapperExpr(f.TypeAsExpr())
+	if !ok {
+		return WrapperNone, f.Type(), nil
 	}
-	return !slices.Contains(tag.Options, "optional")
+	if len(args) != 1 {
+		return kind, nil, fmt.Errorf("%s requires exactly one type argument at %s", kind, f.Position())
+	}
+	return kind, args[0], nil
+}
+
+// HasJSONOption reports whether the field's encoding/json tag contains option.
+func (f StructField) HasJSONOption(option string) bool {
+	tag := f.JSONTag()
+	return tag != nil && slices.Contains(tag.Options[1:], option)
+}
+
+func (k WrapperKind) String() string {
+	switch k {
+	case WrapperOptional:
+		return "jsonschema.Optional"
+	case WrapperNullable:
+		return "jsonschema.Nullable"
+	default:
+		return "ordinary field"
+	}
+}
+
+func wrapperExpr(expr Expr) (WrapperKind, []dst.Expr, bool) {
+	var root dst.Expr
+	var args []dst.Expr
+	switch node := expr.Expr().(type) {
+	case *dst.IndexExpr:
+		root = node.X
+		args = []dst.Expr{node.Index}
+	case *dst.IndexListExpr:
+		root = node.X
+		args = node.Indices
+	default:
+		return WrapperNone, nil, false
+	}
+
+	var pkgPath, typeName string
+	switch node := root.(type) {
+	case *dst.Ident:
+		pkgPath, typeName = node.Path, node.Name
+	case *dst.SelectorExpr:
+		prefix, ok := node.X.(*dst.Ident)
+		if !ok {
+			return WrapperNone, nil, false
+		}
+		pkgPath, typeName = prefix.Path, node.Sel.Name
+		if pkgPath == "" {
+			pkgPath, _ = expr.Imports().GetPackageForPrefix(prefix.Name)
+		}
+	default:
+		return WrapperNone, nil, false
+	}
+	if pkgPath != SchemaPackagePath {
+		return WrapperNone, nil, false
+	}
+	switch typeName {
+	case "Optional":
+		return WrapperOptional, args, true
+	case "Nullable":
+		return WrapperNullable, args, true
+	default:
+		return WrapperNone, nil, false
+	}
 }
 
 func (f StructField) PropNames() (names []string) {
