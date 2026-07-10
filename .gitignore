@@ -1,4 +1,5 @@
 **/.DS_Store
+bin/
 # Do not use legacy v1 docs; canonical spec is under docs/spec/
 docs/v1-*.md
 website/package-lock.json
