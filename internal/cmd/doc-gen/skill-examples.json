@@ -1,0 +1,49 @@
+{
+  "examples": [
+    {
+      "id": "optional-nullable",
+      "title": "Optional and nullable fields",
+      "when": "Use Optional[T] with json:\",omitzero\" for an omittable non-null property; use Nullable[T] for a required property that may be null.",
+      "sections": [
+        {
+          "source": "examples/optionality/types.go",
+          "declarations": ["Detail", "Config"]
+        },
+        {
+          "source": "examples/optionality/schema.go",
+          "registrations": ["Config.Schema"]
+        }
+      ]
+    },
+    {
+      "id": "enums",
+      "title": "Enums",
+      "when": "Use field-level enum options when a containing schema should expose named constants as allowed values.",
+      "sections": [
+        {
+          "source": "examples/stringer_enums/types.go",
+          "declarations": ["LogLevel", "LogDebug", "LogLevel.String", "ApplicationConfig"]
+        },
+        {
+          "source": "examples/stringer_enums/schema.go",
+          "registrations": ["ApplicationConfig.Schema"]
+        }
+      ]
+    },
+    {
+      "id": "interfaces",
+      "title": "Interfaces and discriminators",
+      "when": "Use explicit interface options to enumerate implementations and choose the discriminator property for an interface field.",
+      "sections": [
+        {
+          "source": "examples/interfaces_options/types.go",
+          "declarations": ["IFace", "Impl1", "Impl1.isIface", "Impl2", "Impl2.isIface", "Owner"]
+        },
+        {
+          "source": "examples/interfaces_options/schema.go",
+          "registrations": ["Owner.Schema"]
+        }
+      ]
+    }
+  ]
+}
