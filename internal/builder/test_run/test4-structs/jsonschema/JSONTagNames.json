@@ -1,0 +1,24 @@
+{
+  "type": "object",
+  "properties": {
+    "MaxRetries": {
+      "type": "integer"
+    },
+    "TimeoutSeconds": {
+      "type": "integer"
+    },
+    "backoff_strategy": {
+      "type": "integer"
+    },
+    "Untagged": {
+      "type": "integer"
+    }
+  },
+  "required": [
+    "MaxRetries",
+    "TimeoutSeconds",
+    "backoff_strategy",
+    "Untagged"
+  ],
+  "additionalProperties": false
+}

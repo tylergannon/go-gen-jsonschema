@@ -650,7 +650,7 @@ func (f StructField) PropNames() (names []string) {
 	case 0:
 		return
 	case 1:
-		if tag := f.JSONTag(); tag != nil {
+		if tag := f.JSONTag(); tag != nil && tag.Options[0] != "" {
 			return []string{tag.Options[0]}
 		}
 	}

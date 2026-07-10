@@ -19,6 +19,11 @@ func (ContactInfo) Schema() json.RawMessage {
 	panic("not implemented")
 }
 
+// Schema method for RetryPolicy.
+func (RetryPolicy) Schema() json.RawMessage {
+	panic("not implemented")
+}
+
 // Schema method for Person.
 func (Person) Schema() json.RawMessage {
 	panic("not implemented")
@@ -41,6 +46,9 @@ var (
 
 	// Register ContactInfo for schema generation
 	_ = jsonschema.NewJSONSchemaMethod(ContactInfo.Schema)
+
+	// Register RetryPolicy for schema generation
+	_ = jsonschema.NewJSONSchemaMethod(RetryPolicy.Schema)
 
 	// Register Person for schema generation
 	_ = jsonschema.NewJSONSchemaMethod(Person.Schema)

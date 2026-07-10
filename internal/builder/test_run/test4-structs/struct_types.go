@@ -50,3 +50,11 @@ type StructWithRefs struct {
 	Ref1 StructType1 `json:"ref1" jsonschema:"optional,ref=definitions/StructType1"`
 	Ref2 StructType2 `json:"ref2" jsonschema:"ref=definitions/StructType2"`
 }
+
+type JSONTagNames struct {
+	MaxRetries      int `json:",omitzero"`
+	TimeoutSeconds  int `json:",omitempty"`
+	BackoffStrategy int `json:"backoff_strategy,omitzero"`
+	Untagged        int
+	Ignored         int `json:"-"`
+}
