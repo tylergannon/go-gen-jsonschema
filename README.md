@@ -74,8 +74,9 @@ Commit everything the generator writes: `jsonschema_gen.go` and the
   output quality; most generators iterate maps and produce random order.
 - **Schemas can't drift** — change a struct, run `go generate`, done. Wire it
   into a pre-commit hook or CI (see below) and drift becomes impossible.
-- **LLM-optimized defaults** — `additionalProperties: false`, every field
-  required unless tagged optional, doc comments become `description` fields.
+- **LLM-optimized defaults** — `additionalProperties: false`, ordinary and
+  nullable fields required, `Optional[T]` fields optional, and doc comments
+  become `description` fields.
 - **Built-in validation** — opt-in `ValidateJSON()` methods with schemas
   compiled once at startup, returning structured errors.
 
@@ -96,6 +97,8 @@ Your package compiles at every stage — before generation (stubs) and after
 // types.go
 package contacts
 
+import jsonschema "github.com/tylergannon/go-gen-jsonschema"
+
 //go:generate go tool gen-jsonschema --validate
 
 // Person is a single contact extracted from the document.
@@ -107,7 +110,10 @@ type Person struct {
     Age int `json:"age"`
 
     // Email address. Omit when not stated in the source text.
-    Email string `json:"email,omitempty" jsonschema:"optional"`
+    Email jsonschema.Optional[string] `json:"email,omitzero"`
+
+    // Phone number. Emit null when the source explicitly has no phone number.
+    Phone jsonschema.Nullable[string] `json:"phone"`
 }
 ```
 
@@ -138,9 +144,10 @@ var _ = jsonschema.NewJSONSchemaMethod(Person.Schema)
   "properties": {
     "name": {"type": "string", "description": "Full legal name, e.g. \"Ada Lovelace\"."},
     "age": {"type": "integer", "description": "Age in whole years at the time of writing."},
-    "email": {"type": "string", "description": "Email address. Omit when not stated in the source text."}
+    "email": {"type": "string", "description": "Email address. Omit when not stated in the source text."},
+    "phone": {"type": ["string", "null"], "description": "Phone number. Emit null when the source explicitly has no phone number."}
   },
-  "required": ["name", "age"],
+  "required": ["name", "age", "phone"],
   "additionalProperties": false
 }
 ```
@@ -164,9 +171,31 @@ type User struct {
 | Tag | Effect |
 |---|---|
 | `json:"name"` | Property name (standard Go semantics) |
-| `jsonschema:"optional"` | Field is not listed in `required`. All fields are required by default — `json:",omitempty"` alone affects Go marshaling, **not** the schema |
+| `json:",omitzero"` | Required on `Optional[T]`; omits the wrapper's absent zero value |
 | `description:"..."` | Overrides the doc comment as the property description |
 | `jsonschema:"ref=definitions/T"` | Emit a `$ref` instead of inlining (you must define the referenced schema yourself) |
+
+Use `jsonschema.Optional[T]` when a property may be absent and must not be
+null. Use `jsonschema.Nullable[T]` when the property is required but may be
+null. Both wrappers expose `Present` and `Value`; present zero and empty values
+remain distinguishable from absence/null. Plain `json.Unmarshal` cannot tell a
+missing Nullable key from an explicit null, so call generated `ValidateJSON`
+before decoding when required-key presence matters.
+
+For OpenAI strict Structured Outputs, every property must be required. Use
+`Nullable[T]` for OpenAI's documented required-plus-null pattern; a schema with
+`Optional[T]` is not strict-compatible because that property is not required.
+See the [Structured Outputs guide](https://developers.openai.com/api/docs/guides/structured-outputs#all-fields-must-be-required).
+
+V1 `Optional` supports scalar and named scalar values, structs, pointers,
+arrays/slices, explicit supported refs, and registered interfaces. V1 `Nullable`
+supports scalars, structs, and pointers to structs. Wrappers must be the complete
+type of a direct named field; aliases, nesting, embedding, and unsupported
+Nullable shapes fail generation.
+
+Migration note: `jsonschema:"optional"` is no longer honored. Replace it with
+`jsonschema.Optional[T]` and add `json:",omitzero"`; otherwise the field is
+required when schemas are regenerated.
 
 By default nested struct types are **inlined** at every use site — no `$defs`,
 no `$ref` — which is what LLM APIs handle best.

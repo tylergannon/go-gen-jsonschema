@@ -1,0 +1,341 @@
+{
+  "required": [
+    "name",
+    "timeout",
+    "detail"
+  ],
+  "properties": {
+    "backup": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "message"
+      ],
+      "additionalProperties": false
+    },
+    "detail": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "message": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "message"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "max_retries": {
+      "type": "integer"
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "message"
+      ],
+      "additionalProperties": false
+    },
+    "name": {
+      "type": "string"
+    },
+    "nickname": {
+      "type": "string"
+    },
+    "pet": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "!kind": {
+              "type": "string",
+              "const": "Dog"
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "!kind",
+            "name"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "!kind": {
+              "type": "string",
+              "const": "Cat"
+            },
+            "lives": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "!kind",
+            "lives"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "timeout": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    }
+  },
+  "cases": [
+    {
+      "name": "missing optional",
+      "input": "{\"name\":\"base\",\"timeout\":null,\"detail\":null}",
+      "valid": true,
+      "decode_ok": true,
+      "state": {
+        "backup": {
+          "non_nil": false,
+          "present": false
+        },
+        "detail": {
+          "present": false,
+          "value": ""
+        },
+        "max_retries": {
+          "present": false,
+          "value": 0
+        },
+        "metadata": {
+          "present": false,
+          "value": ""
+        },
+        "nickname": {
+          "present": false,
+          "value": ""
+        },
+        "pet": {
+          "present": false,
+          "type": ""
+        },
+        "tags": {
+          "length": 0,
+          "present": false
+        },
+        "timeout": {
+          "present": false,
+          "value": 0
+        }
+      },
+      "remarshaled": "{\"name\":\"base\",\"timeout\":null,\"detail\":null}"
+    },
+    {
+      "name": "present zero and empty",
+      "input": "{\"name\":\"zero\",\"max_retries\":0,\"nickname\":\"\",\"metadata\":{\"message\":\"\"},\"backup\":{\"message\":\"saved\"},\"tags\":[],\"timeout\":0,\"detail\":{\"message\":\"now\"}}",
+      "valid": true,
+      "decode_ok": true,
+      "state": {
+        "backup": {
+          "non_nil": true,
+          "present": true
+        },
+        "detail": {
+          "present": true,
+          "value": "now"
+        },
+        "max_retries": {
+          "present": true,
+          "value": 0
+        },
+        "metadata": {
+          "present": true,
+          "value": ""
+        },
+        "nickname": {
+          "present": true,
+          "value": ""
+        },
+        "pet": {
+          "present": false,
+          "type": ""
+        },
+        "tags": {
+          "length": 0,
+          "present": true
+        },
+        "timeout": {
+          "present": true,
+          "value": 0
+        }
+      },
+      "remarshaled": "{\"name\":\"zero\",\"max_retries\":0,\"nickname\":\"\",\"metadata\":{\"message\":\"\"},\"backup\":{\"message\":\"saved\"},\"tags\":[],\"timeout\":0,\"detail\":{\"message\":\"now\"}}"
+    },
+    {
+      "name": "null optional",
+      "input": "{\"name\":\"bad\",\"max_retries\":null,\"timeout\":null,\"detail\":null}",
+      "valid": false,
+      "decode_ok": false,
+      "unchanged_after_error": true
+    },
+    {
+      "name": "missing nullable",
+      "input": "{\"name\":\"bad\"}",
+      "valid": false,
+      "decode_ok": true,
+      "state": {
+        "backup": {
+          "non_nil": false,
+          "present": false
+        },
+        "detail": {
+          "present": false,
+          "value": ""
+        },
+        "max_retries": {
+          "present": false,
+          "value": 0
+        },
+        "metadata": {
+          "present": false,
+          "value": ""
+        },
+        "nickname": {
+          "present": false,
+          "value": ""
+        },
+        "pet": {
+          "present": false,
+          "type": ""
+        },
+        "tags": {
+          "length": 0,
+          "present": false
+        },
+        "timeout": {
+          "present": false,
+          "value": 0
+        }
+      },
+      "remarshaled": "{\"name\":\"bad\",\"timeout\":null,\"detail\":null}"
+    },
+    {
+      "name": "optional interface",
+      "input": "{\"name\":\"pet\",\"pet\":{\"!kind\":\"Dog\",\"name\":\"Rex\"},\"timeout\":null,\"detail\":null}",
+      "valid": true,
+      "decode_ok": true,
+      "state": {
+        "backup": {
+          "non_nil": false,
+          "present": false
+        },
+        "detail": {
+          "present": false,
+          "value": ""
+        },
+        "max_retries": {
+          "present": false,
+          "value": 0
+        },
+        "metadata": {
+          "present": false,
+          "value": ""
+        },
+        "nickname": {
+          "present": false,
+          "value": ""
+        },
+        "pet": {
+          "present": true,
+          "type": "optionality.Dog"
+        },
+        "tags": {
+          "length": 0,
+          "present": false
+        },
+        "timeout": {
+          "present": false,
+          "value": 0
+        }
+      },
+      "remarshaled": "{\"name\":\"pet\",\"pet\":{\"!kind\":\"Dog\",\"name\":\"Rex\"},\"timeout\":null,\"detail\":null}"
+    },
+    {
+      "name": "unknown interface",
+      "input": "{\"name\":\"bad\",\"pet\":{\"!kind\":\"Bird\"},\"timeout\":null,\"detail\":null}",
+      "valid": false,
+      "decode_ok": false,
+      "unchanged_after_error": true
+    }
+  ],
+  "rejected_shapes": [
+    {
+      "name": "optional without omitzero",
+      "reason": "requires json:\",omitzero\""
+    },
+    {
+      "name": "nullable slice",
+      "reason": "does not support arrays/slices"
+    },
+    {
+      "name": "nested wrapper",
+      "reason": "supported only as the complete type of a direct named struct field"
+    },
+    {
+      "name": "wrapper in container",
+      "reason": "supported only as the complete type of a direct named struct field"
+    },
+    {
+      "name": "wrapper alias",
+      "reason": "supported only as the complete type of a direct named struct field"
+    },
+    {
+      "name": "defined wrapper",
+      "reason": "supported only as the complete type of a direct named struct field"
+    },
+    {
+      "name": "embedded wrapper",
+      "reason": "embedded jsonschema.Optional is unsupported"
+    },
+    {
+      "name": "wrapper root",
+      "reason": "supported only as the complete type of a direct named struct field"
+    },
+    {
+      "name": "nullable enum",
+      "reason": "enums and consts are unsupported"
+    },
+    {
+      "name": "nullable interface",
+      "reason": "does not support registered interfaces"
+    },
+    {
+      "name": "nullable ref",
+      "reason": "does not support explicit refs"
+    },
+    {
+      "name": "nullable provider",
+      "reason": "does not support providers"
+    }
+  ]
+}

@@ -9,7 +9,7 @@ Owner: opencode
 Last updated: 2025-08-10
 
 Changelog
-- Added internal/common/tags.go: centralized JSONSchema tag parsing (optional, ref, param plan groundwork).
+- Added internal/common/tags.go: centralized JSONSchema tag parsing (ref and param plan groundwork).
 - Added builder pipeline hook (Transform) with RegisterTransform and applyTransforms in Run (no-op default). Tests remain green.
 - Scanner now exposes MarkerFunctionCall.Args() and allows variadic options on NewJSONSchemaMethod; added parsing scaffold for sentinel options (WithFunction, WithStructAccessorMethod, WithStructFunctionMethod) into SchemaMethod.Options. Not yet used by builder; no behavior change.
 - Introduced TemplateHoleNode to emit raw template placeholders; added TypeProviders plumbing in SchemaBuilder (now used in codegen template generation), and prepped template imports (bytes, text/template). Tests still green.
@@ -24,7 +24,7 @@ This is an internal, living document for deep understanding, navigation, and ref
 - Entry points:
   - CLI: gen-jsonschema/gen
   - Core: internal/syntax (scan) → internal/builder (render) → files + gen code.
-- Supported features: structs, primitives, arrays, enums, union types via interfaces, refs via struct tag, optional fields, description tags/comments.
+- Supported features: structs, primitives, arrays, enums, union types via interfaces, refs via struct tag, Optional/Nullable wrapper fields, description tags/comments.
 
 ## 1) Architecture map
 - gen-jsonschema (CLI)
@@ -53,7 +53,7 @@ This is an internal, living document for deep understanding, navigation, and ref
 3. internal/builder maps each registered type into internal schema nodes.
    - Primitives → PropertyNode
    - Arrays → ArrayNode
-   - Structs → ObjectNode with Properties and Required (default required unless jsonschema:"optional")
+   - Structs → ObjectNode with Properties and Required (`Optional[T]` fields are omitted)
    - Interfaces → UnionTypeNode(anyOf). Discriminator property injected when serializing union.
    - Ref via tag jsonschema:"ref=..." → RefNode
 4. Writes jsonschema/<Type>.json (+ <Type>.json.sum checksum).
@@ -70,7 +70,8 @@ This is an internal, living document for deep understanding, navigation, and ref
 
 ## 4) Tag semantics
 - json: standard behavior for names, skipping ("-").
-- jsonschema:"optional": mark property as not required.
+- jsonschema.Optional[T]: direct named field is not required and must use `json:",omitzero"`.
+- jsonschema.Nullable[T]: direct named field remains required and its schema accepts null.
 - jsonschema:"ref=...": replace field schema with $ref (field skipped from traversal).
 - description:"...": overrides comment-sourced description for the field.
 
@@ -124,7 +125,7 @@ This is an internal, living document for deep understanding, navigation, and ref
 Two approaches that can coexist:
 
 A) Tag-driven parameters (caller-supplied args at runtime)
-- Tag: `jsonschema:"param=Name[,idx=N][,optional]"`
+- Tag: `jsonschema:"param=Name[,idx=N]"`
 - Stub method accepts json.Marshaler params.
 - Generator emits text/template schema and runtime rendering using provided args.
 

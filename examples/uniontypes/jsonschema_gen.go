@@ -104,10 +104,13 @@ func (d *Drawing) UnmarshalJSON(b []byte) (err error) {
 	if err = json.Unmarshal(b, &wrapper); err != nil {
 		return err
 	}
-	*d = Drawing(wrapper.Alias)
-	if d.MainShape, err = __jsonUnmarshal__uniontypes__Shape(wrapper.MainShape); err != nil {
+	__next := Drawing(wrapper.Alias)
+
+	if __next.MainShape, err = __jsonUnmarshal__uniontypes__Shape(wrapper.MainShape); err != nil {
 		return err
 	}
+
+	*d = __next
 	return nil
 }
 
@@ -123,10 +126,13 @@ func (p *Payment) UnmarshalJSON(b []byte) (err error) {
 	if err = json.Unmarshal(b, &wrapper); err != nil {
 		return err
 	}
-	*p = Payment(wrapper.Alias)
-	if p.Method, err = __jsonUnmarshal__uniontypes__PaymentMethod(wrapper.Method); err != nil {
+	__next := Payment(wrapper.Alias)
+
+	if __next.Method, err = __jsonUnmarshal__uniontypes__PaymentMethod(wrapper.Method); err != nil {
 		return err
 	}
+
+	*p = __next
 	return nil
 }
 func __jsonUnmarshal__uniontypes__Shape(data []byte) (Shape, error) {

@@ -14,4 +14,7 @@ var _ = jsonschema.NewJSONSchemaMethod(
 	jsonschema.WithInterface(Owner{}.IF),
 	jsonschema.WithInterfaceImpls(Owner{}.IF, Impl1{}, Impl2{}),
 	jsonschema.WithDiscriminator(Owner{}.IF, "!kind"),
+	jsonschema.WithInterface(Owner{}.OptionalIF),
+	jsonschema.WithInterfaceImpls(Owner{}.OptionalIF, Impl1{}, Impl2{}),
+	jsonschema.WithDiscriminator(Owner{}.OptionalIF, "!kind"),
 )

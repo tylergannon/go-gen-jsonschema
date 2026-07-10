@@ -1,5 +1,7 @@
 package v1_interfaces_options
 
+import jsonschema "github.com/tylergannon/go-gen-jsonschema"
+
 //go:generate go run ./gen
 
 type IFace interface{ isIface() }
@@ -17,5 +19,6 @@ type Impl2 struct {
 func (Impl2) isIface() {}
 
 type Owner struct {
-	IF IFace `json:"if"`
+	IF         IFace                      `json:"if"`
+	OptionalIF jsonschema.Optional[IFace] `json:"optional_if,omitzero"`
 }

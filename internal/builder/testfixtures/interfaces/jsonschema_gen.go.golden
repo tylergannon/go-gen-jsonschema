@@ -41,10 +41,13 @@ func (f *FancyStruct) UnmarshalJSON(b []byte) (err error) {
 	if err = json.Unmarshal(b, &wrapper); err != nil {
 		return err
 	}
-	*f = FancyStruct(wrapper.Alias)
-	if f.IFace, err = __jsonUnmarshal__interfaces__TestInterface(wrapper.IFace); err != nil {
+	__next := FancyStruct(wrapper.Alias)
+
+	if __next.IFace, err = __jsonUnmarshal__interfaces__TestInterface(wrapper.IFace); err != nil {
 		return err
 	}
+
+	*f = __next
 	return nil
 }
 func __jsonUnmarshal__interfaces__TestInterface(data []byte) (TestInterface, error) {

@@ -137,11 +137,22 @@ func ({{.Initial}} *{{.Name}}) UnmarshalJSON(b []byte) (err error) {
 	if err = json.Unmarshal(b, &wrapper); err != nil {
 		return err
 	}
-	*{{.Initial}} = {{.Name}}(wrapper.Alias)
-	{{range $i, $prop := .InterfaceProps -}}
-	{{if eq $i 0}}if{{else}} else if{{end}} {{$initial}}.{{$prop.FieldNames}}, err = {{$prop.UnmarshalerFunc}}(wrapper.{{$prop.FieldNames}}); err != nil {
+	__next := {{.Name}}(wrapper.Alias)
+	{{range $i, $prop := .InterfaceProps}}
+	{{if .Optional}}
+	if len(wrapper.{{$prop.FieldNames}}) > 0 {
+		if __next.{{$prop.FieldNames}}.Value, err = {{$prop.UnmarshalerFunc}}(wrapper.{{$prop.FieldNames}}); err != nil {
+			return err
+		}
+		__next.{{$prop.FieldNames}}.Present = true
+	}
+	{{else}}
+	if __next.{{$prop.FieldNames}}, err = {{$prop.UnmarshalerFunc}}(wrapper.{{$prop.FieldNames}}); err != nil {
 		return err
-	}{{end}}
+	}
+	{{end}}
+	{{end}}
+	*{{.Initial}} = __next
 	return nil
 }
 {{ end -}}

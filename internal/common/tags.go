@@ -7,7 +7,6 @@ import (
 )
 
 type JSONSchemaTag struct {
-	Optional  bool
 	Ref       string
 	HasRef    bool
 	ParamName string
@@ -29,12 +28,6 @@ func ParseJSONSchemaTag(raw string) JSONSchemaTag {
 		return res
 	}
 	if t, err := tags.Get("jsonschema"); err == nil {
-		// flags
-		for _, opt := range t.Options {
-			if opt == "optional" {
-				res.Optional = true
-			}
-		}
 		// key=val
 		if v, ok := t.GetOptValue("ref"); ok {
 			res.Ref = v

@@ -1,5 +1,7 @@
 package test_options
 
+import jsonschema "github.com/tylergannon/go-gen-jsonschema"
+
 //go:generate go run ../../gen-jsonschema/
 
 // Person represents a person with basic information
@@ -11,7 +13,7 @@ type Person struct {
 	Age int `json:"age"`
 
 	// Email is an optional email address
-	Email string `json:"email,omitempty" jsonschema:"optional"`
+	Email jsonschema.Optional[string] `json:"email,omitzero"`
 }
 
 // Team represents a team of people

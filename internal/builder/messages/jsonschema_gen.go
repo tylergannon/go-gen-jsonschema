@@ -50,10 +50,13 @@ func (a *Assertion) UnmarshalJSON(b []byte) (err error) {
 	if err = json.Unmarshal(b, &wrapper); err != nil {
 		return err
 	}
-	*a = Assertion(wrapper.Alias)
-	if a.Value, err = __jsonUnmarshal__messages__AssertionValue(wrapper.Value); err != nil {
+	__next := Assertion(wrapper.Alias)
+
+	if __next.Value, err = __jsonUnmarshal__messages__AssertionValue(wrapper.Value); err != nil {
 		return err
 	}
+
+	*a = __next
 	return nil
 }
 func __jsonUnmarshal__messages__AssertionValue(data []byte) (AssertionValue, error) {

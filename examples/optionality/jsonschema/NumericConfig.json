@@ -1,0 +1,191 @@
+{
+  "type": "object",
+  "description": "NumericConfig keeps scalar-width coverage on the public generator path.",
+  "properties": {
+    "count": {
+      "type": "integer"
+    },
+    "optional_count": {
+      "type": "integer"
+    },
+    "nullable_count": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "int": {
+      "type": "integer"
+    },
+    "optional_int": {
+      "type": "integer"
+    },
+    "nullable_int": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "int8": {
+      "type": "integer"
+    },
+    "optional_int8": {
+      "type": "integer"
+    },
+    "nullable_int8": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "int16": {
+      "type": "integer"
+    },
+    "optional_int16": {
+      "type": "integer"
+    },
+    "nullable_int16": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "int32": {
+      "type": "integer"
+    },
+    "optional_int32": {
+      "type": "integer"
+    },
+    "nullable_int32": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "int64": {
+      "type": "integer"
+    },
+    "optional_int64": {
+      "type": "integer"
+    },
+    "nullable_int64": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "uint": {
+      "type": "integer"
+    },
+    "optional_uint": {
+      "type": "integer"
+    },
+    "nullable_uint": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "uint8": {
+      "type": "integer"
+    },
+    "optional_uint8": {
+      "type": "integer"
+    },
+    "nullable_uint8": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "uint16": {
+      "type": "integer"
+    },
+    "optional_uint16": {
+      "type": "integer"
+    },
+    "nullable_uint16": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "uint32": {
+      "type": "integer"
+    },
+    "optional_uint32": {
+      "type": "integer"
+    },
+    "nullable_uint32": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "uint64": {
+      "type": "integer"
+    },
+    "optional_uint64": {
+      "type": "integer"
+    },
+    "nullable_uint64": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "float32": {
+      "type": "number"
+    },
+    "optional_float32": {
+      "type": "number"
+    },
+    "nullable_float32": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "float64": {
+      "type": "number"
+    },
+    "optional_float64": {
+      "type": "number"
+    },
+    "nullable_float64": {
+      "type": [
+        "number",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "count",
+    "nullable_count",
+    "int",
+    "nullable_int",
+    "int8",
+    "nullable_int8",
+    "int16",
+    "nullable_int16",
+    "int32",
+    "nullable_int32",
+    "int64",
+    "nullable_int64",
+    "uint",
+    "nullable_uint",
+    "uint8",
+    "nullable_uint8",
+    "uint16",
+    "nullable_uint16",
+    "uint32",
+    "nullable_uint32",
+    "uint64",
+    "nullable_uint64",
+    "float32",
+    "nullable_float32",
+    "float64",
+    "nullable_float64"
+  ],
+  "additionalProperties": false
+}

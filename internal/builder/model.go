@@ -50,11 +50,17 @@ type (
 	//   - `Enum` is an array of allowable values.
 	//   - If both `Const` and `Enum` are set, the field effectively has a single valid value (the `Const`) plus whatever is in `Enum`—though that’s unusual in practice.
 	PropertyNode[T ~int | ~string | ~bool | float32 | float64] struct {
-		Desc    string        `json:"description,omitempty"`
-		Enum    []T           `json:"enum,omitempty"`
-		Const   *T            `json:"const,omitempty"`
-		Typ     string        `json:"type,omitempty"`
-		TypeID_ syntax.TypeID `json:"-"`
+		Desc     string        `json:"description,omitempty"`
+		Enum     []T           `json:"enum,omitempty"`
+		Const    *T            `json:"const,omitempty"`
+		Typ      string        `json:"type,omitempty"`
+		Nullable bool          `json:"-"`
+		TypeID_  syntax.TypeID `json:"-"`
+	}
+
+	// NullableObjectNode represents a nullable inlined object schema.
+	NullableObjectNode struct {
+		Object ObjectNode
 	}
 
 	ConstNode[T ~int | ~string | ~bool | float32 | float64] struct {
@@ -120,7 +126,19 @@ var (
 	_ schemaNode = ObjectNode{}
 	_ JSONSchema = RefNode{}
 	_ JSONSchema = TemplateHoleNode{}
+	_ JSONSchema = NullableObjectNode{}
 )
+
+func (n NullableObjectNode) MarshalJSON() ([]byte, error) {
+	object, err := n.Object.MarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return fmt.Appendf(nil, `{"anyOf":[%s,{"type":"null"}]}`, object), nil
+}
+
+func (n NullableObjectNode) TypeID() syntax.TypeID { return n.Object.TypeID() }
+func (n NullableObjectNode) implementsJSONSchema() {}
 
 //---------------------------------------------------------------------
 // ObjectNode
@@ -227,7 +245,13 @@ func (p PropertyNode[T]) MarshalJSON() ([]byte, error) {
 
 	// 1. "type"
 	sb.WriteString(`"type":`)
-	encodeString(&sb, p.Typ)
+	if p.Nullable {
+		sb.WriteByte('[')
+		encodeString(&sb, p.Typ)
+		sb.WriteString(`,"null"]`)
+	} else {
+		encodeString(&sb, p.Typ)
+	}
 
 	// 2. "description"
 	if p.Desc != "" {

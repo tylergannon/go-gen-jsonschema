@@ -485,6 +485,11 @@ func (r *ScanResult) loadPackageInternal(seen seenPackages, typesToMap map[strin
 
 func (r *ScanResult) resolveTypeExpr(_expr Expr, seen SeenTypes) error {
 	switch expr := _expr.Expr().(type) {
+	case *dst.IndexExpr, *dst.IndexListExpr:
+		if kind, _, ok := wrapperExpr(_expr); ok {
+			return fmt.Errorf("%s is supported only as the complete type of a direct named struct field at %s", kind, _expr.Position())
+		}
+		return fmt.Errorf("unsupported generic type %s at %s", _expr.Details(), _expr.Position())
 	case *dst.ParenExpr:
 		return r.resolveTypeExpr(_expr.NewExpr(expr.X), seen)
 	case *dst.StarExpr:
@@ -508,7 +513,20 @@ func (r *ScanResult) resolveTypeExpr(_expr Expr, seen SeenTypes) error {
 			if skipField(field) {
 				continue
 			}
-			if err := r.resolveTypeExpr(_expr.NewExpr(field.Type), seen); err != nil {
+			fieldExpr := _expr.NewExpr(field.Type)
+			if kind, args, ok := wrapperExpr(fieldExpr); ok {
+				if len(field.Names) == 0 {
+					return fmt.Errorf("embedded %s is unsupported at %s", kind, fieldExpr.Position())
+				}
+				if len(args) != 1 {
+					return fmt.Errorf("%s requires exactly one type argument at %s", kind, fieldExpr.Position())
+				}
+				if err := r.resolveTypeExpr(fieldExpr.NewExpr(args[0]), seen); err != nil {
+					return fmt.Errorf("%s inner type at %s: %w", kind, fieldExpr.Position(), err)
+				}
+				continue
+			}
+			if err := r.resolveTypeExpr(fieldExpr, seen); err != nil {
 				return fmt.Errorf("struct field at %s: %w", _expr.NewExpr(field.Type).Position(), err)
 			}
 		}
