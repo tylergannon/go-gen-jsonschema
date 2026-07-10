@@ -41,7 +41,9 @@ func TestBasic(t *testing.T) {
 		// Ensure the temp module's dependencies are tidy before generation.
 		preExit, preStdout, preStderr, err := testutils.RunCommand("go", tempDir, "mod", "tidy")
 		require.NoError(t, err)
-		CmdSuccessAssertions(t, preStdout, preStderr, preExit)
+		// A clean module cache makes Go report dependency downloads on stderr.
+		// That is normal progress output; the command's exit status determines success.
+		require.Equal(t, 0, preExit, "stdout:\n%s\nstderr:\n%s", preStdout, preStderr)
 
 		exitCode, stdout, stderr, err := testutils.RunCommand("go", tempDir, "generate", "./...")
 		require.NoError(t, err)
