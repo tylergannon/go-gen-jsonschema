@@ -27,6 +27,7 @@ func __gen_jsonschema_panic(fname string, err error) {
 var (
 	__gen_jsonschema_compiled_Address      *jsonschema.Schema
 	__gen_jsonschema_compiled_ContactInfo  *jsonschema.Schema
+	__gen_jsonschema_compiled_RetryPolicy  *jsonschema.Schema
 	__gen_jsonschema_compiled_Person       *jsonschema.Schema
 	__gen_jsonschema_compiled_Organization *jsonschema.Schema
 	__gen_jsonschema_compiled_Department   *jsonschema.Schema
@@ -61,6 +62,11 @@ func init() {
 	}
 
 	{
+		var __zero RetryPolicy
+		__gen_jsonschema_compiled_RetryPolicy = compile("RetryPolicy", __zero.Schema())
+	}
+
+	{
 		var __zero Person
 		__gen_jsonschema_compiled_Person = compile("Person", __zero.Schema())
 	}
@@ -87,6 +93,15 @@ func (Address) Schema() json.RawMessage {
 
 func (ContactInfo) Schema() json.RawMessage {
 	const fileName = "jsonschema/ContactInfo.json"
+	data, err := __gen_jsonschema_fs.ReadFile(fileName)
+	if err != nil {
+		__gen_jsonschema_panic(fileName, err)
+	}
+	return data
+}
+
+func (RetryPolicy) Schema() json.RawMessage {
+	const fileName = "jsonschema/RetryPolicy.json"
 	data, err := __gen_jsonschema_fs.ReadFile(fileName)
 	if err != nil {
 		__gen_jsonschema_panic(fileName, err)
@@ -137,6 +152,15 @@ func (ContactInfo) ValidateJSON(data []byte) error {
 		return err
 	}
 	return __gen_jsonschema_compiled_ContactInfo.Validate(inst)
+}
+
+// ValidateJSON validates the given JSON bytes against the schema for RetryPolicy.
+func (RetryPolicy) ValidateJSON(data []byte) error {
+	inst, err := jsonschema.UnmarshalJSON(bytes.NewReader(data))
+	if err != nil {
+		return err
+	}
+	return __gen_jsonschema_compiled_RetryPolicy.Validate(inst)
 }
 
 // ValidateJSON validates the given JSON bytes against the schema for Person.

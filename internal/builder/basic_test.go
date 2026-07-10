@@ -124,6 +124,7 @@ func TestBasic(t *testing.T) {
 			testName:  "test4-structs",
 			runGinkgo: false,
 			files: []string{
+				"jsonschema/JSONTagNames.json",
 				"jsonschema/StructType1.json",
 				"jsonschema/StructType2.json",
 				"jsonschema/StructWithRefs.json",

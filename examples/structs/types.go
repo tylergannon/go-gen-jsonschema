@@ -38,6 +38,24 @@ type ContactInfo struct {
 	// AlternatePhones map[string]string `json:"alternatePhones,omitempty"`
 }
 
+// RetryPolicy demonstrates JSON options that retain Go's default field names.
+type RetryPolicy struct {
+	// MaxRetries uses its Go field name while omitting the zero value.
+	MaxRetries int `json:",omitzero"`
+
+	// TimeoutSeconds uses its Go field name with omitempty.
+	TimeoutSeconds int `json:",omitempty"`
+
+	// BackoffStrategy uses an explicit JSON name.
+	BackoffStrategy int `json:"backoff_strategy,omitzero"`
+
+	// Untagged uses its Go field name.
+	Untagged int
+
+	// Ignored is excluded from JSON and generated schemas.
+	Ignored int `json:"-"`
+}
+
 // Person demonstrates a complex struct with nested fields and embedded types.
 type Person struct {
 	// ID is a unique identifier.

@@ -2,10 +2,52 @@ package structs
 
 import (
 	"encoding/json"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 )
+
+func TestStructSchemaPropertyNamesMatchJSON(t *testing.T) {
+	value := RetryPolicy{
+		MaxRetries:      3,
+		TimeoutSeconds:  30,
+		BackoffStrategy: 2,
+		Untagged:        1,
+		Ignored:         99,
+	}
+
+	jsonBytes, err := json.Marshal(value)
+	if err != nil {
+		t.Fatalf("Failed to marshal RetryPolicy: %v", err)
+	}
+	var jsonObject map[string]json.RawMessage
+	if err := json.Unmarshal(jsonBytes, &jsonObject); err != nil {
+		t.Fatalf("Failed to parse RetryPolicy JSON: %v", err)
+	}
+
+	var schema struct {
+		Properties map[string]json.RawMessage `json:"properties"`
+	}
+	if err := json.Unmarshal(value.Schema(), &schema); err != nil {
+		t.Fatalf("Failed to parse RetryPolicy schema: %v", err)
+	}
+
+	keys := func(object map[string]json.RawMessage) []string {
+		result := make([]string, 0, len(object))
+		for key := range object {
+			result = append(result, key)
+		}
+		slices.Sort(result)
+		return result
+	}
+
+	jsonKeys := keys(jsonObject)
+	schemaKeys := keys(schema.Properties)
+	if !slices.Equal(schemaKeys, jsonKeys) {
+		t.Fatalf("Schema property names %v do not match encoding/json keys %v", schemaKeys, jsonKeys)
+	}
+}
 
 func TestPersonSchemaWithTime(t *testing.T) {
 	// Get the generated schema

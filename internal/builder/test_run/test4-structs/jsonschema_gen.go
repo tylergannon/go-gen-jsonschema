@@ -46,3 +46,12 @@ func (StructWithRefs) Schema() json.RawMessage {
 	}
 	return data
 }
+
+func (JSONTagNames) Schema() json.RawMessage {
+	const fileName = "jsonschema/JSONTagNames.json"
+	data, err := __gen_jsonschema_fs.ReadFile(fileName)
+	if err != nil {
+		__gen_jsonschema_panic(fileName, err)
+	}
+	return data
+}
