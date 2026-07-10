@@ -68,4 +68,12 @@ doc_bug: Website deploy ignored public root Go API changes -> workflow paths now
   setup and API signals, all four redirects, and clipboard value
   `npx skills add tylergannon/go-gen-jsonschema` with visible `Copied` feedback.
 - `go generate ./...`, `git diff --check`, and final `go test ./...` passed.
-- Branch: `codex/docs-site-repair`; commit/PR/preview/merge pending.
+- Implementation commit: `b199fd8 docs(site): rebuild agent-first docs`.
+- PR: https://github.com/tylergannon/go-gen-jsonschema/pull/41
+- Exact implementation head `b199fd8c5ee1f2591786ed01bef322942f843bce`
+  passed Go CI and Cloudflare build/deploy.
+- Hosted preview: https://2c1d8590.go-gen-jsonschema.pages.dev/
+- Chrome re-proved the homepage, clipboard, current API surface, and all four
+  redirects on the hosted preview; evidence is posted on PR #41.
+- Merge state: required checks green; auto-merge will be enabled after this
+  closeout-only worklog update is pushed.
