@@ -175,6 +175,14 @@ func TestBasic(t *testing.T) {
 				"jsonschema/Owner.json",
 			},
 		},
+		{
+			inputDir:  "builder/testfixtures/traversal",
+			testName:  "test11-traversal",
+			runGinkgo: false,
+			files: []string{
+				"jsonschema/TraversalHolder.json",
+			},
+		},
 	}
 
 	for _, tc := range cases {

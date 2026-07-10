@@ -2,6 +2,13 @@ package syntax
 
 import "fmt"
 
+// IsTimeType reports whether a type identity is the renderer-owned time.Time
+// leaf. Keeping this identity in syntax lets discovery and rendering share the
+// same package boundary.
+func IsTimeType(pkgPath, typeName string) bool {
+	return pkgPath == "time" && typeName == "Time"
+}
+
 type Indirection int
 
 const (
