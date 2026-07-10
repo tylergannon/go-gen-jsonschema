@@ -16,7 +16,6 @@ import "github.com/tylergannon/go-gen-jsonschema"
 ## Index
 
 - [type DataType](<#DataType>)
-- [type EnumMode](<#EnumMode>)
 - [type EnumType](<#EnumType>)
   - [func NewEnumType\[T \~string\]\(\) EnumType](<#NewEnumType>)
 - [type InterfaceMarker](<#InterfaceMarker>)
@@ -25,29 +24,35 @@ import "github.com/tylergannon/go-gen-jsonschema"
   - [func \(s JSONSchema\) MarshalJSON\(\) \(\[\]byte, error\)](<#JSONSchema.MarshalJSON>)
 - [type JSONUnionType](<#JSONUnionType>)
   - [func \(j JSONUnionType\) MarshalJSON\(\) \(\[\]byte, error\)](<#JSONUnionType.MarshalJSON>)
+- [type Nullable](<#Nullable>)
+  - [func \(Nullable\[T\]\) IsZero\(\) bool](<#Nullable[T].IsZero>)
+  - [func \(n Nullable\[T\]\) MarshalJSON\(\) \(\[\]byte, error\)](<#Nullable[T].MarshalJSON>)
+  - [func \(n \*Nullable\[T\]\) UnmarshalJSON\(data \[\]byte\) error](<#Nullable[T].UnmarshalJSON>)
 - [type ObjectSchema](<#ObjectSchema>)
   - [func \(s \*ObjectSchema\) AddProperty\(key string, value SchemaNode\)](<#ObjectSchema.AddProperty>)
   - [func \(s \*ObjectSchema\) AddRequiredProperty\(key string, value SchemaNode\)](<#ObjectSchema.AddRequiredProperty>)
   - [func \(s ObjectSchema\) MarshalJSON\(\) \(\[\]byte, error\)](<#ObjectSchema.MarshalJSON>)
+- [type Optional](<#Optional>)
+  - [func \(o Optional\[T\]\) IsZero\(\) bool](<#Optional[T].IsZero>)
+  - [func \(o Optional\[T\]\) MarshalJSON\(\) \(\[\]byte, error\)](<#Optional[T].MarshalJSON>)
+  - [func \(o \*Optional\[T\]\) UnmarshalJSON\(data \[\]byte\) error](<#Optional[T].UnmarshalJSON>)
 - [type ParentSchema](<#ParentSchema>)
   - [func \(s \*ParentSchema\) AddDefinition\(key string, value SchemaNode\)](<#ParentSchema.AddDefinition>)
   - [func \(s ParentSchema\) MarshalJSON\(\) \(\[\]byte, error\)](<#ParentSchema.MarshalJSON>)
 - [type SchemaFunction](<#SchemaFunction>)
 - [type SchemaMarker](<#SchemaMarker>)
   - [func NewJSONSchemaBuilder\[T any\]\(SchemaFunction\) SchemaMarker](<#NewJSONSchemaBuilder>)
-  - [func NewJSONSchemaBuilderFor\(\_ any, \_ SchemaFunction, \_ ...SchemaMethodOption\) SchemaMarker](<#NewJSONSchemaBuilderFor>)
   - [func NewJSONSchemaFunc\[T any\]\(f SchemaMethod\[T\], \_ ...SchemaMethodOption\) SchemaMarker](<#NewJSONSchemaFunc>)
   - [func NewJSONSchemaMethod\[T any\]\(SchemaMethod\[T\], ...SchemaMethodOption\) SchemaMarker](<#NewJSONSchemaMethod>)
 - [type SchemaMethod](<#SchemaMethod>)
 - [type SchemaMethodOption](<#SchemaMethodOption>)
   - [func WithDiscriminator\[T any\]\(field T, name string\) SchemaMethodOption](<#WithDiscriminator>)
   - [func WithEnum\[T any\]\(field T\) SchemaMethodOption](<#WithEnum>)
-  - [func WithEnumMode\(mode EnumMode\) SchemaMethodOption](<#WithEnumMode>)
-  - [func WithEnumName\[T any\]\(value T, name string\) SchemaMethodOption](<#WithEnumName>)
   - [func WithFunction\[T any\]\(val T, f func\(T\) json.Marshaler\) SchemaMethodOption](<#WithFunction>)
   - [func WithInterface\[T any\]\(field T\) SchemaMethodOption](<#WithInterface>)
   - [func WithInterfaceImpls\[T any\]\(field T, impls ...any\) SchemaMethodOption](<#WithInterfaceImpls>)
   - [func WithRenderProviders\(\) SchemaMethodOption](<#WithRenderProviders>)
+  - [func WithStringerEnum\[T any\]\(field T\) SchemaMethodOption](<#WithStringerEnum>)
   - [func WithStructAccessorMethod\[T, U any\]\(val T, f func\(U\) json.Marshaler\) SchemaMethodOption](<#WithStructAccessorMethod>)
   - [func WithStructFunctionMethod\[T, U any\]\(val U, f func\(T, U\) json.Marshaler\) SchemaMethodOption](<#WithStructFunctionMethod>)
 - [type SchemaMethodOptionObj](<#SchemaMethodOptionObj>)
@@ -61,12 +66,10 @@ import "github.com/tylergannon/go-gen-jsonschema"
   - [func StringSchema\(description string\) SchemaNode](<#StringSchema>)
   - [func UnionSchemaEl\(alts ...SchemaNode\) SchemaNode](<#UnionSchemaEl>)
 - [type SchemaProperty](<#SchemaProperty>)
-- [type Tool](<#Tool>)
-  - [func BuildTool\(fn any\) Tool](<#BuildTool>)
 
 
 <a name="DataType"></a>
-## type [DataType](<https://github.com/tylergannon/go-gen-jsonschema/blob/main/json_schema.go#L10>)
+## type DataType
 
 
 
@@ -88,25 +91,8 @@ const (
 )
 ```
 
-<a name="EnumMode"></a>
-## type [EnumMode](<https://github.com/tylergannon/go-gen-jsonschema/blob/main/union_type.go#L86>)
-
-Enum options \(v1\) \- stubs for scanning/type\-checking; parsed by scanner
-
-```go
-type EnumMode int
-```
-
-<a name="EnumStrings"></a>
-
-```go
-const (
-    EnumStrings EnumMode = iota + 1
-)
-```
-
 <a name="EnumType"></a>
-## type [EnumType](<https://github.com/tylergannon/go-gen-jsonschema/blob/main/union_type.go#L8>)
+## type EnumType
 
 
 
@@ -115,7 +101,7 @@ type EnumType struct{}
 ```
 
 <a name="NewEnumType"></a>
-### func [NewEnumType](<https://github.com/tylergannon/go-gen-jsonschema/blob/main/union_type.go#L132>)
+### func NewEnumType
 
 ```go
 func NewEnumType[T ~string]() EnumType
@@ -126,7 +112,7 @@ NewEnumType denotes that the type argument should be an enum. If called in the s
 For now, only string types are supported.
 
 <a name="InterfaceMarker"></a>
-## type [InterfaceMarker](<https://github.com/tylergannon/go-gen-jsonschema/blob/main/union_type.go#L11>)
+## type InterfaceMarker
 
 
 
@@ -135,7 +121,7 @@ type InterfaceMarker struct{}
 ```
 
 <a name="NewInterfaceImpl"></a>
-### func [NewInterfaceImpl](<https://github.com/tylergannon/go-gen-jsonschema/blob/main/union_type.go#L121>)
+### func NewInterfaceImpl
 
 ```go
 func NewInterfaceImpl[T any](...T) InterfaceMarker
@@ -147,7 +133,7 @@ NewInterfaceImpl marks the arguments as possible implementations for the interfa
 2. If called somewhere else, only applies to the local package.
 
 <a name="JSONSchema"></a>
-## type [JSONSchema](<https://github.com/tylergannon/go-gen-jsonschema/blob/main/json_schema.go#L208-L236>)
+## type JSONSchema
 
 JSONSchema is a struct for describing a JSON Schema. It is fairly limited, and you may have better luck using a third\-party library. This is a copy from go\-openai's "jsonschema.Definition\{\}" struct, with the difference being that this one holds references to json.Marshaler, rather than to itself.
 
@@ -184,7 +170,7 @@ type JSONSchema struct {
 ```
 
 <a name="JSONSchema.MarshalJSON"></a>
-### func \(JSONSchema\) [MarshalJSON](<https://github.com/tylergannon/go-gen-jsonschema/blob/main/json_schema.go#L238>)
+### func \(JSONSchema\) MarshalJSON
 
 ```go
 func (s JSONSchema) MarshalJSON() ([]byte, error)
@@ -193,7 +179,7 @@ func (s JSONSchema) MarshalJSON() ([]byte, error)
 
 
 <a name="JSONUnionType"></a>
-## type [JSONUnionType](<https://github.com/tylergannon/go-gen-jsonschema/blob/main/json_schema.go#L24>)
+## type JSONUnionType
 
 
 
@@ -202,7 +188,7 @@ type JSONUnionType []*JSONSchema
 ```
 
 <a name="JSONUnionType.MarshalJSON"></a>
-### func \(JSONUnionType\) [MarshalJSON](<https://github.com/tylergannon/go-gen-jsonschema/blob/main/json_schema.go#L27>)
+### func \(JSONUnionType\) MarshalJSON
 
 ```go
 func (j JSONUnionType) MarshalJSON() ([]byte, error)
@@ -210,8 +196,47 @@ func (j JSONUnionType) MarshalJSON() ([]byte, error)
 
 MarshalJSON implements json.Marshaler.
 
+<a name="Nullable"></a>
+## type Nullable
+
+Nullable represents a required object property whose value may be null. The zero value encodes as null; Present reports whether Value is non\-null.
+
+```go
+type Nullable[T any] struct {
+    Present bool
+    Value   T
+}
+```
+
+<a name="Nullable[T].IsZero"></a>
+### func \(Nullable\[T\]\) IsZero
+
+```go
+func (Nullable[T]) IsZero() bool
+```
+
+IsZero always reports false so json:",omitzero" cannot omit a required nullable property.
+
+<a name="Nullable[T].MarshalJSON"></a>
+### func \(Nullable\[T\]\) MarshalJSON
+
+```go
+func (n Nullable[T]) MarshalJSON() ([]byte, error)
+```
+
+MarshalJSON encodes null or a present non\-null value.
+
+<a name="Nullable[T].UnmarshalJSON"></a>
+### func \(\*Nullable\[T\]\) UnmarshalJSON
+
+```go
+func (n *Nullable[T]) UnmarshalJSON(data []byte) error
+```
+
+UnmarshalJSON decodes null or a present value without mutating the receiver when decoding fails.
+
 <a name="ObjectSchema"></a>
-## type [ObjectSchema](<https://github.com/tylergannon/go-gen-jsonschema/blob/main/json_schema.go#L114-L120>)
+## type ObjectSchema
 
 
 
@@ -226,7 +251,7 @@ type ObjectSchema struct {
 ```
 
 <a name="ObjectSchema.AddProperty"></a>
-### func \(\*ObjectSchema\) [AddProperty](<https://github.com/tylergannon/go-gen-jsonschema/blob/main/json_schema.go#L122>)
+### func \(\*ObjectSchema\) AddProperty
 
 ```go
 func (s *ObjectSchema) AddProperty(key string, value SchemaNode)
@@ -235,7 +260,7 @@ func (s *ObjectSchema) AddProperty(key string, value SchemaNode)
 
 
 <a name="ObjectSchema.AddRequiredProperty"></a>
-### func \(\*ObjectSchema\) [AddRequiredProperty](<https://github.com/tylergannon/go-gen-jsonschema/blob/main/json_schema.go#L126>)
+### func \(\*ObjectSchema\) AddRequiredProperty
 
 ```go
 func (s *ObjectSchema) AddRequiredProperty(key string, value SchemaNode)
@@ -244,7 +269,7 @@ func (s *ObjectSchema) AddRequiredProperty(key string, value SchemaNode)
 
 
 <a name="ObjectSchema.MarshalJSON"></a>
-### func \(ObjectSchema\) [MarshalJSON](<https://github.com/tylergannon/go-gen-jsonschema/blob/main/json_schema.go#L194>)
+### func \(ObjectSchema\) MarshalJSON
 
 ```go
 func (s ObjectSchema) MarshalJSON() ([]byte, error)
@@ -252,8 +277,47 @@ func (s ObjectSchema) MarshalJSON() ([]byte, error)
 
 
 
+<a name="Optional"></a>
+## type Optional
+
+Optional represents an object property that may be absent. The zero value is absent; a present value may contain T's zero value but may not encode as null. Containing struct fields must use json:",omitzero" so absent values are omitted before MarshalJSON is called.
+
+```go
+type Optional[T any] struct {
+    Present bool
+    Value   T
+}
+```
+
+<a name="Optional[T].IsZero"></a>
+### func \(Optional\[T\]\) IsZero
+
+```go
+func (o Optional[T]) IsZero() bool
+```
+
+IsZero reports whether the property is absent.
+
+<a name="Optional[T].MarshalJSON"></a>
+### func \(Optional\[T\]\) MarshalJSON
+
+```go
+func (o Optional[T]) MarshalJSON() ([]byte, error)
+```
+
+MarshalJSON encodes a present non\-null value.
+
+<a name="Optional[T].UnmarshalJSON"></a>
+### func \(\*Optional\[T\]\) UnmarshalJSON
+
+```go
+func (o *Optional[T]) UnmarshalJSON(data []byte) error
+```
+
+UnmarshalJSON decodes a present non\-null value without mutating the receiver when decoding fails.
+
 <a name="ParentSchema"></a>
-## type [ParentSchema](<https://github.com/tylergannon/go-gen-jsonschema/blob/main/json_schema.go#L57-L63>)
+## type ParentSchema
 
 
 
@@ -268,7 +332,7 @@ type ParentSchema struct {
 ```
 
 <a name="ParentSchema.AddDefinition"></a>
-### func \(\*ParentSchema\) [AddDefinition](<https://github.com/tylergannon/go-gen-jsonschema/blob/main/json_schema.go#L110>)
+### func \(\*ParentSchema\) AddDefinition
 
 ```go
 func (s *ParentSchema) AddDefinition(key string, value SchemaNode)
@@ -277,7 +341,7 @@ func (s *ParentSchema) AddDefinition(key string, value SchemaNode)
 
 
 <a name="ParentSchema.MarshalJSON"></a>
-### func \(ParentSchema\) [MarshalJSON](<https://github.com/tylergannon/go-gen-jsonschema/blob/main/json_schema.go#L65>)
+### func \(ParentSchema\) MarshalJSON
 
 ```go
 func (s ParentSchema) MarshalJSON() ([]byte, error)
@@ -286,7 +350,7 @@ func (s ParentSchema) MarshalJSON() ([]byte, error)
 
 
 <a name="SchemaFunction"></a>
-## type [SchemaFunction](<https://github.com/tylergannon/go-gen-jsonschema/blob/main/union_type.go#L13>)
+## type SchemaFunction
 
 
 
@@ -295,7 +359,7 @@ type SchemaFunction func() json.RawMessage
 ```
 
 <a name="SchemaMarker"></a>
-## type [SchemaMarker](<https://github.com/tylergannon/go-gen-jsonschema/blob/main/union_type.go#L9>)
+## type SchemaMarker
 
 
 
@@ -304,7 +368,7 @@ type SchemaMarker struct{}
 ```
 
 <a name="NewJSONSchemaBuilder"></a>
-### func [NewJSONSchemaBuilder](<https://github.com/tylergannon/go-gen-jsonschema/blob/main/union_type.go#L23>)
+### func NewJSONSchemaBuilder
 
 ```go
 func NewJSONSchemaBuilder[T any](SchemaFunction) SchemaMarker
@@ -312,17 +376,8 @@ func NewJSONSchemaBuilder[T any](SchemaFunction) SchemaMarker
 
 NewJSONSchemaBuilder registers a function as being a stub that should be implemented with a proper json schema and, as needed, unmarshaler functionality.
 
-<a name="NewJSONSchemaBuilderFor"></a>
-### func [NewJSONSchemaBuilderFor](<https://github.com/tylergannon/go-gen-jsonschema/blob/main/union_type.go#L30>)
-
-```go
-func NewJSONSchemaBuilderFor(_ any, _ SchemaFunction, _ ...SchemaMethodOption) SchemaMarker
-```
-
-NewJSONSchemaBuilderFor registers a zero\-arg builder function for the given example instance value \(e.g., TypeName\{\}\), allowing type inference without generics.
-
 <a name="NewJSONSchemaFunc"></a>
-### func [NewJSONSchemaFunc](<https://github.com/tylergannon/go-gen-jsonschema/blob/main/union_type.go#L104>)
+### func NewJSONSchemaFunc
 
 ```go
 func NewJSONSchemaFunc[T any](f SchemaMethod[T], _ ...SchemaMethodOption) SchemaMarker
@@ -331,7 +386,7 @@ func NewJSONSchemaFunc[T any](f SchemaMethod[T], _ ...SchemaMethodOption) Schema
 NewJSONSchemaFunc registers a free function that takes the receiver as its sole parameter as a schema entrypoint. It is equivalent to NewJSONSchemaMethod.
 
 <a name="NewJSONSchemaMethod"></a>
-### func [NewJSONSchemaMethod](<https://github.com/tylergannon/go-gen-jsonschema/blob/main/union_type.go#L98>)
+### func NewJSONSchemaMethod
 
 ```go
 func NewJSONSchemaMethod[T any](SchemaMethod[T], ...SchemaMethodOption) SchemaMarker
@@ -340,7 +395,7 @@ func NewJSONSchemaMethod[T any](SchemaMethod[T], ...SchemaMethodOption) SchemaMa
 NewJSONSchemaMethod registers a struct method as a stub that will be implemented with a proper json schema and, as needed, unmarshaler functionality.
 
 <a name="SchemaMethod"></a>
-## type [SchemaMethod](<https://github.com/tylergannon/go-gen-jsonschema/blob/main/union_type.go#L15>)
+## type SchemaMethod
 
 
 
@@ -349,7 +404,7 @@ type SchemaMethod[T any] func(T) json.RawMessage
 ```
 
 <a name="SchemaMethodOption"></a>
-## type [SchemaMethodOption](<https://github.com/tylergannon/go-gen-jsonschema/blob/main/union_type.go#L34-L36>)
+## type SchemaMethodOption
 
 
 
@@ -360,7 +415,7 @@ type SchemaMethodOption interface {
 ```
 
 <a name="WithDiscriminator"></a>
-### func [WithDiscriminator](<https://github.com/tylergannon/go-gen-jsonschema/blob/main/union_type.go#L81>)
+### func WithDiscriminator
 
 ```go
 func WithDiscriminator[T any](field T, name string) SchemaMethodOption
@@ -369,34 +424,16 @@ func WithDiscriminator[T any](field T, name string) SchemaMethodOption
 
 
 <a name="WithEnum"></a>
-### func [WithEnum](<https://github.com/tylergannon/go-gen-jsonschema/blob/main/union_type.go#L92>)
+### func WithEnum
 
 ```go
 func WithEnum[T any](field T) SchemaMethodOption
 ```
 
-
-
-<a name="WithEnumMode"></a>
-### func [WithEnumMode](<https://github.com/tylergannon/go-gen-jsonschema/blob/main/union_type.go#L93>)
-
-```go
-func WithEnumMode(mode EnumMode) SchemaMethodOption
-```
-
-
-
-<a name="WithEnumName"></a>
-### func [WithEnumName](<https://github.com/tylergannon/go-gen-jsonschema/blob/main/union_type.go#L94>)
-
-```go
-func WithEnumName[T any](value T, name string) SchemaMethodOption
-```
-
-
+Enum options \(v1\) \- stubs for scanning/type\-checking; parsed by scanner
 
 <a name="WithFunction"></a>
-### func [WithFunction](<https://github.com/tylergannon/go-gen-jsonschema/blob/main/union_type.go#L60>)
+### func WithFunction
 
 ```go
 func WithFunction[T any](val T, f func(T) json.Marshaler) SchemaMethodOption
@@ -405,7 +442,7 @@ func WithFunction[T any](val T, f func(T) json.Marshaler) SchemaMethodOption
 
 
 <a name="WithInterface"></a>
-### func [WithInterface](<https://github.com/tylergannon/go-gen-jsonschema/blob/main/union_type.go#L77>)
+### func WithInterface
 
 ```go
 func WithInterface[T any](field T) SchemaMethodOption
@@ -414,7 +451,7 @@ func WithInterface[T any](field T) SchemaMethodOption
 Interface options \(v1\) \- stubs for scanning/type\-checking; parsed by scanner
 
 <a name="WithInterfaceImpls"></a>
-### func [WithInterfaceImpls](<https://github.com/tylergannon/go-gen-jsonschema/blob/main/union_type.go#L78>)
+### func WithInterfaceImpls
 
 ```go
 func WithInterfaceImpls[T any](field T, impls ...any) SchemaMethodOption
@@ -423,7 +460,7 @@ func WithInterfaceImpls[T any](field T, impls ...any) SchemaMethodOption
 
 
 <a name="WithRenderProviders"></a>
-### func [WithRenderProviders](<https://github.com/tylergannon/go-gen-jsonschema/blob/main/union_type.go#L19>)
+### func WithRenderProviders
 
 ```go
 func WithRenderProviders() SchemaMethodOption
@@ -431,8 +468,17 @@ func WithRenderProviders() SchemaMethodOption
 
 WithRenderProviders requests generation of RenderedSchema\(\) and provider execution at runtime.
 
+<a name="WithStringerEnum"></a>
+### func WithStringerEnum
+
+```go
+func WithStringerEnum[T any](field T) SchemaMethodOption
+```
+
+
+
 <a name="WithStructAccessorMethod"></a>
-### func [WithStructAccessorMethod](<https://github.com/tylergannon/go-gen-jsonschema/blob/main/union_type.go#L68>)
+### func WithStructAccessorMethod
 
 ```go
 func WithStructAccessorMethod[T, U any](val T, f func(U) json.Marshaler) SchemaMethodOption
@@ -441,7 +487,7 @@ func WithStructAccessorMethod[T, U any](val T, f func(U) json.Marshaler) SchemaM
 
 
 <a name="WithStructFunctionMethod"></a>
-### func [WithStructFunctionMethod](<https://github.com/tylergannon/go-gen-jsonschema/blob/main/union_type.go#L64>)
+### func WithStructFunctionMethod
 
 ```go
 func WithStructFunctionMethod[T, U any](val U, f func(T, U) json.Marshaler) SchemaMethodOption
@@ -450,7 +496,7 @@ func WithStructFunctionMethod[T, U any](val U, f func(T, U) json.Marshaler) Sche
 
 
 <a name="SchemaMethodOptionObj"></a>
-## type [SchemaMethodOptionObj](<https://github.com/tylergannon/go-gen-jsonschema/blob/main/union_type.go#L72>)
+## type SchemaMethodOptionObj
 
 
 
@@ -459,7 +505,7 @@ type SchemaMethodOptionObj struct{}
 ```
 
 <a name="SchemaNode"></a>
-## type [SchemaNode](<https://github.com/tylergannon/go-gen-jsonschema/blob/main/json_schema.go#L12>)
+## type SchemaNode
 
 
 
@@ -468,7 +514,7 @@ type SchemaNode = json.Marshaler
 ```
 
 <a name="ArraySchema"></a>
-### func [ArraySchema](<https://github.com/tylergannon/go-gen-jsonschema/blob/main/json_schema.go#L296>)
+### func ArraySchema
 
 ```go
 func ArraySchema(items SchemaNode, description string) SchemaNode
@@ -477,7 +523,7 @@ func ArraySchema(items SchemaNode, description string) SchemaNode
 
 
 <a name="BoolSchema"></a>
-### func [BoolSchema](<https://github.com/tylergannon/go-gen-jsonschema/blob/main/json_schema.go#L314>)
+### func BoolSchema
 
 ```go
 func BoolSchema(description string) SchemaNode
@@ -486,7 +532,7 @@ func BoolSchema(description string) SchemaNode
 
 
 <a name="ConstSchema"></a>
-### func [ConstSchema](<https://github.com/tylergannon/go-gen-jsonschema/blob/main/json_schema.go#L261>)
+### func ConstSchema
 
 ```go
 func ConstSchema[T ~int | ~string](val T, description string) SchemaNode
@@ -495,7 +541,7 @@ func ConstSchema[T ~int | ~string](val T, description string) SchemaNode
 
 
 <a name="EnumSchema"></a>
-### func [EnumSchema](<https://github.com/tylergannon/go-gen-jsonschema/blob/main/json_schema.go#L279>)
+### func EnumSchema
 
 ```go
 func EnumSchema[T ~int | ~string](description string, vals ...T) SchemaNode
@@ -504,7 +550,7 @@ func EnumSchema[T ~int | ~string](description string, vals ...T) SchemaNode
 
 
 <a name="IntSchema"></a>
-### func [IntSchema](<https://github.com/tylergannon/go-gen-jsonschema/blob/main/json_schema.go#L321>)
+### func IntSchema
 
 ```go
 func IntSchema(description string) SchemaNode
@@ -513,7 +559,7 @@ func IntSchema(description string) SchemaNode
 
 
 <a name="RefSchemaEl"></a>
-### func [RefSchemaEl](<https://github.com/tylergannon/go-gen-jsonschema/blob/main/json_schema.go#L48>)
+### func RefSchemaEl
 
 ```go
 func RefSchemaEl(ref string) SchemaNode
@@ -522,7 +568,7 @@ func RefSchemaEl(ref string) SchemaNode
 A ref into definitions
 
 <a name="StringSchema"></a>
-### func [StringSchema](<https://github.com/tylergannon/go-gen-jsonschema/blob/main/json_schema.go#L307>)
+### func StringSchema
 
 ```go
 func StringSchema(description string) SchemaNode
@@ -531,7 +577,7 @@ func StringSchema(description string) SchemaNode
 
 
 <a name="UnionSchemaEl"></a>
-### func [UnionSchemaEl](<https://github.com/tylergannon/go-gen-jsonschema/blob/main/json_schema.go#L41>)
+### func UnionSchemaEl
 
 ```go
 func UnionSchemaEl(alts ...SchemaNode) SchemaNode
@@ -540,7 +586,7 @@ func UnionSchemaEl(alts ...SchemaNode) SchemaNode
 An anyOf element
 
 <a name="SchemaProperty"></a>
-## type [SchemaProperty](<https://github.com/tylergannon/go-gen-jsonschema/blob/main/json_schema.go#L52-L55>)
+## type SchemaProperty
 
 
 
@@ -550,29 +596,6 @@ type SchemaProperty struct {
     Value SchemaNode
 }
 ```
-
-<a name="Tool"></a>
-## type [Tool](<https://github.com/tylergannon/go-gen-jsonschema/blob/main/tool_types.go#L9-L14>)
-
-
-
-```go
-type Tool interface {
-    Name() string
-    Description() string
-    Parameters() json.RawMessage
-    Execute(ctx context.Context, params json.RawMessage) (json.RawMessage, error)
-}
-```
-
-<a name="BuildTool"></a>
-### func [BuildTool](<https://github.com/tylergannon/go-gen-jsonschema/blob/main/tool_types.go#L39>)
-
-```go
-func BuildTool(fn any) Tool
-```
-
-
 
 Generated by [gomarkdoc](<https://github.com/princjef/gomarkdoc>)
 

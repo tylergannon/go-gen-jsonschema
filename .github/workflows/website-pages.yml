@@ -6,10 +6,16 @@ on:
       - main
     paths:
       - 'website/**'
+      - '*.go'
+      - 'go.mod'
+      - 'go.sum'
       - '.github/workflows/website-pages.yml'
   pull_request:
     paths:
       - 'website/**'
+      - '*.go'
+      - 'go.mod'
+      - 'go.sum'
       - '.github/workflows/website-pages.yml'
   workflow_dispatch: {}
 
@@ -28,8 +34,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Use Node.js 20
+      - name: Use Node.js 22
         uses: actions/setup-node@v4
+        with:
+          node-version: '22'
 
       - name: Set up Go (for gomarkdoc prebuild)
         uses: actions/setup-go@v5
@@ -37,13 +45,13 @@ jobs:
           go-version: '1.24.x'
 
       - name: Install gomarkdoc
-        run: go install github.com/princjef/gomarkdoc/cmd/gomarkdoc@latest
+        run: go install github.com/princjef/gomarkdoc/cmd/gomarkdoc@v1.1.0
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
-      - name: Build website (runs prebuild to generate API docs)
-        run: npm run build
+      - name: Build website and check internal links
+        run: npm run check
 
       - name: Deploy to Cloudflare Pages (production and preview)
         id: deploy

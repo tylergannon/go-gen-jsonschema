@@ -1,48 +1,85 @@
 ---
-title: Getting Started
-description: Quickstart for generating JSON Schema from Go types.
+title: Getting started
+description: Install go-gen-jsonschema, register a Go type, generate a schema, and validate JSON.
 ---
 
-import { Code } from '@astrojs/starlight/components';
+import { Aside } from '@astrojs/starlight/components';
 
-## Install
+## Optional: teach your coding agent
 
-<Code code={`go get github.com/tylergannon/go-gen-jsonschema`} lang="bash" title="Install" />
+```bash
+npx skills add tylergannon/go-gen-jsonschema
+```
 
-## Add a schema entrypoint
+The skill gives Codex, Claude Code, and other compatible agents the complete
+setup, registration, validation, and CI workflow.
 
-Create or edit a Go file in your package. Register a type and run codegen.
+## 1. Pin the generator
 
-<Code code={`package example
+Go 1.24 and newer can pin tools directly in `go.mod`:
 
-//go:generate gen-jsonschema
+```bash
+go get -tool github.com/tylergannon/go-gen-jsonschema/gen-jsonschema@latest
+```
 
-import (
-  "encoding/json"
-  jsonschema "github.com/tylergannon/go-gen-jsonschema"
-)
+## 2. Define the type and generation command
 
-type User struct {
-  ID   int    ` + "`json:\"id\"`" + `
-  Name string ` + "`json:\"name\"`" + `
+```go title="types.go"
+package contacts
+
+import jsonschema "github.com/tylergannon/go-gen-jsonschema"
+
+//go:generate go tool gen-jsonschema --validate
+
+// Person is a contact extracted from a document.
+type Person struct {
+    // Full legal name.
+    Name string `json:"name"`
+
+    // Email address. Omit when the source does not provide one.
+    Email jsonschema.Optional[string] `json:"email,omitzero"`
+
+    // Required key; null means no phone number was supplied.
+    Phone jsonschema.Nullable[string] `json:"phone"`
 }
+```
 
-// Stub method. The generator will replace this implementation.
-func (User) Schema() json.RawMessage { panic("not implemented") }
+Doc comments become schema descriptions, so write them for the model that will
+produce the JSON.
 
-var (
-  _ = jsonschema.NewJSONSchemaMethod(User.Schema)
-)
-`} lang="go" title="example/user.go" />
+## 3. Create the build-tagged registration file
 
-## Generate
+The CLI writes the stubs and can run generation immediately:
 
-<Code code={`go generate ./...`} lang="bash" title="Codegen" />
+```bash
+go tool gen-jsonschema new \
+  -out schema.go \
+  -methods 'Person=Schema' \
+  --validate \
+  --generate
+go mod tidy
+```
 
-This writes JSON Schema files to ./jsonschema and generates jsonschema_gen.go.
+`schema.go` is compiled only during generation. The generated
+`jsonschema_gen.go` is compiled during normal builds, so the files never define
+the same methods together.
 
-## Next steps
+## 4. Use the generated schema
 
-- Read the Spec for enums, interfaces, and providers.
-- Browse the Examples for working samples.
-- See API Reference for the full exported API.
+```go
+schema := Person{}.Schema()
+if err := Person{}.ValidateJSON(llmOutput); err != nil {
+    return err
+}
+```
+
+Commit `schema.go`, `jsonschema_gen.go`, and the entire `jsonschema/` directory,
+including `.json.sum` files.
+
+<Aside type="tip" title="Keep schemas current">
+  Add `JSONSCHEMA_NO_CHANGES=1 go generate ./...` to CI. It fails without writing
+  when committed schemas no longer match their Go types.
+</Aside>
+
+Next, choose the field semantics you need in [Optional and nullable](/features/optionality/),
+or jump to [Validation and CI](/guides/validation-ci/).

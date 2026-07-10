@@ -1,0 +1,52 @@
+---
+interface Props {
+  eyebrow: string;
+  title: string;
+  label: string;
+  command: string;
+}
+
+const { eyebrow, title, label, command } = Astro.props;
+---
+
+<section class="agent-quickstart not-content" aria-labelledby="agent-quickstart-heading">
+  <div class="agent-quickstart-copy">
+    <p>{eyebrow}</p>
+    <h2 id="agent-quickstart-heading">{title}</h2>
+  </div>
+  <div class="copy-command" data-copy-command>
+    <div class="copy-command-header">
+      <span>{label}</span>
+      <button type="button" data-copy-button aria-live="polite">Click to copy</button>
+    </div>
+    <pre><code data-copy-text>{command}</code></pre>
+  </div>
+</section>
+
+<script>
+  for (const card of document.querySelectorAll('[data-copy-command]')) {
+    const button = card.querySelector<HTMLButtonElement>('[data-copy-button]');
+    const code = card.querySelector<HTMLElement>('[data-copy-text]');
+    if (!button || !code || button.dataset.ready === 'true') continue;
+    button.dataset.ready = 'true';
+    button.addEventListener('click', async () => {
+      const text = code.textContent ?? '';
+      let copied = false;
+      try {
+        await navigator.clipboard.writeText(text);
+        copied = true;
+      } catch {
+        const input = document.createElement('textarea');
+        input.value = text;
+        input.style.position = 'fixed';
+        input.style.opacity = '0';
+        document.body.append(input);
+        input.select();
+        copied = document.execCommand('copy');
+        input.remove();
+      }
+      button.textContent = copied ? 'Copied' : 'Copy failed';
+      window.setTimeout(() => { button.textContent = 'Click to copy'; }, 5000);
+    });
+  }
+</script>
