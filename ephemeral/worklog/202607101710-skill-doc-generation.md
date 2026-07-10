@@ -53,5 +53,8 @@ rule_discovery: The tracked policy filename is `Agents.md`; it now mandates work
   string and reran proof before committing.
 - Branch: `codex/skill-doc-generation`, tracking current `origin/main`.
 - Commit state: committing the completed and proven implementation on the task branch.
-- PR/merge state: no push or PR action has been performed.
+- Commit: `5695cc5 feat(skill): generate source-backed examples`.
+- Push proof: pre-push `go test ./...` passed and the branch was pushed to origin.
+- PR: https://github.com/tylergannon/go-gen-jsonschema/pull/40
+- PR/merge state: PR opened; auto-merge requested by the user and will be enabled after this closeout update is pushed.
 - Remaining debt: none identified within the requested scope.
