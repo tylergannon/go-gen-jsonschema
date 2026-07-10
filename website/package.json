@@ -5,16 +5,17 @@
   "scripts": {
     "dev": "astro dev",
     "start": "astro dev",
-    "prebuild": "$(go env GOPATH)/bin/gomarkdoc -e -o './src/content/docs/api/index.md' github.com/tylergannon/go-gen-jsonschema",
+    "prebuild": "cp ../llms.txt ./public/llms.txt && $(go env GOPATH)/bin/gomarkdoc -e -o './src/content/docs/api/index.md' ../",
     "build": "astro build",
+    "check-links": "node ./scripts/check-links.mjs",
+    "check": "npm run build && npm run check-links",
     "preview": "astro preview",
     "astro": "astro"
   },
   "dependencies": {
-    "@astrojs/starlight": "^0.35.2",
-    "astro": "^5.6.1",
-    "sharp": "^0.34.2",
-    "@fontsource/inter": "^5.1.0",
-    "@fontsource/jetbrains-mono": "^5.1.0"
+    "@astrojs/starlight": "0.41.3",
+    "@fontsource/inter": "5.1.0",
+    "@fontsource/jetbrains-mono": "5.1.0",
+    "astro": "7.0.7"
   }
 }

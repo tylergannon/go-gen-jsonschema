@@ -1,38 +1,51 @@
 ---
 title: go-gen-jsonschema
-description: Generate JSON Schema from Go types. Deterministic. Composable. Tested.
+description: Agent-first documentation for generating deterministic, LLM-ready JSON Schema from Go types.
 template: splash
 hero:
-  tagline: Generate JSON Schema from Go types — deterministic, composable, tested.
-  image:
-    file: ../../assets/gopher-front.svg
+  tagline: Go types in. LLM-ready JSON Schema out.
   actions:
-    - text: Getting Started
+    - text: Human docs
       link: /getting-started/
-    - text: Spec
-      link: /spec/
-    - text: Examples
-      link: /examples/
-    - text: API Reference
-      link: /api/
+    - text: llms.txt
+      link: /llms.txt
+      variant: secondary
 ---
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
+import CopyCommand from '../../components/CopyCommand.astro';
 
-## Why go-gen-jsonschema
+<CopyCommand
+  eyebrow="Agent quickstart"
+  title="Install the skill, then tell your agent what to build"
+  label="terminal"
+  command="npx skills add tylergannon/go-gen-jsonschema"
+/>
 
-- Deterministic JSON Schema generation from Go types.
-- First-class enums, discriminated interfaces, and provider-rendered schemas.
-- Compile-verified codegen. Golden tests. CI-friendly.
-
-## Quickstart
-
-import { Code } from '@astrojs/starlight/components';
-
-<Code code={`go get github.com/tylergannon/go-gen-jsonschema\n\n# In your package\n//go:generate gen-jsonschema\n\n# Run codegen\ngo generate ./...\n`} lang="bash" title="Install & generate" />
+## Start with the task in front of you
 
 <CardGrid>
-  <Card title="Read the Spec" icon="open-book" href="/spec/">Authoritative schema and behavior specification.</Card>
-  <Card title="Browse Examples" icon="code" href="/examples/">Real, runnable examples mirroring the spec.</Card>
-  <Card title="API Reference" icon="right-arrow" href="/api/">Generated Go API docs (godoc → Markdown).</Card>
+  <Card title="Generate your first schema" icon="rocket" href="/getting-started/">
+    Pin the Go tool, register a type, generate, validate, and commit the outputs.
+  </Card>
+  <Card title="Model missing and null" icon="open-book" href="/features/optionality/">
+    Choose ordinary fields, `Optional[T]`, or `Nullable[T]` without guessing.
+  </Card>
+  <Card title="Enums and interfaces" icon="puzzle" href="/features/enums/">
+    Teach tool schemas named values and discriminated implementations.
+  </Card>
+  <Card title="Validate and prevent drift" icon="setting" href="/guides/validation-ci/">
+    Validate LLM output and make CI reject stale generated schemas.
+  </Card>
 </CardGrid>
+
+## What the generator guarantees
+
+- Property order follows Go struct field order, producing deterministic prompts.
+- Unknown properties are rejected with `additionalProperties: false`.
+- Go doc comments become LLM-facing schema descriptions.
+- Generated schema files and Go accessors are safe to commit and verify in CI.
+- Optionality, enums, discriminated interfaces, providers, and validation use explicit APIs.
+
+Need exact exported signatures? The generated [Go API reference](/api/) is available,
+but most integrations should begin with [Getting started](/getting-started/).

@@ -1,51 +1,30 @@
 ---
 title: Examples
-description: Practical examples demonstrating SPEC → EXAMPLES → IMPLEMENTATION.
+description: Curated, current examples for go-gen-jsonschema's main public workflows.
 ---
 
-import { Tabs, TabItem, FileTree, Card, CardGrid, Code } from '@astrojs/starlight/components';
+import { Card, CardGrid } from '@astrojs/starlight/components';
 
-> The three pillars of our methodology: SPEC, EXAMPLES, IMPLEMENTATION.
+These examples focus on decisions you need to make. Every page links to compiling
+repository examples when you need the complete package and generated output.
 
 <CardGrid>
-  <Card title="Read the Spec" href="/spec/v1/" icon="book"/>
-  <Card title="Browse Implementation Notes" href="/implementation/" icon="gear"/>
-  <Card title="API Reference" href="/api/" icon="code"/>
+  <Card title="Optional and nullable" icon="open-book" href="/features/optionality/">
+    Model an omitted property separately from a required property whose value may be null.
+  </Card>
+  <Card title="Enums" icon="list-format" href="/features/enums/">
+    Generate string enums or expose meaningful names for integer constants.
+  </Card>
+  <Card title="Interfaces" icon="puzzle" href="/features/interfaces/">
+    Register implementations and generate a discriminated `anyOf` schema.
+  </Card>
+  <Card title="Provider schemas" icon="setting" href="/features/providers/">
+    Supply field schemas at runtime when static generation is not enough.
+  </Card>
 </CardGrid>
 
-## Basic Types
+The repository also contains complete, executable packages under
+[`examples/`](https://github.com/tylergannon/go-gen-jsonschema/tree/main/examples).
 
-import basicSchema from '../../../../examples/basictypes/schema.go?raw';
-import basicTypes from '../../../../examples/basictypes/types.go?raw';
-
-<Tabs>
-  <TabItem label="schema.go">
-
-<Code code={basicSchema} lang="go" title="schema.go" />
-  </TabItem>
-  <TabItem label="types.go">
-
-<Code code={basicTypes} lang="go" title="types.go" />
-  </TabItem>
-</Tabs>
-
-## Enums
-
-import enumsSchema from '../../../../examples/enums/schema.go?raw';
-import enumsTypes from '../../../../examples/enums/types.go?raw';
-
-<Tabs>
-  <TabItem label="schema.go">
-
-<Code code={enumsSchema} lang="go" title="schema.go" />
-  </TabItem>
-  <TabItem label="types.go">
-
-<Code code={enumsTypes} lang="go" title="types.go" />
-  </TabItem>
-</Tabs>
-
-## More examples
-
-- View all example folders in the repository: https://github.com/tylergannon/go-gen-jsonschema/tree/main/examples
-- v1 options: enums as strings, interfaces, providers, and more.
+For a compact source-generated reference, see the installable skill's
+[`references/examples.md`](https://github.com/tylergannon/go-gen-jsonschema/blob/main/skills/go-gen-jsonschema/references/examples.md).
