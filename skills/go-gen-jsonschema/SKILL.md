@@ -172,6 +172,11 @@ reference live in [references/registration-api.md](references/registration-api.m
 Read it when a type uses enums, interfaces, or you need non-default generation
 flags.
 
+For concise, source-backed examples of optionality, enums, and interface
+discriminators, read [references/examples.md](references/examples.md). The
+snippets are generated from compiling examples in this repository and checked
+for drift by the Go test suite.
+
 Known limitations (fail fast, don't fight them): no maps, no recursive types,
 no arrays of interface types, external package types unsupported except
 `time.Time`.
