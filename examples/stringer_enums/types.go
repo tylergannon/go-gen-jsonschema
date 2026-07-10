@@ -2,7 +2,7 @@ package stringer_enums
 
 import "fmt"
 
-//go:generate gen-jsonschema
+//go:generate go run ../../gen-jsonschema/
 
 // LogLevel represents the severity of log messages.
 // This is an integer-based enum with a Stringer implementation.

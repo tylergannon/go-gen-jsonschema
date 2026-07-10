@@ -1,6 +1,6 @@
 package test_options
 
-//go:generate gen-jsonschema
+//go:generate go run ../../gen-jsonschema/
 
 // Person represents a person with basic information
 type Person struct {

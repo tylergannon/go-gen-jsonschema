@@ -1,4 +1,4 @@
-//go:generate gen-jsonschema
+//go:generate go run ../../gen-jsonschema/
 package template_rendering
 
 // Status is a simple string enum

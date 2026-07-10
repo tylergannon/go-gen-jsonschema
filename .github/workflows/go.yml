@@ -1,0 +1,36 @@
+name: Go
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-generate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Test clean checkout
+        run: go test ./...
+
+      - name: Regenerate
+        run: go generate ./...
+
+      - name: Verify generated files are current
+        run: test -z "$(git status --porcelain)"
+
+      - name: Verify no-change generation mode
+        run: JSONSCHEMA_NO_CHANGES=1 go generate ./...
+
+      - name: Test regenerated checkout
+        run: go test ./...

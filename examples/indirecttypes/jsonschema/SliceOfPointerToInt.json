@@ -1,0 +1,1 @@
+{"type":"array","description":"SliceOfPointerToInt demonstrates a slice of pointers to a basic type. In the schema, this will be an array of nullable integers.","items":{"type":"integer"}}

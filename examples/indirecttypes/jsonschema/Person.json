@@ -1,0 +1,1 @@
+{"type":"object","description":"NestedTypes demonstrates deeply nested types. Person is a basic struct with simple fields.","properties":{"name":{"type":"string","description":"Name is the person's name."},"age":{"type":"integer","description":"Age is the person's age."}},"required":["name","age"],"additionalProperties":false}

@@ -1,6 +1,6 @@
 package messages
 
-//go:generate go run github.com/tylergannon/go-gen-jsonschema/gen-jsonschema/ --force
+//go:generate go run github.com/tylergannon/go-gen-jsonschema/gen-jsonschema/
 
 // Call this function when the flattened struct info you receive has got a named type
 // instead of pure-native Go types.  Named types are present in the flattened struct type

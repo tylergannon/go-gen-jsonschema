@@ -1,0 +1,1 @@
+{"type":"string","description":"Priority represents the importance level of an item.\n\nlow: \nPriorityLow indicates minimal urgency.\n\nmedium: \nPriorityMedium indicates standard urgency.\n\nhigh: \nPriorityHigh indicates immediate attention required.","enum":["low","medium","high"]}

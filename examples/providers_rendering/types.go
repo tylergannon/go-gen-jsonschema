@@ -1,6 +1,6 @@
 package providers_rendering
 
-//go:generate gen-jsonschema
+//go:generate go run ../../gen-jsonschema/
 
 import "encoding/json"
 

@@ -1,6 +1,6 @@
 package uniontypes
 
-//go:generate gen-jsonschema
+//go:generate go run ../../gen-jsonschema/
 
 import "time"
 

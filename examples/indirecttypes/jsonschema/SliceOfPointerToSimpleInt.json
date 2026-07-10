@@ -1,0 +1,1 @@
+{"type":"array","description":"SliceOfPointerToSimpleInt demonstrates a slice of pointers to a custom type. In the schema, this will be an array of nullable SimpleInt.","items":{"type":"integer","description":"SimpleInt is a basic integer type."}}

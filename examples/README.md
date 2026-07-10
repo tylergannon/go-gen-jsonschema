@@ -7,7 +7,12 @@ This directory contains comprehensive examples demonstrating all features of go-
 Each example contains:
 - `types.go` - Go type definitions
 - `schema.go` - Schema registration with options
-- Generated `jsonschema_gen.go` and `jsonschema/` directory after running `go generate`
+- Checked-in `jsonschema_gen.go` accessors and `jsonschema/` embed inputs
+
+Generated artifacts are checked in so a fresh clone compiles and tests without
+a bootstrap step. Regenerate them after changing an example or the generator;
+the directives run the generator from this checkout, so no separately installed
+binary is required.
 
 To generate schemas:
 ```bash

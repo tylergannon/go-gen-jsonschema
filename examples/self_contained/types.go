@@ -1,4 +1,4 @@
-//go:generate gen-jsonschema
+//go:generate go run ../../gen-jsonschema/
 package self_contained
 
 // Priority for tasks

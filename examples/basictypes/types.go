@@ -1,6 +1,6 @@
 package basictypes
 
-//go:generate gen-jsonschema
+//go:generate go run ../../gen-jsonschema/
 
 // SimpleInt demonstrates a basic integer type that will be represented
 // as a number in the JSON schema.

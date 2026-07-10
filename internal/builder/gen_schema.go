@@ -281,7 +281,6 @@ type SchemaBuilder struct {
 	// Types requesting rendered provider execution
 	RenderedTypes []string
 	Rendered      map[string]bool
-
 }
 
 func (s SchemaBuilder) HaveInterfaces() bool {
@@ -846,6 +845,15 @@ func (s SchemaBuilder) writeSchema(t syntax.TypeID, targetDir string, noChanges 
 	return wroteNew, nil
 }
 
+func sortedCustomTypeNames(customTypes map[string][]InterfaceProp) []string {
+	names := make([]string, 0, len(customTypes))
+	for name := range customTypes {
+		names = append(names, name)
+	}
+	slices.Sort(names)
+	return names
+}
+
 func (s *SchemaBuilder) RenderGoCode() (err error) {
 	importMap := s.imports()
 	s.Imports = importMap.ImportStatements()
@@ -878,7 +886,8 @@ func (s *SchemaBuilder) RenderGoCode() (err error) {
 	// 	}
 	// }
 
-	for n, itsProps := range s.customTypes {
+	for _, n := range sortedCustomTypeNames(s.customTypes) {
+		itsProps := s.customTypes[n]
 		s.SpecialTypes = append(s.SpecialTypes, CustomMarshaledType{
 			Name:           n,
 			InterfaceProps: itsProps,
