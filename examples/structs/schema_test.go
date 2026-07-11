@@ -55,18 +55,18 @@ func TestPersonSchemaWithTime(t *testing.T) {
 	schemaBytes := person.Schema()
 
 	// Parse the schema
-	var schema map[string]interface{}
+	var schema map[string]any
 	if err := json.Unmarshal(schemaBytes, &schema); err != nil {
 		t.Fatalf("Failed to parse schema: %v", err)
 	}
 
 	// Check that birthDate is properly defined
-	props, ok := schema["properties"].(map[string]interface{})
+	props, ok := schema["properties"].(map[string]any)
 	if !ok {
 		t.Fatal("Schema missing properties field")
 	}
 
-	birthDate, ok := props["birthDate"].(map[string]interface{})
+	birthDate, ok := props["birthDate"].(map[string]any)
 	if !ok {
 		t.Fatal("Missing birthDate property")
 	}
@@ -112,7 +112,7 @@ func TestPersonJSONMarshalUnmarshal(t *testing.T) {
 	}
 
 	// Verify the time is in RFC3339 format
-	var jsonMap map[string]interface{}
+	var jsonMap map[string]any
 	if err := json.Unmarshal(jsonBytes, &jsonMap); err != nil {
 		t.Fatalf("Failed to unmarshal to map: %v", err)
 	}

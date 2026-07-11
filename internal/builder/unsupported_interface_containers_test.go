@@ -1,0 +1,280 @@
+package builder
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+	"github.com/tylergannon/go-gen-jsonschema/internal/syntax"
+)
+
+func TestUnsupportedRegisteredInterfaceContainersFailDuringGeneration(t *testing.T) {
+	t.Parallel()
+
+	const commonTypes = `
+type Variant interface{ variant() }
+
+type First struct {
+	Name string ` + "`json:\"name\"`" + `
+}
+
+func (First) variant() {}
+`
+
+	tests := []struct {
+		name string
+		body string
+	}{
+		{
+			name: "v1 fixed array field",
+			body: commonTypes + `
+type Owner struct {
+	Values [2]Variant ` + "`json:\"values\"`" + `
+}
+
+func (Owner) Schema() json.RawMessage { panic("not implemented") }
+
+var _ = jsonschema.NewJSONSchemaMethod(
+	Owner.Schema,
+	jsonschema.WithInterface(Owner{}.Values),
+	jsonschema.WithInterfaceImpls(Owner{}.Values, First{}),
+)
+`,
+		},
+		{
+			name: "v1 nested slice field",
+			body: commonTypes + `
+type Owner struct {
+	Values [][]Variant ` + "`json:\"values\"`" + `
+}
+
+func (Owner) Schema() json.RawMessage { panic("not implemented") }
+
+var _ = jsonschema.NewJSONSchemaMethod(
+	Owner.Schema,
+	jsonschema.WithInterface(Owner{}.Values),
+	jsonschema.WithInterfaceImpls(Owner{}.Values, First{}),
+)
+`,
+		},
+		{
+			name: "v1 nullable slice field",
+			body: commonTypes + `
+type Owner struct {
+	Values jsonschema.Nullable[[]Variant] ` + "`json:\"values\"`" + `
+}
+
+func (Owner) Schema() json.RawMessage { panic("not implemented") }
+
+var _ = jsonschema.NewJSONSchemaMethod(
+	Owner.Schema,
+	jsonschema.WithInterface(Owner{}.Values),
+	jsonschema.WithInterfaceImpls(Owner{}.Values, First{}),
+)
+`,
+		},
+		{
+			name: "v1 optional slice field",
+			body: commonTypes + `
+type Owner struct {
+	Values jsonschema.Optional[[]Variant] ` + "`json:\"values,omitzero\"`" + `
+}
+
+func (Owner) Schema() json.RawMessage { panic("not implemented") }
+
+var _ = jsonschema.NewJSONSchemaMethod(
+	Owner.Schema,
+	jsonschema.WithInterface(Owner{}.Values),
+	jsonschema.WithInterfaceImpls(Owner{}.Values, First{}),
+)
+`,
+		},
+		{
+			name: "v1 named slice field",
+			body: commonTypes + `
+type Variants []Variant
+
+type Owner struct {
+	Values Variants ` + "`json:\"values\"`" + `
+}
+
+func (Owner) Schema() json.RawMessage { panic("not implemented") }
+
+var _ = jsonschema.NewJSONSchemaMethod(
+	Owner.Schema,
+	jsonschema.WithInterface(Owner{}.Values),
+	jsonschema.WithInterfaceImpls(Owner{}.Values, First{}),
+)
+`,
+		},
+		{
+			name: "legacy fixed array field",
+			body: commonTypes + `
+type Owner struct {
+	Values [2]Variant ` + "`json:\"values\"`" + `
+}
+
+func (Owner) Schema() json.RawMessage { panic("not implemented") }
+
+var (
+	_ = jsonschema.NewJSONSchemaMethod(Owner.Schema)
+	_ = jsonschema.NewInterfaceImpl[Variant](First{})
+)
+`,
+		},
+		{
+			name: "legacy nested slice field",
+			body: commonTypes + `
+type Owner struct {
+	Values [][]Variant ` + "`json:\"values\"`" + `
+}
+
+func (Owner) Schema() json.RawMessage { panic("not implemented") }
+
+var (
+	_ = jsonschema.NewJSONSchemaMethod(Owner.Schema)
+	_ = jsonschema.NewInterfaceImpl[Variant](First{})
+)
+`,
+		},
+		{
+			name: "legacy nullable slice field",
+			body: commonTypes + `
+type Owner struct {
+	Values jsonschema.Nullable[[]Variant] ` + "`json:\"values\"`" + `
+}
+
+func (Owner) Schema() json.RawMessage { panic("not implemented") }
+
+var (
+	_ = jsonschema.NewJSONSchemaMethod(Owner.Schema)
+	_ = jsonschema.NewInterfaceImpl[Variant](First{})
+)
+`,
+		},
+		{
+			name: "legacy optional slice field",
+			body: commonTypes + `
+type Owner struct {
+	Values jsonschema.Optional[[]Variant] ` + "`json:\"values,omitzero\"`" + `
+}
+
+func (Owner) Schema() json.RawMessage { panic("not implemented") }
+
+var (
+	_ = jsonschema.NewJSONSchemaMethod(Owner.Schema)
+	_ = jsonschema.NewInterfaceImpl[Variant](First{})
+)
+`,
+		},
+		{
+			name: "legacy named slice field",
+			body: commonTypes + `
+type Variants []Variant
+
+type Owner struct {
+	Values Variants ` + "`json:\"values\"`" + `
+}
+
+func (Owner) Schema() json.RawMessage { panic("not implemented") }
+
+var (
+	_ = jsonschema.NewJSONSchemaMethod(Owner.Schema)
+	_ = jsonschema.NewInterfaceImpl[Variant](First{})
+)
+`,
+		},
+		{
+			name: "legacy top-level named slice",
+			body: commonTypes + `
+type Variants []Variant
+
+func (Variants) Schema() json.RawMessage { panic("not implemented") }
+
+var (
+	_ = jsonschema.NewJSONSchemaMethod(Variants.Schema)
+	_ = jsonschema.NewInterfaceImpl[Variant](First{})
+)
+`,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			targetDir := writeUnsupportedInterfaceFixture(t, test.body)
+			pkgs, err := syntax.Load(targetDir)
+			require.NoError(t, err)
+			require.Len(t, pkgs, 1)
+			require.Empty(t, pkgs[0].Errors)
+			scan, err := syntax.LoadPackage(pkgs[0])
+			require.NoError(t, err)
+			require.NotEmpty(t, scan.SchemaMethods)
+
+			_, err = New(pkgs[0])
+			require.ErrorContains(t, err, "arrays/slices of registered interfaces are not yet supported")
+			require.Contains(t, err.Error(), targetDir)
+		})
+	}
+}
+
+func TestShadowedEmbeddedInterfaceIsNotCustomDecoded(t *testing.T) {
+	t.Parallel()
+
+	targetDir := writeUnsupportedInterfaceFixture(t, `
+type Variant interface{ variant() }
+
+type First struct{}
+func (First) variant() {}
+
+type Embedded struct {
+	Value Variant `+"`json:\"value\"`"+`
+}
+
+type Owner struct {
+	Embedded
+	Value string `+"`json:\"value\"`"+`
+}
+
+func (Owner) Schema() json.RawMessage { panic("not implemented") }
+
+var (
+	_ = jsonschema.NewJSONSchemaMethod(Owner.Schema)
+	_ = jsonschema.NewInterfaceImpl[Variant](First{})
+)
+`)
+	pkgs, err := syntax.Load(targetDir)
+	require.NoError(t, err)
+	require.Len(t, pkgs, 1)
+	require.Empty(t, pkgs[0].Errors)
+
+	builder, err := New(pkgs[0])
+	require.NoError(t, err)
+	require.Empty(t, builder.customTypes["Owner"])
+}
+
+func writeUnsupportedInterfaceFixture(t *testing.T, body string) string {
+	t.Helper()
+
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+	targetDir, err := os.MkdirTemp(filepath.Join(cwd, "testfixtures"), "unsupported_interface_container_")
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, os.RemoveAll(targetDir))
+	})
+
+	source := `//go:build jsonschema
+
+package fixture
+
+import (
+	"encoding/json"
+
+	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+)
+` + body
+	require.NoError(t, os.WriteFile(filepath.Join(targetDir, "schema.go"), []byte(source), 0o644))
+	return targetDir
+}

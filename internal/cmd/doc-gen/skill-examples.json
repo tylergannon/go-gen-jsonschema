@@ -44,6 +44,21 @@
           "registrations": ["Owner.Schema"]
         }
       ]
+    },
+    {
+      "id": "interface-slices",
+      "title": "Slices of interface unions",
+      "when": "Use a direct []I field when each array element is one implementation of a registered interface union.",
+      "sections": [
+        {
+          "source": "examples/sealed_interface_slices/types.go",
+          "declarations": ["Event", "Created", "Created.isEvent", "Deleted", "Deleted.isEvent", "Batch"]
+        },
+        {
+          "source": "examples/sealed_interface_slices/schema.go",
+          "registrations": ["Batch.Schema"]
+        }
+      ]
     }
   ]
 }

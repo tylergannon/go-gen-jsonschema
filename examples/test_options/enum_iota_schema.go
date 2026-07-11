@@ -1,11 +1,9 @@
 //go:build jsonschema
-// +build jsonschema
 
 package test_options
 
 import (
 	"encoding/json"
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
 )
 
 // Schema method stubs for iota enum types

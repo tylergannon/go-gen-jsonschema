@@ -19,33 +19,33 @@ func TestRenderedSchema(t *testing.T) {
 	}
 
 	// Verify it's valid JSON
-	var schemaObj map[string]interface{}
+	var schemaObj map[string]any
 	if err := json.Unmarshal(schema, &schemaObj); err != nil {
 		t.Fatalf("Failed to parse schema JSON: %v", err)
 	}
 
 	// Check the schema structure
-	props, ok := schemaObj["properties"].(map[string]interface{})
+	props, ok := schemaObj["properties"].(map[string]any)
 	if !ok {
 		t.Fatal("Schema missing properties field")
 	}
 
 	// Check field A
-	if aSchema, ok := props["a"].(map[string]interface{}); !ok {
+	if aSchema, ok := props["a"].(map[string]any); !ok {
 		t.Fatal("Missing schema for field 'a'")
 	} else if aSchema["type"] != "string" {
 		t.Errorf("Field 'a' type = %v, want string", aSchema["type"])
 	}
 
 	// Check field B
-	if bSchema, ok := props["b"].(map[string]interface{}); !ok {
+	if bSchema, ok := props["b"].(map[string]any); !ok {
 		t.Fatal("Missing schema for field 'b'")
 	} else if bSchema["type"] != "integer" {
 		t.Errorf("Field 'b' type = %v, want integer", bSchema["type"])
 	}
 
 	// Check field C
-	if cSchema, ok := props["c"].(map[string]interface{}); !ok {
+	if cSchema, ok := props["c"].(map[string]any); !ok {
 		t.Fatal("Missing schema for field 'c'")
 	} else if cSchema["type"] != "boolean" {
 		t.Errorf("Field 'c' type = %v, want boolean", cSchema["type"])

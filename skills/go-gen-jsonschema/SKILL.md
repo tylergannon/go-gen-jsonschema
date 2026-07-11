@@ -177,9 +177,11 @@ discriminators, read [references/examples.md](references/examples.md). The
 snippets are generated from compiling examples in this repository and checked
 for drift by the Go test suite.
 
-Known limitations (fail fast, don't fight them): no maps, no recursive types,
-no arrays of interface types, external package types unsupported except
-`time.Time`.
+Known limitations (fail fast, don't fight them): no maps or recursive types;
+registered interfaces support scalar fields and direct one-dimensional `[]I`
+fields, but not fixed arrays, nested slices, named slice containers, or
+Optional/Nullable interface slices; external package types are unsupported
+except `time.Time`.
 
 ## Closeout checklist
 

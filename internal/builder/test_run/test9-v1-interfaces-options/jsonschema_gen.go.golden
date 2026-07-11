@@ -31,21 +31,41 @@ func (Owner) Schema() json.RawMessage {
 
 // UnmarshalJSON is a generated custom json.Unmarshaler implementation for
 // Owner.
-func (o *Owner) UnmarshalJSON(b []byte) (err error) {
+func (o *Owner) UnmarshalJSON(data []byte) (err error) {
 	type Alias Owner
 	type Wrapper struct {
 		Alias
 		IF         json.RawMessage `json:"if"`
+		IFaces     json.RawMessage `json:"ifs"`
 		OptionalIF json.RawMessage `json:"optional_if,omitzero"`
 	}
 	var wrapper Wrapper
-	if err = json.Unmarshal(b, &wrapper); err != nil {
+	if err = json.Unmarshal(data, &wrapper); err != nil {
 		return err
 	}
 	__next := Owner(wrapper.Alias)
 
 	if __next.IF, err = __jsonUnmarshal__v1_interfaces_options__IFace__Owner__IF(wrapper.IF); err != nil {
 		return err
+	}
+
+	if len(wrapper.IFaces) == 0 {
+		__next.IFaces = o.IFaces
+	} else {
+		var __raw1 []json.RawMessage
+		if err = json.Unmarshal(wrapper.IFaces, &__raw1); err != nil {
+			return fmt.Errorf("field ifs: %w", err)
+		}
+		var __decoded1 []IFace
+		if __raw1 != nil {
+			__decoded1 = make([]IFace, len(__raw1))
+		}
+		for __index, __raw := range __raw1 {
+			if __decoded1[__index], err = __jsonUnmarshal__v1_interfaces_options__IFace__Owner__IFaces(__raw); err != nil {
+				return fmt.Errorf("field ifs[%d]: %w", __index, err)
+			}
+		}
+		__next.IFaces = __decoded1
 	}
 
 	if len(wrapper.OptionalIF) > 0 {
@@ -59,6 +79,38 @@ func (o *Owner) UnmarshalJSON(b []byte) (err error) {
 	return nil
 }
 func __jsonUnmarshal__v1_interfaces_options__IFace__Owner__IF(data []byte) (IFace, error) {
+	var (
+		temp          map[string]json.RawMessage
+		discriminator string
+		err           = json.Unmarshal(data, &temp)
+	)
+
+	if err != nil {
+		return nil, err
+	} else if _tempDiscriminator, ok := temp["!kind"]; !ok {
+		// per-field discriminator property
+		return nil, fmt.Errorf("no discriminator property '%s' found", "!kind")
+	} else if err = json.Unmarshal(_tempDiscriminator, &discriminator); err != nil {
+		return nil, __jsonschema__unmarshalDiscriminatorError(_tempDiscriminator, err)
+	}
+	switch discriminator {
+	case "Impl1":
+		var obj Impl1
+		if err = json.Unmarshal(data, &obj); err != nil {
+			return nil, err
+		}
+		return obj, nil
+	case "Impl2":
+		var obj Impl2
+		if err = json.Unmarshal(data, &obj); err != nil {
+			return nil, err
+		}
+		return obj, nil
+	default:
+		return nil, fmt.Errorf("unknown discriminator: %s", discriminator)
+	}
+}
+func __jsonUnmarshal__v1_interfaces_options__IFace__Owner__IFaces(data []byte) (IFace, error) {
 	var (
 		temp          map[string]json.RawMessage
 		discriminator string

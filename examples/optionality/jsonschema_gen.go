@@ -96,14 +96,14 @@ func (NumericConfig) ValidateJSON(data []byte) error {
 
 // UnmarshalJSON is a generated custom json.Unmarshaler implementation for
 // Config.
-func (c *Config) UnmarshalJSON(b []byte) (err error) {
+func (c *Config) UnmarshalJSON(data []byte) (err error) {
 	type Alias Config
 	type Wrapper struct {
 		Alias
 		Pet json.RawMessage `json:"pet,omitzero"`
 	}
 	var wrapper Wrapper
-	if err = json.Unmarshal(b, &wrapper); err != nil {
+	if err = json.Unmarshal(data, &wrapper); err != nil {
 		return err
 	}
 	__next := Config(wrapper.Alias)

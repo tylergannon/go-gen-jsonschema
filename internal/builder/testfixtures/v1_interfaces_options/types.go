@@ -20,5 +20,6 @@ func (Impl2) isIface() {}
 
 type Owner struct {
 	IF         IFace                      `json:"if"`
+	IFaces     []IFace                    `json:"ifs"`
 	OptionalIF jsonschema.Optional[IFace] `json:"optional_if,omitzero"`
 }

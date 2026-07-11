@@ -244,9 +244,10 @@ supported.
 ## 🔄 Union types (interfaces)
 
 An interface-typed field becomes an `anyOf` union of its registered
-implementations, discriminated by a `"!type"` property (configurable). The
-generator also emits an `UnmarshalJSON` on the containing struct that
-dispatches on the discriminator.
+implementations, discriminated by a `"!type"` property (configurable). A direct
+one-dimensional slice of that interface becomes an array with the union under
+`items.anyOf`. The generator emits `UnmarshalJSON` dispatch code for scalar
+values and every slice element.
 
 ```go
 type PaymentMethod interface{ IsPaymentMethod() }
@@ -264,8 +265,8 @@ type BankTransfer struct {
 func (BankTransfer) IsPaymentMethod() {}
 
 type Payment struct {
-    Amount float64       `json:"amount"`
-    Method PaymentMethod `json:"method"`
+    Amount  float64         `json:"amount"`
+    Methods []PaymentMethod `json:"methods"`
 }
 ```
 
@@ -273,9 +274,9 @@ type Payment struct {
 // schema.go (//go:build jsonschema)
 var _ = jsonschema.NewJSONSchemaMethod(
     Payment.Schema,
-    jsonschema.WithInterface(Payment{}.Method),
-    jsonschema.WithInterfaceImpls(Payment{}.Method, CreditCard{}, BankTransfer{}),
-    jsonschema.WithDiscriminator(Payment{}.Method, "!kind"), // optional; default "!type"
+    jsonschema.WithInterface(Payment{}.Methods),
+    jsonschema.WithInterfaceImpls(Payment{}.Methods, CreditCard{}, BankTransfer{}),
+    jsonschema.WithDiscriminator(Payment{}.Methods, "!kind"), // optional; default "!type"
 )
 ```
 
@@ -286,8 +287,8 @@ per-field options above in the same package:
 var _ = jsonschema.NewInterfaceImpl[PaymentMethod](CreditCard{}, BankTransfer{})
 ```
 
-Note: arrays of interface types (`[]PaymentMethod`) are not supported — use a
-single interface field.
+Only direct one-dimensional slices are supported. Fixed arrays, nested slices,
+named slice containers, `Optional[[]I]`, and `Nullable[[]I]` fail generation.
 
 ## 🛡️ Validation
 
@@ -407,7 +408,8 @@ prompting), use `ObjectSchema` and add fields with `AddProperty` /
 
 - No map types, channels, functions, or inline interfaces
 - No circular/recursive type references (detected and rejected)
-- No arrays of interface types (use a single interface field)
+- Registered interfaces support scalar fields and direct `[]I` fields, but not
+  fixed arrays, nested/named slices, or Optional/Nullable interface slices
 - External package types unsupported, except `time.Time` (rendered as a string
   with RFC3339 guidance)
 - Max nesting depth: 100

@@ -202,7 +202,6 @@ func TestBasic(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		tc := tc
 		t.Run(tc.testName, func(t *testing.T) {
 			t.Parallel()
 			CodegenTest(tc)

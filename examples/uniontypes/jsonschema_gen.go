@@ -94,20 +94,35 @@ func (Payment) Schema() json.RawMessage {
 
 // UnmarshalJSON is a generated custom json.Unmarshaler implementation for
 // Drawing.
-func (d *Drawing) UnmarshalJSON(b []byte) (err error) {
+func (d *Drawing) UnmarshalJSON(data []byte) (err error) {
 	type Alias Drawing
 	type Wrapper struct {
 		Alias
-		MainShape json.RawMessage `json:"mainShape,omitempty"`
+		Shapes json.RawMessage `json:"shapes"`
 	}
 	var wrapper Wrapper
-	if err = json.Unmarshal(b, &wrapper); err != nil {
+	if err = json.Unmarshal(data, &wrapper); err != nil {
 		return err
 	}
 	__next := Drawing(wrapper.Alias)
 
-	if __next.MainShape, err = __jsonUnmarshal__uniontypes__Shape(wrapper.MainShape); err != nil {
-		return err
+	if len(wrapper.Shapes) == 0 {
+		__next.Shapes = d.Shapes
+	} else {
+		var __raw0 []json.RawMessage
+		if err = json.Unmarshal(wrapper.Shapes, &__raw0); err != nil {
+			return fmt.Errorf("field shapes: %w", err)
+		}
+		var __decoded0 []Shape
+		if __raw0 != nil {
+			__decoded0 = make([]Shape, len(__raw0))
+		}
+		for __index, __raw := range __raw0 {
+			if __decoded0[__index], err = __jsonUnmarshal__uniontypes__Shape(__raw); err != nil {
+				return fmt.Errorf("field shapes[%d]: %w", __index, err)
+			}
+		}
+		__next.Shapes = __decoded0
 	}
 
 	*d = __next
@@ -116,14 +131,14 @@ func (d *Drawing) UnmarshalJSON(b []byte) (err error) {
 
 // UnmarshalJSON is a generated custom json.Unmarshaler implementation for
 // Payment.
-func (p *Payment) UnmarshalJSON(b []byte) (err error) {
+func (p *Payment) UnmarshalJSON(data []byte) (err error) {
 	type Alias Payment
 	type Wrapper struct {
 		Alias
 		Method json.RawMessage `json:"method"`
 	}
 	var wrapper Wrapper
-	if err = json.Unmarshal(b, &wrapper); err != nil {
+	if err = json.Unmarshal(data, &wrapper); err != nil {
 		return err
 	}
 	__next := Payment(wrapper.Alias)

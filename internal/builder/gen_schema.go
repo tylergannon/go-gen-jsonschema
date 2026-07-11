@@ -29,6 +29,7 @@ var schemasTemplate string
 
 const maxNestingDepth = 100 // This is not the JSON Schema nesting depth but recursion depth...
 const defaultSubdir = "jsonschema"
+const unsupportedRegisteredInterfaceContainer = "arrays/slices of registered interfaces are not yet supported"
 
 func New(pkg *decorator.Package) (SchemaBuilder, error) {
 	data, err := syntax.LoadPackage(pkg)
@@ -728,6 +729,9 @@ func (s SchemaBuilder) renderSchema(t syntax.TypeExpr, description string, seen 
 		if schema.Items, err = s.renderSchema(t.Derive(node.Elt), "", seen); err != nil {
 			return nil, err
 		}
+		if _, isUnion := schema.Items.(UnionTypeNode); isUnion {
+			return nil, fmt.Errorf("%s at %s", unsupportedRegisteredInterfaceContainer, t.Position())
+		}
 		return schema, nil
 	case *dst.MapType, *dst.ChanType:
 		return nil, fmt.Errorf("mapType/chanType not allowed %s at %s", t.Name(), t.Position())
@@ -857,6 +861,7 @@ func sortedCustomTypeNames(customTypes map[string][]InterfaceProp) []string {
 func (s *SchemaBuilder) RenderGoCode() (err error) {
 	importMap := s.imports()
 	s.Imports = importMap.ImportStatements()
+	generatedInterfaceHelpers := make(map[string]bool)
 
 	// for _, poop := range s.SchemaMethods() {
 	// 	t := s.Scan.LocalNamedTypes[poop.Receiver.TypeName]
@@ -887,13 +892,21 @@ func (s *SchemaBuilder) RenderGoCode() (err error) {
 	// }
 
 	for _, n := range sortedCustomTypeNames(s.customTypes) {
-		itsProps := s.customTypes[n]
+		itsProps := slices.Clone(s.customTypes[n])
+		for i := range itsProps {
+			ifacePkg := itsProps[i].Interface.TypeSpec.Pkg()
+			itsProps[i].InterfaceTypeNameWithPrefix = importMap.PrefixExpr(itsProps[i].Interface.TypeSpec.Name(), ifacePkg)
+		}
 		s.SpecialTypes = append(s.SpecialTypes, CustomMarshaledType{
 			Name:           n,
 			InterfaceProps: itsProps,
 			Initial:        strings.ToLower(n[0:1]),
 		})
 		for _, ifaceProp := range itsProps {
+			if generatedInterfaceHelpers[ifaceProp.UnmarshalerFunc()] {
+				continue
+			}
+			generatedInterfaceHelpers[ifaceProp.UnmarshalerFunc()] = true
 			var (
 				discriminators = map[string]bool{}
 				ifacePkg       = ifaceProp.Interface.TypeSpec.Pkg()
@@ -942,7 +955,7 @@ func (s *SchemaBuilder) RenderGoCode() (err error) {
 	if err != nil {
 		return err
 	}
-	err = os.WriteFile(filepath.Join("jsonschema_gen.go"), result, 0644)
+	err = os.WriteFile(filepath.Join(s.Scan.Pkg.Dir, "jsonschema_gen.go"), result, 0644)
 	if err != nil {
 		return err
 	}
@@ -1064,6 +1077,10 @@ func (s SchemaBuilder) renderStructField(owner syntax.StructType, f syntax.Struc
 	if wrapper != syntax.WrapperNone {
 		renderType = inner
 	}
+	interfaceField, err := s.resolveRegisteredInterfaceField(owner, f)
+	if err != nil {
+		return nil, err
+	}
 	// Prefer centralized tag parsing
 	if f.Field.Tag != nil && f.Field.Tag.Value != "" {
 		if tag := common.ParseJSONSchemaTag(f.Field.Tag.Value); tag.HasRef {
@@ -1148,32 +1165,19 @@ func (s SchemaBuilder) renderStructField(owner syntax.StructType, f syntax.Struc
 				break
 			}
 		}
-		// Interfaces v1
-		if cfgs, okV1 := s.IfaceV1[owner.Name()]; okV1 {
-			for _, goField := range f.Field.Names {
-				if cfg, ok2 := cfgs[goField.Name]; ok2 {
-					var union = UnionTypeNode{DiscriminatorPropName: cfg.Disc, TypeID_: f.ID()}
-					for _, impl := range cfg.Impls {
-						if err = s.mapType(impl, seen); err != nil {
-							return nil, fmt.Errorf("rendering interface impl: %w", err)
-						}
-						implSchema, ok := s.GetSchema(impl)
-						if !ok {
-							return nil, fmt.Errorf("type %s is not a known schema", impl)
-						}
-						obj, ok2b := implSchema.(ObjectNode)
-						if !ok2b {
-							return nil, fmt.Errorf("expected %s to be an object-type schema", impl.TypeName)
-						}
-						obj2 := obj
-						obj2.Discriminator = impl.TypeName
-						union.Options = append(union.Options, obj2)
-					}
-					schema = union
-					specialSource = "registered interfaces"
-					break
-				}
+		// Registered interfaces, including the one supported container shape:
+		// a direct one-dimensional slice of the registered interface.
+		if interfaceField != nil {
+			union, unionErr := s.renderRegisteredInterfaceUnion(*interfaceField, f, seen)
+			if unionErr != nil {
+				return nil, unionErr
 			}
+			if interfaceField.Repeated {
+				schema = ArrayNode{Desc: f.Comments(), Items: union, TypeID_: f.ID()}
+			} else {
+				schema = union
+			}
+			specialSource = "registered interfaces"
 		}
 		// Providers
 		if schema == nil {
@@ -1244,12 +1248,213 @@ func nullableProperty[T ~int | ~string | ~bool | float32 | float64](value Proper
 	return value, nil
 }
 
-type InterfaceProp struct {
-	Field         syntax.StructField
+type registeredInterfaceField struct {
 	Interface     syntax.IfaceImplementations
 	DiscPropName  string
 	FuncNameAlias string
 	Optional      bool
+	Repeated      bool
+	V1            bool
+}
+
+func directInterfaceFieldType(expr dst.Expr) (ident *dst.Ident, repeated, ok bool) {
+	switch value := expr.(type) {
+	case *dst.Ident:
+		return value, false, true
+	case *dst.ArrayType:
+		if value.Len != nil {
+			return nil, false, false
+		}
+		ident, ok = value.Elt.(*dst.Ident)
+		return ident, true, ok
+	default:
+		return nil, false, false
+	}
+}
+
+func containsArrayType(expr dst.Expr) bool {
+	found := false
+	dst.Inspect(expr, func(node dst.Node) bool {
+		if _, ok := node.(*dst.ArrayType); ok {
+			found = true
+			return false
+		}
+		return !found
+	})
+	return found
+}
+
+func (s SchemaBuilder) resolveNamedType(ident *dst.Ident, localPkg *decorator.Package) (syntax.TypeSpec, bool) {
+	pkgPath := ident.Path
+	if pkgPath == "" {
+		pkgPath = localPkg.PkgPath
+	}
+	scan, ok := s.Scan.GetPackage(pkgPath)
+	if !ok {
+		return syntax.TypeSpec{}, false
+	}
+	typeSpec, ok := scan.LocalNamedTypes[ident.Name]
+	return typeSpec, ok
+}
+
+func (s SchemaBuilder) registeredInterfaceInExpr(expr dst.Expr, localPkg *decorator.Package) (string, bool) {
+	var interfaceName string
+	dst.Inspect(expr, func(node dst.Node) bool {
+		ident, ok := node.(*dst.Ident)
+		if !ok {
+			return true
+		}
+		if _, ok := s.findInterfaceImpl(ident, localPkg); ok {
+			interfaceName = ident.Name
+			return false
+		}
+		return true
+	})
+	return interfaceName, interfaceName != ""
+}
+
+func (s SchemaBuilder) resolveRegisteredInterfaceField(owner syntax.StructType, prop syntax.StructField) (*registeredInterfaceField, error) {
+	fieldType := prop.Field.Type
+	wrapper, inner, err := prop.Wrapper()
+	if err != nil {
+		return nil, err
+	}
+	if wrapper != syntax.WrapperNone {
+		fieldType = inner
+	}
+
+	var (
+		v1Cfg struct {
+			Impls []syntax.TypeID
+			Disc  string
+		}
+		v1GoField    string
+		v1Configured bool
+	)
+	if cfgs, ok := s.IfaceV1[owner.Name()]; ok {
+		for _, goField := range prop.Field.Names {
+			if cfg, configured := cfgs[goField.Name]; configured {
+				v1Cfg = cfg
+				v1GoField = goField.Name
+				v1Configured = true
+				break
+			}
+		}
+	}
+
+	ident, repeated, direct := directInterfaceFieldType(fieldType)
+	if v1Configured {
+		if !direct {
+			if containsArrayType(fieldType) {
+				return nil, fmt.Errorf("field %s.%s: %s at %s", owner.Name(), v1GoField, unsupportedRegisteredInterfaceContainer, prop.Position())
+			}
+			return nil, fmt.Errorf("registered interface field %s.%s must have a direct named interface type at %s", owner.Name(), v1GoField, prop.Position())
+		}
+		if repeated && wrapper != syntax.WrapperNone {
+			return nil, fmt.Errorf("field %s.%s: %s at %s", owner.Name(), v1GoField, unsupportedRegisteredInterfaceContainer, prop.Position())
+		}
+		typeSpec, ok := s.resolveNamedType(ident, s.Scan.Pkg)
+		if !ok {
+			return nil, fmt.Errorf("could not resolve interface type %s", ident.Name)
+		}
+		switch typeSpec.Type().Expr().(type) {
+		case *dst.ArrayType:
+			return nil, fmt.Errorf("field %s.%s through named type %s: %s at %s", owner.Name(), v1GoField, ident.Name, unsupportedRegisteredInterfaceContainer, prop.Position())
+		case *dst.InterfaceType:
+		default:
+			return nil, fmt.Errorf("registered interface field %s.%s resolves to non-interface type %s at %s", owner.Name(), v1GoField, ident.Name, prop.Position())
+		}
+		if wrapper == syntax.WrapperNullable {
+			return nil, fmt.Errorf("%s does not support registered interfaces at %s", wrapper, prop.Position())
+		}
+		funcAlias := fmt.Sprintf("__jsonUnmarshal__%s__%s__%s__%s", typeSpec.Pkg().Name, typeSpec.Name(), owner.Name(), v1GoField)
+		return &registeredInterfaceField{
+			Interface:     syntax.IfaceImplementations{TypeSpec: typeSpec, Impls: v1Cfg.Impls},
+			DiscPropName:  v1Cfg.Disc,
+			FuncNameAlias: funcAlias,
+			Optional:      wrapper == syntax.WrapperOptional,
+			Repeated:      repeated,
+			V1:            true,
+		}, nil
+	}
+
+	if direct {
+		if iface, ok := s.findInterfaceImpl(ident, s.Scan.Pkg); ok {
+			if repeated && wrapper != syntax.WrapperNone {
+				return nil, fmt.Errorf("%s at %s", unsupportedRegisteredInterfaceContainer, prop.Position())
+			}
+			if wrapper == syntax.WrapperNullable {
+				return nil, fmt.Errorf("%s does not support registered interfaces at %s", wrapper, prop.Position())
+			}
+			return &registeredInterfaceField{
+				Interface: iface,
+				Optional:  wrapper == syntax.WrapperOptional,
+				Repeated:  repeated,
+			}, nil
+		}
+	}
+
+	if interfaceName, found := s.registeredInterfaceInExpr(fieldType, s.Scan.Pkg); found {
+		if containsArrayType(fieldType) {
+			return nil, fmt.Errorf("%s for interface %s at %s", unsupportedRegisteredInterfaceContainer, interfaceName, prop.Position())
+		}
+		return nil, fmt.Errorf("found registered interface type %s in an unsupported location at %s", interfaceName, prop.Position())
+	}
+	if ident, ok := fieldType.(*dst.Ident); ok {
+		if typeSpec, found := s.resolveNamedType(ident, s.Scan.Pkg); found {
+			if underlying, isArray := typeSpec.Type().Expr().(*dst.ArrayType); isArray {
+				if interfaceName, containsInterface := s.registeredInterfaceInExpr(underlying, typeSpec.Pkg()); containsInterface {
+					return nil, fmt.Errorf("%s for interface %s through named type %s at %s", unsupportedRegisteredInterfaceContainer, interfaceName, ident.Name, prop.Position())
+				}
+			}
+		}
+	}
+	return nil, nil
+}
+
+func (s SchemaBuilder) renderRegisteredInterfaceUnion(field registeredInterfaceField, prop syntax.StructField, seen syntax.SeenTypes) (UnionTypeNode, error) {
+	if !field.V1 {
+		if err := s.mapType(field.Interface.TypeSpec.ID(), seen); err != nil {
+			return UnionTypeNode{}, fmt.Errorf("rendering interface: %w", err)
+		}
+		schema, ok := s.GetSchema(field.Interface.TypeSpec.ID())
+		if !ok {
+			return UnionTypeNode{}, fmt.Errorf("interface %s is not a known schema", field.Interface.TypeSpec.Name())
+		}
+		union, ok := schema.(UnionTypeNode)
+		if !ok {
+			return UnionTypeNode{}, fmt.Errorf("expected %s to be a union-type schema", field.Interface.TypeSpec.Name())
+		}
+		return union, nil
+	}
+
+	union := UnionTypeNode{DiscriminatorPropName: field.DiscPropName, TypeID_: prop.ID()}
+	for _, impl := range field.Interface.Impls {
+		if err := s.mapType(impl, seen); err != nil {
+			return UnionTypeNode{}, fmt.Errorf("rendering interface impl: %w", err)
+		}
+		implSchema, ok := s.GetSchema(impl)
+		if !ok {
+			return UnionTypeNode{}, fmt.Errorf("type %s is not a known schema", impl)
+		}
+		obj, ok := implSchema.(ObjectNode)
+		if !ok {
+			return UnionTypeNode{}, fmt.Errorf("expected %s to be an object-type schema", impl.TypeName)
+		}
+		obj.Discriminator = impl.TypeName
+		union.Options = append(union.Options, obj)
+	}
+	return union, nil
+}
+
+type InterfaceProp struct {
+	Field                       syntax.StructField
+	Interface                   syntax.IfaceImplementations
+	DiscPropName                string
+	FuncNameAlias               string
+	InterfaceTypeNameWithPrefix string
+	Optional                    bool
+	Repeated                    bool
 }
 
 func (s InterfaceProp) UnmarshalerFunc() string {
@@ -1274,12 +1479,17 @@ func (i InterfaceProp) StructTag() string {
 	return i.Field.Field.Tag.Value
 }
 
-// resolveLocalInterfaceProps finds registered interface properties anywhere in the
-// given struct field, as long as the struct type is from the local package.
-// If the interface field is the very type of one of the struct's types (or of
-// one of its embedded structs), it will be returned.
-// If there are any registered interface types that are embedded deeper in the
-// type expressions, they are considered illegal and will result in an error.
+func (i InterfaceProp) JSONName() string {
+	names := i.Field.PropNames()
+	if len(names) == 0 {
+		return i.FieldNames()
+	}
+	return names[0]
+}
+
+// resolveLocalInterfaceProps finds supported registered-interface properties on
+// local structs. A direct interface and a direct []interface are supported;
+// registered interfaces nested in any other container shape are rejected.
 //
 // Valid:
 // ```
@@ -1297,7 +1507,7 @@ func (i InterfaceProp) StructTag() string {
 //	MyInterface interface{}
 //	struct Foo {
 //	  Bar (MyInterface) `json:"bar"`
-//	  Baz []MyInterface `json:"baz"`
+//	  Baz [][]MyInterface `json:"baz"`
 //	  Bap struct { // Inline structs are permissible, but they cannot contain interfaces.
 //	    Rap MyInterface `json:"rap"`
 //	  }
@@ -1313,92 +1523,34 @@ func (s SchemaBuilder) resolveLocalInterfaceProps(t syntax.StructType, seenProps
 		if prop.Embedded() {
 			continue
 		}
-		fieldType := prop.Field.Type
-		wrapper, inner, wrapperErr := prop.Wrapper()
-		if wrapperErr != nil {
-			return nil, wrapperErr
+		unseen := false
+		for _, name := range prop.PropNames() {
+			if !seenProps.Seen(name) {
+				unseen = true
+			}
+			seenProps = seenProps.See(name)
 		}
-		if wrapper != syntax.WrapperNone {
-			fieldType = inner
-		}
-		if ident, ok := fieldType.(*dst.Ident); ok {
-			ok = false
-			for _, name := range prop.PropNames() {
-				if !seenProps.Seen(name) {
-					ok = true
-				}
-				seenProps = seenProps.See(name)
-			}
-			if !ok {
-				continue
-			}
-			// Prefer v1 interface options if present for this receiver field
-			if cfgs, okMap := s.IfaceV1[t.Name()]; okMap {
-				var handled bool
-				for _, goField := range prop.Field.Names {
-					if cfg, ok2 := cfgs[goField.Name]; ok2 {
-						if wrapper == syntax.WrapperNullable {
-							return nil, fmt.Errorf("%s does not support registered interfaces at %s", wrapper, prop.Position())
-						}
-						// Resolve interface TypeSpec for ident
-						pkgPath := ident.Path
-						if pkgPath == "" {
-							pkgPath = s.Scan.Pkg.PkgPath
-						}
-						scanRes, okp := s.Scan.GetPackage(pkgPath)
-						if !okp {
-							return nil, fmt.Errorf("could not find package for interface %s", ident.Name)
-						}
-						ts, okts := scanRes.LocalNamedTypes[ident.Name]
-						if !okts {
-							return nil, fmt.Errorf("could not resolve interface type %s", ident.Name)
-						}
-						iface := syntax.IfaceImplementations{TypeSpec: ts, Impls: cfg.Impls}
-						if len(prop.Field.Names) != 1 {
-							return nil, fmt.Errorf("interface prop %s has more than one field name at %s", strings.Join(prop.PropNames(), ","), prop.Position())
-						}
-						funcAlias := fmt.Sprintf("__jsonUnmarshal__%s__%s__%s__%s", ts.Pkg().Name, ts.Name(), t.Name(), goField.Name)
-						props = append(props, InterfaceProp{Field: prop, Interface: iface, DiscPropName: cfg.Disc, FuncNameAlias: funcAlias, Optional: wrapper == syntax.WrapperOptional})
-						handled = true
-						break
-					}
-				}
-				if handled {
-					continue
-				}
-			}
-			// Legacy interface resolution
-
-			iface, ok := s.findInterfaceImpl(ident, s.Scan.Pkg)
-			if !ok {
-				continue
-			}
-			if wrapper == syntax.WrapperNullable {
-				return nil, fmt.Errorf("%s does not support registered interfaces at %s", wrapper, prop.Position())
-			}
-			if len(prop.Field.Names) != 1 {
-				return nil, fmt.Errorf("interface prop %s has more than one field name at %s", strings.Join(prop.PropNames(), ","), prop.Position())
-			}
-			props = append(props, InterfaceProp{
-				Field:     prop,
-				Interface: iface,
-				Optional:  wrapper == syntax.WrapperOptional,
-			})
+		if !unseen {
 			continue
 		}
-		dst.Inspect(prop.Field.Type, func(node dst.Node) bool {
-			if ident, ok := node.(*dst.Ident); !ok {
-				return true
-			} else if _, ok = s.findInterfaceImpl(ident, s.Scan.Pkg); ok {
-				pos := prop.Derive(ident).Position()
-				err = fmt.Errorf("found registered interface type %s in an unsupported location at %s", ident.Name, pos)
-				return false
-			}
-			return true
-		})
-		if err != nil {
-			return nil, err
+		field, fieldErr := s.resolveRegisteredInterfaceField(t, prop)
+		if fieldErr != nil {
+			return nil, fieldErr
 		}
+		if field == nil {
+			continue
+		}
+		if len(prop.Field.Names) != 1 {
+			return nil, fmt.Errorf("interface prop %s has more than one field name at %s", strings.Join(prop.PropNames(), ","), prop.Position())
+		}
+		props = append(props, InterfaceProp{
+			Field:         prop,
+			Interface:     field.Interface,
+			DiscPropName:  field.DiscPropName,
+			FuncNameAlias: field.FuncNameAlias,
+			Optional:      field.Optional,
+			Repeated:      field.Repeated,
+		})
 	}
 	for _, prop := range t.Fields() {
 		if !prop.Embedded() {

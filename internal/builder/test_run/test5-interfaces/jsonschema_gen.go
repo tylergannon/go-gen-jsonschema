@@ -31,20 +31,40 @@ func (FancyStruct) Schema() json.RawMessage {
 
 // UnmarshalJSON is a generated custom json.Unmarshaler implementation for
 // FancyStruct.
-func (f *FancyStruct) UnmarshalJSON(b []byte) (err error) {
+func (f *FancyStruct) UnmarshalJSON(data []byte) (err error) {
 	type Alias FancyStruct
 	type Wrapper struct {
 		Alias
-		IFace json.RawMessage `json:"iface"`
+		IFace  json.RawMessage `json:"iface"`
+		IFaces json.RawMessage `json:"ifaces"`
 	}
 	var wrapper Wrapper
-	if err = json.Unmarshal(b, &wrapper); err != nil {
+	if err = json.Unmarshal(data, &wrapper); err != nil {
 		return err
 	}
 	__next := FancyStruct(wrapper.Alias)
 
 	if __next.IFace, err = __jsonUnmarshal__interfaces__TestInterface(wrapper.IFace); err != nil {
 		return err
+	}
+
+	if len(wrapper.IFaces) == 0 {
+		__next.IFaces = f.IFaces
+	} else {
+		var __raw1 []json.RawMessage
+		if err = json.Unmarshal(wrapper.IFaces, &__raw1); err != nil {
+			return fmt.Errorf("field ifaces: %w", err)
+		}
+		var __decoded1 []TestInterface
+		if __raw1 != nil {
+			__decoded1 = make([]TestInterface, len(__raw1))
+		}
+		for __index, __raw := range __raw1 {
+			if __decoded1[__index], err = __jsonUnmarshal__interfaces__TestInterface(__raw); err != nil {
+				return fmt.Errorf("field ifaces[%d]: %w", __index, err)
+			}
+		}
+		__next.IFaces = __decoded1
 	}
 
 	*f = __next
