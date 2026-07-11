@@ -101,7 +101,11 @@ interface slice behavior is complete, correct, legible, and concise.
 - Branch: `codex/update-llms-website` in the isolated task worktree.
 - shipping_request: user requested PR creation, auto-merge, merge follow-through,
   and task-worktree cleanup.
-- PR and merge state: pending shipping workflow.
+- Initial commit `44a4f34` pushed to `origin/codex/update-llms-website` after
+  pre-commit lint and pre-push repository tests passed.
+- PR: https://github.com/tylergannon/go-gen-jsonschema/pull/44
+- PR and merge state: open; squash auto-merge will be enabled after this worklog
+  update reaches the branch.
 - Remaining source debt: `docs/spec/v1.md` itself is still a historical draft;
   the website now labels and routes it accurately rather than presenting it as
   the complete released contract.
