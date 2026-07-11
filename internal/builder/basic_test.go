@@ -56,6 +56,12 @@ func TestBasic(t *testing.T) {
 		}
 		CmdSuccessAssertions(t, stdout, stderr, exitCode)
 
+		generatedPath := filepath.Join(tempDir, "jsonschema_gen.go")
+		generated, err := os.ReadFile(generatedPath)
+		require.NoError(t, err)
+		require.True(t, strings.HasPrefix(string(generated), "//go:build !jsonschema\n\n"))
+		require.NotContains(t, string(generated), "// +build")
+
 		for _, fname := range tc.files {
 			fpath := filepath.Clean(filepath.Join(tempDir, fname))
 			info, err := os.Stat(fpath)
