@@ -1,13 +1,15 @@
 ---
-title: v1 specification
-description: The behavioral contract implemented by go-gen-jsonschema.
+title: Specification and behavior
+description: Find the current released behavior and the original v1 design contract.
 ---
 
-The [canonical v1 specification](https://github.com/tylergannon/go-gen-jsonschema/blob/main/docs/spec/v1.md)
-defines the generator's syntax scanner, schema rendering, registration, and
-generated-code contracts.
+The [draft v1 specification](https://github.com/tylergannon/go-gen-jsonschema/blob/main/docs/spec/v1.md)
+records the original syntax-scanner, schema-rendering, registration, and
+generated-code design. It predates `Optional[T]`, `Nullable[T]`, and direct
+slices of registered interfaces, so it is not a complete reference for the
+current release.
 
-For day-to-day use, start with these task-focused pages:
+Use these pages and their linked compiling examples for current behavior:
 
 - [Getting started](/getting-started/) for installation and the two build-tagged files.
 - [Optional and nullable](/features/optionality/) for required, omitted, and null properties.
@@ -15,5 +17,6 @@ For day-to-day use, start with these task-focused pages:
 - [Provider schemas](/features/providers/) for runtime schema customization.
 - [Validation and CI](/guides/validation-ci/) for JSON validation and drift checks.
 
-Use the canonical specification when changing generator behavior or checking a
-subtle implementation guarantee.
+Use the draft specification as design background when changing the generator,
+then verify the current source, examples, generated output, and tests before
+relying on a subtle implementation guarantee.

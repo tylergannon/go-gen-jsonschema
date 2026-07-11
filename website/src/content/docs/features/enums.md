@@ -28,9 +28,11 @@ var _ = jsonschema.NewJSONSchemaMethod(
 
 ## Integer and iota constants
 
-Use `WithStringerEnum` when an integer-backed enum should appear as meaningful
-strings. The schema emits constant names such as `LogDebug` and `LogInfo`, not
-raw integers or the return values of `String()`.
+Choose the wire representation for an integer-backed enum:
+
+- `WithEnum` emits raw numeric constant values.
+- `WithStringerEnum` emits constant names such as `LogDebug` and `LogInfo` as
+  strings. It does not emit the return values of `String()`.
 
 ```go
 type LogLevel int
@@ -50,6 +52,9 @@ var _ = jsonschema.NewJSONSchemaMethod(
     jsonschema.WithStringerEnum(Config{}.LogLevel),
 )
 ```
+
+Use `jsonschema.WithEnum(Config{}.LogLevel)` instead when the JSON contract
+should contain numeric values.
 
 The older package-level `NewEnumType[T]()` registration remains supported for
 string enums, but field-level options make the containing schema's behavior
