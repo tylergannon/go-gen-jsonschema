@@ -14,9 +14,10 @@ npx skills add tylergannon/go-gen-jsonschema
 The skill gives Codex, Claude Code, and other compatible agents the complete
 setup, registration, validation, and CI workflow.
 
-## 1. Pin the generator
+## 1. Add the pinned generator
 
-Go 1.24 and newer can pin tools directly in `go.mod`:
+The recommended installation uses Go's tool directive. It pins the generator in
+`go.mod`, so developers and CI run the same version:
 
 ```bash
 go get -tool github.com/tylergannon/go-gen-jsonschema/gen-jsonschema@latest
@@ -68,7 +69,7 @@ the same methods together.
 
 ```go
 schema := Person{}.Schema()
-if err := Person{}.ValidateJSON(llmOutput); err != nil {
+if err := (Person{}).ValidateJSON(llmOutput); err != nil {
     return err
 }
 ```
@@ -79,6 +80,12 @@ including `.json.sum` files.
 <Aside type="tip" title="Keep schemas current">
   Add `JSONSCHEMA_NO_CHANGES=1 go generate ./...` to CI. It fails without writing
   when committed schemas no longer match their Go types.
+</Aside>
+
+<Aside type="caution" title="Optionality comes from the field type">
+  `omitempty` affects Go marshaling but does not make a generated schema property
+  optional. Use `jsonschema.Optional[T]` with `json:",omitzero"` when a property
+  may be absent.
 </Aside>
 
 Next, choose the field semantics you need in [Optional and nullable](/features/optionality/),

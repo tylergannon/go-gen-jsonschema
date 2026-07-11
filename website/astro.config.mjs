@@ -55,7 +55,7 @@ export default defineConfig({
 						label: 'Reference',
 						items: [
 							{ label: 'Go API', link: '/api/' },
-							{ label: 'v1 specification', link: '/spec/' },
+							{ label: 'Specification', link: '/spec/' },
 						],
 					},
 				],
