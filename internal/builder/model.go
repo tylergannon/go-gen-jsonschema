@@ -3,6 +3,7 @@ package builder
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -89,6 +90,14 @@ type (
 	TemplateHoleNode struct {
 		Name string
 	}
+
+	// RootSchema wraps a root schema with a "$defs" map, splicing "$defs" in
+	// as the leading key so the rest of the root's deterministic key
+	// ordering is left untouched.
+	RootSchema struct {
+		Root JSONSchema
+		Defs map[string]JSONSchema
+	}
 )
 
 // MarshalJSON implements JSONSchema.
@@ -114,6 +123,47 @@ func (t TemplateHoleNode) MarshalJSON() ([]byte, error) {
 
 func (t TemplateHoleNode) TypeID() syntax.TypeID { return syntax.TypeID{} }
 func (t TemplateHoleNode) implementsJSONSchema() {}
+
+// MarshalJSON splices a "$defs" object in as the first key of the root
+// schema's own marshaled output, preserving the root's existing key order.
+func (r RootSchema) MarshalJSON() ([]byte, error) {
+	rootBytes, err := r.Root.MarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	if len(rootBytes) < 2 || rootBytes[0] != '{' {
+		return nil, fmt.Errorf("RootSchema: root schema must marshal to a JSON object")
+	}
+
+	names := make([]string, 0, len(r.Defs))
+	for name := range r.Defs {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
+	var sb strings.Builder
+	sb.WriteString(`{"$defs":{`)
+	for i, name := range names {
+		if i > 0 {
+			sb.WriteByte(',')
+		}
+		encodeString(&sb, name)
+		sb.WriteByte(':')
+		data, err := r.Defs[name].MarshalJSON()
+		if err != nil {
+			return nil, fmt.Errorf("$defs %q: %w", name, err)
+		}
+		sb.Write(data)
+	}
+	sb.WriteString("},")
+	sb.Write(rootBytes[1:])
+	return []byte(sb.String()), nil
+}
+
+func (r RootSchema) TypeID() syntax.TypeID { return r.Root.TypeID() }
+func (r RootSchema) implementsJSONSchema() {}
+
+var _ JSONSchema = RootSchema{}
 
 //---------------------------------------------------------------------
 // Ensure each node satisfies the schemaNode or JSONSchema interface

@@ -53,18 +53,28 @@ func New(pkg *decorator.Package) (SchemaBuilder, error) {
 		}),
 		RenderedTypes: []string{},
 		Rendered:      map[string]bool{},
+		RefTypes:      map[syntax.TypeID]bool{},
+		RefDefs:       map[string]refDef{},
 	}
 	// First, collect providers so they're available during mapping
 	var foundNewInterfaceOpts bool
-	collectOpts := func(recvName string, opts []syntax.SchemaMethodOptionInfo) {
+	collectOpts := func(recv syntax.TypeID, opts []syntax.SchemaMethodOptionInfo) {
 		if len(opts) == 0 {
 			return
 		}
+		recvName := recv.TypeName
 		for _, opt := range opts {
 			switch string(opt.Kind) {
 			case "WithRenderProviders":
 				builder.RenderedTypes = append(builder.RenderedTypes, recvName)
 				builder.Rendered[recvName] = true
+				continue
+			case "AsRef":
+				// recv already carries the receiver's actual resolved PkgPath
+				// (the scanner resolves foreign selector-expression receivers,
+				// e.g. otherpkg.Shared.Schema, to otherpkg's real import path),
+				// so distinct types sharing a bare name are kept distinct here.
+				builder.RefTypes[recv.Concrete()] = true
 				continue
 			case "WithInterface", "WithInterfaceImpls", "WithDiscriminator":
 				foundNewInterfaceOpts = true
@@ -82,10 +92,10 @@ func New(pkg *decorator.Package) (SchemaBuilder, error) {
 		}
 	}
 	for _, m := range data.SchemaMethods {
-		collectOpts(m.Receiver.TypeName, m.Options)
+		collectOpts(m.Receiver, m.Options)
 	}
 	for _, f := range data.SchemaFuncs {
-		collectOpts(f.Receiver.TypeName, f.Options)
+		collectOpts(f.Receiver, f.Options)
 	}
 	// Disallow mixing legacy NewInterfaceImpl with new interface options in same package
 	if foundNewInterfaceOpts && len(data.Interfaces) > 0 {
@@ -282,6 +292,71 @@ type SchemaBuilder struct {
 	// Types requesting rendered provider execution
 	RenderedTypes []string
 	Rendered      map[string]bool
+
+	// Types requesting AsRef(): rendered as "$ref" into "$defs" wherever referenced.
+	RefTypes map[syntax.TypeID]bool
+	// Collected $defs entries, keyed by definition name, populated as
+	// AsRef()'d types are rendered at their reference sites.
+	RefDefs map[string]refDef
+}
+
+// refDef pairs a $defs entry's schema with the TypeID it was generated from,
+// so a second distinct type wanting the same definition name is caught as a
+// collision rather than silently overwriting the first.
+type refDef struct {
+	TypeID syntax.TypeID
+	Schema JSONSchema
+}
+
+// registerRefDef records (or reuses) a "$defs" entry for an AsRef()'d type
+// and returns the RefNode that should be rendered in its place. A second,
+// distinct type wanting the same bare definition name is a hard error.
+func (s SchemaBuilder) registerRefDef(t syntax.TypeID, schema JSONSchema) (RefNode, error) {
+	concrete := t.Concrete()
+	name := concrete.TypeName
+	ref := RefNode{Ref: "#/$defs/" + name}
+	if existing, ok := s.RefDefs[name]; ok {
+		if existing.TypeID != concrete {
+			pos, _ := s.find(concrete)
+			return RefNode{}, fmt.Errorf("AsRef definition name collision: %q is used by both %s and %s (registered at %s)", name, existing.TypeID, concrete, pos)
+		}
+		return ref, nil
+	}
+	s.RefDefs[name] = refDef{TypeID: concrete, Schema: schema}
+	return ref, nil
+}
+
+// collectRefDefs walks a rendered schema tree and gathers every "$defs"
+// entry reachable from it (transitively, since a $defs entry may itself
+// reference another AsRef()'d type), keyed by bare definition name.
+func (s SchemaBuilder) collectRefDefs(schema JSONSchema, defs map[string]JSONSchema) {
+	switch node := schema.(type) {
+	case ObjectNode:
+		for _, prop := range node.Properties {
+			s.collectRefDefs(prop.Schema, defs)
+		}
+	case ArrayNode:
+		if node.Items != nil {
+			s.collectRefDefs(node.Items, defs)
+		}
+	case UnionTypeNode:
+		for _, opt := range node.Options {
+			s.collectRefDefs(opt, defs)
+		}
+	case NullableObjectNode:
+		s.collectRefDefs(node.Object, defs)
+	case RefNode:
+		name := strings.TrimPrefix(node.Ref, "#/$defs/")
+		if _, ok := defs[name]; ok {
+			return
+		}
+		def, ok := s.RefDefs[name]
+		if !ok {
+			return
+		}
+		defs[name] = def.Schema
+		s.collectRefDefs(def.Schema, defs)
+	}
 }
 
 func (s SchemaBuilder) HaveInterfaces() bool {
@@ -704,17 +779,20 @@ func (s SchemaBuilder) renderSchema(t syntax.TypeExpr, description string, seen 
 			if err := s.mapType(newType, seen.See(t.ID())); err != nil {
 				return nil, err
 			}
-			if schema, ok := s.GetSchema(newType); !ok {
+			schema, ok := s.GetSchema(newType)
+			if !ok {
 				panic("mapType apparently didn't map the type! " + newType.String())
+			}
+			if s.RefTypes[newType.Concrete()] {
+				return s.registerRefDef(newType, schema)
+			}
+			if description == "" {
+				return schema, nil
+			}
+			if _schemaNode, ok := schema.(schemaNode); !ok {
+				return schema, nil
 			} else {
-				if description == "" {
-					return schema, nil
-				}
-				if _schemaNode, ok := schema.(schemaNode); !ok {
-					return schema, nil
-				} else {
-					return _schemaNode.setDescription(description), nil
-				}
+				return _schemaNode.setDescription(description), nil
 			}
 		}
 	case *dst.StarExpr:
@@ -793,9 +871,15 @@ func (s SchemaBuilder) writeSchema(t syntax.TypeID, targetDir string, noChanges 
 		}
 	}()
 
-	var schema json.Marshaler
-	if schema, ok = s.GetSchema(t); !ok {
+	rootSchema, ok := s.GetSchema(t)
+	if !ok {
 		return false, fmt.Errorf("unknown type %s", t)
+	}
+	var schema json.Marshaler = rootSchema
+	defs := map[string]JSONSchema{}
+	s.collectRefDefs(rootSchema, defs)
+	if len(defs) > 0 {
+		schema = RootSchema{Root: rootSchema, Defs: defs}
 	}
 
 	hash := fnv.New64a()

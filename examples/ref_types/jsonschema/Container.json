@@ -1,0 +1,35 @@
+{
+  "$defs": {
+    "Shared": {
+      "type": "object",
+      "description": "Shared is registered with AsRef(). Wherever another registered schema references it, it appears as a \"$ref\" into that schema's \"$defs\" instead of being inlined.",
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "type": "object",
+  "description": "Container references Shared twice: once directly, once inside a slice. Both references collapse to the same \"$defs\" entry.",
+  "properties": {
+    "primary": {
+      "$ref": "#/$defs/Shared"
+    },
+    "others": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Shared"
+      }
+    }
+  },
+  "required": [
+    "primary",
+    "others"
+  ],
+  "additionalProperties": false
+}
