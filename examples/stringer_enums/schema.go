@@ -4,6 +4,7 @@ package stringer_enums
 
 import (
 	"encoding/json"
+
 	jsonschema "github.com/tylergannon/go-gen-jsonschema"
 )
 

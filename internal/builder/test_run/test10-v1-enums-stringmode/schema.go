@@ -4,6 +4,7 @@ package v1_enums_stringmode
 
 import (
 	"encoding/json"
+
 	jsonschema "github.com/tylergannon/go-gen-jsonschema"
 )
 

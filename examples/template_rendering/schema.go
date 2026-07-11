@@ -4,6 +4,7 @@ package template_rendering
 
 import (
 	"encoding/json"
+
 	jsonschema "github.com/tylergannon/go-gen-jsonschema"
 )
 

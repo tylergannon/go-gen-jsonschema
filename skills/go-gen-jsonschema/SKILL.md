@@ -167,15 +167,19 @@ structs, and pointers to structs.
 ## Beyond flat structs
 
 Enums (string consts and iota+Stringer), discriminated unions over interfaces,
-custom discriminators, free-function registration, and the full CLI/flag
-reference live in [references/registration-api.md](references/registration-api.md).
-Read it when a type uses enums, interfaces, or you need non-default generation
-flags.
+custom discriminators, free-function registration, shared `$ref`/`$defs` via
+`AsRef()`, and the full CLI/flag reference live in
+[references/registration-api.md](references/registration-api.md). Read it
+when a type uses enums, interfaces, or you need non-default generation flags.
+By default, a struct type referenced from multiple places is inlined at every
+call site; add `AsRef()` to its registration to render it once as a `"$ref"`
+into `"$defs"` instead.
 
-For concise, source-backed examples of optionality, enums, and interface
-discriminators, read [references/examples.md](references/examples.md). The
-snippets are generated from compiling examples in this repository and checked
-for drift by the Go test suite.
+For concise, source-backed examples of optionality, enums, interface
+discriminators, and shared `$defs`, read
+[references/examples.md](references/examples.md). The snippets are generated
+from compiling examples in this repository and checked for drift by the Go
+test suite.
 
 Known limitations (fail fast, don't fight them): no maps or recursive types;
 registered interfaces support scalar fields and direct one-dimensional `[]I`

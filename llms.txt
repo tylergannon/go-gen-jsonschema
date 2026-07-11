@@ -104,7 +104,8 @@ build mode.
 - Properties are emitted in Go struct field order.
 - `additionalProperties` is `false` for generated objects.
 - Type and field doc comments become `description` values.
-- Nested structs are inlined by default.
+- Nested structs are inlined by default, unless registered with `AsRef()`
+  (see "Shared definitions" below).
 - Ordinary fields and `Nullable[T]` fields are required.
 - Only `Optional[T]` removes a property from `required`.
 
@@ -295,6 +296,33 @@ per-field interface options in one package:
 var _ = jsonschema.NewInterfaceImpl[Event](Created{}, (*Deleted)(nil))
 ```
 
+## Shared definitions (`$ref`/`$defs`) via `AsRef`
+
+By default a type referenced from multiple places is inlined at every call
+site. Add the zero-arg `AsRef()` option to that type's own registration to
+render it once as `"$ref": "#/$defs/TypeName"` wherever another registered
+schema references it instead:
+
+```go
+type Shared struct {
+    Name string `json:"name"`
+}
+
+type Container struct {
+    Primary Shared   `json:"primary"`
+    Others  []Shared `json:"others"`
+}
+
+var _ = jsonschema.NewJSONSchemaMethod(Shared.Schema, jsonschema.AsRef())
+var _ = jsonschema.NewJSONSchemaMethod(Container.Schema)
+```
+
+`$defs` are assembled per generated JSON file, keyed by the type's bare name.
+Two distinct `AsRef()`-registered types reachable in one generation run that
+share a bare name are a hard, generation-time error. Recursive or
+self-referencing `AsRef()` types are rejected, the same as any other circular
+reference.
+
 ## Provider-rendered schemas
 
 Provider options replace selected field schemas at runtime:
@@ -337,6 +365,7 @@ must be preserved.
 | `WithStructAccessorMethod(field, method)` | Render with a receiver accessor. |
 | `WithStructFunctionMethod(field, method)` | Render with a receiver method that accepts the field value. |
 | `WithRenderProviders()` | Enable runtime provider rendering. |
+| `AsRef()` | Render this type as a `$ref` into `$defs` wherever another registered schema references it, instead of inlining it. |
 
 Registration markers are read from the build-tagged file by the generator and
 are no-ops at runtime.
@@ -421,3 +450,4 @@ Compiling examples:
 - Sealed interface slices: `examples/sealed_interface_slices`
 - Enums: `examples/enums`, `examples/stringer_enums`
 - Provider rendering: `examples/providers_rendering`
+- Shared `$ref`/`$defs` via `AsRef`: `examples/ref_types`

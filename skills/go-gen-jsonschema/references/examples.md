@@ -192,3 +192,35 @@ var _ = jsonschema.NewJSONSchemaMethod(
 	jsonschema.WithDiscriminator(Batch{}.Events, "!kind"),
 )
 ```
+
+## Shared $defs via AsRef
+
+Use AsRef() on a type's own registration when it's referenced from multiple places and should be rendered once as a "$ref" into "$defs" instead of being inlined at every reference site.
+
+Source: [`examples/ref_types/types.go`](../../../examples/ref_types/types.go)
+
+```go
+// Shared is registered with AsRef(). Wherever another registered schema
+// references it, it appears as a "$ref" into that schema's "$defs" instead
+// of being inlined.
+type Shared struct {
+	Name string `json:"name"`
+}
+
+// Container references Shared twice: once directly, once inside a slice.
+// Both references collapse to the same "$defs" entry.
+type Container struct {
+	Primary Shared   `json:"primary"`
+	Others  []Shared `json:"others"`
+}
+```
+
+Source: [`examples/ref_types/schema.go`](../../../examples/ref_types/schema.go)
+
+```go
+// Shared is registered as its own top-level schema and, via AsRef(), as a
+// definition referenced from other schemas instead of being inlined there.
+var _ = jsonschema.NewJSONSchemaMethod(Shared.Schema, jsonschema.AsRef())
+
+var _ = jsonschema.NewJSONSchemaMethod(Container.Schema)
+```

@@ -148,6 +148,14 @@ func (m MarkerFunctionCall) ParseTypesFromArgs() ([]TypeID, error) {
 func unwrapSchemaMethodReceiver(expr Expr) (TypeID, error) {
 	switch t := expr.Expr().(type) {
 	case *dst.Ident:
+		// The decorator collapses a package-qualified type identifier (e.g.
+		// dep.Shared used as a method-expression receiver) into a plain
+		// *dst.Ident with Path set to the resolved import path, rather than
+		// a *dst.SelectorExpr. Prefer that resolved path when present so
+		// foreign-package receivers aren't misattributed to this package.
+		if t.Path != "" {
+			return TypeID{PkgPath: t.Path, TypeName: t.Name}, nil
+		}
 		return TypeID{PkgPath: expr.Pkg().PkgPath, TypeName: t.Name}, nil
 	case *dst.SelectorExpr:
 		xIdent, ok := t.X.(*dst.Ident)
@@ -304,6 +312,11 @@ func parseSchemaMethodOptions(args []Expr, receiver TypeID, m MarkerFunctionCall
 		// Special-case zero-arg option WithRenderProviders()
 		if funID.TypeName == "WithRenderProviders" {
 			out = append(out, SchemaMethodOptionInfo{Kind: SchemaMethodOptionKind("WithRenderProviders")})
+			continue
+		}
+		// Special-case zero-arg option AsRef()
+		if funID.TypeName == "AsRef" {
+			out = append(out, SchemaMethodOptionInfo{Kind: SchemaMethodOptionKind("AsRef")})
 			continue
 		}
 		// WithDiscriminator(field, "name") has 2 args, second is string literal
