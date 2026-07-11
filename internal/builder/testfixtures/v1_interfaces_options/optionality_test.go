@@ -5,6 +5,22 @@ import (
 	"testing"
 )
 
+func TestInterfaceSliceDecode(t *testing.T) {
+	var got Owner
+	input := []byte(`{"if":{"!kind":"Impl1","x":"required"},"ifs":[{"!kind":"Impl1","x":"one"},{"!kind":"Impl2","y":2}]}`)
+	if err := json.Unmarshal(input, &got); err != nil {
+		t.Fatal(err)
+	}
+	if len(got.IFaces) != 2 {
+		t.Fatalf("interfaces = %#v, want two values", got.IFaces)
+	}
+	first, firstOK := got.IFaces[0].(Impl1)
+	second, secondOK := got.IFaces[1].(Impl2)
+	if !firstOK || first.X != "one" || !secondOK || second.Y != 2 {
+		t.Fatalf("interfaces = %#v", got.IFaces)
+	}
+}
+
 func TestOptionalInterfaceDecodeIsTransactional(t *testing.T) {
 	original := Owner{IF: Impl1{X: "original"}}
 	got := original

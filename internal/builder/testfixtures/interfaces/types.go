@@ -27,6 +27,8 @@ type FancyStruct struct {
 
 	// Something tells me this isn't going to make it into the document.
 	IFace TestInterface `json:"iface"`
+	// Every element is dispatched through the same registered interface union.
+	IFaces []TestInterface `json:"ifaces"`
 	// Here are the details.  Make sure you fill them out.
 	Details [](*struct {
 		Name      string `json:"-"`

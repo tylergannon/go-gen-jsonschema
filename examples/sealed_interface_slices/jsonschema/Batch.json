@@ -1,0 +1,53 @@
+{
+  "type": "object",
+  "description": "Batch is the desired supported shape: one direct, one-dimensional slice of a registered interface union on a named struct field.",
+  "properties": {
+    "events": {
+      "type": "array",
+      "items": {
+        "anyOf": [
+          {
+            "type": "object",
+            "description": "Created is a value implementation of Event.",
+            "properties": {
+              "!kind": {
+                "type": "string",
+                "const": "Created"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "!kind",
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "description": "Deleted is a pointer implementation of Event.",
+            "properties": {
+              "!kind": {
+                "type": "string",
+                "const": "Deleted"
+              },
+              "id": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "!kind",
+              "id"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    }
+  },
+  "required": [
+    "events"
+  ],
+  "additionalProperties": false
+}

@@ -1,5 +1,4 @@
 //go:build jsonschema
-// +build jsonschema
 
 package comments
 

@@ -307,9 +307,7 @@ var _ = jsonschema.NewJSONSchemaMethod(
 
 ### Example 4: Interface-Based Union Types
 
-Union types use a discriminator property (default `"!type"`) to identify which implementation to unmarshal. The generator also creates an `UnmarshalJSON` method on the containing struct to handle discriminated dispatch.
-
-**Note:** Arrays of interfaces (e.g., `[]PaymentMethod`) are not supported. Use a single interface field.
+Union types use a discriminator property (default `"!type"`) to identify which implementation to unmarshal. A direct one-dimensional interface slice becomes an array whose `items` is the union. The generator creates an `UnmarshalJSON` method on the containing struct to dispatch scalar values or every slice element.
 
 ```go
 // types.go
@@ -335,9 +333,9 @@ type BankTransfer struct {
 func (BankTransfer) IsPaymentMethod() {}
 
 type Payment struct {
-    ID     string        `json:"id"`
-    Amount int64         `json:"amount"`
-    Method PaymentMethod `json:"method"`
+    ID      string          `json:"id"`
+    Amount  int64           `json:"amount"`
+    Methods []PaymentMethod `json:"methods"`
 }
 ```
 
@@ -378,20 +376,22 @@ var (
 // Instead of NewInterfaceImpl, you can configure per-field:
 var _ = jsonschema.NewJSONSchemaMethod(
     Payment.Schema,
-    jsonschema.WithInterface(Payment{}.Method),
-    jsonschema.WithInterfaceImpls(Payment{}.Method, CreditCard{}, BankTransfer{}),
-    jsonschema.WithDiscriminator(Payment{}.Method, "!kind"), // custom discriminator
+    jsonschema.WithInterface(Payment{}.Methods),
+    jsonschema.WithInterfaceImpls(Payment{}.Methods, CreditCard{}, BankTransfer{}),
+    jsonschema.WithDiscriminator(Payment{}.Methods, "!kind"), // custom discriminator
 )
 ```
 
 You cannot mix `NewInterfaceImpl` and v1 interface options in the same package.
+Only direct `[]I` fields are supported: fixed arrays, nested slices, named slice
+containers, `Optional[[]I]`, and `Nullable[[]I]` fail generation.
 
 ## Known Limitations
 
 1. **Map types** are not supported (`map[K]V` fields or types).
 2. **Circular/recursive references** are not supported.
 3. **External package types** are mostly unsupported. Exception: `time.Time` is handled as a string with RFC3339 format guidance in the description.
-4. **Arrays of interfaces** are not supported. Use a single interface field.
+4. **Interface containers** support direct one-dimensional slices only; fixed arrays, nested/named slices, and Optional/Nullable interface slices are rejected.
 5. **Template/rendered types** (using `WithRenderProviders()`) do not get `ValidateJSON()` because their schemas depend on runtime values.
 
 ## Build and Test

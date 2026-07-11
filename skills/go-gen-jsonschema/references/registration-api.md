@@ -63,10 +63,10 @@ var _ = jsonschema.NewJSONSchemaMethod(
 ## Discriminated unions (interface fields)
 
 An interface-typed field becomes a union (`anyOf`) of its registered
-implementations, discriminated by a `"!type"` property. The generator also
-emits an `UnmarshalJSON` on the containing struct that dispatches on the
-discriminator. Arrays of interfaces (`[]PaymentMethod`) are **not** supported —
-only a single interface field.
+implementations, discriminated by a `"!type"` property. A direct
+one-dimensional slice field (`[]PaymentMethod`) becomes an array whose `items`
+contains that union. The generator also emits `UnmarshalJSON` dispatch code for
+scalar values and every slice element.
 
 ```go
 // types.go
@@ -85,8 +85,8 @@ type BankTransfer struct {
 func (BankTransfer) IsPaymentMethod() {}
 
 type Payment struct {
-    ID     string        `json:"id"`
-    Method PaymentMethod `json:"method"`
+    ID      string          `json:"id"`
+    Methods []PaymentMethod `json:"methods"`
 }
 ```
 
@@ -96,11 +96,15 @@ Preferred per-field registration (v1 options):
 // schema.go (//go:build jsonschema)
 var _ = jsonschema.NewJSONSchemaMethod(
     Payment.Schema,
-    jsonschema.WithInterface(Payment{}.Method),
-    jsonschema.WithInterfaceImpls(Payment{}.Method, CreditCard{}, BankTransfer{}),
-    jsonschema.WithDiscriminator(Payment{}.Method, "!kind"), // optional; default "!type"
+    jsonschema.WithInterface(Payment{}.Methods),
+    jsonschema.WithInterfaceImpls(Payment{}.Methods, CreditCard{}, BankTransfer{}),
+    jsonschema.WithDiscriminator(Payment{}.Methods, "!kind"), // optional; default "!type"
 )
 ```
+
+The slice must be the direct field type. Fixed arrays, nested slices, named
+slice containers, `Optional[[]I]`, and `Nullable[[]I]` are rejected during
+generation.
 
 Legacy package-level registration (still works, but you cannot mix it with the
 v1 per-field options in the same package):
@@ -172,9 +176,10 @@ mypackage/
 ## Limitations and debugging
 
 Not supported: map types, channels, functions, inline interfaces, recursive or
-circular type references (detected and rejected), arrays of interface types,
-external package types other than `time.Time` (rendered as a string with
-RFC3339 guidance). Max nesting depth 100.
+circular type references (detected and rejected), unsupported registered-
+interface containers (fixed arrays, nested/named/optional/nullable slices), and
+external package types other than `time.Time` (rendered as a string with RFC3339
+guidance). Max nesting depth 100.
 
 If generation fails:
 

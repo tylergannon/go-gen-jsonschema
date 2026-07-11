@@ -145,3 +145,50 @@ var _ = jsonschema.NewJSONSchemaMethod(
 	jsonschema.WithDiscriminator(Owner{}.IF, "!kind"),
 )
 ```
+
+## Slices of interface unions
+
+Use a direct []I field when each array element is one implementation of a registered interface union.
+
+Source: [`examples/sealed_interface_slices/types.go`](../../../examples/sealed_interface_slices/types.go)
+
+```go
+// Event is a sealed union for the purposes of schema generation: the schema
+// registration lists every concrete implementation accepted on the wire.
+type Event interface {
+	isEvent()
+}
+
+// Created is a value implementation of Event.
+type Created struct {
+	Name string `json:"name"`
+}
+
+func (Created) isEvent() {}
+
+// Deleted is a pointer implementation of Event.
+type Deleted struct {
+	ID string `json:"id"`
+}
+
+func (*Deleted) isEvent() {}
+
+// Batch is the desired supported shape: one direct, one-dimensional slice of
+// a registered interface union on a named struct field.
+type Batch struct {
+	Events []Event `json:"events"`
+}
+```
+
+Source: [`examples/sealed_interface_slices/schema.go`](../../../examples/sealed_interface_slices/schema.go)
+
+```go
+// The field selector still identifies the complete slice field; the generator
+// derives the registered interface from its element type.
+var _ = jsonschema.NewJSONSchemaMethod(
+	Batch.Schema,
+	jsonschema.WithInterface(Batch{}.Events),
+	jsonschema.WithInterfaceImpls(Batch{}.Events, Created{}, (*Deleted)(nil)),
+	jsonschema.WithDiscriminator(Batch{}.Events, "!kind"),
+)
+```

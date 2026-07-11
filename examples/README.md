@@ -76,13 +76,19 @@ Discriminated union types using Go interfaces.
 - Interface-based type unions
 - Multiple implementations
 - Discriminator properties
-- Note: Arrays of interfaces (`[]Interface`) are not yet supported
+- Direct scalar and slice fields
 
 #### `interfaces_options/`
 Advanced interface configuration with V1 API.
 - Custom interface implementations
 - Discriminator configuration
 - Implementation registration
+
+#### `sealed_interface_slices/`
+Direct slices of registered interface unions.
+- Array schemas with the union under `items.anyOf`
+- Mixed value and pointer implementations
+- Transactional element decoding with indexed errors
 
 ### Provider & Template Examples
 

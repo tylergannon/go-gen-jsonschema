@@ -109,12 +109,12 @@ func handleGen(firstArg int) {
 func handleNew() {
 	// Define the --out flag
 	var (
-		newCmd       = flag.NewFlagSet("new", flag.ExitOnError)
-		out          = newCmd.String("out", "", "Path to output file.  Empty val or '--' means print to stdout")
-		pkg          = newCmd.String("pkg", "", "Package for generated file. Default is current directory or using the package name for the package specified in --out")
-		methods      = newCmd.String("methods", "", "Comma-separated list of methods to generate in the form of TypeName=MethodName,TypeName2=MethodName2")
-		runGenerate  = newCmd.Bool("generate", false, "Run go generate in the target package after creating the stub file")
-		newValidate  = newCmd.Bool("validate", false, "Include ValidateJSON() stubs in the generated file")
+		newCmd      = flag.NewFlagSet("new", flag.ExitOnError)
+		out         = newCmd.String("out", "", "Path to output file.  Empty val or '--' means print to stdout")
+		pkg         = newCmd.String("pkg", "", "Package for generated file. Default is current directory or using the package name for the package specified in --out")
+		methods     = newCmd.String("methods", "", "Comma-separated list of methods to generate in the form of TypeName=MethodName,TypeName2=MethodName2")
+		runGenerate = newCmd.Bool("generate", false, "Run go generate in the target package after creating the stub file")
+		newValidate = newCmd.Bool("validate", false, "Include ValidateJSON() stubs in the generated file")
 	)
 
 	// Check if --help was requested

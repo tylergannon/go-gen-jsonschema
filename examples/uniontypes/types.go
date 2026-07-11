@@ -75,19 +75,8 @@ type Drawing struct {
 	// CreatedAt is when the drawing was created.
 	CreatedAt time.Time `json:"createdAt"`
 
-	// NOTE: Arrays of interface types ([]Shape) are not yet supported by the generator.
-	// The tool currently only supports interface types as direct field types, not nested
-	// within arrays, maps, or other composite types.
-	//
-	// To work around this limitation, you can either:
-	// 1. Use a single interface field instead of an array
-	// 2. Create a wrapper type that contains the interface
-	//
-	// For demonstration, we use a single Shape field here:
-	MainShape Shape `json:"mainShape,omitempty"`
-
-	// Original field that would be ideal but isn't supported yet:
-	// Shapes []Shape `json:"shapes"`
+	// Shapes is a direct slice of the registered Shape union.
+	Shapes []Shape `json:"shapes"`
 }
 
 // PaymentMethod is another example of an interface that creates a union type.
