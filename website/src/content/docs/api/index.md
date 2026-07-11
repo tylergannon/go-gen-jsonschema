@@ -46,6 +46,7 @@ import "github.com/tylergannon/go-gen-jsonschema"
   - [func NewJSONSchemaMethod\[T any\]\(SchemaMethod\[T\], ...SchemaMethodOption\) SchemaMarker](<#NewJSONSchemaMethod>)
 - [type SchemaMethod](<#SchemaMethod>)
 - [type SchemaMethodOption](<#SchemaMethodOption>)
+  - [func AsRef\(\) SchemaMethodOption](<#AsRef>)
   - [func WithDiscriminator\[T any\]\(field T, name string\) SchemaMethodOption](<#WithDiscriminator>)
   - [func WithEnum\[T any\]\(field T\) SchemaMethodOption](<#WithEnum>)
   - [func WithFunction\[T any\]\(val T, f func\(T\) json.Marshaler\) SchemaMethodOption](<#WithFunction>)
@@ -413,6 +414,15 @@ type SchemaMethodOption interface {
     // contains filtered or unexported methods
 }
 ```
+
+<a name="AsRef"></a>
+### func AsRef
+
+```go
+func AsRef() SchemaMethodOption
+```
+
+AsRef requests that, wherever this type is referenced from another registered schema, it be rendered as a "$ref" into that schema's "$defs" instead of being inlined.
 
 <a name="WithDiscriminator"></a>
 ### func WithDiscriminator

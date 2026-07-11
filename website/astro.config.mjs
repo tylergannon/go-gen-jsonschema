@@ -41,6 +41,7 @@ export default defineConfig({
 							{ label: 'Optional and nullable', link: '/features/optionality/' },
 							{ label: 'Enums', link: '/features/enums/' },
 							{ label: 'Interfaces', link: '/features/interfaces/' },
+							{ label: 'Shared definitions (AsRef)', link: '/features/ref-types/' },
 							{ label: 'Provider schemas', link: '/features/providers/' },
 						],
 					},

@@ -46,7 +46,7 @@ import CopyCommand from '../../components/CopyCommand.astro';
 - Go doc comments become LLM-facing schema descriptions.
 - Ordinary and nullable fields are required; only `Optional[T]` removes a property from `required`.
 - Generated schema files and Go accessors are safe to commit and verify in CI.
-- Optionality, enums, discriminated interfaces, providers, and validation use explicit APIs.
+- Optionality, enums, discriminated interfaces, shared `$defs`, providers, and validation use explicit APIs.
 
 Need exact exported signatures? The generated [Go API reference](/api/) is available,
 but most integrations should begin with [Getting started](/getting-started/).

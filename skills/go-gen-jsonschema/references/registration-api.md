@@ -122,10 +122,36 @@ var _ = jsonschema.NewInterfaceImpl[PaymentMethod](CreditCard{}, BankTransfer{})
 - Options: `WithEnum(field)`, `WithStringerEnum(field)`, `WithInterface(field)`,
   `WithInterfaceImpls(field, impls...)`, `WithDiscriminator(field, name)`,
   `WithRenderProviders()` (runtime template rendering, advanced; rendered types
-  get no `ValidateJSON` because their schemas depend on runtime values).
+  get no `ValidateJSON` because their schemas depend on runtime values),
+  `AsRef()` (zero-arg; see below).
 
-Nested struct types are **inlined** into the parent schema (no `$ref`), so a
-shared Address struct appears in full wherever it is used.
+Nested struct types are **inlined** into the parent schema (no `$ref`) by
+default, so a shared Address struct appears in full wherever it is used —
+unless that type is registered with `AsRef()`.
+
+## Shared definitions (`$ref`/`$defs`) via `AsRef`
+
+Add `AsRef()` to a type's own registration to have it rendered as `"$ref":
+"#/$defs/TypeName"` everywhere else it's referenced, instead of being inlined
+at every call site. `$defs` are assembled per generated JSON file, keyed by
+the type's bare name:
+
+```go
+// schema.go (//go:build jsonschema)
+var _ = jsonschema.NewJSONSchemaMethod(Shared.Schema, jsonschema.AsRef())
+
+var _ = jsonschema.NewJSONSchemaMethod(Container.Schema) // references Shared
+```
+
+Notes:
+
+- `AsRef()` only applies where `Shared` is referenced from *another*
+  registered schema; `Shared`'s own top-level schema file is unaffected.
+- Two distinct `AsRef()`'d types reachable in one generation run that share
+  the same bare type name are a hard, generation-time error (`"AsRef
+  definition name collision"`).
+- Recursive/self-referencing `AsRef()`'d types are rejected, same as any
+  other circular reference.
 
 ## Validation (`--validate`)
 

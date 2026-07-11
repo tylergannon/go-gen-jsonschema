@@ -59,6 +59,21 @@
           "registrations": ["Batch.Schema"]
         }
       ]
+    },
+    {
+      "id": "ref-types",
+      "title": "Shared $defs via AsRef",
+      "when": "Use AsRef() on a type's own registration when it's referenced from multiple places and should be rendered once as a \"$ref\" into \"$defs\" instead of being inlined at every reference site.",
+      "sections": [
+        {
+          "source": "examples/ref_types/types.go",
+          "declarations": ["Shared", "Container"]
+        },
+        {
+          "source": "examples/ref_types/schema.go",
+          "registrations": ["Shared.Schema", "Container.Schema"]
+        }
+      ]
     }
   ]
 }
