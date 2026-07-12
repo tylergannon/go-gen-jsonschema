@@ -12,9 +12,12 @@ func (Owner) Schema() json.RawMessage { panic("not implemented") }
 
 var _ = jsonschema.NewJSONSchemaMethod(
 	Owner.Schema,
-	jsonschema.WithInterface(Owner{}.IF),
-	jsonschema.WithInterfaceImpls(Owner{}.IF, Impl1{}, Impl2{}),
-	jsonschema.WithDiscriminator(Owner{}.IF, "!kind"),
+	jsonschema.WithInterface(
+		Owner{}.IF,
+		jsonschema.Discriminator("!kind"),
+		jsonschema.Impl("impl_one", Impl1{}),
+		jsonschema.Impl("impl \"two\"", Impl2{}),
+	),
 	jsonschema.WithInterface(Owner{}.IFaces),
 	jsonschema.WithInterfaceImpls(Owner{}.IFaces, Impl1{}, Impl2{}),
 	jsonschema.WithDiscriminator(Owner{}.IFaces, "!kind"),

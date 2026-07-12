@@ -1,0 +1,51 @@
+{
+  "$defs": {
+    "Shared": {
+      "type": "object",
+      "description": "Shared is registered with AsRef(). Wherever another registered schema references it, it appears as a \"$ref\" into that schema's \"$defs\" instead of being inlined.",
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "type": "object",
+  "description": "NullableConfig exercises the two nullable shapes that retain reusable contracts without widening Nullable support to arbitrary schema nodes.",
+  "properties": {
+    "mode": {
+      "anyOf": [
+        {
+          "type": "string",
+          "description": "Mode is a registered string enum used to prove nullable enum rendering.",
+          "enum": [
+            "fast",
+            "safe"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "shared": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Shared"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "mode",
+    "shared"
+  ],
+  "additionalProperties": false
+}

@@ -59,10 +59,10 @@ strict schema because it deliberately removes the property from `required`.
 
 `Optional` supports scalars and named scalars, structs, pointers, arrays and
 slices, explicit supported references, and registered interfaces. `Nullable`
-supports scalars, structs, and pointers to structs. Wrappers must be complete,
-direct named field types. Aliases, defined wrappers, embedding, nesting,
-wrappers inside containers, and unsupported Nullable shapes are rejected during
-generation.
+supports scalars, registered enums, structs, pointers to structs, and structs
+registered with `AsRef()`. Wrappers must be complete, direct named field types.
+Aliases, defined wrappers, embedding, nesting, wrappers inside containers, and
+unsupported Nullable shapes are rejected during generation.
 
 See the compiling [`examples/optionality`](https://github.com/tylergannon/go-gen-jsonschema/tree/main/examples/optionality)
 package for generated output and negative cases.

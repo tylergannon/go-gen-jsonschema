@@ -140,9 +140,12 @@ Source: [`examples/interfaces_options/schema.go`](../../../examples/interfaces_o
 // v1 interface options example
 var _ = jsonschema.NewJSONSchemaMethod(
 	Owner.Schema,
-	jsonschema.WithInterface(Owner{}.IF),
-	jsonschema.WithInterfaceImpls(Owner{}.IF, Impl1{}, Impl2{}),
-	jsonschema.WithDiscriminator(Owner{}.IF, "!kind"),
+	jsonschema.WithInterface(
+		Owner{}.IF,
+		jsonschema.Discriminator("!kind"),
+		jsonschema.Impl("impl_one", Impl1{}),
+		jsonschema.Impl("impl_two", Impl2{}),
+	),
 )
 ```
 

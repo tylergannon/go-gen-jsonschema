@@ -162,7 +162,8 @@ Optional in a strict schema because it deliberately removes the property from
 Wrappers must be complete direct named field types. V1 Optional follows the
 ordinary renderer's scalar and named scalar, struct, pointer, array/slice,
 supported-ref, and registered-interface paths. V1 Nullable supports scalars,
-structs, and pointers to structs.
+registered enums, structs, pointers to structs, and structs registered with
+`AsRef()`.
 
 ## Beyond flat structs
 

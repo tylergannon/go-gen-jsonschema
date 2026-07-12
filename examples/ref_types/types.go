@@ -3,6 +3,8 @@
 // registered schema references it, instead of being inlined.
 package ref_types
 
+import jsonschema "github.com/tylergannon/go-gen-jsonschema"
+
 //go:generate go run ../../gen-jsonschema/ --pretty --validate
 
 // Shared is registered with AsRef(). Wherever another registered schema
@@ -17,4 +19,19 @@ type Shared struct {
 type Container struct {
 	Primary Shared   `json:"primary"`
 	Others  []Shared `json:"others"`
+}
+
+// Mode is a registered string enum used to prove nullable enum rendering.
+type Mode string
+
+const (
+	ModeFast Mode = "fast"
+	ModeSafe Mode = "safe"
+)
+
+// NullableConfig exercises the two nullable shapes that retain reusable
+// contracts without widening Nullable support to arbitrary schema nodes.
+type NullableConfig struct {
+	Mode   jsonschema.Nullable[Mode]   `json:"mode"`
+	Shared jsonschema.Nullable[Shared] `json:"shared"`
 }

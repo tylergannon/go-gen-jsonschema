@@ -96,11 +96,27 @@ Preferred per-field registration (v1 options):
 // schema.go (//go:build jsonschema)
 var _ = jsonschema.NewJSONSchemaMethod(
     Payment.Schema,
-    jsonschema.WithInterface(Payment{}.Methods),
-    jsonschema.WithInterfaceImpls(Payment{}.Methods, CreditCard{}, BankTransfer{}),
-    jsonschema.WithDiscriminator(Payment{}.Methods, "!kind"), // optional; default "!type"
+    jsonschema.WithInterface(
+        Payment{}.Methods,
+        jsonschema.Discriminator("!kind"), // optional; default "!type"
+        jsonschema.Impl("credit_card", CreditCard{}),
+        jsonschema.Impl("bank_transfer", BankTransfer{}),
+    ),
 )
 ```
+
+`Impl` binds each implementation to a stable wire discriminator used by both
+the generated schema and interface unmarshaler. The earlier split form remains
+supported for compatibility:
+
+```go
+jsonschema.WithInterface(Payment{}.Methods),
+jsonschema.WithInterfaceImpls(Payment{}.Methods, CreditCard{}, BankTransfer{}),
+jsonschema.WithDiscriminator(Payment{}.Methods, "!kind"),
+```
+
+Without explicit `Impl` values, discriminators continue to derive from Go type
+names.
 
 The slice must be the direct field type. Fixed arrays, nested slices, named
 slice containers, `Optional[[]I]`, and `Nullable[[]I]` are rejected during
@@ -119,7 +135,9 @@ var _ = jsonschema.NewInterfaceImpl[PaymentMethod](CreditCard{}, BankTransfer{})
 - `NewJSONSchemaFunc(fn, ...opts)` — register a free function instead of a method.
 - `NewEnumType[T]()` / `NewInterfaceImpl[I](impls...)` — legacy API; prefer the
   `With*` options.
-- Options: `WithEnum(field)`, `WithStringerEnum(field)`, `WithInterface(field)`,
+- Options: `WithEnum(field)`, `WithStringerEnum(field)`,
+  `WithInterface(field, Discriminator(name), Impl(value, implementation), ...)`,
+  the compatible split form `WithInterface(field)`,
   `WithInterfaceImpls(field, impls...)`, `WithDiscriminator(field, name)`,
   `WithRenderProviders()` (runtime template rendering, advanced; rendered types
   get no `ValidateJSON` because their schemas depend on runtime values),

@@ -64,6 +64,12 @@ type (
 		Object ObjectNode
 	}
 
+	// NullableUnionNode represents schema shapes whose constraints cannot be
+	// combined with a nullable type array, such as enums and $ref nodes.
+	NullableUnionNode struct {
+		Schema JSONSchema
+	}
+
 	ConstNode[T ~int | ~string | ~bool | float32 | float64] struct {
 		PropertyNode[T]
 		Const T `json:"const"`
@@ -177,6 +183,7 @@ var (
 	_ JSONSchema = RefNode{}
 	_ JSONSchema = TemplateHoleNode{}
 	_ JSONSchema = NullableObjectNode{}
+	_ JSONSchema = NullableUnionNode{}
 )
 
 func (n NullableObjectNode) MarshalJSON() ([]byte, error) {
@@ -189,6 +196,17 @@ func (n NullableObjectNode) MarshalJSON() ([]byte, error) {
 
 func (n NullableObjectNode) TypeID() syntax.TypeID { return n.Object.TypeID() }
 func (n NullableObjectNode) implementsJSONSchema() {}
+
+func (n NullableUnionNode) MarshalJSON() ([]byte, error) {
+	value, err := n.Schema.MarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return fmt.Appendf(nil, `{"anyOf":[%s,{"type":"null"}]}`, value), nil
+}
+
+func (n NullableUnionNode) TypeID() syntax.TypeID { return n.Schema.TypeID() }
+func (n NullableUnionNode) implementsJSONSchema() {}
 
 //---------------------------------------------------------------------
 // ObjectNode

@@ -20,6 +20,10 @@ import "github.com/tylergannon/go-gen-jsonschema"
   - [func NewEnumType\[T \~string\]\(\) EnumType](<#NewEnumType>)
 - [type InterfaceMarker](<#InterfaceMarker>)
   - [func NewInterfaceImpl\[T any\]\(...T\) InterfaceMarker](<#NewInterfaceImpl>)
+- [type InterfaceOption](<#InterfaceOption>)
+  - [func Discriminator\(name string\) InterfaceOption](<#Discriminator>)
+  - [func Impl\[T any\]\(value string, impl T\) InterfaceOption](<#Impl>)
+- [type InterfaceOptionObj](<#InterfaceOptionObj>)
 - [type JSONSchema](<#JSONSchema>)
   - [func \(s JSONSchema\) MarshalJSON\(\) \(\[\]byte, error\)](<#JSONSchema.MarshalJSON>)
 - [type JSONUnionType](<#JSONUnionType>)
@@ -50,7 +54,7 @@ import "github.com/tylergannon/go-gen-jsonschema"
   - [func WithDiscriminator\[T any\]\(field T, name string\) SchemaMethodOption](<#WithDiscriminator>)
   - [func WithEnum\[T any\]\(field T\) SchemaMethodOption](<#WithEnum>)
   - [func WithFunction\[T any\]\(val T, f func\(T\) json.Marshaler\) SchemaMethodOption](<#WithFunction>)
-  - [func WithInterface\[T any\]\(field T\) SchemaMethodOption](<#WithInterface>)
+  - [func WithInterface\[T any\]\(field T, options ...InterfaceOption\) SchemaMethodOption](<#WithInterface>)
   - [func WithInterfaceImpls\[T any\]\(field T, impls ...any\) SchemaMethodOption](<#WithInterfaceImpls>)
   - [func WithRenderProviders\(\) SchemaMethodOption](<#WithRenderProviders>)
   - [func WithStringerEnum\[T any\]\(field T\) SchemaMethodOption](<#WithStringerEnum>)
@@ -132,6 +136,44 @@ NewInterfaceImpl marks the arguments as possible implementations for the interfa
 
 1. If called in the same package as the interface itself, then all global instances can be replaced.
 2. If called somewhere else, only applies to the local package.
+
+<a name="InterfaceOption"></a>
+## type InterfaceOption
+
+InterfaceOption configures a registered interface field.
+
+```go
+type InterfaceOption interface {
+    // contains filtered or unexported methods
+}
+```
+
+<a name="Discriminator"></a>
+### func Discriminator
+
+```go
+func Discriminator(name string) InterfaceOption
+```
+
+Discriminator sets the JSON property used to distinguish interface cases.
+
+<a name="Impl"></a>
+### func Impl
+
+```go
+func Impl[T any](value string, impl T) InterfaceOption
+```
+
+Impl registers an interface implementation with its stable wire value.
+
+<a name="InterfaceOptionObj"></a>
+## type InterfaceOptionObj
+
+
+
+```go
+type InterfaceOptionObj struct{}
+```
 
 <a name="JSONSchema"></a>
 ## type JSONSchema
@@ -455,7 +497,7 @@ func WithFunction[T any](val T, f func(T) json.Marshaler) SchemaMethodOption
 ### func WithInterface
 
 ```go
-func WithInterface[T any](field T) SchemaMethodOption
+func WithInterface[T any](field T, options ...InterfaceOption) SchemaMethodOption
 ```
 
 Interface options \(v1\) \- stubs for scanning/type\-checking; parsed by scanner

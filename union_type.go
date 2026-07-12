@@ -33,6 +33,11 @@ type SchemaMethodOption interface {
 	implementsSchemaMethodOption()
 }
 
+// InterfaceOption configures a registered interface field.
+type InterfaceOption interface {
+	implementsInterfaceOption()
+}
+
 type exampleStruct struct {
 	Field1 string
 	Field2 int
@@ -71,8 +76,21 @@ type SchemaMethodOptionObj struct{}
 
 func (SchemaMethodOptionObj) implementsSchemaMethodOption() {}
 
+type InterfaceOptionObj struct{}
+
+func (InterfaceOptionObj) implementsInterfaceOption() {}
+
 // Interface options (v1) - stubs for scanning/type-checking; parsed by scanner
-func WithInterface[T any](field T) SchemaMethodOption { return SchemaMethodOptionObj{} }
+func WithInterface[T any](field T, options ...InterfaceOption) SchemaMethodOption {
+	return SchemaMethodOptionObj{}
+}
+
+// Discriminator sets the JSON property used to distinguish interface cases.
+func Discriminator(name string) InterfaceOption { return InterfaceOptionObj{} }
+
+// Impl registers an interface implementation with its stable wire value.
+func Impl[T any](value string, impl T) InterfaceOption { return InterfaceOptionObj{} }
+
 func WithInterfaceImpls[T any](field T, impls ...any) SchemaMethodOption {
 	return SchemaMethodOptionObj{}
 }

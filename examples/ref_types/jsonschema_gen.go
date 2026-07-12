@@ -24,8 +24,9 @@ func __gen_jsonschema_panic(fname string, err error) {
 
 // Compiled JSON schemas for validation, initialized once at startup.
 var (
-	__gen_jsonschema_compiled_Shared    *jsonschema.Schema
-	__gen_jsonschema_compiled_Container *jsonschema.Schema
+	__gen_jsonschema_compiled_Shared         *jsonschema.Schema
+	__gen_jsonschema_compiled_Container      *jsonschema.Schema
+	__gen_jsonschema_compiled_NullableConfig *jsonschema.Schema
 )
 
 func init() {
@@ -55,6 +56,11 @@ func init() {
 		var __zero Container
 		__gen_jsonschema_compiled_Container = compile("Container", __zero.Schema())
 	}
+
+	{
+		var __zero NullableConfig
+		__gen_jsonschema_compiled_NullableConfig = compile("NullableConfig", __zero.Schema())
+	}
 }
 
 func (Shared) Schema() json.RawMessage {
@@ -68,6 +74,15 @@ func (Shared) Schema() json.RawMessage {
 
 func (Container) Schema() json.RawMessage {
 	const fileName = "jsonschema/Container.json"
+	data, err := __gen_jsonschema_fs.ReadFile(fileName)
+	if err != nil {
+		__gen_jsonschema_panic(fileName, err)
+	}
+	return data
+}
+
+func (NullableConfig) Schema() json.RawMessage {
+	const fileName = "jsonschema/NullableConfig.json"
 	data, err := __gen_jsonschema_fs.ReadFile(fileName)
 	if err != nil {
 		__gen_jsonschema_panic(fileName, err)
@@ -91,4 +106,13 @@ func (Container) ValidateJSON(data []byte) error {
 		return err
 	}
 	return __gen_jsonschema_compiled_Container.Validate(inst)
+}
+
+// ValidateJSON validates the given JSON bytes against the schema for NullableConfig.
+func (NullableConfig) ValidateJSON(data []byte) error {
+	inst, err := jsonschema.UnmarshalJSON(bytes.NewReader(data))
+	if err != nil {
+		return err
+	}
+	return __gen_jsonschema_compiled_NullableConfig.Validate(inst)
 }

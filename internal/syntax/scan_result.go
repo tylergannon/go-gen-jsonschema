@@ -101,8 +101,9 @@ type (
 		ProviderName     string
 		ProviderIsMethod bool
 		// v1 interface options support
-		Discriminator string
-		ImplTypes     []TypeID
+		Discriminator      string
+		DiscriminatorValue string
+		ImplTypes          []TypeID
 	}
 
 	TypeDecls struct {
