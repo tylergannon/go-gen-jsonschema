@@ -33,4 +33,11 @@ base: `a2b41c62a94be0d48dc617bec90fcb619f113dc5` (`origin/main`, tag `v0.11.2`)
 - Formatting proof: `git diff --check` passed.
 - Build proof: `go build ./...` passed.
 - Full unit proof: `go test ./...` passed after implementation and regeneration, including pretty golden fixtures and provider-rendering runtime tests.
-- Pending final review, PR, merge, patch tag, merged-head proof, and cleanup.
+- Hardline invariant scan passed across 47 generated JSON/template files: no leading indentation, no key-separator spaces, and every `"type":"object",` is followed immediately by a newline.
+- Pre-commit hook: `golangci` passed with zero issues.
+- Commit: `edaaefa fix: use schema-aware hardlines`.
+- Pre-push hook: full `go test ./...` passed on the committed head.
+- Branch pushed as `origin/codex/schema-hardlines`.
+- PR: `#51` (`https://github.com/tylergannon/go-gen-jsonschema/pull/51`) opened against `main`; squash auto-merge will be enabled after this worklog update.
+- Release decision: publish annotated patch tag `v0.11.3` on the exact squash-merged `main` commit and verify the Go module lookup.
+- Pending hosted check, merge, tag, merged-head proof, and cleanup.
