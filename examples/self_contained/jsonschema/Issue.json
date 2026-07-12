@@ -1,1 +1,36 @@
-{"type":"object","description":"Issue with multiple enum fields","properties":{"id":{"type":"string"},"description":{"type":"string"},"priority":{"type":"string","enum":["low","medium","high"]},"severity":{"type":"string","enum":["info","warning","error","critical"]}},"required":["id","description","priority","severity"],"additionalProperties":false}
+{
+"type": "object",
+"description": "Issue with multiple enum fields",
+"properties": {
+"id": {
+"type": "string"
+},
+"description": {
+"type": "string"
+},
+"priority": {
+"type": "string",
+"enum": [
+"low",
+"medium",
+"high"
+]
+},
+"severity": {
+"type": "string",
+"enum": [
+"info",
+"warning",
+"error",
+"critical"
+]
+}
+},
+"required": [
+"id",
+"description",
+"priority",
+"severity"
+],
+"additionalProperties": false
+}

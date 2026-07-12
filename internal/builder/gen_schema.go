@@ -1,6 +1,7 @@
 package builder
 
 import (
+	"bytes"
 	_ "embed"
 	"encoding/hex"
 	"encoding/json"
@@ -959,12 +960,25 @@ func (s SchemaBuilder) writeSchema(t syntax.TypeID, targetDir string, noChanges 
 			return false, fmt.Errorf("could not write newline: %w", err)
 		}
 	} else {
-		encoder := json.NewEncoder(writer)
 		if s.Pretty {
+			encoder := json.NewEncoder(writer)
 			encoder.SetIndent("", "  ")
-		}
-		if err = encoder.Encode(schema); err != nil {
-			return false, fmt.Errorf("could not encode schema: %w", err)
+			if err = encoder.Encode(schema); err != nil {
+				return false, fmt.Errorf("could not encode schema: %w", err)
+			}
+		} else {
+			var compact []byte
+			if compact, err = json.Marshal(schema); err != nil {
+				return false, fmt.Errorf("could not encode schema: %w", err)
+			}
+			var formatted bytes.Buffer
+			if err = json.Indent(&formatted, compact, "", ""); err != nil {
+				return false, fmt.Errorf("could not format schema: %w", err)
+			}
+			_ = formatted.WriteByte('\n')
+			if _, err = writer.Write(formatted.Bytes()); err != nil {
+				return false, fmt.Errorf("could not write schema: %w", err)
+			}
 		}
 	}
 

@@ -1,1 +1,24 @@
-{"type":"object","description":"Triangle implements the Shape interface.","properties":{"base":{"type":"number","description":"Base is the length of the base."},"height":{"type":"number","description":"Height is the height from the base to the opposite vertex."},"color":{"type":"string","description":"Color is an optional display color."}},"required":["base","height","color"],"additionalProperties":false}
+{
+"type": "object",
+"description": "Triangle implements the Shape interface.",
+"properties": {
+"base": {
+"type": "number",
+"description": "Base is the length of the base."
+},
+"height": {
+"type": "number",
+"description": "Height is the height from the base to the opposite vertex."
+},
+"color": {
+"type": "string",
+"description": "Color is an optional display color."
+}
+},
+"required": [
+"base",
+"height",
+"color"
+],
+"additionalProperties": false
+}

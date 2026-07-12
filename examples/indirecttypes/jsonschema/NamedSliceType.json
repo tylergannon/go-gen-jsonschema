@@ -1,1 +1,8 @@
-{"type":"array","description":"NamedSliceType demonstrates naming a slice type. This creates another level of indirection.","items":{"type":"integer","description":"SimpleInt is a basic integer type."}}
+{
+"type": "array",
+"description": "NamedSliceType demonstrates naming a slice type. This creates another level of indirection.",
+"items": {
+"type": "integer",
+"description": "SimpleInt is a basic integer type."
+}
+}

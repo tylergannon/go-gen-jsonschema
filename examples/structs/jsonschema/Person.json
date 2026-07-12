@@ -1,1 +1,50 @@
-{"type":"object","description":"Person demonstrates a complex struct with nested fields and embedded types.","properties":{"id":{"type":"string","description":"ID is a unique identifier."},"name":{"type":"string","description":"Name is the person's full name."},"birthDate":{"type":"string","description":"BirthDate is the person's date of birth. This demonstrates using the time.Time type which will be properly handled.. Must be an RFC3339 formatted date-time string (e.g., \"2006-01-02T15:04:05Z07:00\")"},"email":{"type":"string","description":"Email is the primary email address."},"phone":{"type":"string","description":"Phone is the primary phone number."},"alternateEmails":{"type":"array","description":"AlternateEmails contains additional email addresses. COMMENTED OUT: Map fields are not yet supported  AlternatePhones contains additional phone numbers with labels. AlternatePhones map[string]string `json:\"alternatePhones,omitempty\"`","items":{"type":"string"}},"tags":{"type":"array","description":"Tags are arbitrary labels associated with the person. COMMENTED OUT: Map fields are not yet supported  Metadata contains any additional information.  Using map[string]interface{} allows for arbitrary JSON. Metadata map[string]any `json:\"metadata,omitempty\"`","items":{"type":"string"}}},"required":["id","name","birthDate","email","phone","alternateEmails","tags"],"additionalProperties":false}
+{
+"type": "object",
+"description": "Person demonstrates a complex struct with nested fields and embedded types.",
+"properties": {
+"id": {
+"type": "string",
+"description": "ID is a unique identifier."
+},
+"name": {
+"type": "string",
+"description": "Name is the person's full name."
+},
+"birthDate": {
+"type": "string",
+"description": "BirthDate is the person's date of birth. This demonstrates using the time.Time type which will be properly handled.. Must be an RFC3339 formatted date-time string (e.g., \"2006-01-02T15:04:05Z07:00\")"
+},
+"email": {
+"type": "string",
+"description": "Email is the primary email address."
+},
+"phone": {
+"type": "string",
+"description": "Phone is the primary phone number."
+},
+"alternateEmails": {
+"type": "array",
+"description": "AlternateEmails contains additional email addresses. COMMENTED OUT: Map fields are not yet supported  AlternatePhones contains additional phone numbers with labels. AlternatePhones map[string]string `json:\"alternatePhones,omitempty\"`",
+"items": {
+"type": "string"
+}
+},
+"tags": {
+"type": "array",
+"description": "Tags are arbitrary labels associated with the person. COMMENTED OUT: Map fields are not yet supported  Metadata contains any additional information.  Using map[string]interface{} allows for arbitrary JSON. Metadata map[string]any `json:\"metadata,omitempty\"`",
+"items": {
+"type": "string"
+}
+}
+},
+"required": [
+"id",
+"name",
+"birthDate",
+"email",
+"phone",
+"alternateEmails",
+"tags"
+],
+"additionalProperties": false
+}
