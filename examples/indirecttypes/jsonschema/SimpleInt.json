@@ -1,4 +1,1 @@
-{
-"type": "integer",
-"description": "SimpleInt is a basic integer type."
-}
+{"type":"integer","description":"SimpleInt is a basic integer type."}

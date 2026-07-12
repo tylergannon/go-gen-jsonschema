@@ -1,24 +1,6 @@
-{
-"type": "object",
-"description": "BankTransfer implements PaymentMethod for bank transfers.",
-"properties": {
-"accountNumber": {
-"type": "string",
-"description": "AccountNumber is the bank account number."
-},
-"routingNumber": {
-"type": "string",
-"description": "RoutingNumber is the bank routing number."
-},
-"bankName": {
-"type": "string",
-"description": "BankName is the name of the bank."
-}
-},
-"required": [
-"accountNumber",
-"routingNumber",
-"bankName"
-],
-"additionalProperties": false
-}
+{"type":"object",
+"description":"BankTransfer implements PaymentMethod for bank transfers.","properties":{
+"accountNumber":{"type":"string","description":"AccountNumber is the bank account number."},
+"routingNumber":{"type":"string","description":"RoutingNumber is the bank routing number."},
+"bankName":{"type":"string","description":"BankName is the name of the bank."}
+},"required":["accountNumber","routingNumber","bankName"],"additionalProperties":false}

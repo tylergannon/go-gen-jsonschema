@@ -1,34 +1,8 @@
-{
-"type": "object",
-"description": "Address represents a physical location.",
-"properties": {
-"street": {
-"type": "string",
-"description": "Street is the street address."
-},
-"city": {
-"type": "string",
-"description": "City is the city name."
-},
-"state": {
-"type": "string",
-"description": "State is the state or province."
-},
-"postalCode": {
-"type": "string",
-"description": "PostalCode is the postal or zip code."
-},
-"country": {
-"type": "string",
-"description": "Country is the country name."
-}
-},
-"required": [
-"street",
-"city",
-"state",
-"postalCode",
-"country"
-],
-"additionalProperties": false
-}
+{"type":"object",
+"description":"Address represents a physical location.","properties":{
+"street":{"type":"string","description":"Street is the street address."},
+"city":{"type":"string","description":"City is the city name."},
+"state":{"type":"string","description":"State is the state or province."},
+"postalCode":{"type":"string","description":"PostalCode is the postal or zip code."},
+"country":{"type":"string","description":"Country is the country name."}
+},"required":["street","city","state","postalCode","country"],"additionalProperties":false}

@@ -1,7 +1,1 @@
-{
-"type": "array",
-"description": "SliceOfInt demonstrates a slice of a basic type. In the schema, this will be an array of integers.",
-"items": {
-"type": "integer"
-}
-}
+{"type":"array","description":"SliceOfInt demonstrates a slice of a basic type. In the schema, this will be an array of integers.","items":{"type":"integer"}}

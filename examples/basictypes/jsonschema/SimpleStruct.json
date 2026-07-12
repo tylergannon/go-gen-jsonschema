@@ -1,32 +1,7 @@
-{
-"type": "object",
-"description": "SimpleStruct demonstrates a basic struct with primitive fields. Each field can have its own documentation which will be included in the schema.",
-"properties": {
-"id": {
-"type": "integer",
-"description": "ID is a unique identifier for this struct. This comment will be included in the schema description for this field."
-},
-"name": {
-"type": "string",
-"description": "Name is the display name. Multiline comments are supported and will be preserved in the schema."
-},
-"score": {
-"type": "number",
-"description": "Score is a numerical value between 0 and 100."
-},
-"tags": {
-"type": "array",
-"description": "Tags are additional metadata for this struct.",
-"items": {
-"type": "string"
-}
-}
-},
-"required": [
-"id",
-"name",
-"score",
-"tags"
-],
-"additionalProperties": false
-}
+{"type":"object",
+"description":"SimpleStruct demonstrates a basic struct with primitive fields. Each field can have its own documentation which will be included in the schema.","properties":{
+"id":{"type":"integer","description":"ID is a unique identifier for this struct. This comment will be included in the schema description for this field."},
+"name":{"type":"string","description":"Name is the display name. Multiline comments are supported and will be preserved in the schema."},
+"score":{"type":"number","description":"Score is a numerical value between 0 and 100."},
+"tags":{"type":"array","description":"Tags are additional metadata for this struct.","items":{"type":"string"}}
+},"required":["id","name","score","tags"],"additionalProperties":false}

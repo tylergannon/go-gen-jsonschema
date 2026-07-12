@@ -1,19 +1,5 @@
-{
-"type": "object",
-"description": "Circle implements the Shape interface.",
-"properties": {
-"radius": {
-"type": "number",
-"description": "Radius is the distance from the center to the edge."
-},
-"color": {
-"type": "string",
-"description": "Color is an optional display color."
-}
-},
-"required": [
-"radius",
-"color"
-],
-"additionalProperties": false
-}
+{"type":"object",
+"description":"Circle implements the Shape interface.","properties":{
+"radius":{"type":"number","description":"Radius is the distance from the center to the edge."},
+"color":{"type":"string","description":"Color is an optional display color."}
+},"required":["radius","color"],"additionalProperties":false}

@@ -1,7 +1,6 @@
 package builder
 
 import (
-	"bytes"
 	_ "embed"
 	"encoding/hex"
 	"encoding/json"
@@ -947,8 +946,10 @@ func (s SchemaBuilder) writeSchema(t syntax.TypeID, targetDir string, noChanges 
 
 	hash := fnv.New64a()
 	writer := io.MultiWriter(tmpFile, hash)
-	// If this type uses providers, the schema is a template; write raw without pretty/validation
-	if _, templated := s.TypeProvidersMap[t.TypeName]; templated {
+	_, templated := s.TypeProvidersMap[t.TypeName]
+	// Templates cannot use the standard pretty encoder because their holes are
+	// not valid JSON. Preserve the existing raw output when pretty is requested.
+	if templated && s.Pretty {
 		var b []byte
 		if b, err = schema.MarshalJSON(); err != nil {
 			return false, fmt.Errorf("could not marshal template schema: %w", err)
@@ -959,26 +960,22 @@ func (s SchemaBuilder) writeSchema(t syntax.TypeID, targetDir string, noChanges 
 		if _, err = writer.Write([]byte("\n")); err != nil {
 			return false, fmt.Errorf("could not write newline: %w", err)
 		}
+	} else if s.Pretty {
+		encoder := json.NewEncoder(writer)
+		encoder.SetIndent("", "  ")
+		if err = encoder.Encode(schema); err != nil {
+			return false, fmt.Errorf("could not encode schema: %w", err)
+		}
 	} else {
-		if s.Pretty {
-			encoder := json.NewEncoder(writer)
-			encoder.SetIndent("", "  ")
-			if err = encoder.Encode(schema); err != nil {
-				return false, fmt.Errorf("could not encode schema: %w", err)
-			}
-		} else {
-			var compact []byte
-			if compact, err = json.Marshal(schema); err != nil {
-				return false, fmt.Errorf("could not encode schema: %w", err)
-			}
-			var formatted bytes.Buffer
-			if err = json.Indent(&formatted, compact, "", ""); err != nil {
-				return false, fmt.Errorf("could not format schema: %w", err)
-			}
-			_ = formatted.WriteByte('\n')
-			if _, err = writer.Write(formatted.Bytes()); err != nil {
-				return false, fmt.Errorf("could not write schema: %w", err)
-			}
+		var b []byte
+		if b, err = marshalSchemaHardlines(schema); err != nil {
+			return false, fmt.Errorf("could not format schema: %w", err)
+		}
+		if _, err = writer.Write(b); err != nil {
+			return false, fmt.Errorf("could not write schema: %w", err)
+		}
+		if _, err = writer.Write([]byte("\n")); err != nil {
+			return false, fmt.Errorf("could not write newline: %w", err)
 		}
 	}
 

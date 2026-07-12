@@ -1,4 +1,1 @@
-{
-"type": "number",
-"description": "SimpleFloat demonstrates a basic float type that will be represented as a number in the JSON schema."
-}
+{"type":"number","description":"SimpleFloat demonstrates a basic float type that will be represented as a number in the JSON schema."}
