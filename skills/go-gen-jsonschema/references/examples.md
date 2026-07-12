@@ -196,9 +196,9 @@ var _ = jsonschema.NewJSONSchemaMethod(
 )
 ```
 
-## Shared $defs via AsRef
+## Shared $defs and nullable references
 
-Use AsRef() on a type's own registration when it's referenced from multiple places and should be rendered once as a "$ref" into "$defs" instead of being inlined at every reference site.
+Use AsRef() on a type's own registration when it should be rendered once into $defs. Nullable can wrap that referenced struct or a registered enum while keeping the containing property required.
 
 Source: [`examples/ref_types/types.go`](../../../examples/ref_types/types.go)
 
@@ -216,6 +216,21 @@ type Container struct {
 	Primary Shared   `json:"primary"`
 	Others  []Shared `json:"others"`
 }
+
+// Mode is a registered string enum used to prove nullable enum rendering.
+type Mode string
+
+const (
+	ModeFast Mode = "fast"
+	ModeSafe Mode = "safe"
+)
+
+// NullableConfig exercises the two nullable shapes that retain reusable
+// contracts without widening Nullable support to arbitrary schema nodes.
+type NullableConfig struct {
+	Mode   jsonschema.Nullable[Mode]   `json:"mode"`
+	Shared jsonschema.Nullable[Shared] `json:"shared"`
+}
 ```
 
 Source: [`examples/ref_types/schema.go`](../../../examples/ref_types/schema.go)
@@ -226,4 +241,9 @@ Source: [`examples/ref_types/schema.go`](../../../examples/ref_types/schema.go)
 var _ = jsonschema.NewJSONSchemaMethod(Shared.Schema, jsonschema.AsRef())
 
 var _ = jsonschema.NewJSONSchemaMethod(Container.Schema)
+
+var (
+	_ = jsonschema.NewJSONSchemaMethod(NullableConfig.Schema)
+	_ = jsonschema.NewEnumType[Mode]()
+)
 ```

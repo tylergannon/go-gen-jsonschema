@@ -62,16 +62,16 @@
     },
     {
       "id": "ref-types",
-      "title": "Shared $defs via AsRef",
-      "when": "Use AsRef() on a type's own registration when it's referenced from multiple places and should be rendered once as a \"$ref\" into \"$defs\" instead of being inlined at every reference site.",
+      "title": "Shared $defs and nullable references",
+      "when": "Use AsRef() on a type's own registration when it should be rendered once into $defs. Nullable can wrap that referenced struct or a registered enum while keeping the containing property required.",
       "sections": [
         {
           "source": "examples/ref_types/types.go",
-          "declarations": ["Shared", "Container"]
+          "declarations": ["Shared", "Container", "Mode", "ModeFast", "ModeSafe", "NullableConfig"]
         },
         {
           "source": "examples/ref_types/schema.go",
-          "registrations": ["Shared.Schema", "Container.Schema"]
+          "registrations": ["Shared.Schema", "Container.Schema", "NullableConfig.Schema"]
         }
       ]
     }

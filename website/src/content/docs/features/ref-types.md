@@ -26,6 +26,34 @@ var _ = jsonschema.NewJSONSchemaMethod(Container.Schema)
 and both `primary` and `others.items` reference it via `$ref` instead of
 repeating its properties.
 
+## Nullable references
+
+An `AsRef()` struct can be the value inside `Nullable[T]`:
+
+```go
+type NullableConfig struct {
+    Shared jsonschema.Nullable[Shared] `json:"shared"`
+}
+
+var _ = jsonschema.NewJSONSchemaMethod(Shared.Schema, jsonschema.AsRef())
+var _ = jsonschema.NewJSONSchemaMethod(NullableConfig.Schema)
+```
+
+The property remains required and accepts either the shared definition or JSON
+null. Its generated shape is equivalent to:
+
+```json
+{
+  "anyOf": [
+    { "$ref": "#/$defs/Shared" },
+    { "type": "null" }
+  ]
+}
+```
+
+The generator keeps the reachable `Shared` definition in the containing
+schema's `$defs`; nullable wrapping does not inline or drop it.
+
 Notes:
 
 - `AsRef()` only changes how `Shared` is rendered at *other* types' reference
