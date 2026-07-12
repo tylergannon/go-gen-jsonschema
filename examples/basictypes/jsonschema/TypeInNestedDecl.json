@@ -1,4 +1,1 @@
-{
-"type": "integer",
-"description": "TypeInNestedDecl is a type declared in a group."
-}
+{"type":"integer","description":"TypeInNestedDecl is a type declared in a group."}

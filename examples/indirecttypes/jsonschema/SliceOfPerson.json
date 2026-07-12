@@ -1,23 +1,5 @@
-{
-"type": "array",
-"description": "SliceOfPerson is a slice of Person objects. In the schema, this will be an array of Person objects.",
-"items": {
-"type": "object",
-"description": "NestedTypes demonstrates deeply nested types. Person is a basic struct with simple fields.",
-"properties": {
-"name": {
-"type": "string",
-"description": "Name is the person's name."
-},
-"age": {
-"type": "integer",
-"description": "Age is the person's age."
-}
-},
-"required": [
-"name",
-"age"
-],
-"additionalProperties": false
-}
-}
+{"type":"array","description":"SliceOfPerson is a slice of Person objects. In the schema, this will be an array of Person objects.","items":{"type":"object",
+"description":"NestedTypes demonstrates deeply nested types. Person is a basic struct with simple fields.","properties":{
+"name":{"type":"string","description":"Name is the person's name."},
+"age":{"type":"integer","description":"Age is the person's age."}
+},"required":["name","age"],"additionalProperties":false}}

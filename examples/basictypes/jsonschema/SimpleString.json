@@ -1,4 +1,1 @@
-{
-"type": "string",
-"description": "SimpleString demonstrates a basic string type that will be represented as a string in the JSON schema."
-}
+{"type":"string","description":"SimpleString demonstrates a basic string type that will be represented as a string in the JSON schema."}

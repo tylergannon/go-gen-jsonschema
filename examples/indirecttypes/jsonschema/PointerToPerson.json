@@ -1,19 +1,5 @@
-{
-"type": "object",
-"description": "PointerToPerson is a pointer to a Person. In the schema, this will be the same as Person but nullable.",
-"properties": {
-"name": {
-"type": "string",
-"description": "Name is the person's name."
-},
-"age": {
-"type": "integer",
-"description": "Age is the person's age."
-}
-},
-"required": [
-"name",
-"age"
-],
-"additionalProperties": false
-}
+{"type":"object",
+"description":"PointerToPerson is a pointer to a Person. In the schema, this will be the same as Person but nullable.","properties":{
+"name":{"type":"string","description":"Name is the person's name."},
+"age":{"type":"integer","description":"Age is the person's age."}
+},"required":["name","age"],"additionalProperties":false}

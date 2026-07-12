@@ -1,8 +1,1 @@
-{
-"type": "array",
-"description": "SliceOfSimpleInt demonstrates a slice of a custom type. In the schema, this will be an array of SimpleInt.",
-"items": {
-"type": "integer",
-"description": "SimpleInt is a basic integer type."
-}
-}
+{"type":"array","description":"SliceOfSimpleInt demonstrates a slice of a custom type. In the schema, this will be an array of SimpleInt.","items":{"type":"integer","description":"SimpleInt is a basic integer type."}}

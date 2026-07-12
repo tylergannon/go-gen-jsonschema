@@ -1,24 +1,6 @@
-{
-"type": "object",
-"description": "DigitalWallet implements PaymentMethod for digital wallet payments. This demonstrates using pointer receivers with interfaces.",
-"properties": {
-"provider": {
-"type": "string",
-"description": "Provider is the wallet provider name (e.g., \"PayPal\", \"Apple Pay\")."
-},
-"email": {
-"type": "string",
-"description": "Email is the account email."
-},
-"phoneNumber": {
-"type": "string",
-"description": "PhoneNumber is the associated phone number."
-}
-},
-"required": [
-"provider",
-"email",
-"phoneNumber"
-],
-"additionalProperties": false
-}
+{"type":"object",
+"description":"DigitalWallet implements PaymentMethod for digital wallet payments. This demonstrates using pointer receivers with interfaces.","properties":{
+"provider":{"type":"string","description":"Provider is the wallet provider name (e.g., \"PayPal\", \"Apple Pay\")."},
+"email":{"type":"string","description":"Email is the account email."},
+"phoneNumber":{"type":"string","description":"PhoneNumber is the associated phone number."}
+},"required":["provider","email","phoneNumber"],"additionalProperties":false}

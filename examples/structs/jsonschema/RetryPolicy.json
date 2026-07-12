@@ -1,29 +1,7 @@
-{
-"type": "object",
-"description": "RetryPolicy demonstrates JSON options that retain Go's default field names.",
-"properties": {
-"MaxRetries": {
-"type": "integer",
-"description": "MaxRetries uses its Go field name while omitting the zero value."
-},
-"TimeoutSeconds": {
-"type": "integer",
-"description": "TimeoutSeconds uses its Go field name with omitempty."
-},
-"backoff_strategy": {
-"type": "integer",
-"description": "BackoffStrategy uses an explicit JSON name."
-},
-"Untagged": {
-"type": "integer",
-"description": "Untagged uses its Go field name."
-}
-},
-"required": [
-"MaxRetries",
-"TimeoutSeconds",
-"backoff_strategy",
-"Untagged"
-],
-"additionalProperties": false
-}
+{"type":"object",
+"description":"RetryPolicy demonstrates JSON options that retain Go's default field names.","properties":{
+"MaxRetries":{"type":"integer","description":"MaxRetries uses its Go field name while omitting the zero value."},
+"TimeoutSeconds":{"type":"integer","description":"TimeoutSeconds uses its Go field name with omitempty."},
+"backoff_strategy":{"type":"integer","description":"BackoffStrategy uses an explicit JSON name."},
+"Untagged":{"type":"integer","description":"Untagged uses its Go field name."}
+},"required":["MaxRetries","TimeoutSeconds","backoff_strategy","Untagged"],"additionalProperties":false}
