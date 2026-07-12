@@ -30,4 +30,10 @@ branch: `codex/semantic-newlines`
 - Formatting proof: `git diff --check` passed.
 - Build proof: `go build ./...` passed.
 - Full unit proof: `go test ./...` passed after implementation and regeneration.
-- Pending final diff review, PR, merge, `v0.11.2` tag verification, and worktree cleanup.
+- Pre-commit hook: `golangci` passed with zero issues.
+- Commit: `13ac135 feat: add semantic schema newlines`.
+- Pre-push hook: full `go test ./...` passed on the committed head.
+- Branch pushed as `origin/codex/semantic-newlines`.
+- PR: `#50` (`https://github.com/tylergannon/go-gen-jsonschema/pull/50`) opened against `main`, with squash auto-merge to be enabled after this worklog update.
+- Release decision: publish patch tag `v0.11.2` on the exact squash-merged `main` commit, then verify remote branch and tag refs match.
+- Pending hosted checks, merge, tag verification, and local worktree cleanup.
