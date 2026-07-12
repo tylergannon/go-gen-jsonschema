@@ -172,6 +172,10 @@ custom discriminators, free-function registration, shared `$ref`/`$defs` via
 `AsRef()`, and the full CLI/flag reference live in
 [references/registration-api.md](references/registration-api.md). Read it
 when a type uses enums, interfaces, or you need non-default generation flags.
+For stable interface wire values, prefer the cohesive
+`WithInterface(field, Discriminator(name), Impl(value, implementation), ...)`
+form. The split `WithInterface`/`WithInterfaceImpls`/`WithDiscriminator` form
+remains supported and derives discriminator values from Go type names.
 By default, a struct type referenced from multiple places is inlined at every
 call site; add `AsRef()` to its registration to render it once as a `"$ref"`
 into `"$defs"` instead.

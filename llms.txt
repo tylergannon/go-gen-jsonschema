@@ -138,7 +138,8 @@ Supported wrapper shapes:
 
 - `Optional`: scalars and named scalars, structs, pointers, arrays and slices,
   supported explicit references, and registered interface fields.
-- `Nullable`: scalars, structs, and pointers to structs.
+- `Nullable`: scalars, registered enums, structs, pointers to structs, and
+  structs registered with `AsRef()`.
 
 Wrappers must be the complete type of a direct named struct field. Aliases,
 defined wrapper types, embedding, nesting, wrappers inside containers, and
@@ -254,21 +255,35 @@ type Batch struct {
 }
 ```
 
-Register the field, implementations, and optional custom discriminator:
+Preferred registration keeps every implementation beside its stable wire
+discriminator:
 
 ```go
 var _ = jsonschema.NewJSONSchemaMethod(
     Batch.Schema,
-    jsonschema.WithInterface(Batch{}.Events),
-    jsonschema.WithInterfaceImpls(Batch{}.Events, Created{}, (*Deleted)(nil)),
-    jsonschema.WithDiscriminator(Batch{}.Events, "!kind"),
+    jsonschema.WithInterface(
+        Batch{}.Events,
+        jsonschema.Discriminator("!kind"),
+        jsonschema.Impl("created", Created{}),
+        jsonschema.Impl("deleted", (*Deleted)(nil)),
+    ),
 )
 ```
 
-The default discriminator property is `!type`. The schema requires the chosen
-discriminator on every union value. Generated decoding preserves value versus
-pointer implementations, reports a failing slice index, and assigns the
-destination only after the entire value decodes successfully.
+`Impl`'s first argument is the exact discriminator used by both the schema
+`const` and generated unmarshal dispatch. The default discriminator property is
+`!type`. Generated decoding preserves value versus pointer implementations,
+reports a failing slice index, and assigns the destination only after the
+entire value decodes successfully.
+
+The split form remains supported for compatibility. Without explicit `Impl`
+values, discriminators continue to derive from Go type names:
+
+```go
+jsonschema.WithInterface(Batch{}.Events),
+jsonschema.WithInterfaceImpls(Batch{}.Events, Created{}, (*Deleted)(nil)),
+jsonschema.WithDiscriminator(Batch{}.Events, "!kind"),
+```
 
 The generator writes an unmarshaler, not a discriminator-aware marshaler. If a
 decoded interface value must marshal back into schema-valid JSON, each concrete
@@ -280,7 +295,7 @@ func (c Created) MarshalJSON() ([]byte, error) {
     return json.Marshal(struct {
         Kind string `json:"!kind"`
         plain
-    }{Kind: "Created", plain: plain(c)})
+    }{Kind: "created", plain: plain(c)})
 }
 ```
 
@@ -315,6 +330,29 @@ type Container struct {
 
 var _ = jsonschema.NewJSONSchemaMethod(Shared.Schema, jsonschema.AsRef())
 var _ = jsonschema.NewJSONSchemaMethod(Container.Schema)
+```
+
+`Nullable` can wrap an `AsRef()` struct or registered enum. Both properties
+remain required; their schemas become `anyOf` unions with JSON null, and the
+referenced struct remains in `$defs`:
+
+```go
+type Mode string
+
+const (
+    ModeFast Mode = "fast"
+    ModeSafe Mode = "safe"
+)
+
+type NullableConfig struct {
+    Mode   jsonschema.Nullable[Mode]   `json:"mode"`
+    Shared jsonschema.Nullable[Shared] `json:"shared"`
+}
+
+var (
+    _ = jsonschema.NewJSONSchemaMethod(NullableConfig.Schema)
+    _ = jsonschema.NewEnumType[Mode]()
+)
 ```
 
 `$defs` are assembled per generated JSON file, keyed by the type's bare name.
@@ -358,7 +396,9 @@ must be preserved.
 | `NewInterfaceImpl[I](impls...)` | Legacy package-level interface registration. |
 | `WithEnum(field)` | Render same-package typed string or numeric constant values. |
 | `WithStringerEnum(field)` | Render integer constant names as strings. |
-| `WithInterface(field)` | Mark an interface or direct interface-slice field. |
+| `WithInterface(field, options...)` | Register an interface field, optionally with cohesive `Discriminator` and `Impl` options. |
+| `Discriminator(name)` | Set the discriminator property inside `WithInterface`. |
+| `Impl(value, implementation)` | Bind a stable wire discriminator to an implementation inside `WithInterface`. |
 | `WithInterfaceImpls(field, impls...)` | List its accepted concrete types. |
 | `WithDiscriminator(field, name)` | Override the default `!type` property. |
 | `WithFunction(field, fn)` | Render a field schema with a package function. |

@@ -55,6 +55,34 @@ Strict schemas require every property to appear in `required`. Use
 `Nullable[T]` for the required-plus-null pattern. Do not use `Optional[T]` in a
 strict schema because it deliberately removes the property from `required`.
 
+## Nullable enums and shared reference types
+
+`Nullable` can wrap a registered enum or a struct registered with `AsRef()`:
+
+```go
+type Mode string
+
+const (
+    ModeFast Mode = "fast"
+    ModeSafe Mode = "safe"
+)
+
+type Config struct {
+    Mode   jsonschema.Nullable[Mode]   `json:"mode"`
+    Shared jsonschema.Nullable[Shared] `json:"shared"`
+}
+
+var (
+    _ = jsonschema.NewJSONSchemaMethod(Shared.Schema, jsonschema.AsRef())
+    _ = jsonschema.NewJSONSchemaMethod(Config.Schema)
+    _ = jsonschema.NewEnumType[Mode]()
+)
+```
+
+Both properties remain in `required`. The enum renders as `anyOf` containing
+its enum schema and null. The shared struct renders as `anyOf` containing its
+`$ref` and null, while the referenced object remains available in `$defs`.
+
 ## Supported shapes
 
 `Optional` supports scalars and named scalars, structs, pointers, arrays and
@@ -65,4 +93,6 @@ Aliases, defined wrappers, embedding, nesting, wrappers inside containers, and
 unsupported Nullable shapes are rejected during generation.
 
 See the compiling [`examples/optionality`](https://github.com/tylergannon/go-gen-jsonschema/tree/main/examples/optionality)
-package for generated output and negative cases.
+package for general wrapper coverage and
+[`examples/ref_types`](https://github.com/tylergannon/go-gen-jsonschema/tree/main/examples/ref_types)
+for nullable enum and `AsRef` validation coverage.
