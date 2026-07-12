@@ -1,1 +1,40 @@
-{"type":"object","description":"Task demonstrates another struct using the Stringer enums","properties":{"id":{"type":"string","description":"ID is the unique task identifier"},"name":{"type":"string","description":"Name is the task name"},"priority":{"type":"integer","enum":[100,200,300,400]},"log_level":{"type":"integer","enum":[0,1,2,3,4]}},"required":["id","name","priority","log_level"],"additionalProperties":false}
+{
+"type": "object",
+"description": "Task demonstrates another struct using the Stringer enums",
+"properties": {
+"id": {
+"type": "string",
+"description": "ID is the unique task identifier"
+},
+"name": {
+"type": "string",
+"description": "Name is the task name"
+},
+"priority": {
+"type": "integer",
+"enum": [
+100,
+200,
+300,
+400
+]
+},
+"log_level": {
+"type": "integer",
+"enum": [
+0,
+1,
+2,
+3,
+4
+]
+}
+},
+"required": [
+"id",
+"name",
+"priority",
+"log_level"
+],
+"additionalProperties": false
+}

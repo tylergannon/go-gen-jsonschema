@@ -1,1 +1,28 @@
-{"type":"object","description":"Task uses an iota-based enum","properties":{"id":{"type":"string"},"name":{"type":"string"},"priority":{"type":"integer","description":"Priority represents task priority levels using iota","enum":[0,1,2,3]}},"required":["id","name","priority"],"additionalProperties":false}
+{
+"type": "object",
+"description": "Task uses an iota-based enum",
+"properties": {
+"id": {
+"type": "string"
+},
+"name": {
+"type": "string"
+},
+"priority": {
+"type": "integer",
+"description": "Priority represents task priority levels using iota",
+"enum": [
+0,
+1,
+2,
+3
+]
+}
+},
+"required": [
+"id",
+"name",
+"priority"
+],
+"additionalProperties": false
+}

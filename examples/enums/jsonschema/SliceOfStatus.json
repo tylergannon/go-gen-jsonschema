@@ -1,1 +1,14 @@
-{"type":"array","description":"SliceOfStatus demonstrates how to use a slice of enum values. This type will be represented as an array of enum values in the schema.","items":{"type":"string","description":"Status represents the state of an item in the system. This enum type will be represented as a string with a fixed set of possible values.\n\npending: \nStatusPending indicates the item is waiting to be processed.\n\nin_progress: \nStatusInProgress indicates the item is currently being processed.\n\ncompleted: \nStatusCompleted indicates the item has been successfully processed.\n\nfailed: \nStatusFailed indicates the processing of the item has failed.","enum":["pending","in_progress","completed","failed"]}}
+{
+"type": "array",
+"description": "SliceOfStatus demonstrates how to use a slice of enum values. This type will be represented as an array of enum values in the schema.",
+"items": {
+"type": "string",
+"description": "Status represents the state of an item in the system. This enum type will be represented as a string with a fixed set of possible values.\n\npending: \nStatusPending indicates the item is waiting to be processed.\n\nin_progress: \nStatusInProgress indicates the item is currently being processed.\n\ncompleted: \nStatusCompleted indicates the item has been successfully processed.\n\nfailed: \nStatusFailed indicates the processing of the item has failed.",
+"enum": [
+"pending",
+"in_progress",
+"completed",
+"failed"
+]
+}
+}
