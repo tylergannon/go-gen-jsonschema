@@ -189,9 +189,10 @@ See the [Structured Outputs guide](https://developers.openai.com/api/docs/guides
 
 V1 `Optional` supports scalar and named scalar values, structs, pointers,
 arrays/slices, explicit supported refs, and registered interfaces. V1 `Nullable`
-supports scalars, structs, and pointers to structs. Wrappers must be the complete
-type of a direct named field; aliases, nesting, embedding, and unsupported
-Nullable shapes fail generation.
+supports scalars, registered enums, structs, pointers to structs, and structs
+registered with `AsRef()`. Wrappers must be the complete type of a direct named
+field; aliases, nesting, embedding, and unsupported Nullable shapes fail
+generation.
 
 Migration note: `jsonschema:"optional"` is no longer honored. Replace it with
 `jsonschema.Optional[T]` and add `json:",omitzero"`; otherwise the field is
@@ -274,11 +275,19 @@ type Payment struct {
 // schema.go (//go:build jsonschema)
 var _ = jsonschema.NewJSONSchemaMethod(
     Payment.Schema,
-    jsonschema.WithInterface(Payment{}.Methods),
-    jsonschema.WithInterfaceImpls(Payment{}.Methods, CreditCard{}, BankTransfer{}),
-    jsonschema.WithDiscriminator(Payment{}.Methods, "!kind"), // optional; default "!type"
+    jsonschema.WithInterface(
+        Payment{}.Methods,
+        jsonschema.Discriminator("!kind"), // optional; default "!type"
+        jsonschema.Impl("credit_card", CreditCard{}),
+        jsonschema.Impl("bank_transfer", BankTransfer{}),
+    ),
 )
 ```
+
+The compatible split form—`WithInterface`, `WithInterfaceImpls`, and
+`WithDiscriminator` as separate options—remains supported. When no explicit
+`Impl` wire values are supplied, discriminator values still derive from Go type
+names.
 
 The legacy package-level form is still supported, but cannot be mixed with the
 per-field options above in the same package:
@@ -351,7 +360,9 @@ for the auto-stage variant and trade-offs.
 | `NewInterfaceImpl[I](impls...)` | Legacy union registration (prefer `WithInterface*`) |
 
 Options for `NewJSONSchemaMethod` / `NewJSONSchemaFunc`: `WithEnum(field)`,
-`WithStringerEnum(field)`, `WithInterface(field)`,
+`WithStringerEnum(field)`,
+`WithInterface(field, Discriminator(name), Impl(value, implementation), ...)`,
+the compatible split form `WithInterface(field)`,
 `WithInterfaceImpls(field, impls...)`, `WithDiscriminator(field, name)`,
 `WithRenderProviders()`.
 

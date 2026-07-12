@@ -10,9 +10,17 @@ import (
 
 func (Shared) Schema() json.RawMessage    { panic("not implemented") }
 func (Container) Schema() json.RawMessage { panic("not implemented") }
+func (NullableConfig) Schema() json.RawMessage {
+	panic("not implemented")
+}
 
 // Shared is registered as its own top-level schema and, via AsRef(), as a
 // definition referenced from other schemas instead of being inlined there.
 var _ = jsonschema.NewJSONSchemaMethod(Shared.Schema, jsonschema.AsRef())
 
 var _ = jsonschema.NewJSONSchemaMethod(Container.Schema)
+
+var (
+	_ = jsonschema.NewJSONSchemaMethod(NullableConfig.Schema)
+	_ = jsonschema.NewEnumType[Mode]()
+)

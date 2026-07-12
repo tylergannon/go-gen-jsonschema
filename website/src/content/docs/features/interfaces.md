@@ -31,16 +31,22 @@ Register the field, its implementations, and optionally a custom discriminator:
 ```go
 var _ = jsonschema.NewJSONSchemaMethod(
     Payment.Schema,
-    jsonschema.WithInterface(Payment{}.Methods),
-    jsonschema.WithInterfaceImpls(Payment{}.Methods, Card{}, (*BankTransfer)(nil)),
-    jsonschema.WithDiscriminator(Payment{}.Methods, "!kind"),
+    jsonschema.WithInterface(
+        Payment{}.Methods,
+        jsonschema.Discriminator("!kind"),
+        jsonschema.Impl("card", Card{}),
+        jsonschema.Impl("bank_transfer", (*BankTransfer)(nil)),
+    ),
 )
 ```
 
-The default discriminator property is `!type`. Each implementation's JSON must
-carry the discriminator expected by the generated unmarshaler. Slice elements
-are decoded in order, and an invalid element reports its zero-based index
-without partially assigning the destination slice.
+`Impl` keeps each implementation next to its stable wire discriminator. The
+default discriminator property is `!type`. The compatible split form using
+`WithInterfaceImpls` and `WithDiscriminator` remains supported; without
+explicit `Impl` values, wire discriminators derive from Go type names. Each
+implementation's JSON must carry the discriminator expected by the generated
+unmarshaler. Slice elements are decoded in order, and an invalid element reports
+its zero-based index without partially assigning the destination slice.
 
 Value and pointer implementations remain value and pointer values after
 decoding. A successful decode assigns the containing struct only after all
@@ -59,7 +65,7 @@ func (c Card) MarshalJSON() ([]byte, error) {
     return json.Marshal(struct {
         Kind string `json:"!kind"`
         plain
-    }{Kind: "Card", plain: plain(c)})
+    }{Kind: "card", plain: plain(c)})
 }
 ```
 

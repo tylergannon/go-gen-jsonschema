@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"go/token"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/dave/dst"
@@ -196,9 +197,11 @@ func (m MarkerFunctionCall) ParseSchemaFunc() (SchemaFunction, error) {
 	}
 	// Parse optional consolidated options (variadic args beyond the first)
 	if len(m.CallExpr.Args()) > 1 {
-		if opts, err := parseSchemaMethodOptions(m.CallExpr.Args()[1:], *typeArg, m); err == nil {
-			sf.Options = opts
+		opts, err := parseSchemaMethodOptions(m.CallExpr.Args()[1:], *typeArg, m)
+		if err != nil {
+			return SchemaFunction{}, err
 		}
+		sf.Options = opts
 	}
 	return sf, nil
 }
@@ -334,7 +337,10 @@ func parseSchemaMethodOptions(args []Expr, receiver TypeID, m MarkerFunctionCall
 				continue
 			}
 			if str, ok := ce.Args[1].(*dst.BasicLit); ok && str.Kind == token.STRING {
-				name := strings.Trim(str.Value, "\"")
+				name, err := strconv.Unquote(str.Value)
+				if err != nil {
+					return nil, fmt.Errorf("invalid discriminator property name at %s: %w", a.Position(), err)
+				}
 				out = append(out, SchemaMethodOptionInfo{Kind: SchemaMethodOptionKind("WithDiscriminator"), FieldName: fieldSel.Sel.Name, Discriminator: name})
 			}
 			continue
@@ -357,6 +363,66 @@ func parseSchemaMethodOptions(args []Expr, receiver TypeID, m MarkerFunctionCall
 			continue
 		}
 		fieldName := fieldSel.Sel.Name
+		if funID.TypeName == "WithInterface" {
+			out = append(out, SchemaMethodOptionInfo{
+				Kind:      SchemaMethodOptionKind("WithInterface"),
+				FieldName: fieldName,
+			})
+			for _, nestedExpr := range ce.Args[1:] {
+				nested, ok := nestedExpr.(*dst.CallExpr)
+				if !ok {
+					return nil, fmt.Errorf("invalid interface option at %s: expected Discriminator(...) or Impl(...)", a.Position())
+				}
+				nestedID := parseFuncFromExpr(a.NewExpr(nested.Fun))
+				if nestedID.PkgPath != SchemaPackagePath {
+					return nil, fmt.Errorf("invalid interface option %s at %s", nestedID.TypeName, a.Position())
+				}
+				switch nestedID.TypeName {
+				case "Discriminator":
+					if len(nested.Args) != 1 {
+						return nil, fmt.Errorf("discriminator expects one string at %s", a.Position())
+					}
+					valueLit, ok := nested.Args[0].(*dst.BasicLit)
+					if !ok || valueLit.Kind != token.STRING {
+						return nil, fmt.Errorf("discriminator expects a string literal at %s", a.Position())
+					}
+					value, err := strconv.Unquote(valueLit.Value)
+					if err != nil {
+						return nil, fmt.Errorf("invalid discriminator property at %s: %w", a.Position(), err)
+					}
+					out = append(out, SchemaMethodOptionInfo{
+						Kind:          SchemaMethodOptionKind("WithDiscriminator"),
+						FieldName:     fieldName,
+						Discriminator: value,
+					})
+				case "Impl":
+					if len(nested.Args) != 2 {
+						return nil, fmt.Errorf("impl expects a wire value and implementation at %s", a.Position())
+					}
+					valueLit, ok := nested.Args[0].(*dst.BasicLit)
+					if !ok || valueLit.Kind != token.STRING {
+						return nil, fmt.Errorf("impl expects a string literal wire value at %s", a.Position())
+					}
+					value, err := strconv.Unquote(valueLit.Value)
+					if err != nil {
+						return nil, fmt.Errorf("invalid Impl wire value at %s: %w", a.Position(), err)
+					}
+					impl, err := parseLitForType(NewExpr(nested.Args[1], m.CallExpr.pkg, m.CallExpr.file))
+					if err != nil {
+						return nil, fmt.Errorf("invalid Impl implementation at %s: %w", a.Position(), err)
+					}
+					out = append(out, SchemaMethodOptionInfo{
+						Kind:               SchemaMethodOptionKind("Impl"),
+						FieldName:          fieldName,
+						DiscriminatorValue: value,
+						ImplTypes:          []TypeID{impl},
+					})
+				default:
+					return nil, fmt.Errorf("unknown interface option %s at %s", nestedID.TypeName, a.Position())
+				}
+			}
+			continue
+		}
 		var providerName string
 		providerIsMethod := false
 		var kind SchemaMethodOptionKind
@@ -368,8 +434,6 @@ func parseSchemaMethodOptions(args []Expr, receiver TypeID, m MarkerFunctionCall
 			kind = SchemaMethodOptionKind("WithStructAccessorMethod")
 		case "WithStructFunctionMethod":
 			kind = SchemaMethodOptionKind("WithStructFunctionMethod")
-		case "WithInterface":
-			kind = SchemaMethodOptionKind("WithInterface")
 		case "WithInterfaceImpls":
 			kind = SchemaMethodOptionKind("WithInterfaceImpls")
 		case "WithEnum":
@@ -446,9 +510,11 @@ func (m MarkerFunctionCall) ParseSchemaMethod() (SchemaMethod, error) {
 		}
 		// Parse optional sentinel options (variadic args beyond the first)
 		if len(funcArgs) > 1 {
-			if opts, err := parseSchemaMethodOptions(funcArgs[1:], receiver, m); err == nil {
-				res.Options = opts
+			opts, err := parseSchemaMethodOptions(funcArgs[1:], receiver, m)
+			if err != nil {
+				return SchemaMethod{}, err
 			}
+			res.Options = opts
 		}
 		return res, nil
 	default:

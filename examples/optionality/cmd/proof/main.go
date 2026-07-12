@@ -119,7 +119,6 @@ func run() (transcript, error) {
 		{"defined wrapper", "defined_wrapper", "supported only as the complete type of a direct named struct field"},
 		{"embedded wrapper", "embedded_wrapper", "embedded jsonschema.Optional is unsupported"},
 		{"wrapper root", "wrapper_root", "supported only as the complete type of a direct named struct field"},
-		{"nullable enum", "nullable_enum", "enums and consts are unsupported"},
 		{"nullable interface", "nullable_interface", "does not support registered interfaces"},
 		{"nullable ref", "nullable_ref", "does not support explicit refs"},
 		{"nullable provider", "nullable_provider", "does not support providers"},

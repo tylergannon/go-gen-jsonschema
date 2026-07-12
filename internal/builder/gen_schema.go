@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"go/token"
+	"go/types"
 	"io"
 	"os"
 	"path/filepath"
@@ -44,10 +45,7 @@ func New(pkg *decorator.Package) (SchemaBuilder, error) {
 		BuildTag:          syntax.BuildTag,
 		DiscriminatorProp: DefaultDiscriminatorPropName,
 		TypeProvidersMap:  map[string][]FieldProvider{},
-		IfaceV1: make(map[string]map[string]struct {
-			Impls []syntax.TypeID
-			Disc  string
-		}),
+		IfaceV1:           map[string]map[string]interfaceFieldConfig{},
 		EnumV1: make(map[string]map[string]struct {
 			UseStringer bool
 		}),
@@ -76,7 +74,7 @@ func New(pkg *decorator.Package) (SchemaBuilder, error) {
 				// so distinct types sharing a bare name are kept distinct here.
 				builder.RefTypes[recv.Concrete()] = true
 				continue
-			case "WithInterface", "WithInterfaceImpls", "WithDiscriminator":
+			case "WithInterface", "WithInterfaceImpls", "WithDiscriminator", "Impl":
 				foundNewInterfaceOpts = true
 				continue
 			case "WithEnum", "WithStringerEnum":
@@ -103,22 +101,16 @@ func New(pkg *decorator.Package) (SchemaBuilder, error) {
 	}
 
 	// Collect v1 interface options per receiver/field and enum options
-	applyInterfaceOpts := func(recv string, opts []syntax.SchemaMethodOptionInfo) {
+	applyInterfaceOpts := func(recv string, opts []syntax.SchemaMethodOptionInfo) error {
 		for _, opt := range opts {
 			switch string(opt.Kind) {
 			case "WithInterface":
 				if builder.IfaceV1[recv] == nil {
-					builder.IfaceV1[recv] = make(map[string]struct {
-						Impls []syntax.TypeID
-						Disc  string
-					})
+					builder.IfaceV1[recv] = map[string]interfaceFieldConfig{}
 				}
-				if _, ok := builder.IfaceV1[recv][opt.FieldName]; !ok {
-					builder.IfaceV1[recv][opt.FieldName] = struct {
-						Impls []syntax.TypeID
-						Disc  string
-					}{Impls: nil, Disc: ""}
-				}
+				curr := builder.IfaceV1[recv][opt.FieldName]
+				curr.Registered = true
+				builder.IfaceV1[recv][opt.FieldName] = curr
 			case "WithEnum", "WithStringerEnum":
 				if builder.EnumV1[recv] == nil {
 					builder.EnumV1[recv] = make(map[string]struct {
@@ -133,34 +125,85 @@ func New(pkg *decorator.Package) (SchemaBuilder, error) {
 				}
 
 			case "WithDiscriminator":
-
 				if builder.IfaceV1[recv] == nil {
-					builder.IfaceV1[recv] = make(map[string]struct {
-						Impls []syntax.TypeID
-						Disc  string
-					})
+					builder.IfaceV1[recv] = map[string]interfaceFieldConfig{}
 				}
 				curr := builder.IfaceV1[recv][opt.FieldName]
 				curr.Disc = opt.Discriminator
 				builder.IfaceV1[recv][opt.FieldName] = curr
 			case "WithInterfaceImpls":
 				if builder.IfaceV1[recv] == nil {
-					builder.IfaceV1[recv] = make(map[string]struct {
-						Impls []syntax.TypeID
-						Disc  string
-					})
+					builder.IfaceV1[recv] = map[string]interfaceFieldConfig{}
 				}
 				curr := builder.IfaceV1[recv][opt.FieldName]
+				if curr.InlineImpls {
+					return fmt.Errorf("field %s.%s: cannot combine Impl(...) options with WithInterfaceImpls", recv, opt.FieldName)
+				}
+				curr.LegacyImpls = true
 				curr.Impls = slices.Clone(opt.ImplTypes)
+				builder.IfaceV1[recv][opt.FieldName] = curr
+			case "Impl":
+				if builder.IfaceV1[recv] == nil {
+					builder.IfaceV1[recv] = map[string]interfaceFieldConfig{}
+				}
+				if len(opt.ImplTypes) != 1 {
+					return fmt.Errorf("field %s.%s: discriminator value %q must identify exactly one implementation", recv, opt.FieldName, opt.DiscriminatorValue)
+				}
+				curr := builder.IfaceV1[recv][opt.FieldName]
+				if curr.LegacyImpls {
+					return fmt.Errorf("field %s.%s: cannot combine WithInterfaceImpls with Impl(...) options", recv, opt.FieldName)
+				}
+				curr.InlineImpls = true
+				if curr.DiscriminatorValues == nil {
+					curr.DiscriminatorValues = map[syntax.TypeID]string{}
+				}
+				impl := opt.ImplTypes[0]
+				if previous, exists := curr.DiscriminatorValues[impl]; exists {
+					return fmt.Errorf("field %s.%s: duplicate discriminator registration for %s (%q and %q)", recv, opt.FieldName, impl, previous, opt.DiscriminatorValue)
+				}
+				for registeredImpl, value := range curr.DiscriminatorValues {
+					if value == opt.DiscriminatorValue {
+						return fmt.Errorf("field %s.%s: duplicate discriminator value %q for %s and %s", recv, opt.FieldName, value, registeredImpl, impl)
+					}
+				}
+				curr.Impls = append(curr.Impls, impl)
+				curr.DiscriminatorValues[impl] = opt.DiscriminatorValue
 				builder.IfaceV1[recv][opt.FieldName] = curr
 			}
 		}
+		return nil
 	}
 	for _, m := range data.SchemaMethods {
-		applyInterfaceOpts(m.Receiver.TypeName, m.Options)
+		if err := applyInterfaceOpts(m.Receiver.TypeName, m.Options); err != nil {
+			return builder, err
+		}
 	}
 	for _, f := range data.SchemaFuncs {
-		applyInterfaceOpts(f.Receiver.TypeName, f.Options)
+		if err := applyInterfaceOpts(f.Receiver.TypeName, f.Options); err != nil {
+			return builder, err
+		}
+	}
+	for recv, fields := range builder.IfaceV1 {
+		for field, cfg := range fields {
+			if cfg.Registered && len(cfg.Impls) == 0 {
+				return builder, fmt.Errorf("field %s.%s: missing interface implementations; add Impl(...) options or WithInterfaceImpls", recv, field)
+			}
+			if len(cfg.DiscriminatorValues) == 0 {
+				continue
+			}
+			registered := make(map[syntax.TypeID]bool, len(cfg.Impls))
+			for _, impl := range cfg.Impls {
+				registered[impl] = true
+				if _, ok := cfg.DiscriminatorValues[impl]; !ok {
+					return builder, fmt.Errorf("field %s.%s: missing explicit discriminator value for registered implementation %s", recv, field, impl)
+				}
+			}
+			for impl := range cfg.DiscriminatorValues {
+				if !registered[impl] {
+					return builder, fmt.Errorf("field %s.%s: discriminator value registered for %s, which is not present in WithInterfaceImpls", recv, field, impl)
+				}
+			}
+		}
 	}
 
 	// Build TypeProviders slice for template convenience, computing JSON names for fields
@@ -214,6 +257,26 @@ type InterfaceOptionInfo struct {
 	TypeName           string
 	PkgPath            string
 	Pointer            bool
+}
+
+type interfaceFieldConfig struct {
+	Impls               []syntax.TypeID
+	Disc                string
+	DiscriminatorValues map[syntax.TypeID]string
+	LegacyImpls         bool
+	InlineImpls         bool
+	Registered          bool
+}
+
+func cloneDiscriminatorValues(values map[syntax.TypeID]string) map[syntax.TypeID]string {
+	if len(values) == 0 {
+		return nil
+	}
+	cloned := make(map[syntax.TypeID]string, len(values))
+	for impl, value := range values {
+		cloned[impl] = value
+	}
+	return cloned
 }
 
 type FieldProvider struct {
@@ -279,10 +342,7 @@ type SchemaBuilder struct {
 	TypeProviders    []TypeProviders
 
 	// V1 interface options: receiver -> field -> config
-	IfaceV1 map[string]map[string]struct {
-		Impls []syntax.TypeID
-		Disc  string
-	}
+	IfaceV1 map[string]map[string]interfaceFieldConfig
 
 	// Enum options: receiver -> field -> config
 	EnumV1 map[string]map[string]struct {
@@ -345,6 +405,8 @@ func (s SchemaBuilder) collectRefDefs(schema JSONSchema, defs map[string]JSONSch
 		}
 	case NullableObjectNode:
 		s.collectRefDefs(node.Object, defs)
+	case NullableUnionNode:
+		s.collectRefDefs(node.Schema, defs)
 	case RefNode:
 		name := strings.TrimPrefix(node.Ref, "#/$defs/")
 		if _, ok := defs[name]; ok {
@@ -1001,13 +1063,15 @@ func (s *SchemaBuilder) RenderGoCode() (err error) {
 				if !ok {
 					panic("could not find package at RenderGoCode: " + option.PkgPath)
 				}
-				var (
+				var disc string
+				if explicit, ok := ifaceProp.DiscriminatorValues[option]; ok {
+					disc = explicit
+				} else {
 					disc = option.TypeName
-					i    = 1
-				)
-				for discriminators[disc] {
-					disc = strings.TrimSuffix(disc, strconv.Itoa(i-1))
-					disc = fmt.Sprintf("%s%d", disc, i)
+					for i := 1; discriminators[disc]; i++ {
+						disc = strings.TrimSuffix(disc, strconv.Itoa(i-1))
+						disc = fmt.Sprintf("%s%d", disc, i)
+					}
 				}
 				discriminators[disc] = true
 				opts = append(opts, InterfaceOptionInfo{
@@ -1290,7 +1354,7 @@ func (s SchemaBuilder) renderStructField(owner syntax.StructType, f syntax.Struc
 		if _, isArrayOrSlice := renderType.(*dst.ArrayType); isArrayOrSlice {
 			return nil, fmt.Errorf("%s does not support arrays/slices at %s", wrapper, f.Position())
 		}
-		if specialSource != "" {
+		if specialSource != "" && specialSource != "enums" {
 			return nil, fmt.Errorf("%s does not support %s at %s", wrapper, specialSource, f.Position())
 		}
 		if schema, err = nullableSchema(schema); err != nil {
@@ -1319,26 +1383,32 @@ func nullableSchema(schema JSONSchema) (JSONSchema, error) {
 		return nullableProperty(value)
 	case ObjectNode:
 		return NullableObjectNode{Object: value}, nil
+	case RefNode:
+		return NullableUnionNode{Schema: value}, nil
 	default:
-		return nil, fmt.Errorf("inner schema shape %T is unsupported; V1 supports scalar values, structs, and pointers to structs", schema)
+		return nil, fmt.Errorf("inner schema shape %T is unsupported; supported nullable values are scalars, enums, structs, pointers to structs, and AsRef structs", schema)
 	}
 }
 
 func nullableProperty[T ~int | ~string | ~bool | float32 | float64](value PropertyNode[T]) (JSONSchema, error) {
-	if len(value.Enum) > 0 || value.Const != nil {
-		return nil, errors.New("enums and consts are unsupported; V1 supports scalar values, structs, and pointers to structs")
+	if value.Const != nil {
+		return nil, errors.New("consts are unsupported; supported nullable values are scalars, enums, structs, pointers to structs, and AsRef structs")
+	}
+	if len(value.Enum) > 0 {
+		return NullableUnionNode{Schema: value}, nil
 	}
 	value.Nullable = true
 	return value, nil
 }
 
 type registeredInterfaceField struct {
-	Interface     syntax.IfaceImplementations
-	DiscPropName  string
-	FuncNameAlias string
-	Optional      bool
-	Repeated      bool
-	V1            bool
+	Interface           syntax.IfaceImplementations
+	DiscPropName        string
+	DiscriminatorValues map[syntax.TypeID]string
+	FuncNameAlias       string
+	Optional            bool
+	Repeated            bool
+	V1                  bool
 }
 
 func directInterfaceFieldType(expr dst.Expr) (ident *dst.Ident, repeated, ok bool) {
@@ -1381,6 +1451,36 @@ func (s SchemaBuilder) resolveNamedType(ident *dst.Ident, localPkg *decorator.Pa
 	return typeSpec, ok
 }
 
+func (s SchemaBuilder) validateInterfaceImplementations(iface syntax.TypeSpec, impls []syntax.TypeID) error {
+	ifaceObject := iface.Pkg().Types.Scope().Lookup(iface.Name())
+	if ifaceObject == nil {
+		return fmt.Errorf("could not resolve interface type %s", iface.Name())
+	}
+	ifaceType, ok := ifaceObject.Type().Underlying().(*types.Interface)
+	if !ok {
+		return fmt.Errorf("registered type %s is not an interface", iface.Name())
+	}
+	ifaceType.Complete()
+	for _, impl := range impls {
+		scan, ok := s.Scan.GetPackage(impl.PkgPath)
+		if !ok {
+			return fmt.Errorf("could not resolve implementation package %s", impl.PkgPath)
+		}
+		implObject := scan.Pkg.Types.Scope().Lookup(impl.TypeName)
+		if implObject == nil {
+			return fmt.Errorf("could not resolve implementation type %s", impl)
+		}
+		candidate := implObject.Type()
+		if impl.Indirection == syntax.Pointer {
+			candidate = types.NewPointer(candidate)
+		}
+		if !types.Implements(candidate, ifaceType) {
+			return fmt.Errorf("implementation %s does not implement %s", impl, iface.Name())
+		}
+	}
+	return nil
+}
+
 func (s SchemaBuilder) registeredInterfaceInExpr(expr dst.Expr, localPkg *decorator.Package) (string, bool) {
 	var interfaceName string
 	dst.Inspect(expr, func(node dst.Node) bool {
@@ -1408,10 +1508,7 @@ func (s SchemaBuilder) resolveRegisteredInterfaceField(owner syntax.StructType, 
 	}
 
 	var (
-		v1Cfg struct {
-			Impls []syntax.TypeID
-			Disc  string
-		}
+		v1Cfg        interfaceFieldConfig
 		v1GoField    string
 		v1Configured bool
 	)
@@ -1451,14 +1548,18 @@ func (s SchemaBuilder) resolveRegisteredInterfaceField(owner syntax.StructType, 
 		if wrapper == syntax.WrapperNullable {
 			return nil, fmt.Errorf("%s does not support registered interfaces at %s", wrapper, prop.Position())
 		}
+		if err := s.validateInterfaceImplementations(typeSpec, v1Cfg.Impls); err != nil {
+			return nil, fmt.Errorf("field %s.%s: %w", owner.Name(), v1GoField, err)
+		}
 		funcAlias := fmt.Sprintf("__jsonUnmarshal__%s__%s__%s__%s", typeSpec.Pkg().Name, typeSpec.Name(), owner.Name(), v1GoField)
 		return &registeredInterfaceField{
-			Interface:     syntax.IfaceImplementations{TypeSpec: typeSpec, Impls: v1Cfg.Impls},
-			DiscPropName:  v1Cfg.Disc,
-			FuncNameAlias: funcAlias,
-			Optional:      wrapper == syntax.WrapperOptional,
-			Repeated:      repeated,
-			V1:            true,
+			Interface:           syntax.IfaceImplementations{TypeSpec: typeSpec, Impls: v1Cfg.Impls},
+			DiscPropName:        v1Cfg.Disc,
+			DiscriminatorValues: cloneDiscriminatorValues(v1Cfg.DiscriminatorValues),
+			FuncNameAlias:       funcAlias,
+			Optional:            wrapper == syntax.WrapperOptional,
+			Repeated:            repeated,
+			V1:                  true,
 		}, nil
 	}
 
@@ -1526,6 +1627,9 @@ func (s SchemaBuilder) renderRegisteredInterfaceUnion(field registeredInterfaceF
 			return UnionTypeNode{}, fmt.Errorf("expected %s to be an object-type schema", impl.TypeName)
 		}
 		obj.Discriminator = impl.TypeName
+		if value, ok := field.DiscriminatorValues[impl]; ok {
+			obj.Discriminator = value
+		}
 		union.Options = append(union.Options, obj)
 	}
 	return union, nil
@@ -1535,6 +1639,7 @@ type InterfaceProp struct {
 	Field                       syntax.StructField
 	Interface                   syntax.IfaceImplementations
 	DiscPropName                string
+	DiscriminatorValues         map[syntax.TypeID]string
 	FuncNameAlias               string
 	InterfaceTypeNameWithPrefix string
 	Optional                    bool
@@ -1628,12 +1733,13 @@ func (s SchemaBuilder) resolveLocalInterfaceProps(t syntax.StructType, seenProps
 			return nil, fmt.Errorf("interface prop %s has more than one field name at %s", strings.Join(prop.PropNames(), ","), prop.Position())
 		}
 		props = append(props, InterfaceProp{
-			Field:         prop,
-			Interface:     field.Interface,
-			DiscPropName:  field.DiscPropName,
-			FuncNameAlias: field.FuncNameAlias,
-			Optional:      field.Optional,
-			Repeated:      field.Repeated,
+			Field:               prop,
+			Interface:           field.Interface,
+			DiscPropName:        field.DiscPropName,
+			DiscriminatorValues: cloneDiscriminatorValues(field.DiscriminatorValues),
+			FuncNameAlias:       field.FuncNameAlias,
+			Optional:            field.Optional,
+			Repeated:            field.Repeated,
 		})
 	}
 	for _, prop := range t.Fields() {

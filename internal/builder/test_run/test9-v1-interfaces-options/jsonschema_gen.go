@@ -93,13 +93,13 @@ func __jsonUnmarshal__v1_interfaces_options__IFace__Owner__IF(data []byte) (IFac
 		return nil, __jsonschema__unmarshalDiscriminatorError(_tempDiscriminator, err)
 	}
 	switch discriminator {
-	case "Impl1":
+	case "impl_one":
 		var obj Impl1
 		if err = json.Unmarshal(data, &obj); err != nil {
 			return nil, err
 		}
 		return obj, nil
-	case "Impl2":
+	case "impl \"two\"":
 		var obj Impl2
 		if err = json.Unmarshal(data, &obj); err != nil {
 			return nil, err

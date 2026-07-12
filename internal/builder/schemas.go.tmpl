@@ -198,7 +198,7 @@ func {{.UnmarshalerFunc}}(data []byte) ({{.TypeNameWithPrefix}}, error) {
 	}
 	switch discriminator {
 	{{range .Options -}}
-	case "{{.Discriminator}}":
+	case {{printf "%q" .Discriminator}}:
 		var obj {{.TypeNameWithPrefix}}
 		if err = json.Unmarshal(data, &obj); err != nil {
 			return nil, err
