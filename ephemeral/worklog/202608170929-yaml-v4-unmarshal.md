@@ -30,3 +30,4 @@ skill: Applied the write-prompts skill guidance by keeping the routing addition 
 review: The evaluate-skills pass found one stale routed reference that still described interface decoding as JSON-only; updated `references/registration-api.md` so the main skill and its delegated detail remain coherent.
 proof: After the documentation and skill edits, `go test -count=1 ./...`, `go vet ./...`, `git diff --check`, and consistency searches for yaml/v4 coverage and stale `!type` wording all passed.
 checkpoint: Documentation follow-up is ready with commit subject `docs: document native YAML union decoding`.
+pull-request: Opened https://github.com/tylergannon/go-gen-jsonschema/pull/52 from `codex/yaml-v4-unmarshal` to `main`; the PR body calls out the `!type` to `type` wire-format break and the native yaml/v4 proof surface.
