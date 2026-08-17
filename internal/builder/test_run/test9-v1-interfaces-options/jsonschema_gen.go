@@ -168,7 +168,6 @@ func __jsonUnmarshal__v1_interfaces_options__IFace__Owner__IF(data []byte) (IFac
 		return nil, fmt.Errorf("unknown discriminator: %s", discriminator)
 	}
 }
-
 func __yamlUnmarshal__v1_interfaces_options__IFace__Owner__IF(node *yaml.Node) (IFace, error) {
 	var temp map[string]yaml.Node
 	if err := node.Decode(&temp); err != nil {
@@ -231,7 +230,6 @@ func __jsonUnmarshal__v1_interfaces_options__IFace__Owner__IFaces(data []byte) (
 		return nil, fmt.Errorf("unknown discriminator: %s", discriminator)
 	}
 }
-
 func __yamlUnmarshal__v1_interfaces_options__IFace__Owner__IFaces(node *yaml.Node) (IFace, error) {
 	var temp map[string]yaml.Node
 	if err := node.Decode(&temp); err != nil {
@@ -294,7 +292,6 @@ func __jsonUnmarshal__v1_interfaces_options__IFace__Owner__OptionalIF(data []byt
 		return nil, fmt.Errorf("unknown discriminator: %s", discriminator)
 	}
 }
-
 func __yamlUnmarshal__v1_interfaces_options__IFace__Owner__OptionalIF(node *yaml.Node) (IFace, error) {
 	var temp map[string]yaml.Node
 	if err := node.Decode(&temp); err != nil {
@@ -329,7 +326,6 @@ func __yamlUnmarshal__v1_interfaces_options__IFace__Owner__OptionalIF(node *yaml
 func __jsonschema__unmarshalDiscriminatorError(discriminator json.RawMessage, err error) error {
 	return fmt.Errorf("unable to unmarshal discriminator value %v: %w", discriminator, err)
 }
-
 func __jsonschema__yamlMappingNode(fields map[string]yaml.Node) yaml.Node {
 	content := make([]*yaml.Node, 0, len(fields)*2)
 	for name, value := range fields {

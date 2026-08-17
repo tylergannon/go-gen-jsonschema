@@ -31,3 +31,11 @@ review: The evaluate-skills pass found one stale routed reference that still des
 proof: After the documentation and skill edits, `go test -count=1 ./...`, `go vet ./...`, `git diff --check`, and consistency searches for yaml/v4 coverage and stale `!type` wording all passed.
 checkpoint: Documentation follow-up is ready with commit subject `docs: document native YAML union decoding`.
 pull-request: Opened https://github.com/tylergannon/go-gen-jsonschema/pull/52 from `codex/yaml-v4-unmarshal` to `main`; the PR body calls out the `!type` to `type` wire-format break and the native yaml/v4 proof surface.
+correction: Generated union decoding must be selectable by the CLI so consumers do not pay for formats they do not use; the user chose JSON-only as the default because ordinary mechanical interchange does not need YAML.
+decision: Add `--formats=json|yaml|both`, defaulting to `json`; keep the two YAML behavior fixtures explicitly on `both` and test mode selection without duplicating the YAML AST traversal suite.
+proof: The format-selection tests first failed to compile because the CLI parser and builder format contract did not exist; after implementation, a real built CLI emitted only the requested union methods/imports for default, JSON, YAML, and both modes.
+proof: Each format-selection case builds the generated package, while the existing simple and comprehensive YAML runtime fixtures explicitly request `both` and remain green.
+decision: Regenerating default examples removed 408 lines of YAML-only generated code and `go mod tidy` removed yaml/v4 from the root module; YAML-enabled fixture modules retain their explicit yaml/v4 dependency.
+proof: A second `go generate ./...` preserved the exact working diff hash `269915e1f7e1dd55004926e6ceeef69454b8a215c0fccb37e1d147b5c0d39c5d`.
+proof: Final `go test -count=1 ./...`, `go vet ./...`, `go run ./internal/cmd/doc-gen -check`, and `git diff --check` passed after format selection, regeneration, and documentation updates.
+docs: README, llms.txt, the skill, and its registration reference now say JSON-only is the default, document `--formats=json|yaml|both`, and require yaml/v4 only for YAML-enabled generation.

@@ -54,7 +54,7 @@ Then just ask your agent to "add go-gen-jsonschema to this project."
 
    ```bash
    go tool gen-jsonschema new -out schema.go -methods 'Person=Schema' --validate --generate
-   go mod tidy   # records dependencies added by validation or YAML union decoding
+   go mod tidy   # records dependencies added by validation or opted-in YAML decoding
    ```
 
 4. **Use the generated methods:**
@@ -79,8 +79,9 @@ Commit everything the generator writes: `jsonschema_gen.go` and the
   become `description` fields.
 - **Built-in validation** — opt-in `ValidateJSON()` methods with schemas
   compiled once at startup, returning structured errors.
-- **Direct YAML unions** — registered interfaces get native yaml/v4 decoding
-  with the same `type` discriminator used by JSON; no YAML-to-JSON bridge.
+- **Optional direct YAML unions** — pass `--formats=both` or `--formats=yaml`
+  for native yaml/v4 decoding with the same `type` discriminator used by JSON;
+  no YAML-to-JSON bridge.
 
 ## ⚙️ How it works
 
@@ -249,9 +250,10 @@ supported.
 An interface-typed field becomes an `anyOf` union of its registered
 implementations, discriminated by a `"type"` property (configurable). A direct
 one-dimensional slice of that interface becomes an array with the union under
-`items.anyOf`. The generator emits both `UnmarshalJSON` and native
-`UnmarshalYAML(*yaml.Node)` dispatch for scalar values (including `Optional[I]`)
-and every slice element; the YAML path uses
+`items.anyOf`. Generation defaults to JSON-only. Pass `--formats=both` to emit
+both `UnmarshalJSON` and native `UnmarshalYAML(*yaml.Node)` dispatch, or
+`--formats=yaml` to emit only YAML dispatch, for scalar values (including
+`Optional[I]`) and every slice element. The YAML path uses
 [`go.yaml.in/yaml/v4`](https://pkg.go.dev/go.yaml.in/yaml/v4) directly rather
 than converting through JSON.
 
@@ -288,6 +290,13 @@ var _ = jsonschema.NewJSONSchemaMethod(
 )
 ```
 
+Opt into YAML alongside the default JSON unmarshaler in the generation
+directive:
+
+```go
+//go:generate go tool gen-jsonschema --formats=both
+```
+
 With the default discriminator, ordinary YAML can be decoded directly:
 
 ```go
@@ -304,7 +313,8 @@ methods:
 ```
 
 YAML field names follow `yaml` tags (or yaml/v4's normal field-name rules).
-Run `go mod tidy` after generation to record the yaml/v4 dependency.
+Run `go mod tidy` after YAML-enabled generation to record the yaml/v4
+dependency.
 
 The compatible split form—`WithInterface`, `WithInterfaceImpls`, and
 `WithDiscriminator` as separate options—remains supported. When no explicit
@@ -402,6 +412,7 @@ gen-jsonschema [gen] [options]     # generate (default subcommand)
   -force               rewrite even when unchanged (incompatible with -no-changes)
   -num-test-samples N  number of test samples to generate (default 5)
   --validate           also generate ValidateJSON() methods
+  --formats MODE       union unmarshalers: json (default), yaml, or both
 
 gen-jsonschema new [options]       # scaffold schema.go
   -out FILE            output path ("" or "--" = stdout)

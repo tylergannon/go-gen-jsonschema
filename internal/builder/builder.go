@@ -15,9 +15,35 @@ type BuilderArgs struct {
 	NoChanges      bool // If true, fail if any schema changes are detected
 	Force          bool // If true, force regeneration of schemas even if no changes are detected
 	Validate       bool // If true, generate ValidateJSON() methods and schema compilation
+	// UnmarshalFormats selects generated union unmarshaler formats. The zero
+	// value preserves the CLI default and generates JSON unmarshalers only.
+	UnmarshalFormats UnmarshalFormats
+}
+
+type UnmarshalFormats string
+
+const (
+	UnmarshalFormatsJSON UnmarshalFormats = "json"
+	UnmarshalFormatsYAML UnmarshalFormats = "yaml"
+	UnmarshalFormatsBoth UnmarshalFormats = "both"
+)
+
+func (f UnmarshalFormats) generatesJSON() bool {
+	return f == "" || f == UnmarshalFormatsJSON || f == UnmarshalFormatsBoth
+}
+
+func (f UnmarshalFormats) generatesYAML() bool {
+	return f == UnmarshalFormatsYAML || f == UnmarshalFormatsBoth
+}
+
+func (f UnmarshalFormats) valid() bool {
+	return f == "" || f == UnmarshalFormatsJSON || f == UnmarshalFormatsYAML || f == UnmarshalFormatsBoth
 }
 
 func Run(args BuilderArgs) (err error) {
+	if !args.UnmarshalFormats.valid() {
+		return fmt.Errorf("invalid unmarshal formats %q", args.UnmarshalFormats)
+	}
 	var (
 		pkgs    []*decorator.Package
 		builder SchemaBuilder
@@ -34,6 +60,7 @@ func Run(args BuilderArgs) (err error) {
 	builder.Pretty = args.Pretty
 	builder.NumTestSamples = args.NumTestSamples
 	builder.Validate = args.Validate
+	builder.UnmarshalFormats = args.UnmarshalFormats
 
 	// Allow registered transforms to mutate the model before render (no-ops by default)
 	if err = (&builder).applyTransforms(); err != nil {

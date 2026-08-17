@@ -65,10 +65,11 @@ var _ = jsonschema.NewJSONSchemaMethod(
 An interface-typed field becomes a union (`anyOf`) of its registered
 implementations, discriminated by a `"type"` property. A direct
 one-dimensional slice field (`[]PaymentMethod`) becomes an array whose `items`
-contains that union. The generator emits `UnmarshalJSON` and native
-`go.yaml.in/yaml/v4` dispatch code for scalar values and every slice element.
-Both formats use `type` as the default discriminator property; YAML decoding
-honors `yaml` tags and does not convert through JSON.
+contains that union. The generator emits `UnmarshalJSON` by default. Pass
+`--formats=both` to add native `go.yaml.in/yaml/v4` dispatch or
+`--formats=yaml` to emit only YAML dispatch for scalar values and every slice
+element. Both formats use `type` as the default discriminator property; YAML
+decoding honors `yaml` tags and does not convert through JSON.
 
 ```go
 // types.go
@@ -194,6 +195,7 @@ gen-jsonschema gen [flags]
   -no-changes        # fail (writing nothing) if regeneration would change any schema
   -force             # rewrite even when unchanged; incompatible with -no-changes
   --validate         # also generate ValidateJSON() methods
+  --formats MODE     # union unmarshalers: json (default), yaml, or both
 gen-jsonschema new [flags]
   -out FILE          # stub file path ("" or "--" = stdout)
   -pkg NAME          # package name override (stdout mode)

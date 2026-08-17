@@ -8,6 +8,22 @@ import (
 	"github.com/tylergannon/go-gen-jsonschema/internal/builder"
 )
 
+func TestParseUnmarshalFormats(t *testing.T) {
+	t.Parallel()
+
+	for _, value := range []string{"json", "yaml", "both"} {
+		value := value
+		t.Run(value, func(t *testing.T) {
+			t.Parallel()
+			_, err := parseUnmarshalFormats(value)
+			require.NoError(t, err)
+		})
+	}
+
+	_, err := parseUnmarshalFormats("toml")
+	require.EqualError(t, err, `invalid --formats value "toml": expected json, yaml, or both`)
+}
+
 func TestNewConfigUsesOnlyGoBuildConstraint(t *testing.T) {
 	data, err := builder.RenderTemplate(configTmplContents, configArg{
 		PkgName:  "example",

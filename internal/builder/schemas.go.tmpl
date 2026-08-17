@@ -15,7 +15,7 @@ import (
 	{{- if gt (len .RenderedTypes) 0 }}
 	"text/template"
 	{{- end }}
-	{{- if gt (len .SpecialTypes) 0 }}
+	{{- if and (gt (len .SpecialTypes) 0) .GeneratesYAMLUnmarshalers }}
 
 	yaml "go.yaml.in/yaml/v4"
 	{{- end }}
@@ -127,6 +127,7 @@ func ({{$recvName}}) ValidateJSON(data []byte) error {
 
 {{ range .SpecialTypes -}}
 {{$initial := .Initial -}}
+{{ if $.GeneratesJSONUnmarshalers -}}
 // UnmarshalJSON is a generated custom json.Unmarshaler implementation for
 // {{.Name}}.
 func ({{.Initial}} *{{.Name}}) UnmarshalJSON(data []byte) (err error) {
@@ -178,7 +179,9 @@ func ({{.Initial}} *{{.Name}}) UnmarshalJSON(data []byte) (err error) {
 	*{{.Initial}} = __next
 	return nil
 }
+{{ end -}}
 
+{{ if $.GeneratesYAMLUnmarshalers -}}
 // UnmarshalYAML is a generated custom yaml.Unmarshaler implementation for
 // {{.Name}}.
 func ({{.Initial}} *{{.Name}}) UnmarshalYAML(node *yaml.Node) (err error) {
@@ -238,7 +241,9 @@ func ({{.Initial}} *{{.Name}}) UnmarshalYAML(node *yaml.Node) (err error) {
 	return nil
 }
 {{ end -}}
+{{ end -}}
 {{ range .Interfaces -}}
+{{ if $.GeneratesJSONUnmarshalers -}}
 func {{.UnmarshalerFunc}}(data []byte) ({{.TypeNameWithPrefix}}, error) {
 	var (
 		temp          map[string]json.RawMessage
@@ -272,7 +277,9 @@ func {{.UnmarshalerFunc}}(data []byte) ({{.TypeNameWithPrefix}}, error) {
 		return nil, fmt.Errorf("unknown discriminator: %s", discriminator)
 	}
 }
+{{ end -}}
 
+{{ if $.GeneratesYAMLUnmarshalers -}}
 func {{.YAMLUnmarshalerFunc}}(node *yaml.Node) ({{.TypeNameWithPrefix}}, error) {
 	var temp map[string]yaml.Node
 	if err := node.Decode(&temp); err != nil {
@@ -306,12 +313,15 @@ func {{.YAMLUnmarshalerFunc}}(node *yaml.Node) ({{.TypeNameWithPrefix}}, error) 
 		return nil, fmt.Errorf("unknown discriminator: %s", discriminator)
 	}
 }
+{{ end -}}
 {{ end }}
-{{ if .HaveInterfaces -}}
+{{ if and .HaveInterfaces .GeneratesJSONUnmarshalers -}}
  func __jsonschema__unmarshalDiscriminatorError(discriminator json.RawMessage, err error) error {
  	return fmt.Errorf("unable to unmarshal discriminator value %v: %w", discriminator, err)
  }
+{{ end -}}
 
+{{ if and .HaveInterfaces .GeneratesYAMLUnmarshalers -}}
 func __jsonschema__yamlMappingNode(fields map[string]yaml.Node) yaml.Node {
 	content := make([]*yaml.Node, 0, len(fields)*2)
 	for name, value := range fields {
@@ -321,7 +331,7 @@ func __jsonschema__yamlMappingNode(fields map[string]yaml.Node) yaml.Node {
 	}
 	return yaml.Node{Kind: yaml.MappingNode, Tag: "!!map", Content: content}
 }
- {{ end -}}
+{{ end -}}
 
 {{/* Generate RenderedSchema() for types that requested it */}}
 {{ range .SchemaMethods -}}

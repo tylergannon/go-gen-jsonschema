@@ -157,7 +157,6 @@ func __jsonUnmarshal__interfaces__TestInterface(data []byte) (TestInterface, err
 		return nil, fmt.Errorf("unknown discriminator: %s", discriminator)
 	}
 }
-
 func __yamlUnmarshal__interfaces__TestInterface(node *yaml.Node) (TestInterface, error) {
 	var temp map[string]yaml.Node
 	if err := node.Decode(&temp); err != nil {
@@ -198,7 +197,6 @@ func __yamlUnmarshal__interfaces__TestInterface(node *yaml.Node) (TestInterface,
 func __jsonschema__unmarshalDiscriminatorError(discriminator json.RawMessage, err error) error {
 	return fmt.Errorf("unable to unmarshal discriminator value %v: %w", discriminator, err)
 }
-
 func __jsonschema__yamlMappingNode(fields map[string]yaml.Node) yaml.Node {
 	content := make([]*yaml.Node, 0, len(fields)*2)
 	for name, value := range fields {

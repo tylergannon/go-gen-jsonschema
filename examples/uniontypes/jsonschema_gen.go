@@ -8,8 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-
-	yaml "go.yaml.in/yaml/v4"
 )
 
 //go:embed jsonschema
@@ -130,49 +128,6 @@ func (d *Drawing) UnmarshalJSON(data []byte) (err error) {
 	return nil
 }
 
-// UnmarshalYAML is a generated custom yaml.Unmarshaler implementation for
-// Drawing.
-func (d *Drawing) UnmarshalYAML(node *yaml.Node) (err error) {
-	var fields map[string]yaml.Node
-	if err = node.Decode(&fields); err != nil {
-		return err
-	}
-	ordinary := make(map[string]yaml.Node, len(fields))
-	for name, value := range fields {
-		ordinary[name] = value
-	}
-	delete(ordinary, "shapes")
-	type Alias Drawing
-	var alias Alias
-	ordinaryNode := __jsonschema__yamlMappingNode(ordinary)
-	if err = ordinaryNode.Decode(&alias); err != nil {
-		return err
-	}
-	__next := Drawing(alias)
-
-	if __node0, ok := fields["shapes"]; !ok {
-		__next.Shapes = d.Shapes
-	} else {
-		var __raw0 []yaml.Node
-		if err = __node0.Decode(&__raw0); err != nil {
-			return fmt.Errorf("field shapes: %w", err)
-		}
-		var __decoded0 []Shape
-		if __raw0 != nil {
-			__decoded0 = make([]Shape, len(__raw0))
-		}
-		for __index := range __raw0 {
-			if __decoded0[__index], err = __yamlUnmarshal__uniontypes__Shape(&__raw0[__index]); err != nil {
-				return fmt.Errorf("field shapes[%d]: %w", __index, err)
-			}
-		}
-		__next.Shapes = __decoded0
-	}
-
-	*d = __next
-	return nil
-}
-
 // UnmarshalJSON is a generated custom json.Unmarshaler implementation for
 // Payment.
 func (p *Payment) UnmarshalJSON(data []byte) (err error) {
@@ -188,35 +143,6 @@ func (p *Payment) UnmarshalJSON(data []byte) (err error) {
 	__next := Payment(wrapper.Alias)
 
 	if __next.Method, err = __jsonUnmarshal__uniontypes__PaymentMethod(wrapper.Method); err != nil {
-		return err
-	}
-
-	*p = __next
-	return nil
-}
-
-// UnmarshalYAML is a generated custom yaml.Unmarshaler implementation for
-// Payment.
-func (p *Payment) UnmarshalYAML(node *yaml.Node) (err error) {
-	var fields map[string]yaml.Node
-	if err = node.Decode(&fields); err != nil {
-		return err
-	}
-	ordinary := make(map[string]yaml.Node, len(fields))
-	for name, value := range fields {
-		ordinary[name] = value
-	}
-	delete(ordinary, "method")
-	type Alias Payment
-	var alias Alias
-	ordinaryNode := __jsonschema__yamlMappingNode(ordinary)
-	if err = ordinaryNode.Decode(&alias); err != nil {
-		return err
-	}
-	__next := Payment(alias)
-
-	__node0 := fields["method"]
-	if __next.Method, err = __yamlUnmarshal__uniontypes__PaymentMethod(&__node0); err != nil {
 		return err
 	}
 
@@ -253,43 +179,6 @@ func __jsonUnmarshal__uniontypes__Shape(data []byte) (Shape, error) {
 	case "Triangle":
 		var obj Triangle
 		if err = json.Unmarshal(data, &obj); err != nil {
-			return nil, err
-		}
-		return obj, nil
-	default:
-		return nil, fmt.Errorf("unknown discriminator: %s", discriminator)
-	}
-}
-
-func __yamlUnmarshal__uniontypes__Shape(node *yaml.Node) (Shape, error) {
-	var temp map[string]yaml.Node
-	if err := node.Decode(&temp); err != nil {
-		return nil, err
-	}
-	discriminatorNode, ok := temp["type"]
-	if !ok {
-		return nil, errNoDiscriminator
-	}
-	var discriminator string
-	if err := discriminatorNode.Decode(&discriminator); err != nil {
-		return nil, fmt.Errorf("unable to unmarshal discriminator value %q: %w", discriminatorNode.Value, err)
-	}
-	switch discriminator {
-	case "Circle":
-		var obj Circle
-		if err := node.Decode(&obj); err != nil {
-			return nil, err
-		}
-		return obj, nil
-	case "Rectangle":
-		var obj Rectangle
-		if err := node.Decode(&obj); err != nil {
-			return nil, err
-		}
-		return obj, nil
-	case "Triangle":
-		var obj Triangle
-		if err := node.Decode(&obj); err != nil {
 			return nil, err
 		}
 		return obj, nil
@@ -335,53 +224,6 @@ func __jsonUnmarshal__uniontypes__PaymentMethod(data []byte) (PaymentMethod, err
 	}
 }
 
-func __yamlUnmarshal__uniontypes__PaymentMethod(node *yaml.Node) (PaymentMethod, error) {
-	var temp map[string]yaml.Node
-	if err := node.Decode(&temp); err != nil {
-		return nil, err
-	}
-	discriminatorNode, ok := temp["type"]
-	if !ok {
-		return nil, errNoDiscriminator
-	}
-	var discriminator string
-	if err := discriminatorNode.Decode(&discriminator); err != nil {
-		return nil, fmt.Errorf("unable to unmarshal discriminator value %q: %w", discriminatorNode.Value, err)
-	}
-	switch discriminator {
-	case "CreditCard":
-		var obj CreditCard
-		if err := node.Decode(&obj); err != nil {
-			return nil, err
-		}
-		return obj, nil
-	case "BankTransfer":
-		var obj BankTransfer
-		if err := node.Decode(&obj); err != nil {
-			return nil, err
-		}
-		return obj, nil
-	case "DigitalWallet":
-		var obj DigitalWallet
-		if err := node.Decode(&obj); err != nil {
-			return nil, err
-		}
-		return &obj, nil
-	default:
-		return nil, fmt.Errorf("unknown discriminator: %s", discriminator)
-	}
-}
-
 func __jsonschema__unmarshalDiscriminatorError(discriminator json.RawMessage, err error) error {
 	return fmt.Errorf("unable to unmarshal discriminator value %v: %w", discriminator, err)
-}
-
-func __jsonschema__yamlMappingNode(fields map[string]yaml.Node) yaml.Node {
-	content := make([]*yaml.Node, 0, len(fields)*2)
-	for name, value := range fields {
-		nameNode := yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: name}
-		valueNode := value
-		content = append(content, &nameNode, &valueNode)
-	}
-	return yaml.Node{Kind: yaml.MappingNode, Tag: "!!map", Content: content}
 }
