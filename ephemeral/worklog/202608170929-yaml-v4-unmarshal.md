@@ -40,3 +40,4 @@ proof: A second `go generate ./...` preserved the exact working diff hash `26991
 proof: Final `go test -count=1 ./...`, `go vet ./...`, `go run ./internal/cmd/doc-gen -check`, and `git diff --check` passed after format selection, regeneration, and documentation updates.
 docs: README, llms.txt, the skill, and its registration reference now say JSON-only is the default, document `--formats=json|yaml|both`, and require yaml/v4 only for YAML-enabled generation.
 pull-request: Pushed format selection at `958eb7c` to PR #52 and updated the PR body with the JSON default, YAML opt-ins, and real CLI generation/build evidence; GitHub checks were queued after the push.
+correction: The repo skill's routing description was too expensive to carry in every context; reduced it to a single trigger sentence covering JSON Schemas, JSON/YAML decoding, and Go structs.

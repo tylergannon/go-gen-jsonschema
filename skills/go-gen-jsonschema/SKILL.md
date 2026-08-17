@@ -1,13 +1,8 @@
 ---
 name: go-gen-jsonschema
 description: >
-  Generate JSON Schemas from Go types with go-gen-jsonschema, optimized for LLM
-  function calling and structured output (Anthropic tool_use, OpenAI tools).
-  Use this whenever a Go project needs JSON Schema for its structs — defining
-  LLM tools, validating LLM output, structured extraction — or when the user
-  mentions gen-jsonschema, schema.go stubs, the jsonschema build tag, ValidateJSON,
-  YAML decoding for registered interfaces, or asks to keep generated schemas in
-  sync via go generate, lefthook, or CI.
+  Use when adding or maintaining JSON Schemas and JSON/YAML decoding for Go
+  structs.
 ---
 
 # go-gen-jsonschema
