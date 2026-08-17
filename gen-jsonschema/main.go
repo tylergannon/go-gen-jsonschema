@@ -65,6 +65,7 @@ func handleGen(firstArg int) {
 		noChanges      = genCmd.Bool("no-changes", false, "Fail if any schema changes are detected")
 		force          = genCmd.Bool("force", false, "Force regeneration of schemas even if no changes are detected")
 		validate       = genCmd.Bool("validate", false, "Generate ValidateJSON() methods for schema validation")
+		formats        = genCmd.String("formats", "json", "Generated union unmarshaler formats: json, yaml, or both")
 		err            error
 	)
 
@@ -86,6 +87,10 @@ func handleGen(firstArg int) {
 		return
 	}
 	_ = genCmd.Parse(os.Args[firstArg:])
+	unmarshalFormats, err := parseUnmarshalFormats(*formats)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	// Check environment variable
 	*noChanges = *noChanges || os.Getenv("JSONSCHEMA_NO_CHANGES") != ""
@@ -95,14 +100,25 @@ func handleGen(firstArg int) {
 	}
 
 	if err = builder.Run(builder.BuilderArgs{
-		TargetDir:      *target,
-		Pretty:         *pretty,
-		NumTestSamples: *numTestSamples,
-		NoChanges:      *noChanges,
-		Force:          *force,
-		Validate:       *validate,
+		TargetDir:        *target,
+		Pretty:           *pretty,
+		NumTestSamples:   *numTestSamples,
+		NoChanges:        *noChanges,
+		Force:            *force,
+		Validate:         *validate,
+		UnmarshalFormats: unmarshalFormats,
 	}); err != nil {
 		log.Fatal(err)
+	}
+}
+
+func parseUnmarshalFormats(value string) (builder.UnmarshalFormats, error) {
+	formats := builder.UnmarshalFormats(value)
+	switch formats {
+	case builder.UnmarshalFormatsJSON, builder.UnmarshalFormatsYAML, builder.UnmarshalFormatsBoth:
+		return formats, nil
+	default:
+		return "", fmt.Errorf("invalid --formats value %q: expected json, yaml, or both", value)
 	}
 }
 

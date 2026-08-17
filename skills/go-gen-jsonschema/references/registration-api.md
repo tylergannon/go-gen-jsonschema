@@ -63,10 +63,13 @@ var _ = jsonschema.NewJSONSchemaMethod(
 ## Discriminated unions (interface fields)
 
 An interface-typed field becomes a union (`anyOf`) of its registered
-implementations, discriminated by a `"!type"` property. A direct
+implementations, discriminated by a `"type"` property. A direct
 one-dimensional slice field (`[]PaymentMethod`) becomes an array whose `items`
-contains that union. The generator also emits `UnmarshalJSON` dispatch code for
-scalar values and every slice element.
+contains that union. The generator emits `UnmarshalJSON` by default. Pass
+`--formats=both` to add native `go.yaml.in/yaml/v4` dispatch or
+`--formats=yaml` to emit only YAML dispatch for scalar values and every slice
+element. Both formats use `type` as the default discriminator property; YAML
+decoding honors `yaml` tags and does not convert through JSON.
 
 ```go
 // types.go
@@ -98,7 +101,7 @@ var _ = jsonschema.NewJSONSchemaMethod(
     Payment.Schema,
     jsonschema.WithInterface(
         Payment{}.Methods,
-        jsonschema.Discriminator("!kind"), // optional; default "!type"
+        jsonschema.Discriminator("!kind"), // optional; default "type"
         jsonschema.Impl("credit_card", CreditCard{}),
         jsonschema.Impl("bank_transfer", BankTransfer{}),
     ),
@@ -120,7 +123,7 @@ names.
 
 The slice must be the direct field type. Fixed arrays, nested slices, named
 slice containers, `Optional[[]I]`, and `Nullable[[]I]` are rejected during
-generation.
+generation. An `Optional[I]` scalar is supported; `Nullable[I]` is not.
 
 Legacy package-level registration (still works, but you cannot mix it with the
 v1 per-field options in the same package):
@@ -192,6 +195,7 @@ gen-jsonschema gen [flags]
   -no-changes        # fail (writing nothing) if regeneration would change any schema
   -force             # rewrite even when unchanged; incompatible with -no-changes
   --validate         # also generate ValidateJSON() methods
+  --formats MODE     # union unmarshalers: json (default), yaml, or both
 gen-jsonschema new [flags]
   -out FILE          # stub file path ("" or "--" = stdout)
   -pkg NAME          # package name override (stdout mode)

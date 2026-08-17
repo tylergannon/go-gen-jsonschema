@@ -1,18 +1,15 @@
 ---
 name: go-gen-jsonschema
 description: >
-  Generate JSON Schemas from Go types with go-gen-jsonschema, optimized for LLM
-  function calling and structured output (Anthropic tool_use, OpenAI tools).
-  Use this whenever a Go project needs JSON Schema for its structs — defining
-  LLM tools, validating LLM output, structured extraction — or when the user
-  mentions gen-jsonschema, schema.go stubs, the jsonschema build tag, ValidateJSON,
-  or asks to keep generated schemas in sync via go generate, lefthook, or CI.
+  Use when adding or maintaining JSON Schemas and JSON/YAML decoding for Go
+  structs.
 ---
 
 # go-gen-jsonschema
 
 Code generator that turns Go structs into JSON Schema files plus Go accessors
-(`Schema()`, optionally `ValidateJSON()`). Built for LLM function calling:
+(`Schema()`, optionally `ValidateJSON()`) and selectable JSON/YAML decoding for
+registered interfaces. Built for LLM function calling:
 properties are emitted in struct field order (deterministic, prompt-controllable),
 `additionalProperties: false`, ordinary and nullable fields required,
 `Optional[T]` fields optional, and Go doc comments become the schema
@@ -26,7 +23,9 @@ Import path: `github.com/tylergannon/go-gen-jsonschema` (library markers) and
 - `schema.go` — `//go:build jsonschema`. You write this. Panic stubs + marker
   registrations. Compiled only during generation, never in production.
 - `jsonschema_gen.go` — `//go:build !jsonschema`. Generated. Real `Schema()`
-  and `ValidateJSON()` implementations over an `embed.FS` of `jsonschema/*.json`.
+  and `ValidateJSON()` implementations over an `embed.FS` of `jsonschema/*.json`,
+  plus the selected registered-interface unmarshalers. JSON is the default;
+  YAML or both are opt-in.
 
 The build tags make them mutually exclusive, so the package always compiles —
 before and after generation. Commit all generated outputs: `jsonschema_gen.go`
@@ -50,6 +49,8 @@ and the whole `jsonschema/` directory (each `T.json` schema comes with a
 
    Add `--validate` to also generate `ValidateJSON()` methods (recommended when
    the JSON comes from an LLM): `//go:generate go tool gen-jsonschema --validate`
+   Add `--formats=both` for JSON and native yaml/v4 interface decoding, or
+   `--formats=yaml` for YAML-only interface decoding.
 
 3. **Create the stub file.** Let the CLI write it (it derives the package name
    and stubs from your flags), then generation runs immediately via `--generate`:
@@ -60,10 +61,9 @@ and the whole `jsonschema/` directory (each `T.json` schema comes with a
 
    Or write `schema.go` by hand — see the example below.
 
-4. **Tidy** (only needed with `--validate`): run `go mod tidy`. The generated
-   code imports `github.com/santhosh-tekuri/jsonschema/v6`, which won't be in
-   go.sum until you tidy — `go build` fails with a missing-go.sum-entry error
-   otherwise.
+4. **Tidy** when generation adds dependencies: run `go mod tidy`. Validation
+   imports `github.com/santhosh-tekuri/jsonschema/v6`; opted-in
+   registered-interface YAML decoding imports `go.yaml.in/yaml/v4`.
 
 5. **Verify**: `go build ./...` and `go test ./...` must pass, and a second
    `go generate ./...` must produce no diff (generation is idempotent).
@@ -176,6 +176,11 @@ For stable interface wire values, prefer the cohesive
 `WithInterface(field, Discriminator(name), Impl(value, implementation), ...)`
 form. The split `WithInterface`/`WithInterfaceImpls`/`WithDiscriminator` form
 remains supported and derives discriminator values from Go type names.
+The default discriminator property is `type` for both JSON and YAML. Generation
+is JSON-only by default; `--formats=both` adds native
+`UnmarshalYAML(*yaml.Node)`, while `--formats=yaml` omits the JSON union methods.
+The yaml/v4 path honors `yaml` tags and does not convert through JSON.
+
 By default, a struct type referenced from multiple places is inlined at every
 call site; add `AsRef()` to its registration to render it once as a `"$ref"`
 into `"$defs"` instead.
@@ -187,10 +192,10 @@ from compiling examples in this repository and checked for drift by the Go
 test suite.
 
 Known limitations (fail fast, don't fight them): no maps or recursive types;
-registered interfaces support scalar fields and direct one-dimensional `[]I`
-fields, but not fixed arrays, nested slices, named slice containers, or
-Optional/Nullable interface slices; external package types are unsupported
-except `time.Time`.
+registered interfaces support scalar `I`, `Optional[I]`, and direct
+one-dimensional `[]I` fields, but not `Nullable[I]`, fixed arrays, nested
+slices, named slice containers, or Optional/Nullable interface slices; external
+package types are unsupported except `time.Time`.
 
 ## Closeout checklist
 

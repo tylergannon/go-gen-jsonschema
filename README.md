@@ -54,7 +54,7 @@ Then just ask your agent to "add go-gen-jsonschema to this project."
 
    ```bash
    go tool gen-jsonschema new -out schema.go -methods 'Person=Schema' --validate --generate
-   go mod tidy   # needed with --validate: generated code imports santhosh-tekuri/jsonschema/v6
+   go mod tidy   # records dependencies added by validation or opted-in YAML decoding
    ```
 
 4. **Use the generated methods:**
@@ -79,6 +79,9 @@ Commit everything the generator writes: `jsonschema_gen.go` and the
   become `description` fields.
 - **Built-in validation** — opt-in `ValidateJSON()` methods with schemas
   compiled once at startup, returning structured errors.
+- **Optional direct YAML unions** — pass `--formats=both` or `--formats=yaml`
+  for native yaml/v4 decoding with the same `type` discriminator used by JSON;
+  no YAML-to-JSON bridge.
 
 ## ⚙️ How it works
 
@@ -245,23 +248,27 @@ supported.
 ## 🔄 Union types (interfaces)
 
 An interface-typed field becomes an `anyOf` union of its registered
-implementations, discriminated by a `"!type"` property (configurable). A direct
+implementations, discriminated by a `"type"` property (configurable). A direct
 one-dimensional slice of that interface becomes an array with the union under
-`items.anyOf`. The generator emits `UnmarshalJSON` dispatch code for scalar
-values and every slice element.
+`items.anyOf`. Generation defaults to JSON-only. Pass `--formats=both` to emit
+both `UnmarshalJSON` and native `UnmarshalYAML(*yaml.Node)` dispatch, or
+`--formats=yaml` to emit only YAML dispatch, for scalar values (including
+`Optional[I]`) and every slice element. The YAML path uses
+[`go.yaml.in/yaml/v4`](https://pkg.go.dev/go.yaml.in/yaml/v4) directly rather
+than converting through JSON.
 
 ```go
 type PaymentMethod interface{ IsPaymentMethod() }
 
 type CreditCard struct {
-    CardNumber string `json:"cardNumber"`
-    Expiry     string `json:"expiry"`
+    CardNumber string `json:"cardNumber" yaml:"card_number"`
+    Expiry     string `json:"expiry" yaml:"expiry"`
 }
 func (CreditCard) IsPaymentMethod() {}
 
 type BankTransfer struct {
-    AccountNumber string `json:"accountNumber"`
-    RoutingNumber string `json:"routingNumber"`
+    AccountNumber string `json:"accountNumber" yaml:"account_number"`
+    RoutingNumber string `json:"routingNumber" yaml:"routing_number"`
 }
 func (BankTransfer) IsPaymentMethod() {}
 
@@ -277,12 +284,37 @@ var _ = jsonschema.NewJSONSchemaMethod(
     Payment.Schema,
     jsonschema.WithInterface(
         Payment{}.Methods,
-        jsonschema.Discriminator("!kind"), // optional; default "!type"
         jsonschema.Impl("credit_card", CreditCard{}),
         jsonschema.Impl("bank_transfer", BankTransfer{}),
     ),
 )
 ```
+
+Opt into YAML alongside the default JSON unmarshaler in the generation
+directive:
+
+```go
+//go:generate go tool gen-jsonschema --formats=both
+```
+
+With the default discriminator, ordinary YAML can be decoded directly:
+
+```go
+import yaml "go.yaml.in/yaml/v4"
+
+var payment Payment
+err := yaml.Unmarshal([]byte(`
+amount: 42
+methods:
+  - type: credit_card
+    card_number: "4111111111111111"
+    expiry: "12/30"
+`), &payment)
+```
+
+YAML field names follow `yaml` tags (or yaml/v4's normal field-name rules).
+Run `go mod tidy` after YAML-enabled generation to record the yaml/v4
+dependency.
 
 The compatible split form—`WithInterface`, `WithInterfaceImpls`, and
 `WithDiscriminator` as separate options—remains supported. When no explicit
@@ -298,6 +330,7 @@ var _ = jsonschema.NewInterfaceImpl[PaymentMethod](CreditCard{}, BankTransfer{})
 
 Only direct one-dimensional slices are supported. Fixed arrays, nested slices,
 named slice containers, `Optional[[]I]`, and `Nullable[[]I]` fail generation.
+An `Optional[I]` scalar is supported; `Nullable[I]` is not.
 
 ## 🛡️ Validation
 
@@ -379,6 +412,7 @@ gen-jsonschema [gen] [options]     # generate (default subcommand)
   -force               rewrite even when unchanged (incompatible with -no-changes)
   -num-test-samples N  number of test samples to generate (default 5)
   --validate           also generate ValidateJSON() methods
+  --formats MODE       union unmarshalers: json (default), yaml, or both
 
 gen-jsonschema new [options]       # scaffold schema.go
   -out FILE            output path ("" or "--" = stdout)

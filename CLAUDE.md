@@ -57,7 +57,7 @@ Legacy API: `NewEnumType[T]()`, `NewInterfaceImpl[I](impls...)`
 ### Key Patterns
 
 - **Build tags**: `//go:build jsonschema` for registration code, `//go:build !jsonschema` for generated code
-- **Discriminators**: Default `"!type"`, overridable per-field with `WithDiscriminator()`
+- **Discriminators**: Default `"type"`, overridable per-field with `WithDiscriminator()`
 - **Comments → descriptions**: Go doc comments automatically become JSON Schema `description` fields
 - **Optional fields**: Detected from `json:"field,omitempty"` tags
 

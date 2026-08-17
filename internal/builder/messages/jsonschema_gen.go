@@ -13,7 +13,7 @@ import (
 //go:embed jsonschema
 var __gen_jsonschema_fs embed.FS
 
-var errNoDiscriminator = errors.New("no discriminator property '!type' found")
+var errNoDiscriminator = errors.New("no discriminator property 'type' found")
 
 func __gen_jsonschema_panic(fname string, err error) {
 	panic(fmt.Sprintf("error reading %s from embedded FS: %s", fname, err.Error()))
@@ -67,7 +67,7 @@ func __jsonUnmarshal__messages__AssertionValue(data []byte) (AssertionValue, err
 
 	if err != nil {
 		return nil, err
-	} else if _tempDiscriminator, ok := temp["!type"]; !ok {
+	} else if _tempDiscriminator, ok := temp["type"]; !ok {
 		return nil, errNoDiscriminator
 	} else if err = json.Unmarshal(_tempDiscriminator, &discriminator); err != nil {
 		return nil, __jsonschema__unmarshalDiscriminatorError(_tempDiscriminator, err)

@@ -2,8 +2,65 @@ package v1_interfaces_options
 
 import (
 	"encoding/json"
+	"reflect"
+	"strings"
 	"testing"
+
+	yaml "go.yaml.in/yaml/v4"
 )
+
+func TestGeneratedYAMLUnmarshalComprehensive(t *testing.T) {
+	input := []byte(`
+defaults: &defaults
+  yaml_if:
+    "!kind": impl_one
+    x: merged
+<<: *defaults
+yaml_ifs:
+  - "!kind": Impl1
+    x: one
+  - "!kind": Impl2
+    y: 2
+yaml_optional:
+  "!kind": Impl2
+  y: 3
+`)
+	var got Owner
+	if err := yaml.Unmarshal(input, &got); err != nil {
+		t.Fatal(err)
+	}
+	if len(got.IFaces) != 2 {
+		t.Fatalf("interfaces = %#v, want two values", got.IFaces)
+	}
+	required, requiredOK := got.IF.(Impl1)
+	first, firstOK := got.IFaces[0].(Impl1)
+	second, secondOK := got.IFaces[1].(Impl2)
+	optional, optionalOK := got.OptionalIF.Value.(Impl2)
+	if !requiredOK || required.X != "yaml:merged" ||
+		!firstOK || first.X != "yaml:one" || !secondOK || second.Y != 2 ||
+		!got.OptionalIF.Present || !optionalOK || optional.Y != 3 {
+		t.Fatalf("decoded owner = %#v", got)
+	}
+
+	original := Owner{IF: Impl1{X: "original"}, IFaces: []IFace{Impl2{Y: 7}}}
+	got = original
+	bad := []byte(`
+yaml_if:
+  "!kind": impl_one
+  x: replacement
+yaml_ifs:
+  - "!kind": Impl2
+    y: 2
+  - "!kind": unknown
+`)
+	err := yaml.Unmarshal(bad, &got)
+	if err == nil || !strings.Contains(err.Error(), "yaml_ifs[1]") {
+		t.Fatalf("error = %v, want indexed yaml_ifs failure", err)
+	}
+	if !reflect.DeepEqual(got, original) {
+		t.Fatalf("failed decode mutated destination: got %#v, want %#v", got, original)
+	}
+}
 
 func TestInterfaceSliceDecode(t *testing.T) {
 	var got Owner

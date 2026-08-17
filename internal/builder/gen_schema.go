@@ -302,6 +302,10 @@ type InterfaceInfo struct {
 	Options               []InterfaceOptionInfo
 }
 
+func (i InterfaceInfo) YAMLUnmarshalerFunc() string {
+	return strings.Replace(i.UnmarshalerFunc, "__jsonUnmarshal__", "__yamlUnmarshal__", 1)
+}
+
 func (c *CustomMarshaledType) UnmarshalJSON(data []byte) (err error) {
 	type Wrapper struct {
 		*CustomMarshaledType
@@ -332,6 +336,7 @@ type SchemaBuilder struct {
 	NumTestSamples    int
 	Validate          bool
 	BuildTag          string
+	UnmarshalFormats  UnmarshalFormats
 	Imports           []string
 	SpecialTypes      []CustomMarshaledType
 	Interfaces        []InterfaceInfo
@@ -358,6 +363,14 @@ type SchemaBuilder struct {
 	// Collected $defs entries, keyed by definition name, populated as
 	// AsRef()'d types are rendered at their reference sites.
 	RefDefs map[string]refDef
+}
+
+func (s SchemaBuilder) GeneratesJSONUnmarshalers() bool {
+	return s.UnmarshalFormats.generatesJSON()
+}
+
+func (s SchemaBuilder) GeneratesYAMLUnmarshalers() bool {
+	return s.UnmarshalFormats.generatesYAML()
 }
 
 // refDef pairs a $defs entry's schema with the TypeID it was generated from,
@@ -1664,6 +1677,10 @@ func (s InterfaceProp) UnmarshalerFunc() string {
 	return fmt.Sprintf("__jsonUnmarshal__%s__%s", s.Interface.TypeSpec.Pkg().Name, s.Interface.TypeSpec.Name())
 }
 
+func (s InterfaceProp) YAMLUnmarshalerFunc() string {
+	return strings.Replace(s.UnmarshalerFunc(), "__jsonUnmarshal__", "__yamlUnmarshal__", 1)
+}
+
 func (i InterfaceProp) FieldNames() string {
 	var names []string
 	for _, name := range i.Field.Field.Names {
@@ -1685,6 +1702,13 @@ func (i InterfaceProp) JSONName() string {
 		return i.FieldNames()
 	}
 	return names[0]
+}
+
+func (i InterfaceProp) YAMLName() string {
+	if tag := i.Field.YAMLTag(); tag != nil && len(tag.Options) > 0 && tag.Options[0] != "" {
+		return tag.Options[0]
+	}
+	return strings.ToLower(i.FieldNames())
 }
 
 // resolveLocalInterfaceProps finds supported registered-interface properties on

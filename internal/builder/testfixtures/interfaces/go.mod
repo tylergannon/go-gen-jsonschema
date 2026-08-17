@@ -2,7 +2,10 @@ module github.com/tylergannon/go-gen-jsonschema/internal/builder/testfixtures/in
 
 go 1.26
 
-require github.com/tylergannon/go-gen-jsonschema v0.2.1
+require (
+	github.com/tylergannon/go-gen-jsonschema v0.2.1
+	go.yaml.in/yaml/v4 v4.0.0-rc.6
+)
 
 require (
 	github.com/dave/dst v0.27.3 // indirect

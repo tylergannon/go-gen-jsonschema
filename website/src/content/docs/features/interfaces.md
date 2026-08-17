@@ -41,7 +41,7 @@ var _ = jsonschema.NewJSONSchemaMethod(
 ```
 
 `Impl` keeps each implementation next to its stable wire discriminator. The
-default discriminator property is `!type`. The compatible split form using
+default discriminator property is `type`. The compatible split form using
 `WithInterfaceImpls` and `WithDiscriminator` remains supported; without
 explicit `Impl` values, wire discriminators derive from Go type names. Each
 implementation's JSON must carry the discriminator expected by the generated

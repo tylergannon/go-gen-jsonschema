@@ -179,7 +179,7 @@ FancyStruct.json:
           "type": "object",
           "description": "Put this down when you feel really great about life.",
           "properties": {
-            "!type": {
+            "type": {
               "type": "string",
               "const": "TestInterface1"
             },
@@ -197,7 +197,7 @@ FancyStruct.json:
             }
           },
           "required": [
-            "!type",
+            "type",
             "field1",
             "field2",
             "field3"
@@ -207,7 +207,7 @@ FancyStruct.json:
           "type": "object",
           "description": "This is seriously silly, don't you imagine so?",
           "properties": {
-            "!type": {
+            "type": {
               "type": "string",
               "const": "TestInterface2"
             },
@@ -222,7 +222,7 @@ FancyStruct.json:
             }
           },
           "required": [
-            "!type",
+            "type",
             "fork3",
             "fork4",
             "fork5"
@@ -231,7 +231,7 @@ FancyStruct.json:
         {
           "type": "object",
           "properties": {
-            "!type": {
+            "type": {
               "type": "string",
               "const": "PointerToTestInterface"
             },
@@ -246,7 +246,7 @@ FancyStruct.json:
             }
           },
           "required": [
-            "!type",
+            "type",
             "fork99",
             "fork10",
             "fork11"
@@ -312,7 +312,7 @@ import (
 //go:embed jsonschema
 var __gen_jsonschema_fs embed.FS
 
-var errNoDiscriminator = errors.New("no discriminator property '!type' found")
+var errNoDiscriminator = errors.New("no discriminator property 'type' found")
 
 func __gen_jsonschema_panic(fname string, err error) {
 	panic(fmt.Sprintf("error reading %s from embedded FS: %s", fname, err.Error()))
@@ -351,7 +351,7 @@ func __jsonUnmarshal__interfaces__TestInterface(data []byte) (TestInterface, err
 
 	if err != nil {
 		return nil, err
-	} else if _tempDiscriminator, ok := temp["!type"]; !ok {
+	} else if _tempDiscriminator, ok := temp["type"]; !ok {
 		return nil, errNoDiscriminator
 	} else if err = json.Unmarshal(_tempDiscriminator, &discriminator); err != nil {
 		return nil, __jsonschema__unmarshalDiscriminatorError(_tempDiscriminator, err)

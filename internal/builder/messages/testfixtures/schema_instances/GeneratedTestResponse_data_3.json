@@ -4,7 +4,7 @@
     {
       "path": ".MyField",
       "value": {
-        "!type": "AssertBoolValue",
+        "type": "AssertBoolValue",
         "value": true
       }
     }

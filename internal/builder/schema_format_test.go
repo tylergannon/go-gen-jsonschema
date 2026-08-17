@@ -88,14 +88,14 @@ func TestMarshalSchemaHardlines(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, `{"anyOf":[{"type":"object",
 "properties":{
-"!type":{"type":"string","const":"Circle"},
+"type":{"type":"string","const":"Circle"},
 "radius":{"type":"number"}
-},"required":["!type","radius"],"additionalProperties":false},
+},"required":["type","radius"],"additionalProperties":false},
 {"type":"object",
 "properties":{
-"!type":{"type":"string","const":"Square"},
+"type":{"type":"string","const":"Square"},
 "width":{"type":"number"}
-},"required":["!type","width"],"additionalProperties":false}]}`, string(actual))
+},"required":["type","width"],"additionalProperties":false}]}`, string(actual))
 		require.True(t, json.Valid(actual))
 	})
 

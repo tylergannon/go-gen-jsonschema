@@ -13,7 +13,7 @@
       }
     },
     {
-      "path": ".Assertions[0].Value.!type",
+      "path": ".Assertions[0].Value.type",
       "value": {
         "value": "AssertBoolValue"
       }
