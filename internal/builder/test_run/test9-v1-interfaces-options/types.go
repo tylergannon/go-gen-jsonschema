@@ -33,7 +33,9 @@ type Impl2 struct {
 func (Impl2) isIface() {}
 
 type Owner struct {
-	IF         IFace                      `json:"if" yaml:"yaml_if"`
-	IFaces     []IFace                    `json:"ifs" yaml:"yaml_ifs"`
-	OptionalIF jsonschema.Optional[IFace] `json:"optional_if,omitzero" yaml:"yaml_optional"`
+	IF         IFace                       `json:"if" yaml:"yaml_if"`
+	IFaces     []IFace                     `json:"ifs" yaml:"yaml_ifs"`
+	OptionalIF jsonschema.Optional[IFace]  `json:"optional_if,omitzero" yaml:"yaml_optional"`
+	Label      jsonschema.Optional[string] `json:"label,omitzero" yaml:"label"`
+	Timeout    jsonschema.Nullable[int]    `json:"timeout" yaml:"timeout"`
 }

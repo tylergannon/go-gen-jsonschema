@@ -94,6 +94,8 @@ func (o *Owner) UnmarshalYAML(node *yaml.Node) (err error) {
 	delete(ordinary, "yaml_if")
 	delete(ordinary, "yaml_ifs")
 	delete(ordinary, "yaml_optional")
+	delete(ordinary, "label")
+	delete(ordinary, "timeout")
 	type Alias Owner
 	var alias Alias
 	ordinaryNode := __jsonschema__yamlMappingNode(ordinary)
@@ -131,6 +133,27 @@ func (o *Owner) UnmarshalYAML(node *yaml.Node) (err error) {
 			return err
 		}
 		__next.OptionalIF.Present = true
+	}
+
+	if __nodeWrapper0, ok := fields["label"]; ok {
+		if __nodeWrapper0.ShortTag() == "!!null" {
+			return fmt.Errorf("field label: Optional value cannot be YAML null")
+		}
+		if err = __nodeWrapper0.Decode(&__next.Label.Value); err != nil {
+			return fmt.Errorf("field label: %w", err)
+		}
+		__next.Label.Present = true
+	}
+
+	if __nodeWrapper1, ok := fields["timeout"]; ok {
+		if __nodeWrapper1.ShortTag() == "!!null" {
+			__next.Timeout.Present = false
+		} else {
+			if err = __nodeWrapper1.Decode(&__next.Timeout.Value); err != nil {
+				return fmt.Errorf("field timeout: %w", err)
+			}
+			__next.Timeout.Present = true
+		}
 	}
 
 	*o = __next

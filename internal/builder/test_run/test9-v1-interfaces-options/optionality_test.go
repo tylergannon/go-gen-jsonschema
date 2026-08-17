@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	jsonschema "github.com/tylergannon/go-gen-jsonschema"
 	yaml "go.yaml.in/yaml/v4"
 )
 
@@ -24,9 +25,11 @@ yaml_ifs:
 yaml_optional:
   "!kind": Impl2
   y: 3
+label: ""
+timeout: 0
 `)
 	var got Owner
-	if err := yaml.Unmarshal(input, &got); err != nil {
+	if err := yaml.Load(input, &got, yaml.WithV4Defaults()); err != nil {
 		t.Fatal(err)
 	}
 	if len(got.IFaces) != 2 {
@@ -38,11 +41,32 @@ yaml_optional:
 	optional, optionalOK := got.OptionalIF.Value.(Impl2)
 	if !requiredOK || required.X != "yaml:merged" ||
 		!firstOK || first.X != "yaml:one" || !secondOK || second.Y != 2 ||
-		!got.OptionalIF.Present || !optionalOK || optional.Y != 3 {
+		!got.OptionalIF.Present || !optionalOK || optional.Y != 3 ||
+		!got.Label.Present || got.Label.Value != "" ||
+		!got.Timeout.Present || got.Timeout.Value != 0 {
 		t.Fatalf("decoded owner = %#v", got)
 	}
 
-	original := Owner{IF: Impl1{X: "original"}, IFaces: []IFace{Impl2{Y: 7}}}
+	var nullish Owner
+	if err := yaml.Load([]byte(`
+yaml_if:
+  "!kind": impl_one
+  x: required
+yaml_ifs: []
+timeout: null
+`), &nullish, yaml.WithV4Defaults()); err != nil {
+		t.Fatal(err)
+	}
+	if nullish.Label.Present || nullish.Timeout.Present {
+		t.Fatalf("absent optional and null nullable = %#v", nullish)
+	}
+
+	original := Owner{
+		IF:      Impl1{X: "original"},
+		IFaces:  []IFace{Impl2{Y: 7}},
+		Label:   jsonschema.Optional[string]{Present: true, Value: "original"},
+		Timeout: jsonschema.Nullable[int]{Present: true, Value: 9},
+	}
 	got = original
 	bad := []byte(`
 yaml_if:
@@ -53,12 +77,28 @@ yaml_ifs:
     y: 2
   - "!kind": unknown
 `)
-	err := yaml.Unmarshal(bad, &got)
+	err := yaml.Load(bad, &got, yaml.WithV4Defaults())
 	if err == nil || !strings.Contains(err.Error(), "yaml_ifs[1]") {
 		t.Fatalf("error = %v, want indexed yaml_ifs failure", err)
 	}
 	if !reflect.DeepEqual(got, original) {
 		t.Fatalf("failed decode mutated destination: got %#v, want %#v", got, original)
+	}
+
+	got = original
+	err = yaml.Load([]byte(`
+yaml_if:
+  "!kind": impl_one
+  x: replacement
+yaml_ifs: []
+label: null
+timeout: null
+`), &got, yaml.WithV4Defaults())
+	if err == nil || !strings.Contains(err.Error(), "label") {
+		t.Fatalf("error = %v, want null Optional label failure", err)
+	}
+	if !reflect.DeepEqual(got, original) {
+		t.Fatalf("failed Optional decode mutated destination: got %#v, want %#v", got, original)
 	}
 }
 

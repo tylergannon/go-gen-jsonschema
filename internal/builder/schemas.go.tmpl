@@ -196,6 +196,9 @@ func ({{.Initial}} *{{.Name}}) UnmarshalYAML(node *yaml.Node) (err error) {
 	{{range .InterfaceProps -}}
 	delete(ordinary, "{{.YAMLName}}")
 	{{end -}}
+	{{range .YAMLWrapperProps -}}
+	delete(ordinary, "{{.YAMLName}}")
+	{{end -}}
 	type Alias {{.Name}}
 	var alias Alias
 	ordinaryNode := __jsonschema__yamlMappingNode(ordinary)
@@ -236,6 +239,26 @@ func ({{.Initial}} *{{.Name}}) UnmarshalYAML(node *yaml.Node) (err error) {
 		return err
 	}
 	{{end}}
+	{{end}}
+	{{range $i, $prop := .YAMLWrapperProps}}
+	if __nodeWrapper{{$i}}, ok := fields["{{$prop.YAMLName}}"]; ok {
+		{{if $prop.Optional -}}
+		if __nodeWrapper{{$i}}.ShortTag() == "!!null" {
+			return fmt.Errorf("field {{$prop.YAMLName}}: Optional value cannot be YAML null")
+		}
+		{{else -}}
+		if __nodeWrapper{{$i}}.ShortTag() == "!!null" {
+			__next.{{$prop.FieldName}}.Present = false
+		} else {
+		{{end -}}
+		if err = __nodeWrapper{{$i}}.Decode(&__next.{{$prop.FieldName}}.Value); err != nil {
+			return fmt.Errorf("field {{$prop.YAMLName}}: %w", err)
+		}
+		__next.{{$prop.FieldName}}.Present = true
+		{{if not $prop.Optional -}}
+		}
+		{{end -}}
+	}
 	{{end}}
 	*{{.Initial}} = __next
 	return nil
