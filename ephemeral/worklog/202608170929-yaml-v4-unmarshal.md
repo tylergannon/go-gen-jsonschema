@@ -39,3 +39,4 @@ decision: Regenerating default examples removed 408 lines of YAML-only generated
 proof: A second `go generate ./...` preserved the exact working diff hash `269915e1f7e1dd55004926e6ceeef69454b8a215c0fccb37e1d147b5c0d39c5d`.
 proof: Final `go test -count=1 ./...`, `go vet ./...`, `go run ./internal/cmd/doc-gen -check`, and `git diff --check` passed after format selection, regeneration, and documentation updates.
 docs: README, llms.txt, the skill, and its registration reference now say JSON-only is the default, document `--formats=json|yaml|both`, and require yaml/v4 only for YAML-enabled generation.
+pull-request: Pushed format selection at `958eb7c` to PR #52 and updated the PR body with the JSON default, YAML opt-ins, and real CLI generation/build evidence; GitHub checks were queued after the push.
