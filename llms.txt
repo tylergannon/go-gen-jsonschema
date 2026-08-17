@@ -287,6 +287,11 @@ only after the entire value decodes successfully. YAML uses the JSON Schema
 property names. Go `yaml` struct tags are ignored and nested custom
 `UnmarshalYAML` hooks are bypassed; JSON tags and custom `UnmarshalJSON` hooks
 are authoritative. The generator owns `UnmarshalYAML` on registered types.
+yaml/v4 does not pass decoder options into that hook, so
+`yaml.WithKnownFields()` cannot enforce strict fields inside a registered type;
+use generated `ValidateYAML` for schema-backed unknown-property rejection.
+Decoding is transactional replacement, so omitted YAML fields do not retain
+receiver values. Use `yaml.WithV4Defaults()` to match `ValidateYAML` resolution.
 
 Enable both formats in the generation directive before decoding YAML:
 

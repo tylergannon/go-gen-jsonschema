@@ -29,3 +29,13 @@ decision: Replace native YAML union decoding with a YAML-to-JSON translator feed
 proof: A fresh temporary consumer generated through the real CLI with `--formats=both --validate` passed the comprehensive YAML decode and schema-validation tests. The generated output contained `ValidateYAML` and the thin `UnmarshalYAML` adapter and contained no native `__yamlUnmarshal__` dispatch.
 
 proof: Generation was idempotent; `go build ./...`, uncached `go test -count=1 ./...`, `golangci-lint run`, and the website build/link check passed.
+
+review: Fable round 01 found that generated YAML decoding started its transactional temporary from zero, unlike `json.Unmarshal` into an existing value, and that the `WithKnownFields` limitation had not been made visible. Preserve omitted receiver fields by copying the receiver before JSON decoding, add a regression case to the existing comprehensive YAML test, and document `ValidateYAML` as the strictness boundary.
+
+review_decision: The round-01 receiver finding was directionally correct but overstated for ordinary fields because generated owners already implement custom `UnmarshalJSON`. The material divergence was omitted interface-slice fallback. The regression test therefore compares YAML and JSON decoding from identical non-zero receivers and asserts the preserved interface slice, rather than inventing broader merge semantics.
+
+review: Fable round 02 demonstrated that a shallow receiver copy aliases slices and pointers, allowing a failed plain-struct decode to mutate caller-visible state before assignment. Preserve the explicit transactional guarantee and the thin adapter by decoding into a fresh value; document replacement rather than merge semantics. Add the simple plain-struct YAML test requested by the user alongside the existing comprehensive union test, covering successful decode, rollback of slice and pointer state, and omitted-field replacement.
+
+review: Fable round 03 independently reproduced the plain-struct rollback fix and accepted transactional replacement as the documented contract. Consensus outcome: only nitpicks remain. Review session `9bed6e64-6ab0-4c4f-babc-1472a1c1f2dd`; artifacts are under `ephemeral/reviews/202608171244-issue-53-yaml-options-round-0{1,2,3}.md`.
+
+proof: After the consensus changes, `go generate ./...`, `git diff --check`, `go build ./...`, uncached `go test -count=1 ./...`, and `golangci-lint run` passed. `npm ci && npm run check` rebuilt the website and verified all internal links.

@@ -43,6 +43,17 @@ type Impl2 struct {
 
 func (Impl2) isIface() {}
 
+type PlainInner struct {
+	A string `json:"a"`
+	B string `json:"b"`
+}
+
+type Plain struct {
+	Tags  []string    `json:"tags"`
+	Inner *PlainInner `json:"inner"`
+	Count int         `json:"count"`
+}
+
 type Owner struct {
 	IF         IFace                       `json:"if" yaml:"yaml_if"`
 	IFaces     []IFace                     `json:"ifs" yaml:"yaml_ifs"`

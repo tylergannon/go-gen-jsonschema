@@ -186,6 +186,7 @@ func TestBasic(t *testing.T) {
 			runGinkgo: false,
 			files: []string{
 				"jsonschema/Owner.json",
+				"jsonschema/Plain.json",
 				"jsonschema_gen.go",
 			},
 		},

@@ -42,6 +42,7 @@ func __gen_jsonschema_yamlToJSON(data []byte) ([]byte, error) {
 
 // Compiled JSON schemas for validation, initialized once at startup.
 var (
+	__gen_jsonschema_compiled_Plain *jsonschema.Schema
 	__gen_jsonschema_compiled_Owner *jsonschema.Schema
 )
 
@@ -64,9 +65,23 @@ func init() {
 	}
 
 	{
+		var __zero Plain
+		__gen_jsonschema_compiled_Plain = compile("Plain", __zero.Schema())
+	}
+
+	{
 		var __zero Owner
 		__gen_jsonschema_compiled_Owner = compile("Owner", __zero.Schema())
 	}
+}
+
+func (Plain) Schema() json.RawMessage {
+	const fileName = "jsonschema/Plain.json"
+	data, err := __gen_jsonschema_fs.ReadFile(fileName)
+	if err != nil {
+		__gen_jsonschema_panic(fileName, err)
+	}
+	return data
 }
 
 func (Owner) Schema() json.RawMessage {
@@ -76,6 +91,29 @@ func (Owner) Schema() json.RawMessage {
 		__gen_jsonschema_panic(fileName, err)
 	}
 	return data
+}
+
+// ValidateJSON validates the given JSON bytes against the schema for Plain.
+func (Plain) ValidateJSON(data []byte) error {
+	inst, err := jsonschema.UnmarshalJSON(bytes.NewReader(data))
+	if err != nil {
+		return err
+	}
+	return __gen_jsonschema_compiled_Plain.Validate(inst)
+}
+
+// ValidateYAML validates YAML against the JSON Schema for Plain.
+// YAML is interpreted using the schema's JSON property names.
+func (Plain) ValidateYAML(data []byte) error {
+	jsonData, err := __gen_jsonschema_yamlToJSON(data)
+	if err != nil {
+		return err
+	}
+	inst, err := jsonschema.UnmarshalJSON(bytes.NewReader(jsonData))
+	if err != nil {
+		return err
+	}
+	return __gen_jsonschema_compiled_Plain.Validate(inst)
 }
 
 // ValidateJSON validates the given JSON bytes against the schema for Owner.
@@ -163,6 +201,21 @@ func (o *Owner) UnmarshalYAML(node *yaml.Node) error {
 		return err
 	}
 	*o = next
+	return nil
+}
+
+// UnmarshalYAML translates YAML into the JSON data model before decoding
+// Plain with its JSON contract.
+func (p *Plain) UnmarshalYAML(node *yaml.Node) error {
+	data, err := __gen_jsonschema_yamlNodeToJSON(node)
+	if err != nil {
+		return err
+	}
+	var next Plain
+	if err := json.Unmarshal(data, &next); err != nil {
+		return err
+	}
+	*p = next
 	return nil
 }
 func __jsonUnmarshal__v1_interfaces_options__IFace__Owner__IF(data []byte) (IFace, error) {

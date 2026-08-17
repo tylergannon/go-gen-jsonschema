@@ -50,6 +50,10 @@ For YAML input, add `--formats=both` to both commands. Generation adds
 `ValidateYAML([]byte) error` and yaml/v4 decoding adapters. YAML is translated
 into the JSON data model before validation and unmarshaling, so JSON Schema
 property names and `json` tags remain canonical; Go `yaml` struct tags are ignored.
+Because yaml/v4 does not pass decoder options into `UnmarshalYAML`,
+`yaml.WithKnownFields()` cannot enforce strict fields inside registered types;
+use `ValidateYAML` for schema-backed unknown-property rejection. Decode with
+`yaml.WithV4Defaults()` to match `ValidateYAML` scalar resolution.
 
 ## Fail CI on drift
 

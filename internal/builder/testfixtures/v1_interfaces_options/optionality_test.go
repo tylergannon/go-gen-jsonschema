@@ -10,6 +10,49 @@ import (
 	yaml "go.yaml.in/yaml/v4"
 )
 
+func TestGeneratedYAMLUnmarshalSimple(t *testing.T) {
+	var got Plain
+	if err := yaml.Load([]byte(`
+tags: [one, two]
+inner:
+  a: alpha
+  b: beta
+count: 2
+`), &got, yaml.WithV4Defaults()); err != nil {
+		t.Fatal(err)
+	}
+	want := Plain{Tags: []string{"one", "two"}, Inner: &PlainInner{A: "alpha", B: "beta"}, Count: 2}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("decoded plain value = %#v, want %#v", got, want)
+	}
+
+	original := Plain{Tags: []string{"keep-a", "keep-b"}, Inner: &PlainInner{A: "keep-a", B: "keep-b"}, Count: 5}
+	sharedTags := original.Tags
+	sharedInner := original.Inner
+	got = original
+	err := yaml.Load([]byte(`
+tags: [clobbered]
+inner:
+  a: clobbered
+count: not-an-int
+`), &got, yaml.WithV4Defaults())
+	if err == nil {
+		t.Fatal("invalid count unexpectedly decoded")
+	}
+	if !reflect.DeepEqual(got, original) || !reflect.DeepEqual(sharedTags, []string{"keep-a", "keep-b"}) ||
+		*sharedInner != (PlainInner{A: "keep-a", B: "keep-b"}) {
+		t.Fatalf("failed decode mutated caller state: got %#v, tags %#v, inner %#v", got, sharedTags, sharedInner)
+	}
+
+	got = original
+	if err := yaml.Load([]byte("count: 2\n"), &got, yaml.WithV4Defaults()); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(got, Plain{Count: 2}) {
+		t.Fatalf("replacement decode = %#v, want omitted fields reset", got)
+	}
+}
+
 func TestGeneratedYAMLUnmarshalComprehensive(t *testing.T) {
 	input := []byte(`
 defaults: &defaults

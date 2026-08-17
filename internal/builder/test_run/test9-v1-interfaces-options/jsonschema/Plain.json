@@ -1,0 +1,36 @@
+{
+  "type": "object",
+  "properties": {
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "inner": {
+      "type": "object",
+      "properties": {
+        "a": {
+          "type": "string"
+        },
+        "b": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "a",
+        "b"
+      ],
+      "additionalProperties": false
+    },
+    "count": {
+      "type": "integer"
+    }
+  },
+  "required": [
+    "tags",
+    "inner",
+    "count"
+  ],
+  "additionalProperties": false
+}

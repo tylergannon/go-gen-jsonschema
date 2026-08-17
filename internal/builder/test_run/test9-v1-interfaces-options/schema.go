@@ -12,6 +12,12 @@ func (Owner) Schema() json.RawMessage   { panic("not implemented") }
 func (Owner) ValidateJSON([]byte) error { panic("not implemented") }
 func (Owner) ValidateYAML([]byte) error { panic("not implemented") }
 
+func (Plain) Schema() json.RawMessage   { panic("not implemented") }
+func (Plain) ValidateJSON([]byte) error { panic("not implemented") }
+func (Plain) ValidateYAML([]byte) error { panic("not implemented") }
+
+var _ = jsonschema.NewJSONSchemaMethod(Plain.Schema)
+
 var _ = jsonschema.NewJSONSchemaMethod(
 	Owner.Schema,
 	jsonschema.WithInterface(

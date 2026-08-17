@@ -182,7 +182,12 @@ is JSON-only by default; `--formats=both` adds yaml/v4 entry points that
 translate YAML into the JSON data model and reuse the JSON validator and
 decoder. JSON Schema property names and `json` tags are canonical. Go `yaml`
 struct tags are ignored and nested custom `UnmarshalYAML` hooks are bypassed;
-custom `UnmarshalJSON` hooks remain authoritative.
+custom `UnmarshalJSON` hooks remain authoritative. yaml/v4 does not pass decoder
+options into `UnmarshalYAML`, so `yaml.WithKnownFields()` cannot enforce strict
+fields inside a registered type; use generated `ValidateYAML` for schema-backed
+unknown-property rejection. Decoding is transactional replacement, so omitted
+YAML fields do not retain receiver values. Use `yaml.WithV4Defaults()` to match
+`ValidateYAML` resolution.
 
 By default, a struct type referenced from multiple places is inlined at every
 call site; add `AsRef()` to its registration to render it once as a `"$ref"`

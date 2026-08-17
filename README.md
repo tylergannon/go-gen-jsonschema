@@ -317,7 +317,12 @@ and nested custom `UnmarshalYAML` hooks are bypassed; JSON tags and custom
 `UnmarshalJSON` hooks remain authoritative. The generator owns
 `UnmarshalYAML` on registered types. YAML constructs that cannot be represented
 by JSON are rejected. Run `go mod tidy` after YAML-enabled generation to record
-the yaml/v4 dependency.
+the yaml/v4 dependency. Because yaml/v4 does not pass decoder options into
+`UnmarshalYAML`, `yaml.WithKnownFields()` cannot enforce strict fields inside a
+registered type; use the generated `ValidateYAML` method for schema-backed
+unknown-property rejection. Decoding is transactional replacement: omitted YAML
+fields do not retain values already present in the receiver. Decode with
+`yaml.WithV4Defaults()` to use the same scalar resolution as `ValidateYAML`.
 
 The compatible split form—`WithInterface`, `WithInterfaceImpls`, and
 `WithDiscriminator` as separate options—remains supported. When no explicit
