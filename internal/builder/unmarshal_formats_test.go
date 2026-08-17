@@ -26,7 +26,6 @@ func TestGeneratedUnmarshalFormats(t *testing.T) {
 	}{
 		{name: "default", wantJSON: true},
 		{name: "json", formats: "json", wantJSON: true},
-		{name: "yaml", formats: "yaml", wantYAML: true},
 		{name: "both", formats: "both", wantJSON: true, wantYAML: true},
 	}
 
@@ -63,11 +62,12 @@ func TestGeneratedUnmarshalFormats(t *testing.T) {
 			if tt.wantYAML {
 				require.Contains(t, source, "go.yaml.in/yaml/v4")
 				require.Contains(t, source, "func (f *FancyStruct) UnmarshalYAML(")
-				require.Contains(t, source, "func __yamlUnmarshal__interfaces__TestInterface(")
+				require.Contains(t, source, "func __gen_jsonschema_yamlNodeToJSON(")
+				require.NotContains(t, source, "__yamlUnmarshal__")
 			} else {
 				require.NotContains(t, source, "go.yaml.in/yaml/v4")
 				require.NotContains(t, source, "UnmarshalYAML(")
-				require.NotContains(t, source, "__yamlUnmarshal__")
+				require.NotContains(t, source, "__gen_jsonschema_yamlNodeToJSON(")
 			}
 
 			exitCode, stdout, stderr, err = testutils.RunCommand("go", targetDir, "build", "./...")

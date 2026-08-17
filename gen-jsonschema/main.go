@@ -64,8 +64,8 @@ func handleGen(firstArg int) {
 		numTestSamples = genCmd.Int("num-test-samples", 5, "Number of test samples to generate")
 		noChanges      = genCmd.Bool("no-changes", false, "Fail if any schema changes are detected")
 		force          = genCmd.Bool("force", false, "Force regeneration of schemas even if no changes are detected")
-		validate       = genCmd.Bool("validate", false, "Generate ValidateJSON() methods for schema validation")
-		formats        = genCmd.String("formats", "json", "Generated union unmarshaler formats: json, yaml, or both")
+		validate       = genCmd.Bool("validate", false, "Generate schema validation methods for the selected formats")
+		formats        = genCmd.String("formats", "json", "Generated decoding and validation formats: json or both")
 		err            error
 	)
 
@@ -115,10 +115,10 @@ func handleGen(firstArg int) {
 func parseUnmarshalFormats(value string) (builder.UnmarshalFormats, error) {
 	formats := builder.UnmarshalFormats(value)
 	switch formats {
-	case builder.UnmarshalFormatsJSON, builder.UnmarshalFormatsYAML, builder.UnmarshalFormatsBoth:
+	case builder.UnmarshalFormatsJSON, builder.UnmarshalFormatsBoth:
 		return formats, nil
 	default:
-		return "", fmt.Errorf("invalid --formats value %q: expected json, yaml, or both", value)
+		return "", fmt.Errorf("invalid --formats value %q: expected json or both", value)
 	}
 }
 
@@ -130,7 +130,8 @@ func handleNew() {
 		pkg         = newCmd.String("pkg", "", "Package for generated file. Default is current directory or using the package name for the package specified in --out")
 		methods     = newCmd.String("methods", "", "Comma-separated list of methods to generate in the form of TypeName=MethodName,TypeName2=MethodName2")
 		runGenerate = newCmd.Bool("generate", false, "Run go generate in the target package after creating the stub file")
-		newValidate = newCmd.Bool("validate", false, "Include ValidateJSON() stubs in the generated file")
+		newValidate = newCmd.Bool("validate", false, "Include validation stubs for the selected formats")
+		newFormats  = newCmd.String("formats", "json", "Generated decoding and validation formats: json or both")
 	)
 
 	// Check if --help was requested
@@ -147,6 +148,10 @@ func handleNew() {
 		pkgName   string
 		useStdout = *out == "" || *out == "--"
 	)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	unmarshalFormats, err := parseUnmarshalFormats(*newFormats)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -173,6 +178,7 @@ func handleNew() {
 		BuildTag: syntax.BuildTag,
 		PkgName:  pkgName,
 		Validate: *newValidate,
+		YAML:     unmarshalFormats == builder.UnmarshalFormatsBoth,
 	}
 
 	for methodArg := range strings.SplitSeq(*methods, ",") {
@@ -247,6 +253,7 @@ type configArg struct {
 	PkgName  string
 	BuildTag string
 	Validate bool
+	YAML     bool
 	Methods  []methodDef
 }
 

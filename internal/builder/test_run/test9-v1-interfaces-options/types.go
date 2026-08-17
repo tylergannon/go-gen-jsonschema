@@ -1,6 +1,8 @@
 package v1_interfaces_options
 
 import (
+	"encoding/json"
+
 	jsonschema "github.com/tylergannon/go-gen-jsonschema"
 	yaml "go.yaml.in/yaml/v4"
 )
@@ -20,6 +22,15 @@ func (s *yamlString) UnmarshalYAML(node *yaml.Node) error {
 	return nil
 }
 
+func (s *yamlString) UnmarshalJSON(data []byte) error {
+	var value string
+	if err := json.Unmarshal(data, &value); err != nil {
+		return err
+	}
+	*s = yamlString("json:" + value)
+	return nil
+}
+
 type Impl1 struct {
 	X yamlString `json:"x" yaml:"x"`
 }
@@ -32,8 +43,21 @@ type Impl2 struct {
 
 func (Impl2) isIface() {}
 
+type PlainInner struct {
+	A string `json:"a"`
+	B string `json:"b"`
+}
+
+type Plain struct {
+	Tags  []string    `json:"tags"`
+	Inner *PlainInner `json:"inner"`
+	Count int         `json:"count"`
+}
+
 type Owner struct {
-	IF         IFace                      `json:"if" yaml:"yaml_if"`
-	IFaces     []IFace                    `json:"ifs" yaml:"yaml_ifs"`
-	OptionalIF jsonschema.Optional[IFace] `json:"optional_if,omitzero" yaml:"yaml_optional"`
+	IF         IFace                       `json:"if" yaml:"yaml_if"`
+	IFaces     []IFace                     `json:"ifs" yaml:"yaml_ifs"`
+	OptionalIF jsonschema.Optional[IFace]  `json:"optional_if,omitzero" yaml:"yaml_optional"`
+	Label      jsonschema.Optional[string] `json:"label,omitzero" yaml:"label"`
+	Timeout    jsonschema.Nullable[int]    `json:"timeout" yaml:"timeout"`
 }

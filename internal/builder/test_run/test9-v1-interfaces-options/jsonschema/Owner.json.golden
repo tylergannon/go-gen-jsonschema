@@ -117,11 +117,21 @@
           "additionalProperties": false
         }
       ]
+    },
+    "label": {
+      "type": "string"
+    },
+    "timeout": {
+      "type": [
+        "integer",
+        "null"
+      ]
     }
   },
   "required": [
     "if",
-    "ifs"
+    "ifs",
+    "timeout"
   ],
   "additionalProperties": false
 }

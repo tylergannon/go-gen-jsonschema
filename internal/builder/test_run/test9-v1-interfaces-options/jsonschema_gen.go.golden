@@ -4,12 +4,15 @@
 package v1_interfaces_options
 
 import (
+	"bytes"
 	"embed"
 	"encoding/json"
 	"errors"
 	"fmt"
 
 	yaml "go.yaml.in/yaml/v4"
+
+	jsonschema "github.com/santhosh-tekuri/jsonschema/v6"
 )
 
 //go:embed jsonschema
@@ -21,6 +24,66 @@ func __gen_jsonschema_panic(fname string, err error) {
 	panic(fmt.Sprintf("error reading %s from embedded FS: %s", fname, err.Error()))
 }
 
+func __gen_jsonschema_yamlNodeToJSON(node *yaml.Node) ([]byte, error) {
+	var value any
+	if err := node.Decode(&value); err != nil {
+		return nil, err
+	}
+	return json.Marshal(value)
+}
+
+func __gen_jsonschema_yamlToJSON(data []byte) ([]byte, error) {
+	var value any
+	if err := yaml.Load(data, &value, yaml.WithV4Defaults()); err != nil {
+		return nil, err
+	}
+	return json.Marshal(value)
+}
+
+// Compiled JSON schemas for validation, initialized once at startup.
+var (
+	__gen_jsonschema_compiled_Plain *jsonschema.Schema
+	__gen_jsonschema_compiled_Owner *jsonschema.Schema
+)
+
+func init() {
+	compile := func(typeName string, schemaData json.RawMessage) *jsonschema.Schema {
+		doc, err := jsonschema.UnmarshalJSON(bytes.NewReader(schemaData))
+		if err != nil {
+			panic(fmt.Sprintf("go-gen-jsonschema: failed to parse schema for %s: %s", typeName, err))
+		}
+		c := jsonschema.NewCompiler()
+		url := typeName + ".json"
+		if err := c.AddResource(url, doc); err != nil {
+			panic(fmt.Sprintf("go-gen-jsonschema: failed to add schema resource for %s: %s", typeName, err))
+		}
+		sch, err := c.Compile(url)
+		if err != nil {
+			panic(fmt.Sprintf("go-gen-jsonschema: failed to compile schema for %s: %s", typeName, err))
+		}
+		return sch
+	}
+
+	{
+		var __zero Plain
+		__gen_jsonschema_compiled_Plain = compile("Plain", __zero.Schema())
+	}
+
+	{
+		var __zero Owner
+		__gen_jsonschema_compiled_Owner = compile("Owner", __zero.Schema())
+	}
+}
+
+func (Plain) Schema() json.RawMessage {
+	const fileName = "jsonschema/Plain.json"
+	data, err := __gen_jsonschema_fs.ReadFile(fileName)
+	if err != nil {
+		__gen_jsonschema_panic(fileName, err)
+	}
+	return data
+}
+
 func (Owner) Schema() json.RawMessage {
 	const fileName = "jsonschema/Owner.json"
 	data, err := __gen_jsonschema_fs.ReadFile(fileName)
@@ -28,6 +91,52 @@ func (Owner) Schema() json.RawMessage {
 		__gen_jsonschema_panic(fileName, err)
 	}
 	return data
+}
+
+// ValidateJSON validates the given JSON bytes against the schema for Plain.
+func (Plain) ValidateJSON(data []byte) error {
+	inst, err := jsonschema.UnmarshalJSON(bytes.NewReader(data))
+	if err != nil {
+		return err
+	}
+	return __gen_jsonschema_compiled_Plain.Validate(inst)
+}
+
+// ValidateYAML validates YAML against the JSON Schema for Plain.
+// YAML is interpreted using the schema's JSON property names.
+func (Plain) ValidateYAML(data []byte) error {
+	jsonData, err := __gen_jsonschema_yamlToJSON(data)
+	if err != nil {
+		return err
+	}
+	inst, err := jsonschema.UnmarshalJSON(bytes.NewReader(jsonData))
+	if err != nil {
+		return err
+	}
+	return __gen_jsonschema_compiled_Plain.Validate(inst)
+}
+
+// ValidateJSON validates the given JSON bytes against the schema for Owner.
+func (Owner) ValidateJSON(data []byte) error {
+	inst, err := jsonschema.UnmarshalJSON(bytes.NewReader(data))
+	if err != nil {
+		return err
+	}
+	return __gen_jsonschema_compiled_Owner.Validate(inst)
+}
+
+// ValidateYAML validates YAML against the JSON Schema for Owner.
+// YAML is interpreted using the schema's JSON property names.
+func (Owner) ValidateYAML(data []byte) error {
+	jsonData, err := __gen_jsonschema_yamlToJSON(data)
+	if err != nil {
+		return err
+	}
+	inst, err := jsonschema.UnmarshalJSON(bytes.NewReader(jsonData))
+	if err != nil {
+		return err
+	}
+	return __gen_jsonschema_compiled_Owner.Validate(inst)
 }
 
 // UnmarshalJSON is a generated custom json.Unmarshaler implementation for
@@ -80,60 +189,33 @@ func (o *Owner) UnmarshalJSON(data []byte) (err error) {
 	return nil
 }
 
-// UnmarshalYAML is a generated custom yaml.Unmarshaler implementation for
-// Owner.
-func (o *Owner) UnmarshalYAML(node *yaml.Node) (err error) {
-	var fields map[string]yaml.Node
-	if err = node.Decode(&fields); err != nil {
+// UnmarshalYAML translates YAML into the JSON data model before decoding
+// Owner with its JSON contract.
+func (o *Owner) UnmarshalYAML(node *yaml.Node) error {
+	data, err := __gen_jsonschema_yamlNodeToJSON(node)
+	if err != nil {
 		return err
 	}
-	ordinary := make(map[string]yaml.Node, len(fields))
-	for name, value := range fields {
-		ordinary[name] = value
-	}
-	delete(ordinary, "yaml_if")
-	delete(ordinary, "yaml_ifs")
-	delete(ordinary, "yaml_optional")
-	type Alias Owner
-	var alias Alias
-	ordinaryNode := __jsonschema__yamlMappingNode(ordinary)
-	if err = ordinaryNode.Decode(&alias); err != nil {
+	var next Owner
+	if err := json.Unmarshal(data, &next); err != nil {
 		return err
 	}
-	__next := Owner(alias)
+	*o = next
+	return nil
+}
 
-	__node0 := fields["yaml_if"]
-	if __next.IF, err = __yamlUnmarshal__v1_interfaces_options__IFace__Owner__IF(&__node0); err != nil {
+// UnmarshalYAML translates YAML into the JSON data model before decoding
+// Plain with its JSON contract.
+func (p *Plain) UnmarshalYAML(node *yaml.Node) error {
+	data, err := __gen_jsonschema_yamlNodeToJSON(node)
+	if err != nil {
 		return err
 	}
-
-	if __node1, ok := fields["yaml_ifs"]; !ok {
-		__next.IFaces = o.IFaces
-	} else {
-		var __raw1 []yaml.Node
-		if err = __node1.Decode(&__raw1); err != nil {
-			return fmt.Errorf("field yaml_ifs: %w", err)
-		}
-		var __decoded1 []IFace
-		if __raw1 != nil {
-			__decoded1 = make([]IFace, len(__raw1))
-		}
-		for __index := range __raw1 {
-			if __decoded1[__index], err = __yamlUnmarshal__v1_interfaces_options__IFace__Owner__IFaces(&__raw1[__index]); err != nil {
-				return fmt.Errorf("field yaml_ifs[%d]: %w", __index, err)
-			}
-		}
-		__next.IFaces = __decoded1
+	var next Plain
+	if err := json.Unmarshal(data, &next); err != nil {
+		return err
 	}
-
-	if __node2, ok := fields["yaml_optional"]; ok {
-		if __next.OptionalIF.Value, err = __yamlUnmarshal__v1_interfaces_options__IFace__Owner__OptionalIF(&__node2); err != nil {
-			return err
-		}
-		__next.OptionalIF.Present = true
-	}
-
-	*o = __next
+	*p = next
 	return nil
 }
 func __jsonUnmarshal__v1_interfaces_options__IFace__Owner__IF(data []byte) (IFace, error) {
@@ -161,36 +243,6 @@ func __jsonUnmarshal__v1_interfaces_options__IFace__Owner__IF(data []byte) (IFac
 	case "impl \"two\"":
 		var obj Impl2
 		if err = json.Unmarshal(data, &obj); err != nil {
-			return nil, err
-		}
-		return obj, nil
-	default:
-		return nil, fmt.Errorf("unknown discriminator: %s", discriminator)
-	}
-}
-func __yamlUnmarshal__v1_interfaces_options__IFace__Owner__IF(node *yaml.Node) (IFace, error) {
-	var temp map[string]yaml.Node
-	if err := node.Decode(&temp); err != nil {
-		return nil, err
-	}
-	discriminatorNode, ok := temp["!kind"]
-	if !ok {
-		return nil, fmt.Errorf("no discriminator property '%s' found", "!kind")
-	}
-	var discriminator string
-	if err := discriminatorNode.Decode(&discriminator); err != nil {
-		return nil, fmt.Errorf("unable to unmarshal discriminator value %q: %w", discriminatorNode.Value, err)
-	}
-	switch discriminator {
-	case "impl_one":
-		var obj Impl1
-		if err := node.Decode(&obj); err != nil {
-			return nil, err
-		}
-		return obj, nil
-	case "impl \"two\"":
-		var obj Impl2
-		if err := node.Decode(&obj); err != nil {
 			return nil, err
 		}
 		return obj, nil
@@ -230,36 +282,6 @@ func __jsonUnmarshal__v1_interfaces_options__IFace__Owner__IFaces(data []byte) (
 		return nil, fmt.Errorf("unknown discriminator: %s", discriminator)
 	}
 }
-func __yamlUnmarshal__v1_interfaces_options__IFace__Owner__IFaces(node *yaml.Node) (IFace, error) {
-	var temp map[string]yaml.Node
-	if err := node.Decode(&temp); err != nil {
-		return nil, err
-	}
-	discriminatorNode, ok := temp["!kind"]
-	if !ok {
-		return nil, fmt.Errorf("no discriminator property '%s' found", "!kind")
-	}
-	var discriminator string
-	if err := discriminatorNode.Decode(&discriminator); err != nil {
-		return nil, fmt.Errorf("unable to unmarshal discriminator value %q: %w", discriminatorNode.Value, err)
-	}
-	switch discriminator {
-	case "Impl1":
-		var obj Impl1
-		if err := node.Decode(&obj); err != nil {
-			return nil, err
-		}
-		return obj, nil
-	case "Impl2":
-		var obj Impl2
-		if err := node.Decode(&obj); err != nil {
-			return nil, err
-		}
-		return obj, nil
-	default:
-		return nil, fmt.Errorf("unknown discriminator: %s", discriminator)
-	}
-}
 func __jsonUnmarshal__v1_interfaces_options__IFace__Owner__OptionalIF(data []byte) (IFace, error) {
 	var (
 		temp          map[string]json.RawMessage
@@ -292,46 +314,7 @@ func __jsonUnmarshal__v1_interfaces_options__IFace__Owner__OptionalIF(data []byt
 		return nil, fmt.Errorf("unknown discriminator: %s", discriminator)
 	}
 }
-func __yamlUnmarshal__v1_interfaces_options__IFace__Owner__OptionalIF(node *yaml.Node) (IFace, error) {
-	var temp map[string]yaml.Node
-	if err := node.Decode(&temp); err != nil {
-		return nil, err
-	}
-	discriminatorNode, ok := temp["!kind"]
-	if !ok {
-		return nil, fmt.Errorf("no discriminator property '%s' found", "!kind")
-	}
-	var discriminator string
-	if err := discriminatorNode.Decode(&discriminator); err != nil {
-		return nil, fmt.Errorf("unable to unmarshal discriminator value %q: %w", discriminatorNode.Value, err)
-	}
-	switch discriminator {
-	case "Impl1":
-		var obj Impl1
-		if err := node.Decode(&obj); err != nil {
-			return nil, err
-		}
-		return obj, nil
-	case "Impl2":
-		var obj Impl2
-		if err := node.Decode(&obj); err != nil {
-			return nil, err
-		}
-		return obj, nil
-	default:
-		return nil, fmt.Errorf("unknown discriminator: %s", discriminator)
-	}
-}
 
 func __jsonschema__unmarshalDiscriminatorError(discriminator json.RawMessage, err error) error {
 	return fmt.Errorf("unable to unmarshal discriminator value %v: %w", discriminator, err)
-}
-func __jsonschema__yamlMappingNode(fields map[string]yaml.Node) yaml.Node {
-	content := make([]*yaml.Node, 0, len(fields)*2)
-	for name, value := range fields {
-		nameNode := yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: name}
-		valueNode := value
-		content = append(content, &nameNode, &valueNode)
-	}
-	return yaml.Node{Kind: yaml.MappingNode, Tag: "!!map", Content: content}
 }

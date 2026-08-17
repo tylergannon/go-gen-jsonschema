@@ -14,9 +14,9 @@ type BuilderArgs struct {
 	NumTestSamples int
 	NoChanges      bool // If true, fail if any schema changes are detected
 	Force          bool // If true, force regeneration of schemas even if no changes are detected
-	Validate       bool // If true, generate ValidateJSON() methods and schema compilation
-	// UnmarshalFormats selects generated union unmarshaler formats. The zero
-	// value preserves the CLI default and generates JSON unmarshalers only.
+	Validate       bool // If true, generate validation methods and schema compilation
+	// UnmarshalFormats selects whether generated JSON decoding also accepts YAML.
+	// The zero value preserves the CLI default and generates JSON support only.
 	UnmarshalFormats UnmarshalFormats
 }
 
@@ -24,7 +24,6 @@ type UnmarshalFormats string
 
 const (
 	UnmarshalFormatsJSON UnmarshalFormats = "json"
-	UnmarshalFormatsYAML UnmarshalFormats = "yaml"
 	UnmarshalFormatsBoth UnmarshalFormats = "both"
 )
 
@@ -33,11 +32,11 @@ func (f UnmarshalFormats) generatesJSON() bool {
 }
 
 func (f UnmarshalFormats) generatesYAML() bool {
-	return f == UnmarshalFormatsYAML || f == UnmarshalFormatsBoth
+	return f == UnmarshalFormatsBoth
 }
 
 func (f UnmarshalFormats) valid() bool {
-	return f == "" || f == UnmarshalFormatsJSON || f == UnmarshalFormatsYAML || f == UnmarshalFormatsBoth
+	return f == "" || f == UnmarshalFormatsJSON || f == UnmarshalFormatsBoth
 }
 
 func Run(args BuilderArgs) (err error) {

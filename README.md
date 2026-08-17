@@ -43,17 +43,17 @@ Then just ask your agent to "add go-gen-jsonschema to this project."
    Then use `gen-jsonschema` instead of `go tool gen-jsonschema` everywhere below.
    </details>
 
-2. **Add a generate directive** next to your types (include `--validate` if
-   you want generated `ValidateJSON()` methods):
+2. **Add a generate directive** next to your types (include `--validate` for
+   generated validation; add `--formats=both` when inputs may be YAML):
 
    ```go
-   //go:generate go tool gen-jsonschema --validate
+   //go:generate go tool gen-jsonschema --validate --formats=both
    ```
 
 3. **Scaffold the registration file and generate:**
 
    ```bash
-   go tool gen-jsonschema new -out schema.go -methods 'Person=Schema' --validate --generate
+   go tool gen-jsonschema new -out schema.go -methods 'Person=Schema' --validate --formats=both --generate
    go mod tidy   # records dependencies added by validation or opted-in YAML decoding
    ```
 
@@ -61,7 +61,7 @@ Then just ask your agent to "add go-gen-jsonschema to this project."
 
    ```go
    schema := Person{}.Schema()          // json.RawMessage — drop into your tool definition
-   err := Person{}.ValidateJSON(data)   // validate LLM output before json.Unmarshal
+   err := Person{}.ValidateJSON(data)   // or ValidateYAML for YAML input
    ```
 
 Commit everything the generator writes: `jsonschema_gen.go` and the
@@ -77,11 +77,12 @@ Commit everything the generator writes: `jsonschema_gen.go` and the
 - **LLM-optimized defaults** — `additionalProperties: false`, ordinary and
   nullable fields required, `Optional[T]` fields optional, and doc comments
   become `description` fields.
-- **Built-in validation** — opt-in `ValidateJSON()` methods with schemas
-  compiled once at startup, returning structured errors.
-- **Optional direct YAML unions** — pass `--formats=both` or `--formats=yaml`
-  for native yaml/v4 decoding with the same `type` discriminator used by JSON;
-  no YAML-to-JSON bridge.
+- **Built-in validation** — opt-in `ValidateJSON()` and, with
+  `--formats=both`, `ValidateYAML()` methods backed by schemas compiled once at
+  startup.
+- **Optional YAML input** — `--formats=both` adds yaml/v4 entry points that
+  translate YAML into the schema's JSON data model, then reuse the JSON
+  validator and decoder.
 
 ## ⚙️ How it works
 
@@ -91,7 +92,7 @@ mutually exclusive build-tagged files:
 | File | Build tag | Who writes it | Contents |
 |---|---|---|---|
 | `schema.go` | `//go:build jsonschema` | You | Panic stubs + marker registrations; compiled only during generation |
-| `jsonschema_gen.go` | `//go:build !jsonschema` | Generated | Real `Schema()` / `ValidateJSON()` over an embedded `jsonschema/` directory |
+| `jsonschema_gen.go` | `//go:build !jsonschema` | Generated | Real schema, validation, and selected decoding methods over an embedded `jsonschema/` directory |
 
 Your package compiles at every stage — before generation (stubs) and after
 (generated implementations).
@@ -134,6 +135,7 @@ import (
 // Stubs so the package compiles before generation.
 func (Person) Schema() json.RawMessage     { panic("not implemented") }
 func (Person) ValidateJSON(_ []byte) error { panic("not implemented") }
+func (Person) ValidateYAML(_ []byte) error { panic("not implemented") }
 
 var _ = jsonschema.NewJSONSchemaMethod(Person.Schema)
 ```
@@ -250,25 +252,23 @@ supported.
 An interface-typed field becomes an `anyOf` union of its registered
 implementations, discriminated by a `"type"` property (configurable). A direct
 one-dimensional slice of that interface becomes an array with the union under
-`items.anyOf`. Generation defaults to JSON-only. Pass `--formats=both` to emit
-both `UnmarshalJSON` and native `UnmarshalYAML(*yaml.Node)` dispatch, or
-`--formats=yaml` to emit only YAML dispatch, for scalar values (including
-`Optional[I]`) and every slice element. The YAML path uses
-[`go.yaml.in/yaml/v4`](https://pkg.go.dev/go.yaml.in/yaml/v4) directly rather
-than converting through JSON.
+`items.anyOf`. Generation defaults to JSON-only. Pass `--formats=both` to add
+`UnmarshalYAML(*yaml.Node)` adapters. yaml/v4 parses the document, the adapter
+translates it into JSON, and the existing JSON decoder performs union dispatch
+for scalar values (including `Optional[I]`) and every slice element.
 
 ```go
 type PaymentMethod interface{ IsPaymentMethod() }
 
 type CreditCard struct {
-    CardNumber string `json:"cardNumber" yaml:"card_number"`
-    Expiry     string `json:"expiry" yaml:"expiry"`
+    CardNumber string `json:"cardNumber"`
+    Expiry     string `json:"expiry"`
 }
 func (CreditCard) IsPaymentMethod() {}
 
 type BankTransfer struct {
-    AccountNumber string `json:"accountNumber" yaml:"account_number"`
-    RoutingNumber string `json:"routingNumber" yaml:"routing_number"`
+    AccountNumber string `json:"accountNumber"`
+    RoutingNumber string `json:"routingNumber"`
 }
 func (BankTransfer) IsPaymentMethod() {}
 
@@ -303,18 +303,26 @@ With the default discriminator, ordinary YAML can be decoded directly:
 import yaml "go.yaml.in/yaml/v4"
 
 var payment Payment
-err := yaml.Unmarshal([]byte(`
+err := yaml.Load([]byte(`
 amount: 42
 methods:
   - type: credit_card
-    card_number: "4111111111111111"
+    cardNumber: "4111111111111111"
     expiry: "12/30"
-`), &payment)
+`), &payment, yaml.WithV4Defaults())
 ```
 
-YAML field names follow `yaml` tags (or yaml/v4's normal field-name rules).
-Run `go mod tidy` after YAML-enabled generation to record the yaml/v4
-dependency.
+YAML uses the JSON Schema property names. Go `yaml` struct tags are ignored,
+and nested custom `UnmarshalYAML` hooks are bypassed; JSON tags and custom
+`UnmarshalJSON` hooks remain authoritative. The generator owns
+`UnmarshalYAML` on registered types. YAML constructs that cannot be represented
+by JSON are rejected. Run `go mod tidy` after YAML-enabled generation to record
+the yaml/v4 dependency. Because yaml/v4 does not pass decoder options into
+`UnmarshalYAML`, `yaml.WithKnownFields()` cannot enforce strict fields inside a
+registered type; use the generated `ValidateYAML` method for schema-backed
+unknown-property rejection. Decoding is transactional replacement: omitted YAML
+fields do not retain values already present in the receiver. Decode with
+`yaml.WithV4Defaults()` to use the same scalar resolution as `ValidateYAML`.
 
 The compatible split form—`WithInterface`, `WithInterfaceImpls`, and
 `WithDiscriminator` as separate options—remains supported. When no explicit
@@ -335,8 +343,9 @@ An `Optional[I]` scalar is supported; `Nullable[I]` is not.
 ## 🛡️ Validation
 
 Pass `--validate` to generation (and to `new`, so stubs match) and every
-registered type gets a `ValidateJSON([]byte) error` method. Schemas are
-compiled once in `init()` via
+registered type gets `ValidateJSON([]byte) error`. With `--formats=both`, it
+also gets `ValidateYAML([]byte) error`. Both methods validate the same JSON data
+model and schemas are compiled once in `init()` via
 [santhosh-tekuri/jsonschema](https://github.com/santhosh-tekuri/jsonschema).
 
 ```go
@@ -411,14 +420,15 @@ gen-jsonschema [gen] [options]     # generate (default subcommand)
   -no-changes          fail, writing nothing, if regeneration would change any schema
   -force               rewrite even when unchanged (incompatible with -no-changes)
   -num-test-samples N  number of test samples to generate (default 5)
-  --validate           also generate ValidateJSON() methods
-  --formats MODE       union unmarshalers: json (default), yaml, or both
+  --validate           generate validation methods for the selected formats
+  --formats MODE       decoding and validation: json (default) or both
 
 gen-jsonschema new [options]       # scaffold schema.go
   -out FILE            output path ("" or "--" = stdout)
   -pkg NAME            package name override (stdout mode)
   -methods 'T=Schema,U=Schema'     types to register (required)
-  --validate           include ValidateJSON stubs
+  --validate           include validation stubs for the selected formats
+  --formats MODE       validation stubs: json (default) or both
   --generate           run `go generate ./...` afterward
 ```
 

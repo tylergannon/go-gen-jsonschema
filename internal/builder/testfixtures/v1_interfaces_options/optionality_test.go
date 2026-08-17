@@ -6,27 +6,73 @@ import (
 	"strings"
 	"testing"
 
+	jsonschema "github.com/tylergannon/go-gen-jsonschema"
 	yaml "go.yaml.in/yaml/v4"
 )
+
+func TestGeneratedYAMLUnmarshalSimple(t *testing.T) {
+	var got Plain
+	if err := yaml.Load([]byte(`
+tags: [one, two]
+inner:
+  a: alpha
+  b: beta
+count: 2
+`), &got, yaml.WithV4Defaults()); err != nil {
+		t.Fatal(err)
+	}
+	want := Plain{Tags: []string{"one", "two"}, Inner: &PlainInner{A: "alpha", B: "beta"}, Count: 2}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("decoded plain value = %#v, want %#v", got, want)
+	}
+
+	original := Plain{Tags: []string{"keep-a", "keep-b"}, Inner: &PlainInner{A: "keep-a", B: "keep-b"}, Count: 5}
+	sharedTags := original.Tags
+	sharedInner := original.Inner
+	got = original
+	err := yaml.Load([]byte(`
+tags: [clobbered]
+inner:
+  a: clobbered
+count: not-an-int
+`), &got, yaml.WithV4Defaults())
+	if err == nil {
+		t.Fatal("invalid count unexpectedly decoded")
+	}
+	if !reflect.DeepEqual(got, original) || !reflect.DeepEqual(sharedTags, []string{"keep-a", "keep-b"}) ||
+		*sharedInner != (PlainInner{A: "keep-a", B: "keep-b"}) {
+		t.Fatalf("failed decode mutated caller state: got %#v, tags %#v, inner %#v", got, sharedTags, sharedInner)
+	}
+
+	got = original
+	if err := yaml.Load([]byte("count: 2\n"), &got, yaml.WithV4Defaults()); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(got, Plain{Count: 2}) {
+		t.Fatalf("replacement decode = %#v, want omitted fields reset", got)
+	}
+}
 
 func TestGeneratedYAMLUnmarshalComprehensive(t *testing.T) {
 	input := []byte(`
 defaults: &defaults
-  yaml_if:
+  if:
     "!kind": impl_one
     x: merged
 <<: *defaults
-yaml_ifs:
+ifs:
   - "!kind": Impl1
     x: one
   - "!kind": Impl2
     y: 2
-yaml_optional:
+optional_if:
   "!kind": Impl2
   y: 3
+label: ""
+timeout: 0
 `)
 	var got Owner
-	if err := yaml.Unmarshal(input, &got); err != nil {
+	if err := yaml.Load(input, &got, yaml.WithV4Defaults()); err != nil {
 		t.Fatal(err)
 	}
 	if len(got.IFaces) != 2 {
@@ -36,29 +82,107 @@ yaml_optional:
 	first, firstOK := got.IFaces[0].(Impl1)
 	second, secondOK := got.IFaces[1].(Impl2)
 	optional, optionalOK := got.OptionalIF.Value.(Impl2)
-	if !requiredOK || required.X != "yaml:merged" ||
-		!firstOK || first.X != "yaml:one" || !secondOK || second.Y != 2 ||
-		!got.OptionalIF.Present || !optionalOK || optional.Y != 3 {
+	if !requiredOK || required.X != "json:merged" ||
+		!firstOK || first.X != "json:one" || !secondOK || second.Y != 2 ||
+		!got.OptionalIF.Present || !optionalOK || optional.Y != 3 ||
+		!got.Label.Present || got.Label.Value != "" ||
+		!got.Timeout.Present || got.Timeout.Value != 0 {
 		t.Fatalf("decoded owner = %#v", got)
 	}
 
-	original := Owner{IF: Impl1{X: "original"}, IFaces: []IFace{Impl2{Y: 7}}}
+	var nullish Owner
+	if err := yaml.Load([]byte(`
+if:
+  "!kind": impl_one
+  x: required
+ifs: []
+timeout: null
+`), &nullish, yaml.WithV4Defaults()); err != nil {
+		t.Fatal(err)
+	}
+	if nullish.Label.Present || nullish.Timeout.Present {
+		t.Fatalf("absent optional and null nullable = %#v", nullish)
+	}
+
+	original := Owner{
+		IF:      Impl1{X: "original"},
+		IFaces:  []IFace{Impl2{Y: 7}},
+		Label:   jsonschema.Optional[string]{Present: true, Value: "original"},
+		Timeout: jsonschema.Nullable[int]{Present: true, Value: 9},
+	}
 	got = original
 	bad := []byte(`
-yaml_if:
+if:
   "!kind": impl_one
   x: replacement
-yaml_ifs:
+ifs:
   - "!kind": Impl2
     y: 2
   - "!kind": unknown
 `)
-	err := yaml.Unmarshal(bad, &got)
-	if err == nil || !strings.Contains(err.Error(), "yaml_ifs[1]") {
-		t.Fatalf("error = %v, want indexed yaml_ifs failure", err)
+	err := yaml.Load(bad, &got, yaml.WithV4Defaults())
+	if err == nil || !strings.Contains(err.Error(), "ifs[1]") {
+		t.Fatalf("error = %v, want indexed ifs failure", err)
 	}
 	if !reflect.DeepEqual(got, original) {
 		t.Fatalf("failed decode mutated destination: got %#v, want %#v", got, original)
+	}
+
+	got = original
+	err = yaml.Load([]byte(`
+if:
+  "!kind": impl_one
+  x: replacement
+ifs: []
+label: null
+timeout: null
+`), &got, yaml.WithV4Defaults())
+	if err == nil || !strings.Contains(err.Error(), "Optional value cannot be JSON null") {
+		t.Fatalf("error = %v, want null Optional failure", err)
+	}
+	if !reflect.DeepEqual(got, original) {
+		t.Fatalf("failed Optional decode mutated destination: got %#v, want %#v", got, original)
+	}
+}
+
+func TestGeneratedYAMLValidationUsesJSONSchema(t *testing.T) {
+	valid := []byte(`
+if:
+  "!kind": impl_one
+  x: required
+ifs: []
+timeout: null
+`)
+	if err := (Owner{}).ValidateYAML(valid); err != nil {
+		t.Fatalf("valid YAML rejected: %v", err)
+	}
+
+	unknown := append(valid, []byte("surprise: true\n")...)
+	if err := (Owner{}).ValidateYAML(unknown); err == nil || !strings.Contains(err.Error(), "surprise") {
+		t.Fatalf("unknown-property error = %v, want surprise", err)
+	}
+
+	yamlNames := []byte(`
+yaml_if:
+  "!kind": impl_one
+  x: required
+yaml_ifs: []
+timeout: null
+`)
+	if err := (Owner{}).ValidateYAML(yamlNames); err == nil || !strings.Contains(err.Error(), "if") {
+		t.Fatalf("yaml-tag property error = %v, want schema property failure", err)
+	}
+
+	nullOptional := []byte(`
+if:
+  "!kind": impl_one
+  x: required
+ifs: []
+label: null
+timeout: null
+`)
+	if err := (Owner{}).ValidateYAML(nullOptional); err == nil || !strings.Contains(err.Error(), "label") {
+		t.Fatalf("null Optional validation error = %v, want label", err)
 	}
 }
 
@@ -73,7 +197,7 @@ func TestInterfaceSliceDecode(t *testing.T) {
 	}
 	first, firstOK := got.IFaces[0].(Impl1)
 	second, secondOK := got.IFaces[1].(Impl2)
-	if !firstOK || first.X != "one" || !secondOK || second.Y != 2 {
+	if !firstOK || first.X != "json:one" || !secondOK || second.Y != 2 {
 		t.Fatalf("interfaces = %#v", got.IFaces)
 	}
 }

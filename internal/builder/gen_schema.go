@@ -251,6 +251,11 @@ type CustomMarshaledType struct {
 	Initial        string
 }
 
+type YAMLType struct {
+	Name    string
+	Initial string
+}
+
 type InterfaceOptionInfo struct {
 	TypeNameWithPrefix string
 	Discriminator      string
@@ -302,10 +307,6 @@ type InterfaceInfo struct {
 	Options               []InterfaceOptionInfo
 }
 
-func (i InterfaceInfo) YAMLUnmarshalerFunc() string {
-	return strings.Replace(i.UnmarshalerFunc, "__jsonUnmarshal__", "__yamlUnmarshal__", 1)
-}
-
 func (c *CustomMarshaledType) UnmarshalJSON(data []byte) (err error) {
 	type Wrapper struct {
 		*CustomMarshaledType
@@ -339,6 +340,7 @@ type SchemaBuilder struct {
 	UnmarshalFormats  UnmarshalFormats
 	Imports           []string
 	SpecialTypes      []CustomMarshaledType
+	YAMLTypes         []YAMLType
 	Interfaces        []InterfaceInfo
 	DiscriminatorProp string
 
@@ -1119,6 +1121,26 @@ func (s *SchemaBuilder) RenderGoCode() (err error) {
 			})
 		}
 	}
+	if s.GeneratesYAMLUnmarshalers() {
+		yamlTypes := make(map[string]bool)
+		for _, method := range s.SchemaMethods() {
+			yamlTypes[method.Receiver.TypeName] = true
+		}
+		for _, special := range s.SpecialTypes {
+			yamlTypes[special.Name] = true
+		}
+		names := make([]string, 0, len(yamlTypes))
+		for name := range yamlTypes {
+			names = append(names, name)
+		}
+		slices.Sort(names)
+		for _, name := range names {
+			s.YAMLTypes = append(s.YAMLTypes, YAMLType{
+				Name:    name,
+				Initial: strings.ToLower(name[0:1]),
+			})
+		}
+	}
 	data, err := RenderTemplate(schemasTemplate, s)
 	if err != nil {
 		return err
@@ -1677,10 +1699,6 @@ func (s InterfaceProp) UnmarshalerFunc() string {
 	return fmt.Sprintf("__jsonUnmarshal__%s__%s", s.Interface.TypeSpec.Pkg().Name, s.Interface.TypeSpec.Name())
 }
 
-func (s InterfaceProp) YAMLUnmarshalerFunc() string {
-	return strings.Replace(s.UnmarshalerFunc(), "__jsonUnmarshal__", "__yamlUnmarshal__", 1)
-}
-
 func (i InterfaceProp) FieldNames() string {
 	var names []string
 	for _, name := range i.Field.Field.Names {
@@ -1702,13 +1720,6 @@ func (i InterfaceProp) JSONName() string {
 		return i.FieldNames()
 	}
 	return names[0]
-}
-
-func (i InterfaceProp) YAMLName() string {
-	if tag := i.Field.YAMLTag(); tag != nil && len(tag.Options) > 0 && tag.Options[0] != "" {
-		return tag.Options[0]
-	}
-	return strings.ToLower(i.FieldNames())
 }
 
 // resolveLocalInterfaceProps finds supported registered-interface properties on
