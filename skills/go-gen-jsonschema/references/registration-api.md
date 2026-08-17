@@ -65,8 +65,10 @@ var _ = jsonschema.NewJSONSchemaMethod(
 An interface-typed field becomes a union (`anyOf`) of its registered
 implementations, discriminated by a `"type"` property. A direct
 one-dimensional slice field (`[]PaymentMethod`) becomes an array whose `items`
-contains that union. The generator also emits `UnmarshalJSON` dispatch code for
-scalar values and every slice element.
+contains that union. The generator emits `UnmarshalJSON` and native
+`go.yaml.in/yaml/v4` dispatch code for scalar values and every slice element.
+Both formats use `type` as the default discriminator property; YAML decoding
+honors `yaml` tags and does not convert through JSON.
 
 ```go
 // types.go
@@ -120,7 +122,7 @@ names.
 
 The slice must be the direct field type. Fixed arrays, nested slices, named
 slice containers, `Optional[[]I]`, and `Nullable[[]I]` are rejected during
-generation.
+generation. An `Optional[I]` scalar is supported; `Nullable[I]` is not.
 
 Legacy package-level registration (still works, but you cannot mix it with the
 v1 per-field options in the same package):

@@ -4,7 +4,9 @@
 designed for LLM tool definitions and structured output: properties follow Go
 field order, unknown properties are rejected, and Go doc comments become schema
 descriptions. The generator also writes Go accessors and can generate runtime
-JSON validation.
+JSON validation. For registered interfaces, it generates `UnmarshalJSON` and
+native `go.yaml.in/yaml/v4` decoding with `type` as the default discriminator
+property in both formats.
 
 Repository: https://github.com/tylergannon/go-gen-jsonschema
 Human documentation: https://go-gen-jsonschema.tylergannon.com
@@ -52,8 +54,9 @@ go tool gen-jsonschema new \
 go mod tidy
 ```
 
-`go mod tidy` is needed with `--validate` because generated code imports
-`github.com/santhosh-tekuri/jsonschema/v6`.
+Run `go mod tidy` when generation adds dependencies. Validation imports
+`github.com/santhosh-tekuri/jsonschema/v6`; registered-interface YAML decoding
+imports `go.yaml.in/yaml/v4`.
 
 The scaffolded file has the generation-only build tag and panic stubs:
 
@@ -94,7 +97,7 @@ The registration and generated files are mutually exclusive:
 | File | Build tag | Purpose |
 | --- | --- | --- |
 | `schema.go` | `//go:build jsonschema` | User-written stubs and registrations, compiled only during generation. |
-| `jsonschema_gen.go` | `//go:build !jsonschema` | Generated production accessors, validation, and interface decoding. |
+| `jsonschema_gen.go` | `//go:build !jsonschema` | Generated production accessors, validation, and JSON/YAML interface decoding. |
 
 The package therefore has one definition of each generated method in either
 build mode.
@@ -234,8 +237,10 @@ options are preferred for new code.
 
 A registered interface field becomes an `anyOf` union. A direct,
 one-dimensional `[]I` field becomes an array with that union under
-`items.anyOf`. The generator writes `UnmarshalJSON` dispatch code for scalar
-interface fields and every slice element.
+`items.anyOf`. The generator writes `UnmarshalJSON` and native
+`UnmarshalYAML(*yaml.Node)` dispatch code for scalar interface fields and every
+slice element. YAML decoding uses `go.yaml.in/yaml/v4` nodes directly; it does
+not convert YAML through JSON.
 
 ```go
 type Event interface{ isEvent() }
@@ -263,7 +268,6 @@ var _ = jsonschema.NewJSONSchemaMethod(
     Batch.Schema,
     jsonschema.WithInterface(
         Batch{}.Events,
-        jsonschema.Discriminator("!kind"),
         jsonschema.Impl("created", Created{}),
         jsonschema.Impl("deleted", (*Deleted)(nil)),
     ),
@@ -272,9 +276,28 @@ var _ = jsonschema.NewJSONSchemaMethod(
 
 `Impl`'s first argument is the exact discriminator used by both the schema
 `const` and generated unmarshal dispatch. The default discriminator property is
-`type`. Generated decoding preserves value versus pointer implementations,
-reports a failing slice index, and assigns the destination only after the
-entire value decodes successfully.
+`type` for both JSON and YAML. Generated decoding preserves value versus pointer
+implementations, reports a failing slice index, and assigns the destination
+only after the entire value decodes successfully. YAML field lookup honors
+`yaml` tags and yaml/v4's normal field-name rules.
+
+After generation, ordinary pipeline YAML can be decoded with yaml/v4:
+
+```go
+import yaml "go.yaml.in/yaml/v4"
+
+var batch Batch
+err := yaml.Unmarshal([]byte(`
+events:
+  - type: created
+    name: first
+  - type: deleted
+    id: old-id
+`), &batch)
+```
+
+Run `go mod tidy` after generating interface decoding so the module records its
+`go.yaml.in/yaml/v4` dependency.
 
 The split form remains supported for compatibility. Without explicit `Impl`
 values, discriminators continue to derive from Go type names:
@@ -285,17 +308,18 @@ jsonschema.WithInterfaceImpls(Batch{}.Events, Created{}, (*Deleted)(nil)),
 jsonschema.WithDiscriminator(Batch{}.Events, "!kind"),
 ```
 
-The generator writes an unmarshaler, not a discriminator-aware marshaler. If a
-decoded interface value must marshal back into schema-valid JSON, each concrete
-implementation must include the discriminator, commonly with `MarshalJSON`:
+The generator writes JSON and YAML unmarshalers, not discriminator-aware
+marshalers. If a decoded interface value must marshal back into schema-valid
+JSON, each concrete implementation must include the discriminator, commonly
+with `MarshalJSON`:
 
 ```go
 func (c Created) MarshalJSON() ([]byte, error) {
     type plain Created
     return json.Marshal(struct {
-        Kind string `json:"!kind"`
+        Type string `json:"type"`
         plain
-    }{Kind: "created", plain: plain(c)})
+    }{Type: "created", plain: plain(c)})
 }
 ```
 

@@ -24,3 +24,9 @@ proof: Focused builder golden/schema tests passed after regeneration; a reposito
 proof: Final uncached `go test -count=1 ./...`, `go vet ./...`, and `git diff --check` passed after the default and generated outputs changed.
 proof: The orphaned tracked `test10-v1-enums-stringmode` generated fixture was regenerated separately, its unrelated output-mode drift was discarded, and its nested `go test ./...` passed.
 checkpoint: Follow-up is ready on `codex/yaml-v4-unmarshal` with commit subject `feat!: default union discriminator to type`.
+docs: Updated `README.md`, `llms.txt`, and the repo skill definition to describe native `go.yaml.in/yaml/v4` union decoding, the shared default `type` discriminator, YAML tag behavior, supported interface containers, and the required `go mod tidy` dependency step.
+docs: Changed the primary union examples to exercise the default `type` contract instead of overriding it with `!kind`; retained the explicit custom-discriminator API in the reference material.
+skill: Applied the write-prompts skill guidance by keeping the routing addition short, updating the complete generated-file mental model, and placing operational detail in the existing interface section rather than adding a parallel workflow.
+review: The evaluate-skills pass found one stale routed reference that still described interface decoding as JSON-only; updated `references/registration-api.md` so the main skill and its delegated detail remain coherent.
+proof: After the documentation and skill edits, `go test -count=1 ./...`, `go vet ./...`, `git diff --check`, and consistency searches for yaml/v4 coverage and stale `!type` wording all passed.
+checkpoint: Documentation follow-up is ready with commit subject `docs: document native YAML union decoding`.
