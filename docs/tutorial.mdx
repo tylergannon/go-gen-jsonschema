@@ -97,7 +97,7 @@ Interfaces (discriminated unions)
   jsonschema.WithDiscriminator(Owner{}.IF, "!kind")
   ```
 - Behavior:
-  - Discriminator default is "!type"; override per field.
+  - Discriminator default is "type"; override per field.
   - Owner-side UnmarshalJSON helpers are generated to decode unions by discriminator.
   - Field must be direct interface type (not nested in slices/maps/parens); illegal placements error with position.
 

@@ -15,3 +15,12 @@ proof: Final `go test ./...` passed across the repository.
 proof: Final `go vet ./...` passed with no diagnostics.
 review: `git diff --check` passed; generated methods are present in all checked-in special-type packages, and the branch started at the same commit as `origin/main` (`671aa9c`).
 checkpoint: Completed on branch `codex/yaml-v4-unmarshal` with commit subject `feat: generate yaml v4 unmarshalers`; no merge or pull request was requested.
+decision: Follow-up changed the global default discriminator from `!type` to `type` for both JSON and YAML; retain custom discriminator configuration as the explicit escape hatch and do not add dual-name compatibility behavior.
+proof: Follow-up baseline `go test -count=1 ./...` passed before edits.
+proof: Changing the simple authored YAML fixture to `type` produced the expected red runtime result while generated code still required `!type`.
+proof: After changing `DefaultDiscriminatorPropName`, the focused generated YAML test passed with an unquoted `type` key.
+generation: Ran `go generate ./...` at the repository root, ran each fixture module that owns a generated-code golden, copied the generated outputs into their `.golden` counterparts, and removed temporary generated fixture files.
+proof: Focused builder golden/schema tests passed after regeneration; a repository search found no remaining literal `!type` contract outside historical session artifacts.
+proof: Final uncached `go test -count=1 ./...`, `go vet ./...`, and `git diff --check` passed after the default and generated outputs changed.
+proof: The orphaned tracked `test10-v1-enums-stringmode` generated fixture was regenerated separately, its unrelated output-mode drift was discarded, and its nested `go test ./...` passed.
+checkpoint: Follow-up is ready on `codex/yaml-v4-unmarshal` with commit subject `feat!: default union discriminator to type`.

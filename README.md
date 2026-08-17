@@ -245,7 +245,7 @@ supported.
 ## 🔄 Union types (interfaces)
 
 An interface-typed field becomes an `anyOf` union of its registered
-implementations, discriminated by a `"!type"` property (configurable). A direct
+implementations, discriminated by a `"type"` property (configurable). A direct
 one-dimensional slice of that interface becomes an array with the union under
 `items.anyOf`. The generator emits `UnmarshalJSON` dispatch code for scalar
 values and every slice element.
@@ -277,7 +277,7 @@ var _ = jsonschema.NewJSONSchemaMethod(
     Payment.Schema,
     jsonschema.WithInterface(
         Payment{}.Methods,
-        jsonschema.Discriminator("!kind"), // optional; default "!type"
+        jsonschema.Discriminator("!kind"), // optional; default "type"
         jsonschema.Impl("credit_card", CreditCard{}),
         jsonschema.Impl("bank_transfer", BankTransfer{}),
     ),

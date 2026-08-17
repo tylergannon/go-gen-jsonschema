@@ -63,7 +63,7 @@ var _ = jsonschema.NewJSONSchemaMethod(
 ## Discriminated unions (interface fields)
 
 An interface-typed field becomes a union (`anyOf`) of its registered
-implementations, discriminated by a `"!type"` property. A direct
+implementations, discriminated by a `"type"` property. A direct
 one-dimensional slice field (`[]PaymentMethod`) becomes an array whose `items`
 contains that union. The generator also emits `UnmarshalJSON` dispatch code for
 scalar values and every slice element.
@@ -98,7 +98,7 @@ var _ = jsonschema.NewJSONSchemaMethod(
     Payment.Schema,
     jsonschema.WithInterface(
         Payment{}.Methods,
-        jsonschema.Discriminator("!kind"), // optional; default "!type"
+        jsonschema.Discriminator("!kind"), // optional; default "type"
         jsonschema.Impl("credit_card", CreditCard{}),
         jsonschema.Impl("bank_transfer", BankTransfer{}),
     ),

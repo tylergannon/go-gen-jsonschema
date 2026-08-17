@@ -65,7 +65,7 @@ This is an internal, living document for deep understanding, navigation, and ref
 - ObjectNode: Desc, Properties(ObjectPropSet = []ObjectProp{Name, Schema, Optional}), Discriminator (string), TypeID_. MarshalJSON: emits type:object, description, properties, required (computed), additionalProperties:false.
 - PropertyNode[T]: Desc, Enum, Const, Typ (string), TypeID_. MarshalJSON: type, description, const (if set), enum (if set).
 - ArrayNode: Desc, Items(JSONSchema), TypeID_.
-- UnionTypeNode: Options []ObjectNode (each an object schema). MarshalJSON: { anyOf: [ object-with-discriminator, ...] }, discriminator property name defaults to `!type`.
+- UnionTypeNode: Options []ObjectNode (each an object schema). MarshalJSON: { anyOf: [ object-with-discriminator, ...] }, discriminator property name defaults to `type`.
 - RefNode: emits {"$ref": "..."}.
 
 ## 4) Tag semantics
@@ -78,7 +78,7 @@ This is an internal, living document for deep understanding, navigation, and ref
 ## 5) Interface/union semantics
 - Register with NewInterfaceImpl[YourInterface](Impl1{}, Impl2{}, (*Impl3)(nil))
 - Scanning records the interface and option types (pointer/value).
-- JSON Schema for interface is anyOf of option object schemas with required discriminator `!type` const equal to the type name.
+- JSON Schema for interface is anyOf of option object schemas with required discriminator `type` const equal to the type name.
 - Generated code: per-interface unmarshal helper switching on discriminator; per-struct UnmarshalJSON for fields that are interface-typed in local structs.
 
 ## 6) Strengths
@@ -155,7 +155,7 @@ Back-compat: unchanged when no options/tags present.
 - Pretty-print template output? Keep as-is; template preserves formatting.
 
 ## 11) Working notes
-- Discriminator default name = `!type` (DefaultDiscriminatorPropName). Template has access to this in generated code (schemas.go.tmpl uses `{{$discriminatorProp}}`).
+- Discriminator default name = `type` (DefaultDiscriminatorPropName). Template has access to this in generated code (schemas.go.tmpl uses `{{$discriminatorProp}}`).
 - Interface unmarshaler function name format: `__jsonUnmarshal__<pkgName>__<TypeName>`.
 
 ## 12) TODO (engineering roadmap)

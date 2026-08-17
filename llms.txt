@@ -272,7 +272,7 @@ var _ = jsonschema.NewJSONSchemaMethod(
 
 `Impl`'s first argument is the exact discriminator used by both the schema
 `const` and generated unmarshal dispatch. The default discriminator property is
-`!type`. Generated decoding preserves value versus pointer implementations,
+`type`. Generated decoding preserves value versus pointer implementations,
 reports a failing slice index, and assigns the destination only after the
 entire value decodes successfully.
 
@@ -400,7 +400,7 @@ must be preserved.
 | `Discriminator(name)` | Set the discriminator property inside `WithInterface`. |
 | `Impl(value, implementation)` | Bind a stable wire discriminator to an implementation inside `WithInterface`. |
 | `WithInterfaceImpls(field, impls...)` | List its accepted concrete types. |
-| `WithDiscriminator(field, name)` | Override the default `!type` property. |
+| `WithDiscriminator(field, name)` | Override the default `type` property. |
 | `WithFunction(field, fn)` | Render a field schema with a package function. |
 | `WithStructAccessorMethod(field, method)` | Render with a receiver accessor. |
 | `WithStructFunctionMethod(field, method)` | Render with a receiver method that accepts the field value. |

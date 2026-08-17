@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	DefaultDiscriminatorPropName = "!type"
+	DefaultDiscriminatorPropName = "type"
 )
 
 type (
@@ -442,8 +442,8 @@ func (u UnionTypeNode) implementsJSONSchema() {}
 //
 //	{
 //	  "anyOf": [
-//	    <ObjectNode-with-!type-const>,
-//	    <ObjectNode-with-!type-const>,
+//	    <ObjectNode-with-type-const>,
+//	    <ObjectNode-with-type-const>,
 //	    ...
 //	  ]
 //	}
@@ -456,8 +456,8 @@ func (u UnionTypeNode) MarshalJSON() ([]byte, error) {
 			sb.WriteByte(',')
 		}
 
-		// We'll produce a new node with a prepended property for the !type:
-		//   !type: { "type":"string", "const": obj.Discriminator }
+		// We'll produce a new node with a prepended discriminator property:
+		//   type: { "type":"string", "const": obj.Discriminator }
 		tmpNode := prependDiscriminator(obj, u.DiscriminatorPropName)
 		data, err := tmpNode.MarshalJSON()
 		if err != nil {
@@ -473,7 +473,7 @@ func (u UnionTypeNode) MarshalJSON() ([]byte, error) {
 }
 
 // prependDiscriminator returns an ObjectNode that has an extra property
-// at the front: e.g. !type => { type:"string", const:"(the Discriminator)" },
+// at the front: e.g. type => { type:"string", const:"(the Discriminator)" },
 // making that property required.
 func prependDiscriminator(o ObjectNode, discPropName string) ObjectNode {
 	if discPropName == "" {
