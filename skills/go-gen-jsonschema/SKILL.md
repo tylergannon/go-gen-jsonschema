@@ -7,9 +7,9 @@ description: >
 
 # go-gen-jsonschema
 
-Code generator that turns Go structs into JSON Schema files plus Go accessors
-(`Schema()`, optionally `ValidateJSON()`) and selectable JSON/YAML decoding for
-registered interfaces. Built for LLM function calling:
+Code generator that turns Go structs into JSON Schema files plus Go accessors,
+optional validation, and selectable JSON/YAML input.
+Built for LLM function calling:
 properties are emitted in struct field order (deterministic, prompt-controllable),
 `additionalProperties: false`, ordinary and nullable fields required,
 `Optional[T]` fields optional, and Go doc comments become the schema
@@ -22,10 +22,9 @@ Import path: `github.com/tylergannon/go-gen-jsonschema` (library markers) and
 
 - `schema.go` — `//go:build jsonschema`. You write this. Panic stubs + marker
   registrations. Compiled only during generation, never in production.
-- `jsonschema_gen.go` — `//go:build !jsonschema`. Generated. Real `Schema()`
-  and `ValidateJSON()` implementations over an `embed.FS` of `jsonschema/*.json`,
-  plus the selected registered-interface unmarshalers. JSON is the default;
-  YAML or both are opt-in.
+- `jsonschema_gen.go` — `//go:build !jsonschema`. Generated. Real schema,
+  validation, and selected decoding methods over an `embed.FS` of
+  `jsonschema/*.json`. JSON is the default; YAML is opt-in.
 
 The build tags make them mutually exclusive, so the package always compiles —
 before and after generation. Commit all generated outputs: `jsonschema_gen.go`
@@ -47,10 +46,10 @@ and the whole `jsonschema/` directory (each `T.json` schema comes with a
    //go:generate go tool gen-jsonschema
    ```
 
-   Add `--validate` to also generate `ValidateJSON()` methods (recommended when
-   the JSON comes from an LLM): `//go:generate go tool gen-jsonschema --validate`
-   Add `--formats=both` for JSON and native yaml/v4 interface decoding, or
-   `--formats=yaml` for YAML-only interface decoding.
+   Add `--validate` to generate validation methods (recommended for LLM
+   output): `//go:generate go tool gen-jsonschema --validate`. Add
+   `--formats=both` when inputs may be JSON or YAML; validation then includes
+   `ValidateYAML`.
 
 3. **Create the stub file.** Let the CLI write it (it derives the package name
    and stubs from your flags), then generation runs immediately via `--generate`:
@@ -59,11 +58,13 @@ and the whole `jsonschema/` directory (each `T.json` schema comes with a
    go tool gen-jsonschema new -out schema.go -methods 'Person=Schema,Address=Schema' --validate --generate
    ```
 
+   Pass `--formats=both` to `new` as well when the generation directive uses it.
+
    Or write `schema.go` by hand — see the example below.
 
 4. **Tidy** when generation adds dependencies: run `go mod tidy`. Validation
-   imports `github.com/santhosh-tekuri/jsonschema/v6`; opted-in
-   registered-interface YAML decoding imports `go.yaml.in/yaml/v4`.
+   imports `github.com/santhosh-tekuri/jsonschema/v6`; opted-in YAML support
+   imports `go.yaml.in/yaml/v4`.
 
 5. **Verify**: `go build ./...` and `go test ./...` must pass, and a second
    `go generate ./...` must produce no diff (generation is idempotent).
@@ -177,9 +178,11 @@ For stable interface wire values, prefer the cohesive
 form. The split `WithInterface`/`WithInterfaceImpls`/`WithDiscriminator` form
 remains supported and derives discriminator values from Go type names.
 The default discriminator property is `type` for both JSON and YAML. Generation
-is JSON-only by default; `--formats=both` adds native
-`UnmarshalYAML(*yaml.Node)`, while `--formats=yaml` omits the JSON union methods.
-The yaml/v4 path honors `yaml` tags and does not convert through JSON.
+is JSON-only by default; `--formats=both` adds yaml/v4 entry points that
+translate YAML into the JSON data model and reuse the JSON validator and
+decoder. JSON Schema property names and `json` tags are canonical. Go `yaml`
+struct tags are ignored and nested custom `UnmarshalYAML` hooks are bypassed;
+custom `UnmarshalJSON` hooks remain authoritative.
 
 By default, a struct type referenced from multiple places is inlined at every
 call site; add `AsRef()` to its registration to render it once as a `"$ref"`

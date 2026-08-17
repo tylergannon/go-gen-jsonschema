@@ -13,16 +13,16 @@ import (
 func TestGeneratedYAMLUnmarshalComprehensive(t *testing.T) {
 	input := []byte(`
 defaults: &defaults
-  yaml_if:
+  if:
     "!kind": impl_one
     x: merged
 <<: *defaults
-yaml_ifs:
+ifs:
   - "!kind": Impl1
     x: one
   - "!kind": Impl2
     y: 2
-yaml_optional:
+optional_if:
   "!kind": Impl2
   y: 3
 label: ""
@@ -39,8 +39,8 @@ timeout: 0
 	first, firstOK := got.IFaces[0].(Impl1)
 	second, secondOK := got.IFaces[1].(Impl2)
 	optional, optionalOK := got.OptionalIF.Value.(Impl2)
-	if !requiredOK || required.X != "yaml:merged" ||
-		!firstOK || first.X != "yaml:one" || !secondOK || second.Y != 2 ||
+	if !requiredOK || required.X != "json:merged" ||
+		!firstOK || first.X != "json:one" || !secondOK || second.Y != 2 ||
 		!got.OptionalIF.Present || !optionalOK || optional.Y != 3 ||
 		!got.Label.Present || got.Label.Value != "" ||
 		!got.Timeout.Present || got.Timeout.Value != 0 {
@@ -49,10 +49,10 @@ timeout: 0
 
 	var nullish Owner
 	if err := yaml.Load([]byte(`
-yaml_if:
+if:
   "!kind": impl_one
   x: required
-yaml_ifs: []
+ifs: []
 timeout: null
 `), &nullish, yaml.WithV4Defaults()); err != nil {
 		t.Fatal(err)
@@ -69,17 +69,17 @@ timeout: null
 	}
 	got = original
 	bad := []byte(`
-yaml_if:
+if:
   "!kind": impl_one
   x: replacement
-yaml_ifs:
+ifs:
   - "!kind": Impl2
     y: 2
   - "!kind": unknown
 `)
 	err := yaml.Load(bad, &got, yaml.WithV4Defaults())
-	if err == nil || !strings.Contains(err.Error(), "yaml_ifs[1]") {
-		t.Fatalf("error = %v, want indexed yaml_ifs failure", err)
+	if err == nil || !strings.Contains(err.Error(), "ifs[1]") {
+		t.Fatalf("error = %v, want indexed ifs failure", err)
 	}
 	if !reflect.DeepEqual(got, original) {
 		t.Fatalf("failed decode mutated destination: got %#v, want %#v", got, original)
@@ -87,18 +87,59 @@ yaml_ifs:
 
 	got = original
 	err = yaml.Load([]byte(`
-yaml_if:
+if:
   "!kind": impl_one
   x: replacement
-yaml_ifs: []
+ifs: []
 label: null
 timeout: null
 `), &got, yaml.WithV4Defaults())
-	if err == nil || !strings.Contains(err.Error(), "label") {
-		t.Fatalf("error = %v, want null Optional label failure", err)
+	if err == nil || !strings.Contains(err.Error(), "Optional value cannot be JSON null") {
+		t.Fatalf("error = %v, want null Optional failure", err)
 	}
 	if !reflect.DeepEqual(got, original) {
 		t.Fatalf("failed Optional decode mutated destination: got %#v, want %#v", got, original)
+	}
+}
+
+func TestGeneratedYAMLValidationUsesJSONSchema(t *testing.T) {
+	valid := []byte(`
+if:
+  "!kind": impl_one
+  x: required
+ifs: []
+timeout: null
+`)
+	if err := (Owner{}).ValidateYAML(valid); err != nil {
+		t.Fatalf("valid YAML rejected: %v", err)
+	}
+
+	unknown := append(valid, []byte("surprise: true\n")...)
+	if err := (Owner{}).ValidateYAML(unknown); err == nil || !strings.Contains(err.Error(), "surprise") {
+		t.Fatalf("unknown-property error = %v, want surprise", err)
+	}
+
+	yamlNames := []byte(`
+yaml_if:
+  "!kind": impl_one
+  x: required
+yaml_ifs: []
+timeout: null
+`)
+	if err := (Owner{}).ValidateYAML(yamlNames); err == nil || !strings.Contains(err.Error(), "if") {
+		t.Fatalf("yaml-tag property error = %v, want schema property failure", err)
+	}
+
+	nullOptional := []byte(`
+if:
+  "!kind": impl_one
+  x: required
+ifs: []
+label: null
+timeout: null
+`)
+	if err := (Owner{}).ValidateYAML(nullOptional); err == nil || !strings.Contains(err.Error(), "label") {
+		t.Fatalf("null Optional validation error = %v, want label", err)
 	}
 }
 
@@ -113,7 +154,7 @@ func TestInterfaceSliceDecode(t *testing.T) {
 	}
 	first, firstOK := got.IFaces[0].(Impl1)
 	second, secondOK := got.IFaces[1].(Impl2)
-	if !firstOK || first.X != "one" || !secondOK || second.Y != 2 {
+	if !firstOK || first.X != "json:one" || !secondOK || second.Y != 2 {
 		t.Fatalf("interfaces = %#v", got.IFaces)
 	}
 }

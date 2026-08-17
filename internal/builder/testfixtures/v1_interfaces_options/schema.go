@@ -8,7 +8,9 @@ import (
 	jsonschema "github.com/tylergannon/go-gen-jsonschema"
 )
 
-func (Owner) Schema() json.RawMessage { panic("not implemented") }
+func (Owner) Schema() json.RawMessage   { panic("not implemented") }
+func (Owner) ValidateJSON([]byte) error { panic("not implemented") }
+func (Owner) ValidateYAML([]byte) error { panic("not implemented") }
 
 var _ = jsonschema.NewJSONSchemaMethod(
 	Owner.Schema,

@@ -15,6 +15,11 @@ func ({{.TypeName}}) {{.MethodName}}() json.RawMessage {
 func ({{.TypeName}}) ValidateJSON(_ []byte) error {
     panic("not implemented")
 }
+{{ if $.YAML }}
+func ({{.TypeName}}) ValidateYAML(_ []byte) error {
+    panic("not implemented")
+}
+{{ end -}}
 {{ end -}}
 {{ end }}
 

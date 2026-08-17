@@ -23,7 +23,8 @@ go tool gen-jsonschema gen [flags]
   -no-changes        fail without writing schemas when schema JSON would change
   -force             rewrite unchanged output; incompatible with -no-changes
   -num-test-samples N  accepted for compatibility; currently has no effect
-  --validate         generate ValidateJSON methods
+  --validate         generate validation methods for the selected formats
+  --formats MODE     decoding and validation: json (default) or both
 ```
 
 The command without a subcommand is equivalent to `gen`.
@@ -35,7 +36,8 @@ go tool gen-jsonschema new [flags]
   -out FILE          output path; empty or -- writes to stdout
   -pkg NAME          package name override for stdout mode
   -methods LIST      required comma-separated Type=Method entries
-  --validate         include ValidateJSON stubs
+  --validate         include validation stubs for the selected formats
+  --formats MODE     validation stubs: json (default) or both
   --generate         run go generate ./... after writing
 ```
 

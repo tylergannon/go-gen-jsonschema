@@ -66,10 +66,12 @@ An interface-typed field becomes a union (`anyOf`) of its registered
 implementations, discriminated by a `"type"` property. A direct
 one-dimensional slice field (`[]PaymentMethod`) becomes an array whose `items`
 contains that union. The generator emits `UnmarshalJSON` by default. Pass
-`--formats=both` to add native `go.yaml.in/yaml/v4` dispatch or
-`--formats=yaml` to emit only YAML dispatch for scalar values and every slice
-element. Both formats use `type` as the default discriminator property; YAML
-decoding honors `yaml` tags and does not convert through JSON.
+`--formats=both` to add `go.yaml.in/yaml/v4` entry points for scalar values and
+every slice element. YAML is translated into the JSON data model and decoded
+through the same implementation. Both syntaxes use `type` as the default
+discriminator property and JSON Schema property names are canonical. Go `yaml`
+struct tags are ignored and nested custom `UnmarshalYAML` hooks are bypassed;
+custom `UnmarshalJSON` hooks remain authoritative.
 
 ```go
 // types.go
@@ -176,9 +178,9 @@ Notes:
 
 ## Validation (`--validate`)
 
-Opt-in via the `--validate` flag on generation (and `--validate` on `new` so
-the stubs include `ValidateJSON`). Each registered type gets
-`ValidateJSON([]byte) error`; schemas are compiled once in `init()` using
+Opt in with `--validate` on generation and `new`. Each registered type gets
+`ValidateJSON([]byte) error`; `--formats=both` also adds
+`ValidateYAML([]byte) error`. Schemas are compiled once in `init()` using
 `github.com/santhosh-tekuri/jsonschema/v6`. Failures return a
 `*jsonschema.ValidationError` with `InstanceLocation` (path to the failing
 field), `ErrorKind`, and nested `Causes`. Validation covers required fields,
@@ -194,13 +196,14 @@ gen-jsonschema gen [flags]
   -target DIR        # package to process (default: cwd)
   -no-changes        # fail (writing nothing) if regeneration would change any schema
   -force             # rewrite even when unchanged; incompatible with -no-changes
-  --validate         # also generate ValidateJSON() methods
-  --formats MODE     # union unmarshalers: json (default), yaml, or both
+  --validate         # generate validation methods for the selected formats
+  --formats MODE     # decoding and validation: json (default) or both
 gen-jsonschema new [flags]
   -out FILE          # stub file path ("" or "--" = stdout)
   -pkg NAME          # package name override (stdout mode)
   -methods 'T=Schema,U=Schema'   # required; one entry per type
-  --validate         # include ValidateJSON stubs
+  --validate         # include validation stubs for the selected formats
+  --formats MODE     # validation stubs: json (default) or both
   --generate         # run `go generate ./...` in the target dir afterward
 ```
 

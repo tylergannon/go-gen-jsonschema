@@ -1,6 +1,8 @@
 package v1_interfaces_options
 
 import (
+	"encoding/json"
+
 	jsonschema "github.com/tylergannon/go-gen-jsonschema"
 	yaml "go.yaml.in/yaml/v4"
 )
@@ -17,6 +19,15 @@ func (s *yamlString) UnmarshalYAML(node *yaml.Node) error {
 		return err
 	}
 	*s = yamlString("yaml:" + value)
+	return nil
+}
+
+func (s *yamlString) UnmarshalJSON(data []byte) error {
+	var value string
+	if err := json.Unmarshal(data, &value); err != nil {
+		return err
+	}
+	*s = yamlString("json:" + value)
 	return nil
 }
 

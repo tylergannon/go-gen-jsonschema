@@ -4,10 +4,10 @@
 designed for LLM tool definitions and structured output: properties follow Go
 field order, unknown properties are rejected, and Go doc comments become schema
 descriptions. The generator also writes Go accessors and can generate runtime
-JSON validation. For registered interfaces, it generates `UnmarshalJSON` by
-default and can opt into native `go.yaml.in/yaml/v4` decoding with
-`--formats=both` or switch to YAML-only with `--formats=yaml`. The default
-discriminator property is `type` in either format.
+validation. JSON is the canonical data model and the default format.
+`--formats=both` adds `go.yaml.in/yaml/v4` entry points that translate YAML to
+JSON before reusing the JSON validator and decoder. The default discriminator
+property is `type` in either syntax.
 
 Repository: https://github.com/tylergannon/go-gen-jsonschema
 Human documentation: https://go-gen-jsonschema.tylergannon.com
@@ -29,7 +29,7 @@ package contacts
 
 import jsonschema "github.com/tylergannon/go-gen-jsonschema"
 
-//go:generate go tool gen-jsonschema --validate
+//go:generate go tool gen-jsonschema --validate --formats=both
 
 // Person is a contact extracted from a document.
 type Person struct {
@@ -51,13 +51,14 @@ go tool gen-jsonschema new \
   -out schema.go \
   -methods 'Person=Schema' \
   --validate \
+  --formats=both \
   --generate
 go mod tidy
 ```
 
 Run `go mod tidy` when generation adds dependencies. Validation imports
-`github.com/santhosh-tekuri/jsonschema/v6`; opted-in registered-interface YAML
-decoding imports `go.yaml.in/yaml/v4`.
+`github.com/santhosh-tekuri/jsonschema/v6`; opted-in YAML support imports
+`go.yaml.in/yaml/v4`.
 
 The scaffolded file has the generation-only build tag and panic stubs:
 
@@ -74,6 +75,7 @@ import (
 
 func (Person) Schema() json.RawMessage     { panic("not implemented") }
 func (Person) ValidateJSON(_ []byte) error { panic("not implemented") }
+func (Person) ValidateYAML(_ []byte) error { panic("not implemented") }
 
 var _ = jsonschema.NewJSONSchemaMethod(Person.Schema)
 ```
@@ -82,8 +84,8 @@ Generation writes:
 
 - `jsonschema/Person.json`: the schema;
 - `jsonschema/Person.json.sum`: its change-detection checksum; and
-- `jsonschema_gen.go`: production implementations of `Schema()` and, when
-  requested, `ValidateJSON()`.
+- `jsonschema_gen.go`: production schema, validation, and selected decoding
+  implementations.
 
 Commit `schema.go`, `jsonschema_gen.go`, and the complete `jsonschema/`
 directory.
@@ -98,7 +100,7 @@ The registration and generated files are mutually exclusive:
 | File | Build tag | Purpose |
 | --- | --- | --- |
 | `schema.go` | `//go:build jsonschema` | User-written stubs and registrations, compiled only during generation. |
-| `jsonschema_gen.go` | `//go:build !jsonschema` | Generated production accessors, validation, and selected interface decoding. |
+| `jsonschema_gen.go` | `//go:build !jsonschema` | Generated production accessors, validation, and selected decoding methods. |
 
 The package therefore has one definition of each generated method in either
 build mode.
@@ -156,7 +158,9 @@ not compatible with that strict requirement.
 ## Validate before unmarshaling
 
 Pass `--validate` both to the generation directive and to `new`. Generated
-schemas are compiled once during package initialization.
+schemas are compiled once during package initialization. With
+`--formats=both`, `ValidateYAML` translates YAML to the same JSON data model
+before applying the schema.
 
 ```go
 if err := (Person{}).ValidateJSON(llmOutput); err != nil {
@@ -239,10 +243,9 @@ options are preferred for new code.
 A registered interface field becomes an `anyOf` union. A direct,
 one-dimensional `[]I` field becomes an array with that union under
 `items.anyOf`. The generator writes `UnmarshalJSON` dispatch by default. Use
-`--formats=both` to also write native `UnmarshalYAML(*yaml.Node)` dispatch, or
-`--formats=yaml` for YAML-only dispatch, for scalar interface fields and every
-slice element. YAML decoding uses `go.yaml.in/yaml/v4` nodes directly; it does
-not convert YAML through JSON.
+`--formats=both` to add `UnmarshalYAML(*yaml.Node)` adapters. yaml/v4 parses
+YAML into a generic value, which is translated to JSON and passed through the
+same decoder for scalar interface fields and every slice element.
 
 ```go
 type Event interface{ isEvent() }
@@ -280,8 +283,10 @@ var _ = jsonschema.NewJSONSchemaMethod(
 `const` and generated unmarshal dispatch. The default discriminator property is
 `type` for both JSON and YAML. Generated decoding preserves value versus pointer
 implementations, reports a failing slice index, and assigns the destination
-only after the entire value decodes successfully. YAML field lookup honors
-`yaml` tags and yaml/v4's normal field-name rules.
+only after the entire value decodes successfully. YAML uses the JSON Schema
+property names. Go `yaml` struct tags are ignored and nested custom
+`UnmarshalYAML` hooks are bypassed; JSON tags and custom `UnmarshalJSON` hooks
+are authoritative. The generator owns `UnmarshalYAML` on registered types.
 
 Enable both formats in the generation directive before decoding YAML:
 
@@ -295,13 +300,13 @@ After generation, ordinary pipeline YAML can be decoded with yaml/v4:
 import yaml "go.yaml.in/yaml/v4"
 
 var batch Batch
-err := yaml.Unmarshal([]byte(`
+err := yaml.Load([]byte(`
 events:
   - type: created
     name: first
   - type: deleted
     id: old-id
-`), &batch)
+`), &batch, yaml.WithV4Defaults())
 ```
 
 Run `go mod tidy` after YAML-enabled generation so the module records its
@@ -405,7 +410,7 @@ Provider options replace selected field schemas at runtime:
   execution.
 
 Provider functions must exist in normal builds. Provider-rendered schemas do
-not receive `ValidateJSON()` because their schema depends on runtime values.
+not receive validation methods because their schema depends on runtime values.
 
 ## Manual schema construction
 
@@ -454,14 +459,15 @@ go tool gen-jsonschema gen [flags]
   -no-changes           fail without writing schema files if schema JSON would change
   -force                rewrite unchanged output; incompatible with -no-changes
   -num-test-samples N   accepted for compatibility; currently does not change output
-  --validate            generate ValidateJSON methods
-  --formats MODE        union unmarshalers: json (default), yaml, or both
+  --validate            generate validation methods for the selected formats
+  --formats MODE        decoding and validation: json (default) or both
 
 go tool gen-jsonschema new [flags]
   -out FILE             output path; empty or -- writes to stdout
   -pkg NAME             package override for stdout mode
   -methods LIST         required comma-separated Type=Method entries
-  --validate            include ValidateJSON stubs
+  --validate            include validation stubs for the selected formats
+  --formats MODE        validation stubs: json (default) or both
   --generate            run go generate ./... after writing
 ```
 

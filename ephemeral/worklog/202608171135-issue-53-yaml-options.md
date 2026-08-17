@@ -21,3 +21,11 @@ decision: Reuse `resolveLocalInterfaceProps` to collect ordinary Optional/Nullab
 - In the regenerated nested consumer fixture, `go generate ./... && go test -run TestGeneratedYAMLUnmarshalComprehensive -count=1 -v` passed. That test exercises yaml/v4 `Load` with V4 defaults, present-zero Optional/Nullable values, absent Optional, null Nullable, union decoding, indexed union failure, null-Optional failure, and receiver rollback.
 
 friction: The feature branch pushed successfully, but GitHub returned HTTP 503 from both GraphQL `gh pr create` and the REST pulls endpoint; the in-app browser had no available backend. PR creation and the Issue 53 limitation comment remain blocked on GitHub service recovery.
+
+correction: All consumer code is expected to be agent-authored; preserve one canonical JSON/schema field contract instead of YAML-tag flexibility.
+
+decision: Replace native YAML union decoding with a YAML-to-JSON translator feeding the existing JSON decoder. Keep json as the default, both as the YAML opt-in, and remove the misleading yaml-only mode.
+
+proof: A fresh temporary consumer generated through the real CLI with `--formats=both --validate` passed the comprehensive YAML decode and schema-validation tests. The generated output contained `ValidateYAML` and the thin `UnmarshalYAML` adapter and contained no native `__yamlUnmarshal__` dispatch.
+
+proof: Generation was idempotent; `go build ./...`, uncached `go test -count=1 ./...`, `golangci-lint run`, and the website build/link check passed.

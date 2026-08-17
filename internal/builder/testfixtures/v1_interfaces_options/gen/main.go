@@ -10,6 +10,7 @@ func main() {
 	err := builder.Run(builder.BuilderArgs{
 		TargetDir:        ".",
 		Pretty:           true,
+		Validate:         true,
 		UnmarshalFormats: builder.UnmarshalFormatsBoth,
 	})
 	if err != nil {

@@ -41,7 +41,6 @@ func New(pkg *decorator.Package) (SchemaBuilder, error) {
 		Scan:              data,
 		schemas:           schemaMap{},
 		customTypes:       map[string][]InterfaceProp{},
-		yamlWrapperProps:  map[string][]YAMLWrapperProp{},
 		Subdir:            defaultSubdir,
 		BuildTag:          syntax.BuildTag,
 		DiscriminatorProp: DefaultDiscriminatorPropName,
@@ -246,17 +245,15 @@ func New(pkg *decorator.Package) (SchemaBuilder, error) {
 }
 
 type CustomMarshaledType struct {
-	Name             string
-	InterfaceProps   []InterfaceProp
-	YAMLWrapperProps []YAMLWrapperProp
-	Star             string
-	Initial          string
+	Name           string
+	InterfaceProps []InterfaceProp
+	Star           string
+	Initial        string
 }
 
-type YAMLWrapperProp struct {
-	FieldName string
-	YAMLName  string
-	Optional  bool
+type YAMLType struct {
+	Name    string
+	Initial string
 }
 
 type InterfaceOptionInfo struct {
@@ -310,10 +307,6 @@ type InterfaceInfo struct {
 	Options               []InterfaceOptionInfo
 }
 
-func (i InterfaceInfo) YAMLUnmarshalerFunc() string {
-	return strings.Replace(i.UnmarshalerFunc, "__jsonUnmarshal__", "__yamlUnmarshal__", 1)
-}
-
 func (c *CustomMarshaledType) UnmarshalJSON(data []byte) (err error) {
 	type Wrapper struct {
 		*CustomMarshaledType
@@ -339,7 +332,6 @@ type SchemaBuilder struct {
 	Scan              syntax.ScanResult
 	schemas           schemaMap
 	customTypes       map[string][]InterfaceProp
-	yamlWrapperProps  map[string][]YAMLWrapperProp
 	Subdir            string
 	Pretty            bool
 	NumTestSamples    int
@@ -348,6 +340,7 @@ type SchemaBuilder struct {
 	UnmarshalFormats  UnmarshalFormats
 	Imports           []string
 	SpecialTypes      []CustomMarshaledType
+	YAMLTypes         []YAMLType
 	Interfaces        []InterfaceInfo
 	DiscriminatorProp string
 
@@ -799,11 +792,10 @@ func (s SchemaBuilder) mapNamedType(t syntax.TypeID, seen syntax.SeenTypes) erro
 		return fmt.Errorf("circular dependency found for type %s at %s", t.TypeName, typeSpec.Position())
 	}
 	if structType, ok := typeSpec.Type().Expr().(*dst.StructType); ok {
-		if props, wrapperProps, err := s.resolveLocalInterfaceProps(syntax.NewStructType(structType, typeSpec), nil); err != nil {
+		if props, err := s.resolveLocalInterfaceProps(syntax.NewStructType(structType, typeSpec), nil); err != nil {
 			return err
 		} else if len(props) > 0 {
 			s.customTypes[t.TypeName] = props
-			s.yamlWrapperProps[t.TypeName] = wrapperProps
 		}
 	}
 	if schema, err := s.renderSchema(typeSpec.Derive(), typeSpec.Comments(), seen); err != nil {
@@ -1078,10 +1070,9 @@ func (s *SchemaBuilder) RenderGoCode() (err error) {
 			itsProps[i].InterfaceTypeNameWithPrefix = importMap.PrefixExpr(itsProps[i].Interface.TypeSpec.Name(), ifacePkg)
 		}
 		s.SpecialTypes = append(s.SpecialTypes, CustomMarshaledType{
-			Name:             n,
-			InterfaceProps:   itsProps,
-			YAMLWrapperProps: slices.Clone(s.yamlWrapperProps[n]),
-			Initial:          strings.ToLower(n[0:1]),
+			Name:           n,
+			InterfaceProps: itsProps,
+			Initial:        strings.ToLower(n[0:1]),
 		})
 		for _, ifaceProp := range itsProps {
 			if generatedInterfaceHelpers[ifaceProp.UnmarshalerFunc()] {
@@ -1127,6 +1118,26 @@ func (s *SchemaBuilder) RenderGoCode() (err error) {
 				UnmarshalerFunc:       ifaceProp.UnmarshalerFunc(),
 				DiscriminatorPropName: discProp,
 				Options:               opts,
+			})
+		}
+	}
+	if s.GeneratesYAMLUnmarshalers() {
+		yamlTypes := make(map[string]bool)
+		for _, method := range s.SchemaMethods() {
+			yamlTypes[method.Receiver.TypeName] = true
+		}
+		for _, special := range s.SpecialTypes {
+			yamlTypes[special.Name] = true
+		}
+		names := make([]string, 0, len(yamlTypes))
+		for name := range yamlTypes {
+			names = append(names, name)
+		}
+		slices.Sort(names)
+		for _, name := range names {
+			s.YAMLTypes = append(s.YAMLTypes, YAMLType{
+				Name:    name,
+				Initial: strings.ToLower(name[0:1]),
 			})
 		}
 	}
@@ -1688,10 +1699,6 @@ func (s InterfaceProp) UnmarshalerFunc() string {
 	return fmt.Sprintf("__jsonUnmarshal__%s__%s", s.Interface.TypeSpec.Pkg().Name, s.Interface.TypeSpec.Name())
 }
 
-func (s InterfaceProp) YAMLUnmarshalerFunc() string {
-	return strings.Replace(s.UnmarshalerFunc(), "__jsonUnmarshal__", "__yamlUnmarshal__", 1)
-}
-
 func (i InterfaceProp) FieldNames() string {
 	var names []string
 	for _, name := range i.Field.Field.Names {
@@ -1713,30 +1720,6 @@ func (i InterfaceProp) JSONName() string {
 		return i.FieldNames()
 	}
 	return names[0]
-}
-
-func (i InterfaceProp) YAMLName() string {
-	if tag := i.Field.YAMLTag(); tag != nil && len(tag.Options) > 0 && tag.Options[0] != "" {
-		return tag.Options[0]
-	}
-	return strings.ToLower(i.FieldNames())
-}
-
-func yamlFieldNames(field syntax.StructField) []string {
-	goNames := field.Field.Names
-	if len(goNames) == 0 {
-		return nil
-	}
-	if len(goNames) == 1 {
-		if tag := field.YAMLTag(); tag != nil && len(tag.Options) > 0 && tag.Options[0] != "" {
-			return []string{tag.Options[0]}
-		}
-	}
-	names := make([]string, 0, len(goNames))
-	for _, name := range goNames {
-		names = append(names, strings.ToLower(name.Name))
-	}
-	return names
 }
 
 // resolveLocalInterfaceProps finds supported registered-interface properties on
@@ -1767,9 +1750,9 @@ func yamlFieldNames(field syntax.StructField) []string {
 //
 // )
 // ```
-func (s SchemaBuilder) resolveLocalInterfaceProps(t syntax.StructType, seenProps syntax.SeenProps) (props []InterfaceProp, wrapperProps []YAMLWrapperProp, err error) {
+func (s SchemaBuilder) resolveLocalInterfaceProps(t syntax.StructType, seenProps syntax.SeenProps) (props []InterfaceProp, err error) {
 	if t.Pkg().PkgPath != s.Scan.Pkg.PkgPath {
-		return nil, nil, nil
+		return nil, nil
 	}
 	for _, prop := range t.Fields() {
 		if prop.Embedded() {
@@ -1787,33 +1770,13 @@ func (s SchemaBuilder) resolveLocalInterfaceProps(t syntax.StructType, seenProps
 		}
 		field, fieldErr := s.resolveRegisteredInterfaceField(t, prop)
 		if fieldErr != nil {
-			return nil, nil, fieldErr
+			return nil, fieldErr
 		}
 		if field == nil {
-			if prop.Skip() {
-				continue
-			}
-			wrapper, _, wrapperErr := prop.Wrapper()
-			if wrapperErr != nil {
-				return nil, nil, wrapperErr
-			}
-			if wrapper != syntax.WrapperNone {
-				goNames := prop.Field.Names
-				for i, yamlName := range yamlFieldNames(prop) {
-					if yamlName == "-" || i >= len(goNames) {
-						continue
-					}
-					wrapperProps = append(wrapperProps, YAMLWrapperProp{
-						FieldName: goNames[i].Name,
-						YAMLName:  yamlName,
-						Optional:  wrapper == syntax.WrapperOptional,
-					})
-				}
-			}
 			continue
 		}
 		if len(prop.Field.Names) != 1 {
-			return nil, nil, fmt.Errorf("interface prop %s has more than one field name at %s", strings.Join(prop.PropNames(), ","), prop.Position())
+			return nil, fmt.Errorf("interface prop %s has more than one field name at %s", strings.Join(prop.PropNames(), ","), prop.Position())
 		}
 		props = append(props, InterfaceProp{
 			Field:               prop,
@@ -1830,15 +1793,14 @@ func (s SchemaBuilder) resolveLocalInterfaceProps(t syntax.StructType, seenProps
 			continue
 		}
 		if _t, err := s.resolveEmbeddedType(prop.TypeExpr, nil); err != nil {
-			return nil, nil, fmt.Errorf("resolving embedded type: %w", err)
-		} else if propsTemp, wrapperPropsTemp, err := s.resolveLocalInterfaceProps(_t, seenProps); err != nil {
-			return nil, nil, fmt.Errorf("resolving embedded local interface properties: %w", err)
+			return nil, fmt.Errorf("resolving embedded type: %w", err)
+		} else if propsTemp, err := s.resolveLocalInterfaceProps(_t, seenProps); err != nil {
+			return nil, fmt.Errorf("resolving embedded local interface properties: %w", err)
 		} else {
 			props = append(props, propsTemp...)
-			wrapperProps = append(wrapperProps, wrapperPropsTemp...)
 		}
 	}
-	return props, wrapperProps, nil
+	return props, nil
 }
 
 func (s SchemaBuilder) findInterfaceImpl(ident *dst.Ident, localPkg *decorator.Package) (iface syntax.IfaceImplementations, ok bool) {
