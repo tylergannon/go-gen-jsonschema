@@ -1,13 +1,27 @@
 package v1_interfaces_options
 
-import jsonschema "github.com/tylergannon/go-gen-jsonschema"
+import (
+	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+	yaml "go.yaml.in/yaml/v4"
+)
 
 //go:generate go run ./gen
 
 type IFace interface{ isIface() }
 
+type yamlString string
+
+func (s *yamlString) UnmarshalYAML(node *yaml.Node) error {
+	var value string
+	if err := node.Decode(&value); err != nil {
+		return err
+	}
+	*s = yamlString("yaml:" + value)
+	return nil
+}
+
 type Impl1 struct {
-	X string `json:"x"`
+	X yamlString `json:"x" yaml:"x"`
 }
 
 func (Impl1) isIface() {}
@@ -19,7 +33,7 @@ type Impl2 struct {
 func (Impl2) isIface() {}
 
 type Owner struct {
-	IF         IFace                      `json:"if"`
-	IFaces     []IFace                    `json:"ifs"`
-	OptionalIF jsonschema.Optional[IFace] `json:"optional_if,omitzero"`
+	IF         IFace                      `json:"if" yaml:"yaml_if"`
+	IFaces     []IFace                    `json:"ifs" yaml:"yaml_ifs"`
+	OptionalIF jsonschema.Optional[IFace] `json:"optional_if,omitzero" yaml:"yaml_optional"`
 }

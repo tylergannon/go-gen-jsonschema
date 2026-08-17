@@ -8,6 +8,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+
+	yaml "go.yaml.in/yaml/v4"
 )
 
 //go:embed jsonschema
@@ -64,6 +66,49 @@ func (b *Batch) UnmarshalJSON(data []byte) (err error) {
 	*b = __next
 	return nil
 }
+
+// UnmarshalYAML is a generated custom yaml.Unmarshaler implementation for
+// Batch.
+func (b *Batch) UnmarshalYAML(node *yaml.Node) (err error) {
+	var fields map[string]yaml.Node
+	if err = node.Decode(&fields); err != nil {
+		return err
+	}
+	ordinary := make(map[string]yaml.Node, len(fields))
+	for name, value := range fields {
+		ordinary[name] = value
+	}
+	delete(ordinary, "events")
+	type Alias Batch
+	var alias Alias
+	ordinaryNode := __jsonschema__yamlMappingNode(ordinary)
+	if err = ordinaryNode.Decode(&alias); err != nil {
+		return err
+	}
+	__next := Batch(alias)
+
+	if __node0, ok := fields["events"]; !ok {
+		__next.Events = b.Events
+	} else {
+		var __raw0 []yaml.Node
+		if err = __node0.Decode(&__raw0); err != nil {
+			return fmt.Errorf("field events: %w", err)
+		}
+		var __decoded0 []Event
+		if __raw0 != nil {
+			__decoded0 = make([]Event, len(__raw0))
+		}
+		for __index := range __raw0 {
+			if __decoded0[__index], err = __yamlUnmarshal__sealed_interface_slices__Event__Batch__Events(&__raw0[__index]); err != nil {
+				return fmt.Errorf("field events[%d]: %w", __index, err)
+			}
+		}
+		__next.Events = __decoded0
+	}
+
+	*b = __next
+	return nil
+}
 func __jsonUnmarshal__sealed_interface_slices__Event__Batch__Events(data []byte) (Event, error) {
 	var (
 		temp          map[string]json.RawMessage
@@ -97,6 +142,47 @@ func __jsonUnmarshal__sealed_interface_slices__Event__Batch__Events(data []byte)
 	}
 }
 
+func __yamlUnmarshal__sealed_interface_slices__Event__Batch__Events(node *yaml.Node) (Event, error) {
+	var temp map[string]yaml.Node
+	if err := node.Decode(&temp); err != nil {
+		return nil, err
+	}
+	discriminatorNode, ok := temp["!kind"]
+	if !ok {
+		return nil, fmt.Errorf("no discriminator property '%s' found", "!kind")
+	}
+	var discriminator string
+	if err := discriminatorNode.Decode(&discriminator); err != nil {
+		return nil, fmt.Errorf("unable to unmarshal discriminator value %q: %w", discriminatorNode.Value, err)
+	}
+	switch discriminator {
+	case "Created":
+		var obj Created
+		if err := node.Decode(&obj); err != nil {
+			return nil, err
+		}
+		return obj, nil
+	case "Deleted":
+		var obj Deleted
+		if err := node.Decode(&obj); err != nil {
+			return nil, err
+		}
+		return &obj, nil
+	default:
+		return nil, fmt.Errorf("unknown discriminator: %s", discriminator)
+	}
+}
+
 func __jsonschema__unmarshalDiscriminatorError(discriminator json.RawMessage, err error) error {
 	return fmt.Errorf("unable to unmarshal discriminator value %v: %w", discriminator, err)
+}
+
+func __jsonschema__yamlMappingNode(fields map[string]yaml.Node) yaml.Node {
+	content := make([]*yaml.Node, 0, len(fields)*2)
+	for name, value := range fields {
+		nameNode := yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: name}
+		valueNode := value
+		content = append(content, &nameNode, &valueNode)
+	}
+	return yaml.Node{Kind: yaml.MappingNode, Tag: "!!map", Content: content}
 }

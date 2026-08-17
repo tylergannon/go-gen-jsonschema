@@ -10,6 +10,8 @@ import (
 	"errors"
 	"fmt"
 
+	yaml "go.yaml.in/yaml/v4"
+
 	jsonschema "github.com/santhosh-tekuri/jsonschema/v6"
 )
 
@@ -117,6 +119,37 @@ func (c *Config) UnmarshalJSON(data []byte) (err error) {
 	*c = __next
 	return nil
 }
+
+// UnmarshalYAML is a generated custom yaml.Unmarshaler implementation for
+// Config.
+func (c *Config) UnmarshalYAML(node *yaml.Node) (err error) {
+	var fields map[string]yaml.Node
+	if err = node.Decode(&fields); err != nil {
+		return err
+	}
+	ordinary := make(map[string]yaml.Node, len(fields))
+	for name, value := range fields {
+		ordinary[name] = value
+	}
+	delete(ordinary, "pet")
+	type Alias Config
+	var alias Alias
+	ordinaryNode := __jsonschema__yamlMappingNode(ordinary)
+	if err = ordinaryNode.Decode(&alias); err != nil {
+		return err
+	}
+	__next := Config(alias)
+
+	if __node0, ok := fields["pet"]; ok {
+		if __next.Pet.Value, err = __yamlUnmarshal__optionality__Pet__Config__Pet(&__node0); err != nil {
+			return err
+		}
+		__next.Pet.Present = true
+	}
+
+	*c = __next
+	return nil
+}
 func __jsonUnmarshal__optionality__Pet__Config__Pet(data []byte) (Pet, error) {
 	var (
 		temp          map[string]json.RawMessage
@@ -150,6 +183,47 @@ func __jsonUnmarshal__optionality__Pet__Config__Pet(data []byte) (Pet, error) {
 	}
 }
 
+func __yamlUnmarshal__optionality__Pet__Config__Pet(node *yaml.Node) (Pet, error) {
+	var temp map[string]yaml.Node
+	if err := node.Decode(&temp); err != nil {
+		return nil, err
+	}
+	discriminatorNode, ok := temp["!kind"]
+	if !ok {
+		return nil, fmt.Errorf("no discriminator property '%s' found", "!kind")
+	}
+	var discriminator string
+	if err := discriminatorNode.Decode(&discriminator); err != nil {
+		return nil, fmt.Errorf("unable to unmarshal discriminator value %q: %w", discriminatorNode.Value, err)
+	}
+	switch discriminator {
+	case "Dog":
+		var obj Dog
+		if err := node.Decode(&obj); err != nil {
+			return nil, err
+		}
+		return obj, nil
+	case "Cat":
+		var obj Cat
+		if err := node.Decode(&obj); err != nil {
+			return nil, err
+		}
+		return obj, nil
+	default:
+		return nil, fmt.Errorf("unknown discriminator: %s", discriminator)
+	}
+}
+
 func __jsonschema__unmarshalDiscriminatorError(discriminator json.RawMessage, err error) error {
 	return fmt.Errorf("unable to unmarshal discriminator value %v: %w", discriminator, err)
+}
+
+func __jsonschema__yamlMappingNode(fields map[string]yaml.Node) yaml.Node {
+	content := make([]*yaml.Node, 0, len(fields)*2)
+	for name, value := range fields {
+		nameNode := yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: name}
+		valueNode := value
+		content = append(content, &nameNode, &valueNode)
+	}
+	return yaml.Node{Kind: yaml.MappingNode, Tag: "!!map", Content: content}
 }
