@@ -3,3 +3,7 @@ friction: A concurrent repository-wide test run hit the OS open-file limit in an
 proof: go test . and go test ./... both passed after implementation; the full suite's test-run fixtures regenerated unrelated nested go.sum entries, which were removed before checkpointing.
 decision: Follow-up full-suite runs reproduce validator/v6 and x/text checksum additions in the nine source fixture modules' corresponding test_run copies; retain those checksums in source fixture go.sum files so the tidy step has stable tracked inputs.
 proof: After mirroring source and generated fixture sums, go test ./... passed and the only remaining untracked worktree file is another agent's ephemeral review; generated test_run sums now match their source fixtures.
+
+Parent integration: rebased helper implementation onto main76658ed after external #33/#34 merges. Reconciled the newly merged test10 fixture source/generated sums for the same existing validator test dependency. Independent helper review found no material issue; root added validator coverage across both strict/non-strict builders. Contract/planning work moved to separate draft PR #69; this branch contains only #59 and its proof.
+
+Final parent verification: GOFLAGS=-p=2 go test ./... passed on the integrated current-main tree, including the restored external-agent test10 fixture. GOFLAGS=-p=2 go generate ./... followed by git diff --exit-code passed with no tracked drift. Proof logs and independent review retained under ephemeral/issue-59/. Publish a separate reviewable #59 PR; no merge/tag requested in this batch.
