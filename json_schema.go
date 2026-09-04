@@ -261,6 +261,8 @@ func (s JSONSchema) MarshalJSON() ([]byte, error) {
 
 var _ json.Marshaler = JSONSchema{}
 
+// ConstSchema returns a schema that accepts exactly val. Named values whose
+// underlying type is int or string retain their corresponding JSON Schema type.
 func ConstSchema[T ~int | ~string](val T, description string) SchemaNode {
 	schemaType := primitiveSchemaType(val)
 
@@ -274,6 +276,9 @@ func ConstSchema[T ~int | ~string](val T, description string) SchemaNode {
 	return res
 }
 
+// EnumSchema returns a schema that accepts one of vals. Named values whose
+// underlying type is int or string retain their corresponding JSON Schema type.
+// If vals is empty, the returned node reports an error when marshaled.
 func EnumSchema[T ~int | ~string](description string, vals ...T) SchemaNode {
 	if len(vals) == 0 {
 		return schemaErrorNode{err: errors.New("EnumSchema requires at least one value")}

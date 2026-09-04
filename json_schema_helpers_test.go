@@ -114,30 +114,130 @@ func TestIssue59ObjectSchemaEscapesPropertyNames(t *testing.T) {
 }
 
 func TestIssue59JSONSchemaStrictRequiredOrderIsStable(t *testing.T) {
-	schema := JSONSchema{
-		Type: Object,
-		Properties: map[string]SchemaNode{
-			"zeta":   StringSchema("z"),
-			"alpha":  StringSchema("a"),
-			"middle": StringSchema("m"),
-		},
-		Required:             []string{"provided-by-caller"},
-		AdditionalProperties: true,
-		Strict:               true,
+	additionalPropertiesValues := []struct {
+		name  string
+		value any
+	}{
+		{name: "true", value: true},
+		{name: "false", value: false},
+		{name: "schema", value: StringSchema("extra values")},
 	}
 
-	first, err := json.Marshal(schema)
-	require.NoError(t, err)
-	for i := 0; i < 20; i++ {
-		current, err := json.Marshal(schema)
-		require.NoError(t, err)
-		require.Equal(t, first, current)
+	for _, additionalProperties := range additionalPropertiesValues {
+		t.Run(additionalProperties.name, func(t *testing.T) {
+			schema := JSONSchema{
+				Type: Object,
+				Properties: map[string]SchemaNode{
+					"zeta":  StringSchema("z"),
+					"alpha": StringSchema("a"),
+				},
+				Required:             []string{"provided-by-caller"},
+				AdditionalProperties: additionalProperties.value,
+				Strict:               true,
+			}
+
+			first, err := json.Marshal(schema)
+			require.NoError(t, err)
+			for i := 0; i < 20; i++ {
+				current, err := json.Marshal(schema)
+				require.NoError(t, err)
+				require.Equal(t, first, current)
+			}
+
+			var document map[string]any
+			require.NoError(t, json.Unmarshal(first, &document))
+			require.Equal(t, false, document["additionalProperties"])
+			require.Equal(t, []any{"alpha", "zeta"}, document["required"])
+
+			compiled := compileIssue59Schema(t, schema)
+			require.NoError(t, compiled.Validate(map[string]any{"alpha": "ok", "zeta": "ok"}))
+			require.Error(t, compiled.Validate(map[string]any{"alpha": "ok"}))
+			require.Error(t, compiled.Validate(map[string]any{"alpha": "ok", "zeta": "ok", "extra": "rejected"}))
+		})
+	}
+}
+
+func TestIssue59ObjectSchemaStrictOverridesSettings(t *testing.T) {
+	additionalPropertiesValues := []struct {
+		name  string
+		value any
+	}{
+		{name: "true", value: true},
+		{name: "false", value: false},
+		{name: "schema", value: StringSchema("extra values")},
 	}
 
-	var document map[string]any
-	require.NoError(t, json.Unmarshal(first, &document))
-	require.Equal(t, false, document["additionalProperties"])
-	require.Equal(t, []any{"alpha", "middle", "zeta"}, document["required"])
+	for _, additionalProperties := range additionalPropertiesValues {
+		t.Run(additionalProperties.name, func(t *testing.T) {
+			schema := &ObjectSchema{
+				Strict:               true,
+				Required:             []string{"provided-by-caller"},
+				AdditionalProperties: additionalProperties.value,
+			}
+			schema.AddProperty("alpha", StringSchema("a"))
+			schema.AddProperty("zeta", StringSchema("z"))
+
+			data, err := json.Marshal(schema)
+			require.NoError(t, err)
+			var document map[string]any
+			require.NoError(t, json.Unmarshal(data, &document))
+			require.Equal(t, false, document["additionalProperties"])
+			require.Equal(t, []any{"alpha", "zeta"}, document["required"])
+
+			compiled := compileIssue59Schema(t, schema)
+			require.NoError(t, compiled.Validate(map[string]any{"alpha": "ok", "zeta": "ok"}))
+			require.Error(t, compiled.Validate(map[string]any{"alpha": "ok"}))
+			require.Error(t, compiled.Validate(map[string]any{"alpha": "ok", "zeta": "ok", "extra": "rejected"}))
+		})
+	}
+}
+
+func TestIssue59NonStrictSettingsRemainEffective(t *testing.T) {
+	additionalPropertiesValues := []struct {
+		name       string
+		value      any
+		extraValue any
+		allows     bool
+	}{
+		{name: "true", value: true, extraValue: 123, allows: true},
+		{name: "false", value: false, extraValue: 123, allows: false},
+		{name: "schema", value: StringSchema("extra values"), extraValue: "accepted", allows: true},
+	}
+
+	builders := []struct {
+		name  string
+		build func(any) SchemaNode
+	}{
+		{name: "JSONSchema", build: func(additionalProperties any) SchemaNode {
+			return JSONSchema{
+				Type:                 Object,
+				Properties:           map[string]SchemaNode{"alpha": StringSchema("a"), "beta": StringSchema("b")},
+				Required:             []string{"alpha"},
+				AdditionalProperties: additionalProperties,
+			}
+		}},
+		{name: "ObjectSchema", build: func(additionalProperties any) SchemaNode {
+			schema := &ObjectSchema{AdditionalProperties: additionalProperties, Required: []string{"alpha"}}
+			schema.AddProperty("alpha", StringSchema("a"))
+			schema.AddProperty("beta", StringSchema("b"))
+			return schema
+		}},
+	}
+
+	for _, builder := range builders {
+		for _, additionalProperties := range additionalPropertiesValues {
+			t.Run(builder.name+"/"+additionalProperties.name, func(t *testing.T) {
+				compiled := compileIssue59Schema(t, builder.build(additionalProperties.value))
+				require.NoError(t, compiled.Validate(map[string]any{"alpha": "ok"}))
+				extra := map[string]any{"alpha": "ok", "extra": additionalProperties.extraValue}
+				if additionalProperties.allows {
+					require.NoError(t, compiled.Validate(extra))
+				} else {
+					require.Error(t, compiled.Validate(extra))
+				}
+			})
+		}
+	}
 }
 
 func TestIssue59EmptyEnumReturnsMarshalError(t *testing.T) {
