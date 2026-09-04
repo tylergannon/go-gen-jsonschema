@@ -58,15 +58,14 @@ func printGlobalHelp() {
 func handleGen(firstArg int) {
 	// Define the --pretty flag
 	var (
-		genCmd         = flag.NewFlagSet("gen", flag.ExitOnError)
-		pretty         = genCmd.Bool("pretty", false, "Enable pretty output")
-		target         = genCmd.String("target", "", "Path to target package (default to local wd)")
-		numTestSamples = genCmd.Int("num-test-samples", 5, "Number of test samples to generate")
-		noChanges      = genCmd.Bool("no-changes", false, "Fail if any schema changes are detected")
-		force          = genCmd.Bool("force", false, "Force regeneration of schemas even if no changes are detected")
-		validate       = genCmd.Bool("validate", false, "Generate schema validation methods for the selected formats")
-		formats        = genCmd.String("formats", "json", "Generated decoding and validation formats: json or both")
-		err            error
+		genCmd    = flag.NewFlagSet("gen", flag.ExitOnError)
+		pretty    = genCmd.Bool("pretty", false, "Enable pretty output")
+		target    = genCmd.String("target", "", "Path to target package (default to local wd)")
+		noChanges = genCmd.Bool("no-changes", false, "Fail if any schema changes are detected")
+		force     = genCmd.Bool("force", false, "Force regeneration of schemas even if no changes are detected")
+		validate  = genCmd.Bool("validate", false, "Generate schema validation methods for the selected formats")
+		formats   = genCmd.String("formats", "json", "Generated decoding and validation formats: json or both")
+		err       error
 	)
 
 	if *target == "" {
@@ -102,7 +101,6 @@ func handleGen(firstArg int) {
 	if err = builder.Run(builder.BuilderArgs{
 		TargetDir:        *target,
 		Pretty:           *pretty,
-		NumTestSamples:   *numTestSamples,
 		NoChanges:        *noChanges,
 		Force:            *force,
 		Validate:         *validate,

@@ -1,4 +1,22 @@
-# v1 Roadmap (Working)
+# v1 Roadmap (Historical planning record)
+
+> Current-status note (2026-09-04): this checklist predates the accepted v1
+> contract. The unchecked implementation rows below are retained as historical
+> planning notes; they are not a current list of missing product work. The
+> dispositions below are the source of truth for this record.
+
+## Current dispositions
+
+- `NewJSONSchemaFunc` and `NewJSONSchemaBuilder` are implemented generation
+  markers, with entrypoint fixture coverage under
+  `internal/builder/testfixtures/entrypoints`.
+- `WithEnum`, integer string mode, interface options, and provider rendering
+  are implemented and covered by the current examples and builder tests.
+- `RenderedSchema()` is runtime schema rendering. Provider-rendered schemas do
+  not imply generated static validation or a general-purpose codec.
+- Current release requirements and deliberately unsupported combinations live
+  in [`docs/spec/v1.md`](../spec/v1.md). Future CLI commands, typed provider
+  arguments, and broader codec behavior remain separate work.
 
 This file tracks execution steps to bring v1 to parity across spec, tests, and implementation.
 
