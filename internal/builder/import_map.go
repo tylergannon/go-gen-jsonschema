@@ -11,7 +11,7 @@ import (
 // which is stored alongside our AST nodes in QuestImpl and TaskImpl objects.
 type ImportMap struct {
 	localPackage *decorator.Package
-	aliasCount   int
+	usedNames    map[string]bool
 	types        []struct {
 		alias string
 		pkg   *decorator.Package
@@ -23,18 +23,19 @@ func (m *ImportMap) LocalPkgName() string {
 }
 
 func NewImportMap(localPackage *decorator.Package) *ImportMap {
-	return &ImportMap{localPackage: localPackage}
+	usedNames := map[string]bool{}
+	for _, name := range []string{"bytes", "embed", "errors", "fmt", "json", "jsonschema", "template", "yaml"} {
+		usedNames[name] = true
+	}
+	return &ImportMap{localPackage: localPackage, usedNames: usedNames}
 }
 
-// AddPackage inserts the package into the map, unless it is already contained
-// there.  Adds an alias if the alias has already been found.  Keeps a simple
-// counter for creating very simple aliases.
+// AddPackage inserts the package unless it is already present. It allocates an
+// alias that cannot collide with template imports or any prior effective alias.
 func (m *ImportMap) AddPackage(pkg *decorator.Package) {
 	if m.localPackage.ID == pkg.ID {
 		return
 	}
-	haveName := false
-
 	newObj := struct {
 		alias string
 		pkg   *decorator.Package
@@ -44,14 +45,21 @@ func (m *ImportMap) AddPackage(pkg *decorator.Package) {
 		if t.pkg.ID == pkg.ID {
 			return
 		}
-		if t.pkg.Name == pkg.Name {
-			haveName = true
+	}
+	name := pkg.Name
+	if m.usedNames[name] {
+		for suffix := 1; ; suffix++ {
+			candidate := fmt.Sprintf("%s%d", pkg.Name, suffix)
+			if !m.usedNames[candidate] {
+				name = candidate
+				break
+			}
 		}
 	}
-	if haveName {
-		m.aliasCount++
-		newObj.alias = fmt.Sprintf("%s%d", pkg.Name, m.aliasCount)
+	if name != pkg.Name {
+		newObj.alias = name
 	}
+	m.usedNames[name] = true
 	m.types = append(m.types, newObj)
 }
 
