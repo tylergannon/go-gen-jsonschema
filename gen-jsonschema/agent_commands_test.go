@@ -56,6 +56,24 @@ func TestInspectJSONReportsUnsupportedWithoutStdoutNoise(t *testing.T) {
 	require.Equal(t, "unsupported_required_omission", result.Types[0].Diagnostics[0].Code)
 }
 
+func TestInspectJSONClassifiesGenericModelWithoutStdoutNoise(t *testing.T) {
+	repoRoot, err := filepath.Abs(filepath.Join(".."))
+	require.NoError(t, err)
+	target := filepath.Join(repoRoot, "internal", "builder", "testfixtures", "inspection_generic")
+
+	var stdout, stderr bytes.Buffer
+	exitCode := runAgentCommand([]string{"inspect", "--json", "--target", target, "Root"}, &stdout, &stderr)
+
+	require.Equal(t, 3, exitCode)
+	require.Empty(t, stderr.String())
+	var result inspection.Result
+	require.NoError(t, json.Unmarshal(stdout.Bytes(), &result))
+	require.Equal(t, inspection.StatusUnsupported, result.Status)
+	require.Empty(t, result.Types)
+	require.Equal(t, "unsupported_generic_type", result.Diagnostics[0].Code)
+	require.Equal(t, inspection.ClassificationUnsupported, result.Diagnostics[0].Classification)
+}
+
 func TestHumanVersionUsesStderr(t *testing.T) {
 	t.Parallel()
 

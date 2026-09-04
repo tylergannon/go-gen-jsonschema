@@ -25,14 +25,17 @@ func Inspect(request InspectRequest) Result {
 	if err != nil {
 		classification := ClassificationToolchain
 		code := "package_load_failed"
+		remedy := "fix the reported Go package or module error and run inspection again"
 		var position token.Position
 		var loadErr *syntax.PackageLoadError
 		var scanErr *syntax.ScanError
+		var inspectionErr *builder.InspectionError
 		switch {
 		case errors.As(err, &scanErr):
-			classification = ClassificationInvalidRequest
+			classification = classificationFromCertainty(scanErr.Certainty)
 			code = scanErr.Code
 			position = scanErr.Position
+			remedy = scanErr.Remedy
 		case errors.As(err, &loadErr) && loadErr.HasToolchainError():
 			position = loadErr.Position()
 		case errors.As(err, &loadErr) && loadErr.HasSourceError():
@@ -41,12 +44,17 @@ func Inspect(request InspectRequest) Result {
 			position = loadErr.Position()
 		case errors.As(err, &loadErr):
 			position = loadErr.Position()
+		case errors.As(err, &inspectionErr):
+			classification = classificationFromCertainty(inspectionErr.Certainty)
+			code = inspectionErr.Code
+			position = inspectionErr.Position
+			remedy = inspectionErr.Remedy
 		}
 		result.Diagnostics = []Diagnostic{{
 			Code:           code,
 			Classification: classification,
 			Message:        err.Error(),
-			Remedy:         "fix the reported Go package or module error and run inspection again",
+			Remedy:         remedy,
 			Source:         sourceFromPosition(position),
 		}}
 		result.Status = AggregateStatus(result.Diagnostics)
@@ -91,6 +99,19 @@ func Inspect(request InspectRequest) Result {
 		result.Status = CombineStatus(result.Status, inspectedType.Status)
 	}
 	return result
+}
+
+func classificationFromCertainty(certainty string) Classification {
+	switch certainty {
+	case "unsupported":
+		return ClassificationUnsupported
+	case "invalid":
+		return ClassificationInvalidRequest
+	case "internal":
+		return ClassificationInternal
+	default:
+		return ClassificationUnknown
+	}
 }
 
 func typeResult(root builder.RootInspection) TypeResult {
@@ -238,18 +259,9 @@ func diagnosticFromBuilderError(root builder.RootInspection) Diagnostic {
 			Source:         sourceFromPosition(root.Position),
 		}
 	}
-	classification := ClassificationUnknown
-	switch typed.Certainty {
-	case "unsupported":
-		classification = ClassificationUnsupported
-	case "invalid":
-		classification = ClassificationInvalidRequest
-	case "internal":
-		classification = ClassificationInternal
-	}
 	diagnostic := Diagnostic{
 		Code:           typed.Code,
-		Classification: classification,
+		Classification: classificationFromCertainty(typed.Certainty),
 		Message:        typed.Message,
 		Remedy:         typed.Remedy,
 		TypePath:       typed.TypePath,

@@ -170,6 +170,38 @@ func TestInspectExcludesGenerationOnlyHooksAndQualifiesProductionHookTypes(t *te
 	}
 }
 
+func TestInspectClassifiesGenericModelAsUnsupportedSource(t *testing.T) {
+	repoRoot, err := filepath.Abs(filepath.Join("..", ".."))
+	require.NoError(t, err)
+	target := filepath.Join(repoRoot, "internal", "builder", "testfixtures", "inspection_generic")
+
+	result := Inspect(InspectRequest{TargetDir: target, TypeNames: []string{"Root"}})
+
+	require.Equal(t, StatusUnsupported, result.Status)
+	require.Empty(t, result.Types)
+	require.Len(t, result.Diagnostics, 1)
+	diagnostic := result.Diagnostics[0]
+	require.Equal(t, "unsupported_generic_type", diagnostic.Code)
+	require.Equal(t, ClassificationUnsupported, diagnostic.Classification)
+	require.NotNil(t, diagnostic.Source)
+	require.Equal(t, "types.go", filepath.Base(diagnostic.Source.File))
+	require.Equal(t, 8, diagnostic.Source.Line)
+}
+
+func TestInspectClassifiesUnprovedScanFailureAsUnknown(t *testing.T) {
+	repoRoot, err := filepath.Abs(filepath.Join("..", ".."))
+	require.NoError(t, err)
+	target := filepath.Join(repoRoot, "internal", "builder", "testfixtures", "inspection_unproved")
+
+	result := Inspect(InspectRequest{TargetDir: target, TypeNames: []string{"Root"}})
+
+	require.Equal(t, StatusUnknown, result.Status)
+	require.Empty(t, result.Types)
+	require.Len(t, result.Diagnostics, 1)
+	require.Equal(t, "scan_unclassified", result.Diagnostics[0].Code)
+	require.Equal(t, ClassificationUnknown, result.Diagnostics[0].Classification)
+}
+
 func diagnosticFieldPaths(result Result) []string {
 	var paths []string
 	for _, diagnostic := range result.Types[0].Diagnostics {

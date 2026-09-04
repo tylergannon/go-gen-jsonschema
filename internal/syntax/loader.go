@@ -23,21 +23,21 @@ const PackageLoadNeeds = packages.NeedDeps |
 	packages.NeedFiles
 
 var DefaultPackageCfg = &packages.Config{
-	Mode:       PackageLoadNeeds,
-	Tests:      false,
-	BuildFlags: []string{"-tags=" + BuildTag},
+	Mode:  PackageLoadNeeds,
+	Tests: false,
 }
 
 func Load(path string) ([]*decorator.Package, error) {
-	return decorator.Load(DefaultPackageCfg, path)
+	config := packageConfig()
+	return decorator.Load(&config, path)
 }
 
 // LoadReadonly loads a package with the jsonschema build tag while forbidding
 // the Go command from updating go.mod or go.sum.
 func LoadReadonly(path string) ([]*decorator.Package, error) {
-	config := *DefaultPackageCfg
+	config := packageConfig()
 	config.Dir = path
-	config.BuildFlags = append(slices.Clone(DefaultPackageCfg.BuildFlags), "-mod=readonly")
+	config.BuildFlags = append(config.BuildFlags, "-mod=readonly")
 	loaded, err := decorator.Load(&config, ".")
 	if err != nil {
 		return nil, err
@@ -71,6 +71,16 @@ func LoadReadonly(path string) ([]*decorator.Package, error) {
 		return nil, &PackageLoadError{Errors: loadErrors, MissingImport: missingImport}
 	}
 	return loaded, nil
+}
+
+func packageConfig() packages.Config {
+	config := *DefaultPackageCfg
+	config.BuildFlags = slices.Clone(DefaultPackageCfg.BuildFlags)
+	tags := generationBuildTags()
+	if len(tags) > 0 {
+		config.BuildFlags = append(config.BuildFlags, "-tags="+strings.Join(tags, ","))
+	}
+	return config
 }
 
 type PackageLoadError struct {

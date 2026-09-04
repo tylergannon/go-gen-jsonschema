@@ -16,16 +16,34 @@ type PackageScanner interface {
 }
 
 type ScanError struct {
-	Code     string
-	Position token.Position
-	Cause    error
+	Code      string
+	Certainty string
+	Remedy    string
+	Position  token.Position
+	Cause     error
 }
 
 func (e *ScanError) Error() string { return e.Cause.Error() }
 func (e *ScanError) Unwrap() error { return e.Cause }
 
 func markerScanError(code string, decl MarkerFunctionCall, err error) error {
-	return &ScanError{Code: code, Position: decl.CallExpr.Position(), Cause: err}
+	return &ScanError{
+		Code:      code,
+		Certainty: "invalid",
+		Remedy:    "fix the reported registration and run inspection again",
+		Position:  decl.CallExpr.Position(),
+		Cause:     err,
+	}
+}
+
+func unsupportedModelScanError(code string, expr Expr, err error) error {
+	return &ScanError{
+		Code:      code,
+		Certainty: "unsupported",
+		Remedy:    "replace the generic model shape with a documented supported shape",
+		Position:  expr.Position(),
+		Cause:     err,
+	}
 }
 
 // TypeDecl refers to the
@@ -514,9 +532,17 @@ func (r *ScanResult) resolveTypeExpr(_expr Expr, seen SeenTypes) error {
 	switch expr := _expr.Expr().(type) {
 	case *dst.IndexExpr, *dst.IndexListExpr:
 		if kind, _, ok := wrapperExpr(_expr); ok {
-			return fmt.Errorf("%s is supported only as the complete type of a direct named struct field at %s", kind, _expr.Position())
+			return unsupportedModelScanError(
+				"unsupported_wrapper_placement",
+				_expr,
+				fmt.Errorf("%s is supported only as the complete type of a direct named struct field at %s", kind, _expr.Position()),
+			)
 		}
-		return fmt.Errorf("unsupported generic type %s at %s", _expr.Details(), _expr.Position())
+		return unsupportedModelScanError(
+			"unsupported_generic_type",
+			_expr,
+			fmt.Errorf("unsupported generic type %s at %s", _expr.Details(), _expr.Position()),
+		)
 	case *dst.ParenExpr:
 		return r.resolveTypeExpr(_expr.NewExpr(expr.X), seen)
 	case *dst.StarExpr:

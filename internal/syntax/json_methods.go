@@ -73,22 +73,39 @@ func FindProductionJSONMethods(dir string, receivers []string) ([]JSONMethod, er
 // the same custom-tag environment as the Go command that invoked generation.
 func IsProductionGoFile(filename string) (bool, error) {
 	context := build.Default
+	context.BuildTags = productionBuildTags()
+	return context.MatchFile(filepath.Dir(filename), filepath.Base(filename))
+}
+
+func goFlagBuildTags() []string {
 	fields := strings.Fields(os.Getenv("GOFLAGS"))
-	for i := 0; i < len(fields); i++ {
+	var tags []string
+	for index := 0; index < len(fields); index++ {
 		value := ""
 		switch {
-		case strings.HasPrefix(fields[i], "-tags="):
-			value = strings.TrimPrefix(fields[i], "-tags=")
-		case fields[i] == "-tags" && i+1 < len(fields):
-			i++
-			value = fields[i]
+		case strings.HasPrefix(fields[index], "-tags="):
+			value = strings.TrimPrefix(fields[index], "-tags=")
+		case fields[index] == "-tags" && index+1 < len(fields):
+			index++
+			value = fields[index]
 		}
 		value = strings.Trim(value, `"'`)
-		if value != "" {
-			context.BuildTags = append(context.BuildTags, strings.FieldsFunc(value, func(r rune) bool { return r == ',' || r == ' ' })...)
-		}
+		tags = append(tags, strings.FieldsFunc(value, func(r rune) bool { return r == ',' || r == ' ' })...)
 	}
-	return context.MatchFile(filepath.Dir(filename), filepath.Base(filename))
+	slices.Sort(tags)
+	return slices.Compact(tags)
+}
+
+func productionBuildTags() []string {
+	tags := goFlagBuildTags()
+	return slices.DeleteFunc(tags, func(tag string) bool { return tag == BuildTag })
+}
+
+func generationBuildTags() []string {
+	tags := productionBuildTags()
+	tags = append(tags, BuildTag)
+	slices.Sort(tags)
+	return slices.Compact(tags)
 }
 
 func receiverTypeName(expr ast.Expr) (string, bool) {

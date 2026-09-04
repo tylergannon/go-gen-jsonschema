@@ -71,7 +71,13 @@ func Inspect(args InspectArgs) (PackageInspection, error) {
 	}
 	scan, err := syntax.LoadPackage(pkgs[0])
 	if err != nil {
-		return PackageInspection{}, fmt.Errorf("scan package %s: %w", pkgs[0].PkgPath, err)
+		return PackageInspection{}, &InspectionError{
+			Code:      "scan_unclassified",
+			Certainty: "unknown",
+			Message:   fmt.Sprintf("could not prove the v1 model boundary while scanning package %s: %v", pkgs[0].PkgPath, err),
+			Remedy:    "review the scanner error and use a documented supported model shape",
+			Cause:     err,
+		}
 	}
 	registered := make(map[string]token.Position)
 	for _, method := range scan.SchemaMethods {

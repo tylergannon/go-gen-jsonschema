@@ -12,7 +12,6 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
-	"runtime/debug"
 	"strconv"
 	"strings"
 
@@ -909,8 +908,7 @@ func (s SchemaBuilder) renderSchema(t syntax.TypeExpr, description string, seen 
 	case *dst.InterfaceType:
 		return nil, fmt.Errorf("interface types are not supported. Found on %s at %s", t.ID(), t.Position())
 	default:
-		fmt.Printf("Node mapper found unrecognized node type %s at %s\n", t.ToExpr().Details(), t.ToExpr().Position())
-		return nil, errors.New("unhandled node type")
+		return nil, fmt.Errorf("unhandled node type %s at %s", t.ToExpr().Details(), t.ToExpr().Position())
 	}
 }
 
@@ -1224,7 +1222,6 @@ func (s SchemaBuilder) resolveEmbeddedType(t syntax.TypeExpr, seen syntax.SeenTy
 	case *dst.ParenExpr:
 		return s.resolveEmbeddedType(t.Derive(expr.X), seen)
 	default:
-		fmt.Println(string(debug.Stack()))
 		return syntax.NoStructType, fmt.Errorf("unsupported embedded field %T at %s", expr, t.Position())
 	}
 }
