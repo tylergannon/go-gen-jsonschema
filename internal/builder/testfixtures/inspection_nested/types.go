@@ -3,6 +3,8 @@ package inspection_nested
 import (
 	"encoding/json"
 	"net/url"
+
+	"github.com/tylergannon/go-gen-jsonschema/internal/builder/testfixtures/inspection_nested/remote"
 )
 
 type Event interface {
@@ -38,6 +40,10 @@ type Parent struct {
 	Child Child `json:"child"`
 }
 
+type BadUnion struct {
+	Events [][]Event `json:"events"`
+}
+
 type HookValue struct {
 	Value string `json:"value"`
 }
@@ -64,6 +70,14 @@ type ProviderModel struct {
 
 type ExternalModel struct {
 	URL url.URL `json:"url"`
+}
+
+type StubOnly struct {
+	Value string `json:"value"`
+}
+
+type RemoteSameName struct {
+	Value remote.HookValue `json:"value"`
 }
 
 func ProviderSchema(string) json.Marshaler {

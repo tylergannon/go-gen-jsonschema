@@ -1,6 +1,10 @@
 package inspection
 
-import "runtime/debug"
+import (
+	"runtime/debug"
+
+	"golang.org/x/mod/module"
+)
 
 func BuildIdentity() Tool {
 	tool := Tool{
@@ -15,6 +19,8 @@ func BuildIdentity() Tool {
 		tool.Version = info.Main.Version
 		if info.Main.Version == "(devel)" {
 			tool.VersionState = "development"
+		} else if module.IsPseudoVersion(info.Main.Version) {
+			tool.VersionState = "pseudo"
 		} else {
 			tool.VersionState = "release"
 		}

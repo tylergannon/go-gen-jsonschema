@@ -136,6 +136,40 @@ func TestInspectDoesNotAdvertiseArbitraryExternalType(t *testing.T) {
 	require.Equal(t, "ExternalModel.URL", result.Types[0].Diagnostics[0].FieldPath)
 }
 
+func TestInspectUnsupportedUnionContainerHasStructuredFieldContext(t *testing.T) {
+	repoRoot, err := filepath.Abs(filepath.Join("..", ".."))
+	require.NoError(t, err)
+	target := filepath.Join(repoRoot, "internal", "builder", "testfixtures", "inspection_nested")
+
+	result := Inspect(InspectRequest{TargetDir: target, TypeNames: []string{"BadUnion"}})
+
+	require.Equal(t, StatusUnsupported, result.Status)
+	var found *Diagnostic
+	for index := range result.Types[0].Diagnostics {
+		if result.Types[0].Diagnostics[index].Code == "unsupported_interface_shape" {
+			found = &result.Types[0].Diagnostics[index]
+		}
+	}
+	require.NotNil(t, found)
+	require.Equal(t, "BadUnion.Events", found.FieldPath)
+	require.Equal(t, "types.go", filepath.Base(found.Source.File))
+}
+
+func TestInspectExcludesGenerationOnlyHooksAndQualifiesProductionHookTypes(t *testing.T) {
+	repoRoot, err := filepath.Abs(filepath.Join("..", ".."))
+	require.NoError(t, err)
+	target := filepath.Join(repoRoot, "internal", "builder", "testfixtures", "inspection_nested")
+
+	result := Inspect(InspectRequest{TargetDir: target, TypeNames: []string{"RemoteSameName", "StubOnly"}})
+
+	require.Equal(t, StatusSupported, result.Status)
+	require.Len(t, result.Types, 2)
+	for _, inspectedType := range result.Types {
+		require.Equal(t, StatusSupported, inspectedType.Status, inspectedType.TypePath)
+		require.Empty(t, inspectedType.Diagnostics)
+	}
+}
+
 func diagnosticFieldPaths(result Result) []string {
 	var paths []string
 	for _, diagnostic := range result.Types[0].Diagnostics {

@@ -36,6 +36,8 @@ func TestVersionUsesRuntimeBuildIdentity(t *testing.T) {
 	require.Equal(t, ContractVersion, result.ContractVersion)
 	require.NotEmpty(t, result.Tool.Version)
 	require.NotEqual(t, "latest", result.Tool.Version)
+	require.Contains(t, []string{"development", "pseudo", "release", "unknown"}, result.Tool.VersionState)
 	require.NotEmpty(t, result.Tool.Revision)
+	require.Contains(t, []string{"known", "unknown"}, result.Tool.RevisionState)
 	require.NotEmpty(t, result.Capabilities)
 }

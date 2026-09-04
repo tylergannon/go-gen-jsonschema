@@ -34,6 +34,7 @@ type Result struct {
 	Status          Status       `json:"status"`
 	Tool            Tool         `json:"tool"`
 	ContractVersion string       `json:"contractVersion"`
+	Usage           string       `json:"usage,omitempty"`
 	Capabilities    []Capability `json:"capabilities,omitempty"`
 	Types           []TypeResult `json:"types,omitempty"`
 	Diagnostics     []Diagnostic `json:"diagnostics,omitempty"`

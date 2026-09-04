@@ -43,17 +43,39 @@ func LoadReadonly(path string) ([]*decorator.Package, error) {
 		return nil, err
 	}
 	var loadErrors []packages.Error
-	for _, pkg := range loaded {
+	missingImport := false
+	seen := make(map[string]bool)
+	var collectErrors func(*decorator.Package)
+	collectErrors = func(pkg *decorator.Package) {
+		if pkg == nil || seen[pkg.ID] {
+			return
+		}
+		seen[pkg.ID] = true
 		loadErrors = append(loadErrors, pkg.Errors...)
+		for _, file := range pkg.Syntax {
+			for _, imported := range file.Imports {
+				path, unquoteErr := strconv.Unquote(imported.Path.Value)
+				if unquoteErr == nil && path != "C" && pkg.Package.Imports[path] == nil {
+					missingImport = true
+				}
+			}
+		}
+		for _, imported := range pkg.Imports {
+			collectErrors(imported)
+		}
+	}
+	for _, pkg := range loaded {
+		collectErrors(pkg)
 	}
 	if len(loadErrors) > 0 {
-		return nil, &PackageLoadError{Errors: loadErrors}
+		return nil, &PackageLoadError{Errors: loadErrors, MissingImport: missingImport}
 	}
 	return loaded, nil
 }
 
 type PackageLoadError struct {
-	Errors []packages.Error
+	Errors        []packages.Error
+	MissingImport bool
 }
 
 func (e *PackageLoadError) Error() string {
@@ -71,6 +93,18 @@ func (e *PackageLoadError) Error() string {
 func (e *PackageLoadError) HasSourceError() bool {
 	for _, loadErr := range e.Errors {
 		if loadErr.Kind == packages.ParseError || loadErr.Kind == packages.TypeError {
+			return true
+		}
+	}
+	return false
+}
+
+func (e *PackageLoadError) HasToolchainError() bool {
+	if e.MissingImport {
+		return true
+	}
+	for _, loadErr := range e.Errors {
+		if loadErr.Kind == packages.ListError {
 			return true
 		}
 	}

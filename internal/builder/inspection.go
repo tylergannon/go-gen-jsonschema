@@ -73,15 +73,6 @@ func Inspect(args InspectArgs) (PackageInspection, error) {
 	if err != nil {
 		return PackageInspection{}, fmt.Errorf("scan package %s: %w", pkgs[0].PkgPath, err)
 	}
-	productionMethods, err := syntax.FindProductionJSONMethods(pkgs[0].Dir, nil)
-	if err != nil {
-		return PackageInspection{}, fmt.Errorf("inspect production JSON methods in %s: %w", pkgs[0].Dir, err)
-	}
-	productionHooks := make(map[string]token.Position)
-	for _, method := range productionMethods {
-		productionHooks[method.Receiver] = method.Position
-	}
-
 	registered := make(map[string]token.Position)
 	for _, method := range scan.SchemaMethods {
 		registered[method.Receiver.TypeName] = method.MarkerCall.CallExpr.Position()
@@ -111,7 +102,7 @@ func Inspect(args InspectArgs) (PackageInspection, error) {
 			TypePath: scan.Pkg.PkgPath + "." + name,
 			Position: position,
 		}
-		root.Findings = inspectStaticShape(scan, name, productionHooks)
+		root.Findings = inspectStaticShape(scan, name)
 		mapped, mapErr := inspectRoot(pkgs[0], name)
 		if mapErr != nil {
 			if typed, ok := mapErr.(*InspectionError); ok {
@@ -159,13 +150,18 @@ func inspectRoot(pkg *decorator.Package, name string) (mapped SchemaBuilder, err
 }
 
 type staticInspector struct {
-	findings       []InspectionFinding
-	seen           map[syntax.TypeID]bool
-	productionHook map[string]token.Position
+	findings          []InspectionFinding
+	seen              map[syntax.TypeID]bool
+	productionHooks   map[syntax.TypeID]token.Position
+	productionScanned map[string]bool
 }
 
-func inspectStaticShape(scan syntax.ScanResult, rootName string, productionHooks map[string]token.Position) []InspectionFinding {
-	inspector := staticInspector{seen: make(map[syntax.TypeID]bool), productionHook: productionHooks}
+func inspectStaticShape(scan syntax.ScanResult, rootName string) []InspectionFinding {
+	inspector := staticInspector{
+		seen:              make(map[syntax.TypeID]bool),
+		productionHooks:   make(map[syntax.TypeID]token.Position),
+		productionScanned: make(map[string]bool),
+	}
 	typeSpec, ok := scan.LocalNamedTypes[rootName]
 	if !ok {
 		return nil
@@ -186,7 +182,10 @@ func (i *staticInspector) walkNamed(scan syntax.ScanResult, spec syntax.TypeSpec
 		i.add("unsupported_recursive_type", "unsupported", "recursive types are outside the v1 contract", "replace the recursive edge with a nonrecursive supported representation", typePath, fieldPath, spec.Position())
 		return
 	}
-	if found, position := i.hasJSONHook(scan, spec.Name()); found {
+	if err := i.loadProductionHooks(scan); err != nil {
+		i.add("unknown_production_method_scan", "unknown", fmt.Sprintf("could not inspect production JSON methods: %v", err), "fix the source file error and run inspection again", typePath, fieldPath, spec.Position())
+	}
+	if position, found := i.productionHooks[spec.ID().Concrete()]; found {
 		i.add("unknown_custom_json_hook", "unknown", "custom JSON hooks can change the wire shape and cannot be proven by static inspection", "verify the hook against the generated schema or use a documented supported shape", typePath, fieldPath, position)
 	}
 	i.seen[id] = true
@@ -214,6 +213,9 @@ func (i *staticInspector) walkNamed(scan syntax.ScanResult, spec syntax.TypeSpec
 					i.add("unsupported_json_string", "unsupported", "json:,string changes the wire shape and is outside the v1 contract", "use the natural JSON scalar representation or a separate supported wire field", typePath, nextPath, field.Position())
 				}
 				if inspectionRegisteredInterfaceField(scan, spec.Name(), name) {
+					if !supportedRegisteredInterfaceShape(scan, field.Type(), wrapper, inner) {
+						i.add("unsupported_interface_shape", "unsupported", "registered interfaces support only direct I, Optional[I], and direct []I fields", "move the union to a direct named field, Optional[I], or one-dimensional []I field", typePath, nextPath, field.Position())
+					}
 					continue
 				}
 				if wrapper != syntax.WrapperNone {
@@ -319,27 +321,19 @@ func (i *staticInspector) walkExpr(scan syntax.ScanResult, expr dst.Expr, typePa
 	}
 }
 
-func (i *staticInspector) hasJSONHook(scan syntax.ScanResult, name string) (bool, token.Position) {
-	if position, ok := i.productionHook[name]; ok {
-		return true, position
+func (i *staticInspector) loadProductionHooks(scan syntax.ScanResult) error {
+	if i.productionScanned[scan.Pkg.PkgPath] {
+		return nil
 	}
-	if scan.Pkg == nil || scan.Pkg.Package == nil || scan.Pkg.Types == nil {
-		return false, token.Position{}
+	i.productionScanned[scan.Pkg.PkgPath] = true
+	methods, err := syntax.FindProductionJSONMethods(scan.Pkg.Dir, nil)
+	if err != nil {
+		return err
 	}
-	object := scan.Pkg.Types.Scope().Lookup(name)
-	if object == nil {
-		return false, token.Position{}
+	for _, method := range methods {
+		i.productionHooks[syntax.TypeID{PkgPath: scan.Pkg.PkgPath, TypeName: method.Receiver}.Concrete()] = method.Position
 	}
-	for _, typ := range []types.Type{object.Type(), types.NewPointer(object.Type())} {
-		methods := types.NewMethodSet(typ)
-		for index := 0; index < methods.Len(); index++ {
-			switch methods.At(index).Obj().Name() {
-			case "MarshalJSON", "UnmarshalJSON":
-				return true, scan.Pkg.Fset.Position(methods.At(index).Obj().Pos())
-			}
-		}
-	}
-	return false, token.Position{}
+	return nil
 }
 
 func isByteElement(scan syntax.ScanResult, expr dst.Expr) bool {
@@ -439,6 +433,33 @@ func inspectionRegisteredInterfaceField(scan syntax.ScanResult, receiver, field 
 		}
 	}
 	return false
+}
+
+func supportedRegisteredInterfaceShape(scan syntax.ScanResult, fieldType dst.Expr, wrapper syntax.WrapperKind, inner dst.Expr) bool {
+	if wrapper != syntax.WrapperNone {
+		return wrapper == syntax.WrapperOptional && isNamedInterface(scan, inner)
+	}
+	if isNamedInterface(scan, fieldType) {
+		return true
+	}
+	array, ok := fieldType.(*dst.ArrayType)
+	return ok && array.Len == nil && isNamedInterface(scan, array.Elt)
+}
+
+func isNamedInterface(scan syntax.ScanResult, expr dst.Expr) bool {
+	ident, ok := expr.(*dst.Ident)
+	if !ok || (ident.Path != "" && ident.Path != scan.Pkg.PkgPath) {
+		return false
+	}
+	if _, ok := scan.Interfaces[ident.Name]; ok {
+		return true
+	}
+	typeSpec, ok := scan.LocalNamedTypes[ident.Name]
+	if !ok {
+		return false
+	}
+	_, ok = typeSpec.Type().Expr().(*dst.InterfaceType)
+	return ok
 }
 
 func (i *staticInspector) add(code, certainty, message, remedy, typePath, fieldPath string, position token.Position) {

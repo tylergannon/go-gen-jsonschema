@@ -33,6 +33,8 @@ func Inspect(request InspectRequest) Result {
 			classification = ClassificationInvalidRequest
 			code = scanErr.Code
 			position = scanErr.Position
+		case errors.As(err, &loadErr) && loadErr.HasToolchainError():
+			position = loadErr.Position()
 		case errors.As(err, &loadErr) && loadErr.HasSourceError():
 			classification = ClassificationInvalidRequest
 			code = "invalid_go_package"

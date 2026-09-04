@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -14,7 +15,7 @@ import (
 
 func runAgentCommand(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
-		return writeAgentResult(invalidCommandResult("missing command"), false, stdout, stderr)
+		return writeAgentResult(invalidCommandResult("inspection", "missing command"), false, stdout, stderr)
 	}
 	switch args[0] {
 	case "version":
@@ -22,7 +23,7 @@ func runAgentCommand(args []string, stdout, stderr io.Writer) int {
 	case "inspect":
 		return runInspectCommand(args[1:], stdout, stderr)
 	default:
-		return writeAgentResult(invalidCommandResult("unknown agent command "+args[0]), hasJSONFlag(args), stdout, stderr)
+		return writeAgentResult(invalidCommandResult("inspection", "unknown agent command "+args[0]), hasJSONFlag(args), stdout, stderr)
 	}
 }
 
@@ -32,12 +33,15 @@ func runVersionCommand(args []string, stdout, stderr io.Writer) int {
 	flags.SetOutput(io.Discard)
 	jsonOutput := flags.Bool("json", false, "emit the versioned machine result")
 	if err := flags.Parse(args); err != nil {
-		return writeAgentResult(invalidCommandResult(err.Error()), machine, stdout, stderr)
+		if errors.Is(err, flag.ErrHelp) {
+			return writeAgentResult(helpCommandResult("version", versionUsage), machine, stdout, stderr)
+		}
+		return writeAgentResult(invalidCommandResult("version", err.Error()), machine, stdout, stderr)
 	}
 	if flags.NArg() != 0 {
-		return writeAgentResult(invalidCommandResult("version accepts no positional arguments"), *jsonOutput, stdout, stderr)
+		return writeAgentResult(invalidCommandResult("version", "version accepts no positional arguments"), *jsonOutput, stdout, stderr)
 	}
-	return writeAgentResult(inspection.Version(), *jsonOutput, stdout, stderr)
+	return runAgentOperation("version", *jsonOutput, stdout, stderr, inspection.Version)
 }
 
 func runInspectCommand(args []string, stdout, stderr io.Writer) int {
@@ -47,12 +51,15 @@ func runInspectCommand(args []string, stdout, stderr io.Writer) int {
 	jsonOutput := flags.Bool("json", false, "emit the versioned machine result")
 	target := flags.String("target", "", "path to the target package (defaults to the working directory)")
 	if err := flags.Parse(args); err != nil {
-		return writeAgentResult(invalidCommandResult(err.Error()), machine, stdout, stderr)
+		if errors.Is(err, flag.ErrHelp) {
+			return writeAgentResult(helpCommandResult("inspection", inspectUsage), machine, stdout, stderr)
+		}
+		return writeAgentResult(invalidCommandResult("inspection", err.Error()), machine, stdout, stderr)
 	}
 	if *target == "" {
 		workingDir, err := os.Getwd()
 		if err != nil {
-			return writeAgentResult(errorCommandResult("working_directory_failed", err.Error()), *jsonOutput, stdout, stderr)
+			return writeAgentResult(errorCommandResult("inspection", "working_directory_failed", err.Error()), *jsonOutput, stdout, stderr)
 		}
 		*target = workingDir
 	}
@@ -61,11 +68,22 @@ func runInspectCommand(args []string, stdout, stderr io.Writer) int {
 	} else if !info.IsDir() {
 		return writeAgentResult(invalidTargetResult(*target, "target is not a directory"), *jsonOutput, stdout, stderr)
 	}
-	result := inspection.Inspect(inspection.InspectRequest{
-		TargetDir: *target,
-		TypeNames: flags.Args(),
+	return runAgentOperation("inspection", *jsonOutput, stdout, stderr, func() inspection.Result {
+		return inspection.Inspect(inspection.InspectRequest{
+			TargetDir: *target,
+			TypeNames: flags.Args(),
+		})
 	})
-	return writeAgentResult(result, *jsonOutput, stdout, stderr)
+}
+
+func runAgentOperation(kind string, machine bool, stdout, stderr io.Writer, operation func() inspection.Result) (exitCode int) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			result := errorCommandResult(kind, "internal_operation_panic", fmt.Sprintf("unexpected panic: %v", recovered))
+			exitCode = writeAgentResult(result, machine, stdout, stderr)
+		}
+	}()
+	return writeAgentResult(operation(), machine, stdout, stderr)
 }
 
 func writeAgentResult(result inspection.Result, machine bool, stdout, stderr io.Writer) int {
@@ -92,6 +110,10 @@ func writeHumanResult(writer io.Writer, result inspection.Result) error {
 		}
 	}
 	write("%s %s (%s, revision %s)\n", result.Tool.Name, result.Tool.Version, result.Status, result.Tool.Revision)
+	if result.Usage != "" {
+		write("%s", result.Usage)
+		return writeErr
+	}
 	for _, capability := range result.Capabilities {
 		write("%s: %s", capability.Name, capability.Status)
 		if capability.Detail != "" {
@@ -129,8 +151,8 @@ func writeHumanDiagnostic(write func(string, ...any), diagnostic inspection.Diag
 	}
 }
 
-func invalidCommandResult(message string) inspection.Result {
-	result := inspection.NewResult("inspection")
+func invalidCommandResult(kind, message string) inspection.Result {
+	result := inspection.NewResult(kind)
 	result.Status = inspection.StatusInvalid
 	result.Diagnostics = []inspection.Diagnostic{{
 		Code:           "invalid_request",
@@ -142,14 +164,14 @@ func invalidCommandResult(message string) inspection.Result {
 }
 
 func invalidTargetResult(target, message string) inspection.Result {
-	result := invalidCommandResult(fmt.Sprintf("invalid target %q: %s", target, message))
+	result := invalidCommandResult("inspection", fmt.Sprintf("invalid target %q: %s", target, message))
 	result.Diagnostics[0].Code = "invalid_target"
 	result.Diagnostics[0].Remedy = "pass --target with an existing Go package directory"
 	return result
 }
 
-func errorCommandResult(code, message string) inspection.Result {
-	result := inspection.NewResult("inspection")
+func errorCommandResult(kind, code, message string) inspection.Result {
+	result := inspection.NewResult(kind)
 	result.Status = inspection.StatusError
 	result.Diagnostics = []inspection.Diagnostic{{
 		Code:           code,
@@ -160,8 +182,32 @@ func errorCommandResult(code, message string) inspection.Result {
 	return result
 }
 
+func helpCommandResult(kind, usage string) inspection.Result {
+	result := inspection.NewResult(kind)
+	result.Usage = usage
+	return result
+}
+
 func hasJSONFlag(args []string) bool {
 	return slices.ContainsFunc(args, func(arg string) bool {
 		return arg == "--json" || strings.HasPrefix(arg, "--json=")
 	})
 }
+
+const versionUsage = `Usage: gen-jsonschema version [--json]
+
+Reports the installed executable identity and capability contract.
+
+Options:
+  --json  Emit one versioned JSON result to stdout.
+`
+
+const inspectUsage = `Usage: gen-jsonschema inspect [--json] [--target DIR] [Type...]
+
+Inspects selected registered schema roots without rendering or writing files.
+When no type names are supplied, every registered root is inspected.
+
+Options:
+  --json        Emit one versioned JSON result to stdout.
+  --target DIR  Inspect DIR instead of the current working directory.
+`
