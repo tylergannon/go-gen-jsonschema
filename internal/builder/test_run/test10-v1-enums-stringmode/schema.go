@@ -12,5 +12,5 @@ func (Paint) Schema() json.RawMessage { panic("not implemented") }
 
 var _ = jsonschema.NewJSONSchemaMethod(
 	Paint.Schema,
-	jsonschema.WithEnum(Paint{}.C),
+	jsonschema.WithStringerEnum(Paint{}.C),
 )
