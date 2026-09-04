@@ -109,7 +109,7 @@ func (e Envelope) MarshalJSON() ([]byte, error) {
 	wrapper := Wrapper{Alias: Alias(e)}
 	var err error
 
-	if wrapper.Primary, err = __jsonMarshal__union_codec__Event__Envelope__Primary(e.Primary); err != nil {
+	if wrapper.Primary, err = __jsonMarshal__union_codec__Event__d876dc783764ce04c7c05b57ac5a514753dce5b278d62078a9c81ae1f960a186(e.Primary); err != nil {
 		return nil, fmt.Errorf("field primary: %w", err)
 	}
 
@@ -118,7 +118,7 @@ func (e Envelope) MarshalJSON() ([]byte, error) {
 	}
 	__raw1 := make([]json.RawMessage, len(e.Events))
 	for __index, __value := range e.Events {
-		if __raw1[__index], err = __jsonMarshal__union_codec__Event__Envelope__Events(__value); err != nil {
+		if __raw1[__index], err = __jsonMarshal__union_codec__Event__9f3bb2b43192625bfe928e94158d825afc363600afce02b954d40f3984f18271(__value); err != nil {
 			return nil, fmt.Errorf("field events[%d]: %w", __index, err)
 		}
 	}
@@ -127,30 +127,30 @@ func (e Envelope) MarshalJSON() ([]byte, error) {
 	}
 
 	if e.Optional.Present {
-		if wrapper.Optional, err = __jsonMarshal__union_codec__Event__Envelope__Optional(e.Optional.Value); err != nil {
+		if wrapper.Optional, err = __jsonMarshal__union_codec__Event__9f3bb2b43192625bfe928e94158d825afc363600afce02b954d40f3984f18271(e.Optional.Value); err != nil {
 			return nil, fmt.Errorf("field optional: %w", err)
 		}
 	}
 
 	if e.Alternate.Present {
-		if wrapper.Alternate, err = __jsonMarshal__union_codec__Event__Envelope__Alternate(e.Alternate.Value); err != nil {
+		if wrapper.Alternate, err = __jsonMarshal__union_codec__Event__0b366fe25d55998ace16ceeeb59e61cf6e733c3750ad8d33779fc6dc8caff498(e.Alternate.Value); err != nil {
 			return nil, fmt.Errorf("field alternate: %w", err)
 		}
 	}
 
 	if e.Single.Present {
-		if wrapper.Single, err = __jsonMarshal__union_codec__Event__Envelope__Single(e.Single.Value); err != nil {
+		if wrapper.Single, err = __jsonMarshal__union_codec__Event__b31d86dc058a4affdd27801115d163cb78198bbe6d9ccb68da4f1846f6838af3(e.Single.Value); err != nil {
 			return nil, fmt.Errorf("field single: %w", err)
 		}
 	}
 
 	if e.Hook.Present {
-		if wrapper.Hook, err = __jsonMarshal__union_codec__Event__Envelope__Hook(e.Hook.Value); err != nil {
+		if wrapper.Hook, err = __jsonMarshal__union_codec__Event__98b3b2298a112c1e5679dd3c04e6c2a6ac2aa71fc888f0e20a9d7e1fdabc610b(e.Hook.Value); err != nil {
 			return nil, fmt.Errorf("field hook: %w", err)
 		}
 	}
 
-	return json.Marshal(wrapper)
+	return json.Marshal(&wrapper)
 }
 
 // UnmarshalJSON is a generated custom json.Unmarshaler implementation for
@@ -173,7 +173,7 @@ func (e *Envelope) UnmarshalJSON(data []byte) (err error) {
 	__next := Envelope(wrapper.Alias)
 
 	var __decoded0 Event
-	if __decoded0, err = __jsonUnmarshal__union_codec__Event__Envelope__Primary(wrapper.Primary); err != nil {
+	if __decoded0, err = __jsonUnmarshal__union_codec__Event__d876dc783764ce04c7c05b57ac5a514753dce5b278d62078a9c81ae1f960a186(wrapper.Primary); err != nil {
 		return err
 	}
 	__next.Primary = __decoded0
@@ -188,7 +188,7 @@ func (e *Envelope) UnmarshalJSON(data []byte) (err error) {
 			__decoded1 = make([]Event, len(__raw1))
 		}
 		for __index, __raw := range __raw1 {
-			if __decoded1[__index], err = __jsonUnmarshal__union_codec__Event__Envelope__Events(__raw); err != nil {
+			if __decoded1[__index], err = __jsonUnmarshal__union_codec__Event__9f3bb2b43192625bfe928e94158d825afc363600afce02b954d40f3984f18271(__raw); err != nil {
 				return fmt.Errorf("field events[%d]: %w", __index, err)
 			}
 		}
@@ -197,7 +197,7 @@ func (e *Envelope) UnmarshalJSON(data []byte) (err error) {
 
 	if len(wrapper.Optional) > 0 {
 		var __decoded2 Event
-		if __decoded2, err = __jsonUnmarshal__union_codec__Event__Envelope__Optional(wrapper.Optional); err != nil {
+		if __decoded2, err = __jsonUnmarshal__union_codec__Event__9f3bb2b43192625bfe928e94158d825afc363600afce02b954d40f3984f18271(wrapper.Optional); err != nil {
 			return err
 		}
 		__next.Optional.Value = __decoded2
@@ -206,7 +206,7 @@ func (e *Envelope) UnmarshalJSON(data []byte) (err error) {
 
 	if len(wrapper.Alternate) > 0 {
 		var __decoded3 Event
-		if __decoded3, err = __jsonUnmarshal__union_codec__Event__Envelope__Alternate(wrapper.Alternate); err != nil {
+		if __decoded3, err = __jsonUnmarshal__union_codec__Event__0b366fe25d55998ace16ceeeb59e61cf6e733c3750ad8d33779fc6dc8caff498(wrapper.Alternate); err != nil {
 			return err
 		}
 		__next.Alternate.Value = __decoded3
@@ -215,7 +215,7 @@ func (e *Envelope) UnmarshalJSON(data []byte) (err error) {
 
 	if len(wrapper.Single) > 0 {
 		var __decoded4 Event
-		if __decoded4, err = __jsonUnmarshal__union_codec__Event__Envelope__Single(wrapper.Single); err != nil {
+		if __decoded4, err = __jsonUnmarshal__union_codec__Event__b31d86dc058a4affdd27801115d163cb78198bbe6d9ccb68da4f1846f6838af3(wrapper.Single); err != nil {
 			return err
 		}
 		__next.Single.Value = __decoded4
@@ -224,7 +224,7 @@ func (e *Envelope) UnmarshalJSON(data []byte) (err error) {
 
 	if len(wrapper.Hook) > 0 {
 		var __decoded5 Event
-		if __decoded5, err = __jsonUnmarshal__union_codec__Event__Envelope__Hook(wrapper.Hook); err != nil {
+		if __decoded5, err = __jsonUnmarshal__union_codec__Event__98b3b2298a112c1e5679dd3c04e6c2a6ac2aa71fc888f0e20a9d7e1fdabc610b(wrapper.Hook); err != nil {
 			return err
 		}
 		__next.Hook.Value = __decoded5
@@ -246,11 +246,11 @@ func (n Nested) MarshalJSON() ([]byte, error) {
 	wrapper := Wrapper{Alias: Alias(n)}
 	var err error
 
-	if wrapper.Event, err = __jsonMarshal__union_codec__Event__Nested__Event(n.Event); err != nil {
+	if wrapper.Event, err = __jsonMarshal__union_codec__Event__936fec43fa1ab60ae150fdd1f2f9ae5c8e040745f1c958ef93339217f72343c1(n.Event); err != nil {
 		return nil, fmt.Errorf("field event: %w", err)
 	}
 
-	return json.Marshal(wrapper)
+	return json.Marshal(&wrapper)
 }
 
 // UnmarshalJSON is a generated custom json.Unmarshaler implementation for
@@ -268,7 +268,7 @@ func (n *Nested) UnmarshalJSON(data []byte) (err error) {
 	__next := Nested(wrapper.Alias)
 
 	var __decoded0 Event
-	if __decoded0, err = __jsonUnmarshal__union_codec__Event__Nested__Event(wrapper.Event); err != nil {
+	if __decoded0, err = __jsonUnmarshal__union_codec__Event__936fec43fa1ab60ae150fdd1f2f9ae5c8e040745f1c958ef93339217f72343c1(wrapper.Event); err != nil {
 		return err
 	}
 	__next.Event = __decoded0
@@ -276,7 +276,7 @@ func (n *Nested) UnmarshalJSON(data []byte) (err error) {
 	*n = __next
 	return nil
 }
-func __jsonMarshal__union_codec__Event__Envelope__Primary(value Event) (json.RawMessage, error) {
+func __jsonMarshal__union_codec__Event__d876dc783764ce04c7c05b57ac5a514753dce5b278d62078a9c81ae1f960a186(value Event) (json.RawMessage, error) {
 	if value == nil {
 		return nil, fmt.Errorf("cannot marshal nil registered interface Event")
 	}
@@ -295,6 +295,9 @@ func __jsonMarshal__union_codec__Event__Envelope__Primary(value Event) (json.Raw
 		}
 		discriminator = "deleted"
 		data, err = json.Marshal(object)
+	case Empty:
+		discriminator = ""
+		data, err = json.Marshal(object)
 	default:
 		return nil, fmt.Errorf("unregistered dynamic implementation %T for Event", value)
 	}
@@ -307,7 +310,7 @@ func __jsonMarshal__union_codec__Event__Envelope__Primary(value Event) (json.Raw
 	)
 }
 
-func __jsonUnmarshal__union_codec__Event__Envelope__Primary(data []byte) (Event, error) {
+func __jsonUnmarshal__union_codec__Event__d876dc783764ce04c7c05b57ac5a514753dce5b278d62078a9c81ae1f960a186(data []byte) (Event, error) {
 	var (
 		temp          map[string]json.RawMessage
 		discriminator string
@@ -319,7 +322,7 @@ func __jsonUnmarshal__union_codec__Event__Envelope__Primary(data []byte) (Event,
 	} else if _tempDiscriminator, ok := temp["!kind"]; !ok {
 		// per-field discriminator property
 		return nil, fmt.Errorf("no discriminator property '%s' found", "!kind")
-	} else if err = json.Unmarshal(_tempDiscriminator, &discriminator); err != nil {
+	} else if discriminator, err = __jsonschema__decodeDiscriminator(_tempDiscriminator); err != nil {
 		return nil, __jsonschema__unmarshalDiscriminatorError(_tempDiscriminator, err)
 	}
 	switch discriminator {
@@ -335,11 +338,17 @@ func __jsonUnmarshal__union_codec__Event__Envelope__Primary(data []byte) (Event,
 			return nil, err
 		}
 		return &obj, nil
+	case "":
+		var obj Empty
+		if err = json.Unmarshal(data, &obj); err != nil {
+			return nil, err
+		}
+		return obj, nil
 	default:
 		return nil, fmt.Errorf("unknown discriminator: %s", discriminator)
 	}
 }
-func __jsonMarshal__union_codec__Event__Envelope__Events(value Event) (json.RawMessage, error) {
+func __jsonMarshal__union_codec__Event__9f3bb2b43192625bfe928e94158d825afc363600afce02b954d40f3984f18271(value Event) (json.RawMessage, error) {
 	if value == nil {
 		return nil, fmt.Errorf("cannot marshal nil registered interface Event")
 	}
@@ -370,7 +379,7 @@ func __jsonMarshal__union_codec__Event__Envelope__Events(value Event) (json.RawM
 	)
 }
 
-func __jsonUnmarshal__union_codec__Event__Envelope__Events(data []byte) (Event, error) {
+func __jsonUnmarshal__union_codec__Event__9f3bb2b43192625bfe928e94158d825afc363600afce02b954d40f3984f18271(data []byte) (Event, error) {
 	var (
 		temp          map[string]json.RawMessage
 		discriminator string
@@ -381,7 +390,7 @@ func __jsonUnmarshal__union_codec__Event__Envelope__Events(data []byte) (Event, 
 		return nil, err
 	} else if _tempDiscriminator, ok := temp["type"]; !ok {
 		return nil, errNoDiscriminator
-	} else if err = json.Unmarshal(_tempDiscriminator, &discriminator); err != nil {
+	} else if discriminator, err = __jsonschema__decodeDiscriminator(_tempDiscriminator); err != nil {
 		return nil, __jsonschema__unmarshalDiscriminatorError(_tempDiscriminator, err)
 	}
 	switch discriminator {
@@ -401,69 +410,7 @@ func __jsonUnmarshal__union_codec__Event__Envelope__Events(data []byte) (Event, 
 		return nil, fmt.Errorf("unknown discriminator: %s", discriminator)
 	}
 }
-func __jsonMarshal__union_codec__Event__Envelope__Optional(value Event) (json.RawMessage, error) {
-	if value == nil {
-		return nil, fmt.Errorf("cannot marshal nil registered interface Event")
-	}
-	var (
-		data          []byte
-		err           error
-		discriminator string
-	)
-	switch object := value.(type) {
-	case Created:
-		discriminator = "Created"
-		data, err = json.Marshal(object)
-	case *Deleted:
-		if object == nil {
-			return nil, fmt.Errorf("cannot marshal typed nil registered implementation %T for Event", value)
-		}
-		discriminator = "Deleted"
-		data, err = json.Marshal(object)
-	default:
-		return nil, fmt.Errorf("unregistered dynamic implementation %T for Event", value)
-	}
-	if err != nil {
-		return nil, fmt.Errorf("marshal registered implementation %T for Event: %w", value, err)
-	}
-	return __jsonschema__marshalUnionObject(data,
-		"type",
-		discriminator,
-	)
-}
-
-func __jsonUnmarshal__union_codec__Event__Envelope__Optional(data []byte) (Event, error) {
-	var (
-		temp          map[string]json.RawMessage
-		discriminator string
-		err           = json.Unmarshal(data, &temp)
-	)
-
-	if err != nil {
-		return nil, err
-	} else if _tempDiscriminator, ok := temp["type"]; !ok {
-		return nil, errNoDiscriminator
-	} else if err = json.Unmarshal(_tempDiscriminator, &discriminator); err != nil {
-		return nil, __jsonschema__unmarshalDiscriminatorError(_tempDiscriminator, err)
-	}
-	switch discriminator {
-	case "Created":
-		var obj Created
-		if err = json.Unmarshal(data, &obj); err != nil {
-			return nil, err
-		}
-		return obj, nil
-	case "Deleted":
-		var obj Deleted
-		if err = json.Unmarshal(data, &obj); err != nil {
-			return nil, err
-		}
-		return &obj, nil
-	default:
-		return nil, fmt.Errorf("unknown discriminator: %s", discriminator)
-	}
-}
-func __jsonMarshal__union_codec__Event__Envelope__Alternate(value Event) (json.RawMessage, error) {
+func __jsonMarshal__union_codec__Event__0b366fe25d55998ace16ceeeb59e61cf6e733c3750ad8d33779fc6dc8caff498(value Event) (json.RawMessage, error) {
 	if value == nil {
 		return nil, fmt.Errorf("cannot marshal nil registered interface Event")
 	}
@@ -494,7 +441,7 @@ func __jsonMarshal__union_codec__Event__Envelope__Alternate(value Event) (json.R
 	)
 }
 
-func __jsonUnmarshal__union_codec__Event__Envelope__Alternate(data []byte) (Event, error) {
+func __jsonUnmarshal__union_codec__Event__0b366fe25d55998ace16ceeeb59e61cf6e733c3750ad8d33779fc6dc8caff498(data []byte) (Event, error) {
 	var (
 		temp          map[string]json.RawMessage
 		discriminator string
@@ -506,7 +453,7 @@ func __jsonUnmarshal__union_codec__Event__Envelope__Alternate(data []byte) (Even
 	} else if _tempDiscriminator, ok := temp["kind\"quoted"]; !ok {
 		// per-field discriminator property
 		return nil, fmt.Errorf("no discriminator property '%s' found", "kind\"quoted")
-	} else if err = json.Unmarshal(_tempDiscriminator, &discriminator); err != nil {
+	} else if discriminator, err = __jsonschema__decodeDiscriminator(_tempDiscriminator); err != nil {
 		return nil, __jsonschema__unmarshalDiscriminatorError(_tempDiscriminator, err)
 	}
 	switch discriminator {
@@ -526,7 +473,7 @@ func __jsonUnmarshal__union_codec__Event__Envelope__Alternate(data []byte) (Even
 		return nil, fmt.Errorf("unknown discriminator: %s", discriminator)
 	}
 }
-func __jsonMarshal__union_codec__Event__Envelope__Single(value Event) (json.RawMessage, error) {
+func __jsonMarshal__union_codec__Event__b31d86dc058a4affdd27801115d163cb78198bbe6d9ccb68da4f1846f6838af3(value Event) (json.RawMessage, error) {
 	if value == nil {
 		return nil, fmt.Errorf("cannot marshal nil registered interface Event")
 	}
@@ -551,7 +498,7 @@ func __jsonMarshal__union_codec__Event__Envelope__Single(value Event) (json.RawM
 	)
 }
 
-func __jsonUnmarshal__union_codec__Event__Envelope__Single(data []byte) (Event, error) {
+func __jsonUnmarshal__union_codec__Event__b31d86dc058a4affdd27801115d163cb78198bbe6d9ccb68da4f1846f6838af3(data []byte) (Event, error) {
 	var (
 		temp          map[string]json.RawMessage
 		discriminator string
@@ -563,7 +510,7 @@ func __jsonUnmarshal__union_codec__Event__Envelope__Single(data []byte) (Event, 
 	} else if _tempDiscriminator, ok := temp["single"]; !ok {
 		// per-field discriminator property
 		return nil, fmt.Errorf("no discriminator property '%s' found", "single")
-	} else if err = json.Unmarshal(_tempDiscriminator, &discriminator); err != nil {
+	} else if discriminator, err = __jsonschema__decodeDiscriminator(_tempDiscriminator); err != nil {
 		return nil, __jsonschema__unmarshalDiscriminatorError(_tempDiscriminator, err)
 	}
 	switch discriminator {
@@ -577,7 +524,7 @@ func __jsonUnmarshal__union_codec__Event__Envelope__Single(data []byte) (Event, 
 		return nil, fmt.Errorf("unknown discriminator: %s", discriminator)
 	}
 }
-func __jsonMarshal__union_codec__Event__Envelope__Hook(value Event) (json.RawMessage, error) {
+func __jsonMarshal__union_codec__Event__98b3b2298a112c1e5679dd3c04e6c2a6ac2aa71fc888f0e20a9d7e1fdabc610b(value Event) (json.RawMessage, error) {
 	if value == nil {
 		return nil, fmt.Errorf("cannot marshal nil registered interface Event")
 	}
@@ -602,7 +549,7 @@ func __jsonMarshal__union_codec__Event__Envelope__Hook(value Event) (json.RawMes
 	)
 }
 
-func __jsonUnmarshal__union_codec__Event__Envelope__Hook(data []byte) (Event, error) {
+func __jsonUnmarshal__union_codec__Event__98b3b2298a112c1e5679dd3c04e6c2a6ac2aa71fc888f0e20a9d7e1fdabc610b(data []byte) (Event, error) {
 	var (
 		temp          map[string]json.RawMessage
 		discriminator string
@@ -614,7 +561,7 @@ func __jsonUnmarshal__union_codec__Event__Envelope__Hook(data []byte) (Event, er
 	} else if _tempDiscriminator, ok := temp["hookKind"]; !ok {
 		// per-field discriminator property
 		return nil, fmt.Errorf("no discriminator property '%s' found", "hookKind")
-	} else if err = json.Unmarshal(_tempDiscriminator, &discriminator); err != nil {
+	} else if discriminator, err = __jsonschema__decodeDiscriminator(_tempDiscriminator); err != nil {
 		return nil, __jsonschema__unmarshalDiscriminatorError(_tempDiscriminator, err)
 	}
 	switch discriminator {
@@ -628,7 +575,7 @@ func __jsonUnmarshal__union_codec__Event__Envelope__Hook(data []byte) (Event, er
 		return nil, fmt.Errorf("unknown discriminator: %s", discriminator)
 	}
 }
-func __jsonMarshal__union_codec__Event__Nested__Event(value Event) (json.RawMessage, error) {
+func __jsonMarshal__union_codec__Event__936fec43fa1ab60ae150fdd1f2f9ae5c8e040745f1c958ef93339217f72343c1(value Event) (json.RawMessage, error) {
 	if value == nil {
 		return nil, fmt.Errorf("cannot marshal nil registered interface Event")
 	}
@@ -659,7 +606,7 @@ func __jsonMarshal__union_codec__Event__Nested__Event(value Event) (json.RawMess
 	)
 }
 
-func __jsonUnmarshal__union_codec__Event__Nested__Event(data []byte) (Event, error) {
+func __jsonUnmarshal__union_codec__Event__936fec43fa1ab60ae150fdd1f2f9ae5c8e040745f1c958ef93339217f72343c1(data []byte) (Event, error) {
 	var (
 		temp          map[string]json.RawMessage
 		discriminator string
@@ -671,7 +618,7 @@ func __jsonUnmarshal__union_codec__Event__Nested__Event(data []byte) (Event, err
 	} else if _tempDiscriminator, ok := temp["nestedKind"]; !ok {
 		// per-field discriminator property
 		return nil, fmt.Errorf("no discriminator property '%s' found", "nestedKind")
-	} else if err = json.Unmarshal(_tempDiscriminator, &discriminator); err != nil {
+	} else if discriminator, err = __jsonschema__decodeDiscriminator(_tempDiscriminator); err != nil {
 		return nil, __jsonschema__unmarshalDiscriminatorError(_tempDiscriminator, err)
 	}
 	switch discriminator {
@@ -701,8 +648,8 @@ func __jsonschema__marshalUnionObject(data []byte, discriminatorProp, discrimina
 		return nil, fmt.Errorf("registered union payload must encode as a JSON object, got null")
 	}
 	if encoded, ok := object[discriminatorProp]; ok {
-		var current string
-		if err := json.Unmarshal(encoded, &current); err != nil {
+		current, err := __jsonschema__decodeDiscriminator(encoded)
+		if err != nil {
 			return nil, fmt.Errorf("discriminator property %q must be a string: %w", discriminatorProp, err)
 		}
 		if current != discriminatorValue {
@@ -716,6 +663,17 @@ func __jsonschema__marshalUnionObject(data []byte, discriminatorProp, discrimina
 		object[discriminatorProp] = encoded
 	}
 	return json.Marshal(object)
+}
+
+func __jsonschema__decodeDiscriminator(discriminator json.RawMessage) (string, error) {
+	var value *string
+	if err := json.Unmarshal(discriminator, &value); err != nil {
+		return "", err
+	}
+	if value == nil {
+		return "", errors.New("JSON null is not a string")
+	}
+	return *value, nil
 }
 
 func __jsonschema__unmarshalDiscriminatorError(discriminator json.RawMessage, err error) error {

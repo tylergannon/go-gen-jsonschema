@@ -1,6 +1,7 @@
 package builder
 
 import (
+	"crypto/sha256"
 	_ "embed"
 	"encoding/hex"
 	"encoding/json"
@@ -1186,10 +1187,10 @@ func (s *SchemaBuilder) RenderGoCode() (err error) {
 			Initial:     strings.ToLower(n[0:1]),
 		})
 		for _, ifaceProp := range itsProps {
-			if generatedInterfaceHelpers[ifaceProp.UnmarshalerFunc()] {
+			if generatedInterfaceHelpers[ifaceProp.helperIdentity()] {
 				continue
 			}
-			generatedInterfaceHelpers[ifaceProp.UnmarshalerFunc()] = true
+			generatedInterfaceHelpers[ifaceProp.helperIdentity()] = true
 			ifacePkg := ifaceProp.Interface.TypeSpec.Pkg()
 			var opts []InterfaceOptionInfo
 			for _, option := range ifaceProp.Interface.Impls {
@@ -1803,14 +1804,41 @@ type EmbeddedField struct {
 }
 
 func (s InterfaceProp) UnmarshalerFunc() string {
-	if s.FuncNameAlias != "" {
-		return s.FuncNameAlias
-	}
-	return fmt.Sprintf("__jsonUnmarshal__%s__%s", s.Interface.TypeSpec.Pkg().Name, s.Interface.TypeSpec.Name())
+	identityHash := sha256.Sum256([]byte(s.helperIdentity()))
+	return fmt.Sprintf(
+		"__jsonUnmarshal__%s__%s__%s",
+		s.Interface.TypeSpec.Pkg().Name,
+		s.Interface.TypeSpec.Name(),
+		hex.EncodeToString(identityHash[:]),
+	)
 }
 
 func (s InterfaceProp) MarshalerFunc() string {
 	return strings.Replace(s.UnmarshalerFunc(), "__jsonUnmarshal__", "__jsonMarshal__", 1)
+}
+
+// helperIdentity names the exact resolved interface registration consumed by a
+// generated helper. Length-prefixed parts keep distinct package paths and
+// configurations unambiguous even when package and type names match.
+func (s InterfaceProp) helperIdentity() string {
+	var identity strings.Builder
+	writePart := func(value string) {
+		fmt.Fprintf(&identity, "%d:%s;", len(value), value)
+	}
+	writePart(s.Interface.TypeSpec.Pkg().PkgPath)
+	writePart(s.Interface.TypeSpec.Name())
+	writePart(s.DiscPropName)
+	for _, impl := range s.Interface.Impls {
+		writePart(impl.PkgPath)
+		writePart(impl.TypeName)
+		writePart(strconv.Itoa(int(impl.Indirection)))
+		discriminator, ok := s.DiscriminatorValues[impl]
+		if !ok {
+			discriminator = impl.TypeName
+		}
+		writePart(discriminator)
+	}
+	return identity.String()
 }
 
 func (i InterfaceProp) FieldNames() string {

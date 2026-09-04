@@ -71,7 +71,11 @@ func (m *ImportMap) ImportStatements() []string {
 	for _, t := range m.types {
 		// Note that we'll use `goimports` on this file later so imports will be
 		// cleaned up and ordered.  Don't worry about the extra whitespace here.
-		result = append(result, fmt.Sprintf("%s \"%s\"", t.pkg.Name, t.pkg.PkgPath))
+		name := t.pkg.Name
+		if t.alias != "" {
+			name = t.alias
+		}
+		result = append(result, fmt.Sprintf("%s \"%s\"", name, t.pkg.PkgPath))
 	}
 
 	return result
