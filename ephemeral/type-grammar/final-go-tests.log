@@ -1,0 +1,47 @@
+ok  	github.com/tylergannon/go-gen-jsonschema	(cached)
+?   	github.com/tylergannon/go-gen-jsonschema/examples/basictypes	[no test files]
+?   	github.com/tylergannon/go-gen-jsonschema/examples/enums	[no test files]
+?   	github.com/tylergannon/go-gen-jsonschema/examples/enums_stringmode	[no test files]
+?   	github.com/tylergannon/go-gen-jsonschema/examples/indirecttypes	[no test files]
+?   	github.com/tylergannon/go-gen-jsonschema/examples/interfaces_options	[no test files]
+?   	github.com/tylergannon/go-gen-jsonschema/examples/iota_global	[no test files]
+ok  	github.com/tylergannon/go-gen-jsonschema/examples/optionality	(cached)
+ok  	github.com/tylergannon/go-gen-jsonschema/examples/optionality/cmd/proof	(cached)
+?   	github.com/tylergannon/go-gen-jsonschema/examples/optionality/negative/defined_wrapper	[no test files]
+?   	github.com/tylergannon/go-gen-jsonschema/examples/optionality/negative/embedded_wrapper	[no test files]
+?   	github.com/tylergannon/go-gen-jsonschema/examples/optionality/negative/nested_wrapper	[no test files]
+?   	github.com/tylergannon/go-gen-jsonschema/examples/optionality/negative/nullable_interface	[no test files]
+?   	github.com/tylergannon/go-gen-jsonschema/examples/optionality/negative/nullable_provider	[no test files]
+?   	github.com/tylergannon/go-gen-jsonschema/examples/optionality/negative/nullable_ref	[no test files]
+?   	github.com/tylergannon/go-gen-jsonschema/examples/optionality/negative/nullable_slice	[no test files]
+?   	github.com/tylergannon/go-gen-jsonschema/examples/optionality/negative/optional_without_omitzero	[no test files]
+?   	github.com/tylergannon/go-gen-jsonschema/examples/optionality/negative/wrapper_alias	[no test files]
+?   	github.com/tylergannon/go-gen-jsonschema/examples/optionality/negative/wrapper_in_container	[no test files]
+?   	github.com/tylergannon/go-gen-jsonschema/examples/optionality/negative/wrapper_root	[no test files]
+ok  	github.com/tylergannon/go-gen-jsonschema/examples/providers_rendering	(cached)
+ok  	github.com/tylergannon/go-gen-jsonschema/examples/ref_types	(cached)
+ok  	github.com/tylergannon/go-gen-jsonschema/examples/sealed_interface_slices	(cached)
+?   	github.com/tylergannon/go-gen-jsonschema/examples/self_contained	[no test files]
+?   	github.com/tylergannon/go-gen-jsonschema/examples/stringer_enums	[no test files]
+ok  	github.com/tylergannon/go-gen-jsonschema/examples/structs	(cached)
+?   	github.com/tylergannon/go-gen-jsonschema/examples/template_rendering	[no test files]
+?   	github.com/tylergannon/go-gen-jsonschema/examples/test_options	[no test files]
+?   	github.com/tylergannon/go-gen-jsonschema/examples/uniontypes	[no test files]
+ok  	github.com/tylergannon/go-gen-jsonschema/gen-jsonschema	2.421s
+ok  	github.com/tylergannon/go-gen-jsonschema/internal/builder	11.918s
+?   	github.com/tylergannon/go-gen-jsonschema/internal/builder/messages	[no test files]
+ok  	github.com/tylergannon/go-gen-jsonschema/internal/cmd/doc-gen	(cached)
+?   	github.com/tylergannon/go-gen-jsonschema/internal/common	[no test files]
+ok  	github.com/tylergannon/go-gen-jsonschema/internal/syntax	(cached)
+?   	github.com/tylergannon/go-gen-jsonschema/internal/syntax/testfixtures/comments	[no test files]
+?   	github.com/tylergannon/go-gen-jsonschema/internal/syntax/testfixtures/structtype	[no test files]
+?   	github.com/tylergannon/go-gen-jsonschema/internal/syntax/testfixtures/structtype/structsubpkg	[no test files]
+?   	github.com/tylergannon/go-gen-jsonschema/internal/syntax/testfixtures/testapp0_simple	[no test files]
+?   	github.com/tylergannon/go-gen-jsonschema/internal/syntax/testfixtures/testapp0_simple/subpkg	[no test files]
+?   	github.com/tylergannon/go-gen-jsonschema/internal/syntax/testfixtures/testapp1_typeresolution	[no test files]
+?   	github.com/tylergannon/go-gen-jsonschema/internal/syntax/testfixtures/typescanner	[no test files]
+?   	github.com/tylergannon/go-gen-jsonschema/internal/syntax/testfixtures/typescanner/scannersubpkg	[no test files]
+?   	github.com/tylergannon/go-gen-jsonschema/internal/testutils	[no test files]
+ok  	github.com/tylergannon/go-gen-jsonschema/internal/typegrammar	0.186s
+?   	github.com/tylergannon/go-gen-jsonschema/internal/utils/counter	[no test files]
+?   	github.com/tylergannon/go-gen-jsonschema/internal/utils/rewriter	[no test files]
