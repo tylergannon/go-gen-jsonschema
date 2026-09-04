@@ -4,6 +4,12 @@ applyTo: '**'
 
 # go-gen-jsonschema Internal Developer Notes
 
+> Historical snapshot: this document records early implementation experiments.
+> Current support and release boundaries are in [`docs/spec/v1.md`](spec/v1.md)
+> and the current examples. The old TODO entries below are retained as raw
+> history; completed provider, enum, entrypoint, YAML, and Optional/Nullable
+> work is not implied to remain pending.
+
 Owner: opencode
 
 Last updated: 2025-08-10

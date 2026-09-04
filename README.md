@@ -1,7 +1,12 @@
 # go-gen-jsonschema 🧩
 
-Generate JSON Schemas from Go types — built for LLM function calling and
-structured output (Anthropic tool use, OpenAI tools).
+Generate JSON Schemas from Go types for LLM tool definitions and structured
+output.
+
+The generator's primary output is a deterministic schema. Optional generated
+validation and selected JSON/YAML decoding helpers are separate capabilities;
+schema generation does not create a general-purpose Go codec or guarantee a
+typed encode/decode round trip for every Go type.
 
 <p align="center">
   <img src="gopher-front.svg" alt="Gopher mascot" width="200" height="auto">
@@ -33,15 +38,6 @@ Then just ask your agent to "add go-gen-jsonschema to this project."
    ```bash
    go get -tool github.com/tylergannon/go-gen-jsonschema/gen-jsonschema@latest
    ```
-
-   <details><summary>Alternative: global install</summary>
-
-   ```bash
-   go install github.com/tylergannon/go-gen-jsonschema/gen-jsonschema@latest
-   ```
-
-   Then use `gen-jsonschema` instead of `go tool gen-jsonschema` everywhere below.
-   </details>
 
 2. **Add a generate directive** next to your types (include `--validate` for
    generated validation; add `--formats=both` when inputs may be YAML):
@@ -329,6 +325,12 @@ The compatible split form—`WithInterface`, `WithInterfaceImpls`, and
 `Impl` wire values are supplied, discriminator values still derive from Go type
 names.
 
+Generated union support owns decoding and validation. It does not add a
+discriminator when a concrete implementation is marshaled. If a decoded union
+must be marshaled back into schema-valid JSON, each concrete implementation
+must emit its registered discriminator with its own `MarshalJSON` method (or
+another explicit encoder).
+
 The legacy package-level form is still supported, but cannot be mixed with the
 per-field options above in the same package:
 
@@ -419,7 +421,6 @@ gen-jsonschema [gen] [options]     # generate (default subcommand)
   -pretty              pretty-print the .json output
   -no-changes          fail, writing nothing, if regeneration would change any schema
   -force               rewrite even when unchanged (incompatible with -no-changes)
-  -num-test-samples N  number of test samples to generate (default 5)
   --validate           generate validation methods for the selected formats
   --formats MODE       decoding and validation: json (default) or both
 

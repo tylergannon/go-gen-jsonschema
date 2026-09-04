@@ -3,8 +3,11 @@
 `go-gen-jsonschema` generates deterministic JSON Schema from Go types. It is
 designed for LLM tool definitions and structured output: properties follow Go
 field order, unknown properties are rejected, and Go doc comments become schema
-descriptions. The generator also writes Go accessors and can generate runtime
-validation. JSON is the canonical data model and the default format.
+descriptions. The generator can also emit schema accessors, optional runtime
+validation, and selected JSON/YAML decoding methods. Schema generation is
+separate from codecs; it does not promise general-purpose typed
+encode/decode round trips for every Go type. JSON is the canonical data model
+and the default format.
 `--formats=both` adds `go.yaml.in/yaml/v4` entry points that translate YAML to
 JSON before reusing the JSON validator and decoder. The default discriminator
 property is `type` in either syntax.
@@ -463,7 +466,6 @@ go tool gen-jsonschema gen [flags]
   -target DIR           package to process; default is the current directory
   -no-changes           fail without writing schema files if schema JSON would change
   -force                rewrite unchanged output; incompatible with -no-changes
-  -num-test-samples N   accepted for compatibility; currently does not change output
   --validate            generate validation methods for the selected formats
   --formats MODE        decoding and validation: json (default) or both
 

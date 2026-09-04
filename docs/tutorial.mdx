@@ -2,128 +2,132 @@
 applyTo: '**'
 ---
 
-# go-gen-jsonschema Tutorial (v1 draft)
+# go-gen-jsonschema tutorial
 
-This tutorial walks through the v1 contract using runnable examples from the repo. It mirrors the Spec and points to concrete code you can run.
+This tutorial follows the current v1 contract. The authoritative capability
+matrix is [`docs/spec/v1.md`](spec/v1.md); the compiling examples below show
+the supported registration and generated-code paths.
 
-Prereqs
-- Go ≥ 1.27
-- Module mode
+## Quick start
 
-Quickstart
-1) Add a schema entry point for a type.
-2) Run the generator in your module (via `go:generate` or the `gen-jsonschema` helper).
-3) Use the generated `jsonschema/*.json` at build time, or the generated `(T) Schema()`/`RenderedSchema()` at runtime.
+Use a Go tool directive so the generator version is recorded in `go.mod`:
 
-Entry points (choose one)
+```bash
+go get -tool github.com/tylergannon/go-gen-jsonschema/gen-jsonschema@latest
+```
 
-<img alt="Entry points" src="./images/entrypoints.svg" width="680" />
+Add a generation directive beside the types, create a build-tagged
+`schema.go`, and run:
 
-- Method receiver (existing)
-  - Example: internal/builder/testfixtures/basictypes/schema.go
-  - Pattern:
-    ```go
-    func (T) Schema() json.RawMessage { panic("not implemented") }
-    var _ = jsonschema.NewJSONSchemaMethod(T.Schema)
-    ```
-- Free function with receiver param (new)
-  - Example: internal/builder/testfixtures/entrypoints/schema.go
-  - Pattern:
-    ```go
-    func TSchema(T) json.RawMessage { panic("not implemented") }
-    var _ = jsonschema.NewJSONSchemaFunc[T](TSchema)
-    ```
-- Zero‑arg builder function (new)
-  - Generic form (back‑compat and constraints):
-    ```go
-    func TSchema() json.RawMessage { panic("not implemented") }
-    var _ = jsonschema.NewJSONSchemaBuilder[T](TSchema)
-    ```
-  - Non‑generic convenience (type inferred from example value):
-    - Example: internal/builder/testfixtures/entrypoints/schema.go
-    ```go
-    var _ = jsonschema.NewJSONSchemaBuilderFor(T{}, TSchema)
-    ```
+```bash
+go tool gen-jsonschema new \
+  -out schema.go \
+  -methods 'Person=Schema' \
+  --validate \
+  --generate
+go mod tidy
+```
 
-Consolidated options
-Attach options to the registration call.
+The generator writes a schema file and a `jsonschema_gen.go` file with the
+requested schema accessor, validation method, and any selected decoding
+methods. Commit `schema.go`, `jsonschema_gen.go`, and the complete
+`jsonschema/` directory.
 
-Providers (field schema overrides)
+Schema generation and codecs are separate. A schema describes accepted JSON;
+`ValidateJSON` checks a document against it. Generated decoding exists only for
+the documented supported shapes, and generated union decoding does not add
+discriminators when concrete values are marshaled.
 
-<img alt="Providers rendering" src="./images/providers.svg" width="740" />
+## Registration entry points
 
-- Examples:
-  - Integration fixture: internal/builder/testfixtures/providers
-  - Tutorial example: examples/v1/providers_rendering
-- API:
-  ```go
-  jsonschema.WithStructAccessorMethod(Owner{}.Field, (Owner).Method)
-  jsonschema.WithStructFunctionMethod(Owner{}.Field, (Owner).Method)
-  jsonschema.WithFunction(Owner{}.Field, FreeFunc)
-  jsonschema.WithRenderProviders() // generates RenderedSchema() and .json.tmpl
-  ```
-- Behavior:
-  - Without `WithRenderProviders()`: generator writes `jsonschema/Type.json.tmpl` if any provider is present; generated `(T) Schema()` returns template bytes.
-  - With `WithRenderProviders()`: generator also emits `(T) RenderedSchema() (json.RawMessage, error)` that executes providers and renders the template into concrete JSON.
+The normal entry point is a method marker:
 
-Enums (including iota)
+```go
+func (Person) Schema() json.RawMessage { panic("not implemented") }
 
-<img alt="Enums" src="./images/enums.svg" width="680" />
+var _ = jsonschema.NewJSONSchemaMethod(Person.Schema)
+```
 
-- Examples:
-  - Legacy: internal/builder/testfixtures/enums
-  - String mode (tutorial): examples/v1/enums_stringmode
-- API (v1):
-  ```go
-  jsonschema.WithEnum(Owner{}.EnumField)
-  jsonschema.WithEnumMode(jsonschema.EnumStrings)
-  // optional per-const: jsonschema.WithEnumName(ConstValue, "name")
-  ```
-- Behavior:
-  - Default numeric mode uses underlying values.
-  - String mode names resolve in order: WithEnumName > T.String() > const identifier; duplicates error.
+`NewJSONSchemaFunc[T](func(T) json.RawMessage, options...)` registers a free
+function with the same receiver type. `NewJSONSchemaBuilder[T](func() json.RawMessage)`
+registers the builder-style marker. Both are generation markers; the returned
+function is not a runtime codec. See the compiling entrypoint fixture under
+`internal/builder/testfixtures/entrypoints` for all three forms.
 
-Interfaces (discriminated unions)
+## Optional and nullable fields
 
-<img alt="Interfaces" src="./images/interfaces.svg" width="740" />
+Use `Optional[T]` when a property may be absent and must not be null. Use
+`Nullable[T]` when the property must be present but may contain null:
 
-- Examples:
-  - Legacy: internal/builder/testfixtures/interfaces
-  - v1 options: examples/v1/interfaces_options
-- API (v1):
-  ```go
-  jsonschema.WithInterface(Owner{}.IF)
-  jsonschema.WithInterfaceImpls(Owner{}.IF, Impl1{}, Impl2{})
-  jsonschema.WithDiscriminator(Owner{}.IF, "!kind")
-  ```
-- Behavior:
-  - Discriminator default is "type"; override per field.
-  - Owner-side UnmarshalJSON helpers are generated to decode unions by discriminator.
-  - Field must be direct interface type (not nested in slices/maps/parens); illegal placements error with position.
+```go
+type Person struct {
+    Name  string                        `json:"name"`
+    Email jsonschema.Optional[string]   `json:"email,omitzero"`
+    Phone jsonschema.Nullable[string]   `json:"phone"`
+}
+```
 
-Generation outputs
-- Files:
-  - `jsonschema/<Type>.json` for normal types
-  - `jsonschema/<Type>.json.tmpl` when providers are configured
-- Generated methods (per registered type):
-  - `func (T) Schema() json.RawMessage`
-  - `func (T) RenderedSchema() (json.RawMessage, error)` (only with `WithRenderProviders()`)
+`Optional[T]` is omitted from `required` and needs `json:",omitzero"`.
+`Nullable[T]` remains required. Plain `json.Unmarshal` cannot distinguish a
+missing Nullable property from explicit null, so validate first when that
+distinction matters. The legacy `jsonschema:"optional"` tag is not honored.
 
-Running the generator
-- Each example/fixture has `//go:generate go run ./gen` and a minimal `gen/main.go` that calls `internal/builder.Run`.
-- In your module, add the same and run:
-  - `go generate ./...`
-  - or use the `gen-jsonschema` CLI (optional).
+The compiling runtime and negative-shape proof live in
+[`examples/optionality`](../examples/optionality).
 
-Determinism & diagnostics
-- Pretty JSON, trailing newline, content-addressed checksums to avoid unnecessary writes.
-- Errors include file:line and suggested fixes.
+## Enums and interfaces
 
-Where to look in this repo
-- Spec: docs/spec/v1.md (authoritative contract)
-- Tutorial: docs/tutorial.mdx (this file)
-- Integration examples as tests: internal/builder/testfixtures/*
-- Additional runnable samples: examples/v1/*
+Register same-package constants with `WithEnum` or use `WithStringerEnum` for
+integer constant names. The package-level `NewEnumType[T]` marker remains
+available for the legacy string-enum path.
 
-What’s next
-- Provider rendering fixture and interface/enum option fixtures are being expanded to fully exercise v1 behaviors; keep both this tutorial and the Spec in sync with examples.
+For a discriminated interface, list its concrete implementations at the field
+where the union is used:
+
+```go
+var _ = jsonschema.NewJSONSchemaMethod(
+    Batch.Schema,
+    jsonschema.WithInterface(
+        Batch{}.Events,
+        jsonschema.Impl("created", Created{}),
+        jsonschema.Impl("deleted", (*Deleted)(nil)),
+    ),
+)
+```
+
+A direct `[]I` field becomes an array whose `items` contain the union. The
+generated JSON decoder preserves value versus pointer implementations and
+assigns the destination only after successful decoding. If the decoded value
+must be marshaled back into schema-valid JSON, its concrete implementation
+must emit the registered discriminator itself. See
+[`examples/sealed_interface_slices`](../examples/sealed_interface_slices).
+
+## Providers and shared definitions
+
+Provider options replace selected field schemas at runtime. The retained
+provider forms are `WithFunction`, `WithStructAccessorMethod`, and
+`WithStructFunctionMethod`; `WithRenderProviders` emits `RenderedSchema()`.
+Provider-rendered types do not receive static validation methods because their
+schemas depend on runtime values. See
+[`examples/providers_rendering`](../examples/providers_rendering) and
+[`docs/providers-documentation.md`](providers-documentation.md).
+
+Use `AsRef()` on a type's own registration to put it in `$defs` and reference it
+from other generated schemas. Without `AsRef()`, nested structs are inlined.
+See [`examples/ref_types`](../examples/ref_types).
+
+## Verification
+
+For a repository using generated outputs, run:
+
+```bash
+JSONSCHEMA_NO_CHANGES=1 go generate ./...
+test -z "$(git status --porcelain)"
+go build ./...
+go test ./...
+```
+
+The no-change check catches generated files that are untracked as well as
+tracked schema changes. Use `--formats=both` when YAML input is required; YAML
+is translated into the canonical JSON data model before validation and
+decoding.

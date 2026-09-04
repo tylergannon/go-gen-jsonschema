@@ -8,7 +8,9 @@ description: >
 # go-gen-jsonschema
 
 Code generator that turns Go structs into JSON Schema files plus Go accessors,
-optional validation, and selectable JSON/YAML input.
+optional validation, and selectable JSON/YAML input. Schema generation is
+separate from codecs: generated decoding is limited to the documented shapes,
+and no general-purpose typed encode/decode round-trip is implied.
 Built for LLM function calling:
 properties are emitted in struct field order (deterministic, prompt-controllable),
 `additionalProperties: false`, ordinary and nullable fields required,
@@ -204,6 +206,11 @@ registered interfaces support scalar `I`, `Optional[I]`, and direct
 one-dimensional `[]I` fields, but not `Nullable[I]`, fixed arrays, nested
 slices, named slice containers, or Optional/Nullable interface slices; external
 package types are unsupported except `time.Time`.
+
+Generated interface support owns decoding and validation. It does not add a
+discriminator when concrete implementations are marshaled; implementations
+that must round-trip through the generated union schema need an explicit
+discriminator-aware encoder of their own.
 
 ## Closeout checklist
 
