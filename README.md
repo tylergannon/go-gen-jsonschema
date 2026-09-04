@@ -399,7 +399,7 @@ for the auto-stage variant and trade-offs.
 |---|---|
 | `NewJSONSchemaMethod(T.Schema, ...opts)` | Primary registration — one call per type |
 | `NewJSONSchemaFunc(fn, ...opts)` | Register a free function instead of a method |
-| `NewJSONSchemaBuilder[T](fn)` | Register a `SchemaFunction` returning a manually built schema |
+| `NewJSONSchemaBuilder[T](fn)` | Register a no-argument schema accessor stub; generation emits the accessor and schema bytes |
 | `NewEnumType[T]()` | Legacy enum registration (prefer `WithEnum`) |
 | `NewInterfaceImpl[I](impls...)` | Legacy union registration (prefer `WithInterface*`) |
 

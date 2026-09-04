@@ -50,8 +50,10 @@ var _ = jsonschema.NewJSONSchemaMethod(Person.Schema)
 
 `NewJSONSchemaFunc[T](func(T) json.RawMessage, options...)` registers a free
 function with the same receiver type. `NewJSONSchemaBuilder[T](func() json.RawMessage)`
-registers the builder-style marker. Both are generation markers; the returned
-function is not a runtime codec. See the compiling entrypoint fixture under
+registers a no-argument schema accessor stub and returns a `SchemaMarker`; the
+generator emits the accessor (for example, `BuilderTypeSchema()`) that returns
+the generated schema bytes. Both registrations are generation markers, not
+runtime codecs. See the compiling entrypoint fixture under
 `internal/builder/testfixtures/entrypoints` for all three forms.
 
 ## Optional and nullable fields

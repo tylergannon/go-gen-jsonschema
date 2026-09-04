@@ -436,7 +436,7 @@ must be preserved.
 | --- | --- |
 | `NewJSONSchemaMethod(T.Schema, ...opts)` | Primary method registration. |
 | `NewJSONSchemaFunc(fn, ...opts)` | Register a free schema accessor. |
-| `NewJSONSchemaBuilder[T](fn)` | Register a manually built `SchemaFunction`. |
+| `NewJSONSchemaBuilder[T](fn)` | Register a no-argument schema accessor stub; generation emits the accessor and schema bytes. |
 | `NewEnumType[T]()` | Legacy package-level enum registration. |
 | `NewInterfaceImpl[I](impls...)` | Legacy package-level interface registration. |
 | `WithEnum(field)` | Render same-package typed string or numeric constant values. |
