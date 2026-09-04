@@ -54,8 +54,8 @@ func formatComments(comments dst.Decorations) string {
 // Returns the who input if there are no empty strings.  Otherwise, returns
 // the portion of the input following the last occurrence of an empty string.
 func clipCommentsString(decs dst.Decorations) dst.Decorations {
-	for i := len(decs) - 1; i >= 0; i-- {
-		if strings.TrimSpace(decs[i]) == "" {
+	for i, dec := range slices.Backward(decs) {
+		if strings.TrimSpace(dec) == "" {
 			return decs[i+1:]
 		}
 	}

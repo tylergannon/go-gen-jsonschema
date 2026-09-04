@@ -45,8 +45,7 @@ func (m MarkerFunctionCall) TypeArgument() *TypeID {
 	} else {
 		return nil
 	}
-	typeID := parseFuncFromExpr(m.CallExpr.NewExpr(expr))
-	return &typeID
+	return new(parseFuncFromExpr(m.CallExpr.NewExpr(expr)))
 }
 
 func (m MarkerFunctionCall) String() string {

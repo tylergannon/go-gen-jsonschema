@@ -80,8 +80,7 @@ func RunCommand(command string, workDir string, args ...string) (exitCode int, s
 	}
 
 	if err := cmd.Wait(); err != nil {
-		var exitErr *exec.ExitError
-		if errors.As(err, &exitErr) {
+		if exitErr, ok := errors.AsType[*exec.ExitError](err); ok {
 			return exitErr.ExitCode(), string(stdoutBytes), string(stderrBytes), nil
 		}
 		return 0, string(stdoutBytes), string(stderrBytes), err

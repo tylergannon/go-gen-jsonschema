@@ -12,7 +12,6 @@ func TestParseUnmarshalFormats(t *testing.T) {
 	t.Parallel()
 
 	for _, value := range []string{"json", "both"} {
-		value := value
 		t.Run(value, func(t *testing.T) {
 			t.Parallel()
 			_, err := parseUnmarshalFormats(value)

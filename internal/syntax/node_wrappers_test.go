@@ -51,10 +51,10 @@ func TestStructFieldWrapper(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			typeSpec := &TypeSpec{STNode: STNode[*dst.TypeSpec]{file: file}}
+			typeSpec := &TypeSpec{file: file}
 			field := StructField{
-				TypeExpr: TypeExpr{TypeSpec: typeSpec, Excerpt: tt.typeExpr},
-				Field:    &dst.Field{Names: []*dst.Ident{dst.NewIdent("Value")}, Type: tt.typeExpr},
+				TypeSpec: typeSpec, Excerpt: tt.typeExpr,
+				Field: &dst.Field{Names: []*dst.Ident{dst.NewIdent("Value")}, Type: tt.typeExpr},
 			}
 			kind, inner, err := field.Wrapper()
 			require.NoError(t, err)
@@ -74,7 +74,7 @@ func TestStructFieldRequiredAndJSONOptions(t *testing.T) {
 		X: &dst.Ident{Name: "jsonschema", Path: SchemaPackagePath}, Sel: dst.NewIdent("Optional"),
 	}, Index: dst.NewIdent("int")}
 	field := StructField{
-		TypeExpr: TypeExpr{TypeSpec: &TypeSpec{}, Excerpt: wrapper},
+		TypeSpec: &TypeSpec{}, Excerpt: wrapper,
 		Field: &dst.Field{
 			Names: []*dst.Ident{dst.NewIdent("Value")}, Type: wrapper,
 			Tag: &dst.BasicLit{Kind: token.STRING, Value: "`json:\"value,omitzero\" jsonschema:\"optional\"`"},

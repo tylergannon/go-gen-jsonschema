@@ -322,10 +322,6 @@
       "reason": "supported only as the complete type of a direct named struct field"
     },
     {
-      "name": "nullable enum",
-      "reason": "enums and consts are unsupported"
-    },
-    {
       "name": "nullable interface",
       "reason": "does not support registered interfaces"
     },

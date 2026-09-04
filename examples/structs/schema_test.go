@@ -94,15 +94,13 @@ func TestPersonSchemaWithTime(t *testing.T) {
 func TestPersonJSONMarshalUnmarshal(t *testing.T) {
 	// Create a person with a specific time
 	original := Person{
-		ID:        "123",
-		Name:      "John Doe",
-		BirthDate: time.Date(1990, 5, 15, 14, 30, 0, 0, time.UTC),
-		ContactInfo: ContactInfo{
-			Email:           "john@example.com",
-			Phone:           "555-1234",
-			AlternateEmails: []string{"john.doe@example.com"},
-		},
-		Tags: []string{"developer", "golang"},
+		ID:              "123",
+		Name:            "John Doe",
+		BirthDate:       time.Date(1990, 5, 15, 14, 30, 0, 0, time.UTC),
+		Email:           "john@example.com",
+		Phone:           "555-1234",
+		AlternateEmails: []string{"john.doe@example.com"},
+		Tags:            []string{"developer", "golang"},
 	}
 
 	// Marshal to JSON
