@@ -9,6 +9,7 @@ import (
 	"go/token"
 	"go/types"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
 	"runtime/debug"
@@ -278,9 +279,7 @@ func cloneDiscriminatorValues(values map[syntax.TypeID]string) map[syntax.TypeID
 		return nil
 	}
 	cloned := make(map[syntax.TypeID]string, len(values))
-	for impl, value := range values {
-		cloned[impl] = value
-	}
+	maps.Copy(cloned, values)
 	return cloned
 }
 

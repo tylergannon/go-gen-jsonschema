@@ -1,13 +1,13 @@
 module github.com/tylergannon/go-gen-jsonschema
 
-go 1.26
+go 1.27
 
 require (
 	github.com/dave/dst v0.27.3
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2
 	github.com/stretchr/testify v1.10.0
 	github.com/tylergannon/structtag v0.1.0
-	golang.org/x/tools v0.42.0
+	golang.org/x/tools v0.49.0
 )
 
 require (
@@ -15,8 +15,8 @@ require (
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	golang.org/x/mod v0.33.0 // indirect
-	golang.org/x/sync v0.20.0 // indirect
+	golang.org/x/mod v0.39.0 // indirect
+	golang.org/x/sync v0.22.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect

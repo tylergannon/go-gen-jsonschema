@@ -27,7 +27,7 @@ Then just ask your agent to "add go-gen-jsonschema to this project."
 
 ### Setting up by hand
 
-1. **Add the tool to your module** (Go 1.24+; pins the version in go.mod so
+1. **Add the tool to your module** (Go 1.27+; pins the version in go.mod so
    every contributor and CI runs the same binary):
 
    ```bash

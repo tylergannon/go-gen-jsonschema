@@ -33,7 +33,7 @@ and the whole `jsonschema/` directory (each `T.json` schema comes with a
 
 ## Setup workflow
 
-1. **Add the tool** (Go 1.24+ tool directive — keeps the version in go.mod so
+1. **Add the tool** (Go 1.27+ tool directive — keeps the version in go.mod so
    every contributor and CI runs the same binary):
 
    ```bash
