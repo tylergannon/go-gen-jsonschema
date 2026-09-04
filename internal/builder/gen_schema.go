@@ -34,6 +34,12 @@ const defaultSubdir = "jsonschema"
 const unsupportedRegisteredInterfaceContainer = "arrays/slices of registered interfaces are not yet supported"
 
 func New(pkg *decorator.Package) (SchemaBuilder, error) {
+	return NewForTypes(pkg, nil)
+}
+
+// NewForTypes constructs a builder for the selected registered schema roots.
+// An empty selection preserves New's behavior and maps every registered root.
+func NewForTypes(pkg *decorator.Package, typeNames []string) (SchemaBuilder, error) {
 	data, err := syntax.LoadPackage(pkg)
 	if err != nil {
 		return SchemaBuilder{}, err
@@ -232,17 +238,27 @@ func New(pkg *decorator.Package) (SchemaBuilder, error) {
 	}
 	// Now map types
 	for _, m := range data.SchemaMethods {
+		if !selectedRoot(typeNames, m.Receiver.TypeName) {
+			continue
+		}
 		if err = builder.mapType(m.Receiver, syntax.SeenTypes{}); err != nil {
 			return builder, err
 		}
 	}
 	for _, f := range data.SchemaFuncs {
+		if !selectedRoot(typeNames, f.Receiver.TypeName) {
+			continue
+		}
 		if err = builder.mapType(f.Receiver, syntax.SeenTypes{}); err != nil {
 			return builder, err
 		}
 	}
 
 	return builder, nil
+}
+
+func selectedRoot(typeNames []string, candidate string) bool {
+	return len(typeNames) == 0 || slices.Contains(typeNames, candidate)
 }
 
 type CustomMarshaledType struct {
