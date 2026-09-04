@@ -4,6 +4,11 @@ applyTo: '**'
 
 # go-gen-jsonschema Internal Developer Notes
 
+> Historical copy retained for design provenance. For current supported
+> behavior, use [`docs/spec/v1.md`](../spec/v1.md), the website documentation,
+> and compiling examples. The copied investigation below is not a live TODO
+> list.
+
 Owner: opencode
 
 Last updated: 2025-08-10
@@ -13,4 +18,3 @@ Last updated: 2025-08-10
 (History retained verbatim below.)
 
 ---
-

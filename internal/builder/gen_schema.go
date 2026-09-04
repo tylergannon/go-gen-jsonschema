@@ -334,7 +334,6 @@ type SchemaBuilder struct {
 	customTypes       map[string][]InterfaceProp
 	Subdir            string
 	Pretty            bool
-	NumTestSamples    int
 	Validate          bool
 	BuildTag          string
 	UnmarshalFormats  UnmarshalFormats

@@ -1,0 +1,18 @@
+gen --help: exit 0; removed flag absent
+gen --num-test-samples 5: exit 2; unknown flag rejected
+
+Usage: gen [options]
+
+Options:
+  -force
+    	Force regeneration of schemas even if no changes are detected
+  -formats string
+    	Generated decoding and validation formats: json or both (default "json")
+  -no-changes
+    	Fail if any schema changes are detected
+  -pretty
+    	Enable pretty output
+  -target string
+    	Path to target package (default to local wd)
+  -validate
+    	Generate schema validation methods for the selected formats

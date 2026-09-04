@@ -13,6 +13,10 @@ go get -tool github.com/tylergannon/go-gen-jsonschema/gen-jsonschema@latest
 
 Invoke the pinned CLI as `go tool gen-jsonschema`.
 
+The CLI generates schemas. Validation and selected JSON/YAML decoding methods
+are optional generated capabilities; schema generation does not provide a
+general-purpose Go codec.
+
 ## Generate
 
 ```text
@@ -22,7 +26,6 @@ go tool gen-jsonschema gen [flags]
   -target DIR        package to process (default: current directory)
   -no-changes        fail without writing schemas when schema JSON would change
   -force             rewrite unchanged output; incompatible with -no-changes
-  -num-test-samples N  accepted for compatibility; currently has no effect
   --validate         generate validation methods for the selected formats
   --formats MODE     decoding and validation: json (default) or both
 ```

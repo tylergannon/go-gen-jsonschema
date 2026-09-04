@@ -179,6 +179,7 @@ func TestBasic(t *testing.T) {
 			files: []string{
 				"jsonschema/MethodType.json",
 				"jsonschema/FuncType.json",
+				"jsonschema/BuilderType.json",
 				"jsonschema_gen.go",
 			},
 		},

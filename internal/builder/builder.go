@@ -9,12 +9,11 @@ import (
 )
 
 type BuilderArgs struct {
-	TargetDir      string
-	Pretty         bool
-	NumTestSamples int
-	NoChanges      bool // If true, fail if any schema changes are detected
-	Force          bool // If true, force regeneration of schemas even if no changes are detected
-	Validate       bool // If true, generate validation methods and schema compilation
+	TargetDir string
+	Pretty    bool
+	NoChanges bool // If true, fail if any schema changes are detected
+	Force     bool // If true, force regeneration of schemas even if no changes are detected
+	Validate  bool // If true, generate validation methods and schema compilation
 	// UnmarshalFormats selects whether generated JSON decoding also accepts YAML.
 	// The zero value preserves the CLI default and generates JSON support only.
 	UnmarshalFormats UnmarshalFormats
@@ -57,7 +56,6 @@ func Run(args BuilderArgs) (err error) {
 		return err
 	}
 	builder.Pretty = args.Pretty
-	builder.NumTestSamples = args.NumTestSamples
 	builder.Validate = args.Validate
 	builder.UnmarshalFormats = args.UnmarshalFormats
 

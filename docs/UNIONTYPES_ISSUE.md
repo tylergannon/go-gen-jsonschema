@@ -1,5 +1,9 @@
 # Union Types Example Issue
 
+> Resolved historical note (2026-09-04): `time.Time` is now handled as the
+> documented RFC3339-guided scalar shape, and the current union examples pass.
+> The original investigation is retained below as design history.
+
 ## Current Problem
 The `examples/uniontypes` example fails with:
 ```
