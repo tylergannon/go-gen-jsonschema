@@ -3,10 +3,12 @@ package builder
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	"github.com/tylergannon/go-gen-jsonschema/internal/syntax"
+	"github.com/tylergannon/go-gen-jsonschema/internal/testutils"
 )
 
 func TestOwnerCodecRejectsProductionJSONMethodBeforeWriting(t *testing.T) {
@@ -122,6 +124,86 @@ var _ = jsonschema.NewInterfaceImpl[Value](left.Same{}, right.Same{})
 	err = Run(BuilderArgs{TargetDir: targetDir})
 	require.ErrorContains(t, err, `duplicate discriminator value "Same"`)
 	assertOwnerCollisionSentinels(t, targetDir)
+}
+
+func TestLegacyHelpersUseResolvedPackageIdentity(t *testing.T) {
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+	targetDir, err := os.MkdirTemp(filepath.Join(cwd, "testfixtures"), "legacy_helper_identity_")
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, os.RemoveAll(targetDir)) })
+	baseImport := "github.com/tylergannon/go-gen-jsonschema/internal/builder/testfixtures/" + filepath.Base(targetDir)
+
+	for _, side := range []string{"left", "right"} {
+		dir := filepath.Join(targetDir, side)
+		require.NoError(t, os.MkdirAll(dir, 0o755))
+		require.NoError(t, os.WriteFile(filepath.Join(dir, "types.go"), []byte(`package events
+
+type Event interface{ isEvent() }
+type Created struct { Name string `+"`json:\"name\"`"+` }
+func (Created) isEvent() {}
+`), 0o644))
+		require.NoError(t, os.WriteFile(filepath.Join(dir, "schema.go"), []byte(`//go:build jsonschema
+
+package events
+
+import jsonschema "github.com/tylergannon/go-gen-jsonschema"
+
+var _ = jsonschema.NewInterfaceImpl[Event](Created{})
+`), 0o644))
+	}
+
+	require.NoError(t, os.WriteFile(filepath.Join(targetDir, "types.go"), []byte(`package fixture
+
+import (
+	left "`+baseImport+`/left"
+	right "`+baseImport+`/right"
+)
+
+type Owner struct {
+	Left left.Event `+"`json:\"left\"`"+`
+	Right right.Event `+"`json:\"right\"`"+`
+}
+`), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(targetDir, "schema.go"), []byte(`//go:build jsonschema
+
+package fixture
+
+import (
+	"encoding/json"
+	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+)
+
+func (Owner) Schema() json.RawMessage { panic("not implemented") }
+var _ = jsonschema.NewJSONSchemaMethod(Owner.Schema)
+`), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(targetDir, "codec_test.go"), []byte(`package fixture
+
+import (
+	"encoding/json"
+	"testing"
+	left "`+baseImport+`/left"
+	right "`+baseImport+`/right"
+)
+
+func TestDistinctSameNamedInterfacesRoundTrip(t *testing.T) {
+	want := Owner{Left: left.Created{Name: "left"}, Right: right.Created{Name: "right"}}
+	data, err := json.Marshal(want)
+	if err != nil { t.Fatal(err) }
+	var got Owner
+	if err := json.Unmarshal(data, &got); err != nil { t.Fatal(err) }
+	if value, ok := got.Left.(left.Created); !ok || value.Name != "left" { t.Fatalf("left = %#v", got.Left) }
+	if value, ok := got.Right.(right.Created); !ok || value.Name != "right" { t.Fatalf("right = %#v", got.Right) }
+}
+`), 0o644))
+
+	require.NoError(t, Run(BuilderArgs{TargetDir: targetDir}))
+	generated, err := os.ReadFile(filepath.Join(targetDir, "jsonschema_gen.go"))
+	require.NoError(t, err)
+	require.Equal(t, 2, strings.Count(string(generated), "func __jsonUnmarshal__events__Event__"))
+	exit, stdout, stderr, err := testutils.RunCommand("go", targetDir, "test", "./...")
+	require.NoError(t, err)
+	require.Equal(t, 0, exit, "stdout:\n%s\nstderr:\n%s", stdout, stderr)
 }
 
 const ownerCollisionTypes = `package fixture

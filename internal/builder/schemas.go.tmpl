@@ -212,7 +212,7 @@ func ({{.Initial}} {{.Name}}) MarshalJSON() ([]byte, error) {
 	}
 	{{end}}
 	{{end}}
-	return json.Marshal(wrapper)
+	return json.Marshal(&wrapper)
 }
 
 // UnmarshalJSON is a generated custom json.Unmarshaler implementation for
@@ -348,7 +348,7 @@ func {{.UnmarshalerFunc}}(data []byte) ({{.TypeNameWithPrefix}}, error) {
 	} else if _tempDiscriminator, ok := temp["{{$discriminatorProp}}"]; !ok {
 		return nil, errNoDiscriminator
 	{{- end }}
-	} else if err = json.Unmarshal(_tempDiscriminator, &discriminator); err != nil {
+	} else if discriminator, err = __jsonschema__decodeDiscriminator(_tempDiscriminator); err != nil {
 		return nil, __jsonschema__unmarshalDiscriminatorError(_tempDiscriminator, err)
 	}
 	switch discriminator {
@@ -377,8 +377,8 @@ func __jsonschema__marshalUnionObject(data []byte, discriminatorProp, discrimina
 		return nil, fmt.Errorf("registered union payload must encode as a JSON object, got null")
 	}
 	if encoded, ok := object[discriminatorProp]; ok {
-		var current string
-		if err := json.Unmarshal(encoded, &current); err != nil {
+		current, err := __jsonschema__decodeDiscriminator(encoded)
+		if err != nil {
 			return nil, fmt.Errorf("discriminator property %q must be a string: %w", discriminatorProp, err)
 		}
 		if current != discriminatorValue {
@@ -392,6 +392,17 @@ func __jsonschema__marshalUnionObject(data []byte, discriminatorProp, discrimina
 		object[discriminatorProp] = encoded
 	}
 	return json.Marshal(object)
+}
+
+func __jsonschema__decodeDiscriminator(discriminator json.RawMessage) (string, error) {
+	var value *string
+	if err := json.Unmarshal(discriminator, &value); err != nil {
+		return "", err
+	}
+	if value == nil {
+		return "", errors.New("JSON null is not a string")
+	}
+	return *value, nil
 }
 
  func __jsonschema__unmarshalDiscriminatorError(discriminator json.RawMessage, err error) error {

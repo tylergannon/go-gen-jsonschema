@@ -19,6 +19,7 @@ var _ = jsonschema.NewJSONSchemaMethod(
 		jsonschema.Discriminator("!kind"),
 		jsonschema.Impl("created", Created{}),
 		jsonschema.Impl("deleted", (*Deleted)(nil)),
+		jsonschema.Impl("", Empty{}),
 	),
 	jsonschema.WithInterface(Envelope{}.Events),
 	jsonschema.WithInterfaceImpls(Envelope{}.Events, Created{}, (*Deleted)(nil)),

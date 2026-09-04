@@ -113,6 +113,7 @@ func TestUnionMarshalErrors(t *testing.T) {
 		{name: "typed nil slice element", edit: func(v *Envelope) { v.Events[1] = typedNil }, want: "field events[1]: cannot marshal typed nil"},
 		{name: "present nil optional", edit: func(v *Envelope) { v.Optional = jsonschema.Optional[Event]{Present: true} }, want: "field optional: cannot marshal nil registered interface"},
 		{name: "unregistered dynamic type", edit: func(v *Envelope) { v.Primary = Unregistered{Value: "x"} }, want: "unregistered dynamic implementation"},
+		{name: "null empty discriminator", edit: func(v *Envelope) { v.Primary = Empty{Name: "x", NullKind: true} }, want: "discriminator property \"!kind\" must be a string"},
 		{name: "custom conflict", edit: func(v *Envelope) { v.Hook.Value = Hooked{Name: "x", Behavior: "conflict"} }, want: "is \"other\", want registered value \"hooked\""},
 		{name: "custom non-string discriminator", edit: func(v *Envelope) { v.Hook.Value = Hooked{Name: "x", Behavior: "non-string"} }, want: "discriminator property \"hookKind\" must be a string"},
 		{name: "custom null", edit: func(v *Envelope) { v.Hook.Value = Hooked{Name: "x", Behavior: "null"} }, want: "must encode as a JSON object, got null"},
@@ -130,6 +131,35 @@ func TestUnionMarshalErrors(t *testing.T) {
 				t.Fatalf("error = %v, want %q", err, test.want)
 			}
 		})
+	}
+}
+
+func TestEmptyDiscriminatorRequiresAJSONString(t *testing.T) {
+	value := validEnvelope()
+	value.Primary = Empty{Name: "accepted"}
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := (Envelope{}).ValidateJSON(encoded); err != nil {
+		t.Fatalf("empty string discriminator failed schema validation: %v\n%s", err, encoded)
+	}
+	var root map[string]json.RawMessage
+	if err := json.Unmarshal(encoded, &root); err != nil {
+		t.Fatal(err)
+	}
+	assertObjectString(t, root["primary"], "!kind", "")
+	var decoded Envelope
+	if err := json.Unmarshal(encoded, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	if empty, ok := decoded.Primary.(Empty); !ok || empty.Name != "accepted" {
+		t.Fatalf("decoded primary = %#v", decoded.Primary)
+	}
+
+	nullInput := []byte(`{"primary":{"!kind":null,"name":"rejected"}}`)
+	if err := json.Unmarshal(nullInput, &decoded); err == nil || !strings.Contains(err.Error(), "JSON null is not a string") {
+		t.Fatalf("null discriminator error = %v", err)
 	}
 }
 
@@ -167,6 +197,9 @@ func TestGeneratedDecodeErrorIsTransactionalAndSuccessReplaces(t *testing.T) {
 
 	got = original
 	input := []byte(`{"primary":{"!kind":"created","name":"replacement"},"events":[],"nested":{"event":{"nestedKind":"nested-created","name":"nested"}},"ordinary":{"value":"new"},"label":"new"}`)
+	if err := (Envelope{}).ValidateJSON(input); err != nil {
+		t.Fatalf("manual replacement input failed schema validation: %v", err)
+	}
 	if err := json.Unmarshal(input, &got); err != nil {
 		t.Fatal(err)
 	}
@@ -189,6 +222,7 @@ func assertDiscriminators(t *testing.T, data []byte) {
 	assertObjectString(t, root["alternate"], `kind"quoted`, `new"event`)
 	assertObjectString(t, root["single"], "single", "only")
 	assertObjectString(t, root["hook"], "hookKind", "hooked")
+	assertObjectString(t, root["ordinary"], "value", "custom:ordinary")
 	var nested map[string]json.RawMessage
 	if err := json.Unmarshal(root["nested"], &nested); err != nil {
 		t.Fatal(err)
