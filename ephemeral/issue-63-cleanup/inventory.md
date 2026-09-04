@@ -10,9 +10,11 @@ not a replacement for the accepted contract in `docs/spec/v1.md`.
 | --- | --- | --- |
 | `DataType`, `SchemaNode`, `JSONUnionType`, `SchemaProperty`, `ParentSchema`, `ObjectSchema`, `JSONSchema` | `json_schema.go` | Supported manual schema model and JSON marshaling. These methods marshal schema documents; they are not generated codecs for user values. |
 | `StringSchema`, `BoolSchema`, `IntSchema`, `ArraySchema`, `EnumSchema`, `ConstSchema`, `RefSchemaEl`, `UnionSchemaEl` | `json_schema.go` | Supported manual schema helpers; `ObjectSchema` preserves insertion order and `JSONSchema.Properties` is map-backed/sorted. |
+| `Optional[T]` | `optionality.go`, `optionality_test.go`, `examples/optionality` | Supported value wrapper for a direct named struct field that may be absent but rejects JSON `null`; zero is absent, `Present` distinguishes present zero/empty values, and `json:",omitzero"` is required. |
+| `Nullable[T]` | `optionality.go`, `optionality_test.go`, `examples/optionality`, `examples/ref_types` | Supported value wrapper for a required field that accepts JSON `null`; zero encodes as `null`, `Present` distinguishes a non-null value, and generated validation is needed to distinguish missing from explicit `null`. |
 | `NewJSONSchemaMethod` | `union_type.go`, generated examples | Primary supported registration marker. |
 | `NewJSONSchemaFunc` | `union_type.go`, `internal/builder/testfixtures/entrypoints` | Supported free-function registration marker. |
-| `NewJSONSchemaBuilder` | `union_type.go`, `internal/builder/testfixtures/entrypoints` | Supported builder-style registration marker; it registers generation work and is not a runtime codec. |
+| `NewJSONSchemaBuilder` | `union_type.go`, `internal/builder/testfixtures/entrypoints/schema.go`, `internal/builder/testfixtures/entrypoints/jsonschema_gen.go.golden` | Supported builder-style registration marker; the generated method is `BuilderTypeSchema()` and reads `jsonschema/BuilderType.json`. The fixture's `basic_test.go` file list currently checks the method/free-function schemas and generated source but omits `BuilderType.json`; `providers_builder` covers provider rendering through the method marker, not this builder marker. |
 | `NewEnumType`, `NewInterfaceImpl` | `union_type.go`, `examples/enums`, `examples/uniontypes` | Retained legacy registration markers; field-level options are preferred for new code. |
 | `WithEnum`, `WithStringerEnum`, `WithInterface*`, `Discriminator`, `Impl`, `AsRef` | `union_type.go`, current examples | Supported generation options with the limits in the accepted v1 matrix. |
 | `WithFunction`, `WithStructAccessorMethod`, `WithStructFunctionMethod`, `WithRenderProviders` | `union_type.go`, `examples/providers_rendering` | Retained provider API; runtime schema rendering only. Provider-rendered types do not receive static validation. |
@@ -22,7 +24,7 @@ not a replacement for the accepted contract in `docs/spec/v1.md`.
 
 | Generation condition | Generated surface | Classification |
 | --- | --- | --- |
-| Every registered method/function/builder | `Schema() json.RawMessage` (or the registered accessor name) | Supported schema accessor. |
+| Every registered method/function/builder | Generated accessor using the registered method/function name; entrypoint fixture emits `Schema`, `FuncTypeSchema`, and `BuilderTypeSchema` | Supported schema accessor. `NewJSONSchemaBuilder[T](fn)` uses the builder function's name for the generated accessor and generated schema file; it does not call `fn` as a runtime codec. |
 | `--validate` | `ValidateJSON([]byte) error` | Supported opt-in schema validation. Validation is separate from typed decoding. |
 | `--formats=both` | YAML entry points and `ValidateYAML` when validation is enabled | Supported opt-in canonical YAML-to-JSON path. |
 | Registered interfaces | Owner-side `UnmarshalJSON`; YAML counterpart when enabled | Supported selected union decoding, preserving documented value/pointer forms. |
