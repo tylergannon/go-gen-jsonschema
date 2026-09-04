@@ -12,10 +12,11 @@ import (
 )
 
 type testCase struct {
-	inputDir  string
-	testName  string
-	runGinkgo bool
-	files     []string
+	inputDir   string
+	testName   string
+	runGinkgo  bool
+	files      []string
+	idempotent bool
 }
 
 func TestBasic(t *testing.T) {
@@ -74,6 +75,16 @@ func TestBasic(t *testing.T) {
 		tidyExit, _, _, tidyErr := testutils.RunCommand("go", tempDir, "mod", "tidy")
 		require.NoError(t, tidyErr)
 		require.Equal(t, 0, tidyExit)
+
+		if tc.idempotent {
+			before := append([]byte(nil), generated...)
+			exitCode, stdout, stderr, err = testutils.RunCommand("go", tempDir, "generate", "./...")
+			require.NoError(t, err)
+			CmdSuccessAssertions(t, stdout, stderr, exitCode)
+			after, err := os.ReadFile(generatedPath)
+			require.NoError(t, err)
+			require.Equal(t, before, after, "second generation changed jsonschema_gen.go")
+		}
 
 		// Ensure generated code compiles in the temp module.
 		buildExit, buildStdout, buildStderr, err := testutils.RunCommand("go", tempDir, "build", "./...")
@@ -212,6 +223,16 @@ func TestBasic(t *testing.T) {
 			testName: "test12-optionality",
 			files: []string{
 				"jsonschema/Config.json",
+				"jsonschema_gen.go",
+			},
+		},
+		{
+			inputDir:   "builder/testfixtures/union_codec",
+			testName:   "test13-union-codec",
+			idempotent: true,
+			files: []string{
+				"jsonschema/Envelope.json",
+				"jsonschema/Nested.json",
 				"jsonschema_gen.go",
 			},
 		},

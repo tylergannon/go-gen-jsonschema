@@ -91,6 +91,33 @@ func (Payment) Schema() json.RawMessage {
 	return data
 }
 
+// MarshalJSON is a generated custom json.Marshaler implementation for
+// Drawing.
+func (d Drawing) MarshalJSON() ([]byte, error) {
+	type Alias Drawing
+	type Wrapper struct {
+		Alias
+		Shapes json.RawMessage `json:"shapes"`
+	}
+	wrapper := Wrapper{Alias: Alias(d)}
+	var err error
+
+	if d.Shapes == nil {
+		return nil, fmt.Errorf("field shapes: nil registered interface slice")
+	}
+	__raw0 := make([]json.RawMessage, len(d.Shapes))
+	for __index, __value := range d.Shapes {
+		if __raw0[__index], err = __jsonMarshal__uniontypes__Shape(__value); err != nil {
+			return nil, fmt.Errorf("field shapes[%d]: %w", __index, err)
+		}
+	}
+	if wrapper.Shapes, err = json.Marshal(__raw0); err != nil {
+		return nil, fmt.Errorf("field shapes: %w", err)
+	}
+
+	return json.Marshal(wrapper)
+}
+
 // UnmarshalJSON is a generated custom json.Unmarshaler implementation for
 // Drawing.
 func (d *Drawing) UnmarshalJSON(data []byte) (err error) {
@@ -105,9 +132,7 @@ func (d *Drawing) UnmarshalJSON(data []byte) (err error) {
 	}
 	__next := Drawing(wrapper.Alias)
 
-	if len(wrapper.Shapes) == 0 {
-		__next.Shapes = d.Shapes
-	} else {
+	if len(wrapper.Shapes) > 0 {
 		var __raw0 []json.RawMessage
 		if err = json.Unmarshal(wrapper.Shapes, &__raw0); err != nil {
 			return fmt.Errorf("field shapes: %w", err)
@@ -128,6 +153,24 @@ func (d *Drawing) UnmarshalJSON(data []byte) (err error) {
 	return nil
 }
 
+// MarshalJSON is a generated custom json.Marshaler implementation for
+// Payment.
+func (p Payment) MarshalJSON() ([]byte, error) {
+	type Alias Payment
+	type Wrapper struct {
+		Alias
+		Method json.RawMessage `json:"method"`
+	}
+	wrapper := Wrapper{Alias: Alias(p)}
+	var err error
+
+	if wrapper.Method, err = __jsonMarshal__uniontypes__PaymentMethod(p.Method); err != nil {
+		return nil, fmt.Errorf("field method: %w", err)
+	}
+
+	return json.Marshal(wrapper)
+}
+
 // UnmarshalJSON is a generated custom json.Unmarshaler implementation for
 // Payment.
 func (p *Payment) UnmarshalJSON(data []byte) (err error) {
@@ -142,13 +185,46 @@ func (p *Payment) UnmarshalJSON(data []byte) (err error) {
 	}
 	__next := Payment(wrapper.Alias)
 
-	if __next.Method, err = __jsonUnmarshal__uniontypes__PaymentMethod(wrapper.Method); err != nil {
+	var __decoded0 PaymentMethod
+	if __decoded0, err = __jsonUnmarshal__uniontypes__PaymentMethod(wrapper.Method); err != nil {
 		return err
 	}
+	__next.Method = __decoded0
 
 	*p = __next
 	return nil
 }
+func __jsonMarshal__uniontypes__Shape(value Shape) (json.RawMessage, error) {
+	if value == nil {
+		return nil, fmt.Errorf("cannot marshal nil registered interface Shape")
+	}
+	var (
+		data          []byte
+		err           error
+		discriminator string
+	)
+	switch object := value.(type) {
+	case Circle:
+		discriminator = "Circle"
+		data, err = json.Marshal(object)
+	case Rectangle:
+		discriminator = "Rectangle"
+		data, err = json.Marshal(object)
+	case Triangle:
+		discriminator = "Triangle"
+		data, err = json.Marshal(object)
+	default:
+		return nil, fmt.Errorf("unregistered dynamic implementation %T for Shape", value)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("marshal registered implementation %T for Shape: %w", value, err)
+	}
+	return __jsonschema__marshalUnionObject(data,
+		"type",
+		discriminator,
+	)
+}
+
 func __jsonUnmarshal__uniontypes__Shape(data []byte) (Shape, error) {
 	var (
 		temp          map[string]json.RawMessage
@@ -186,6 +262,40 @@ func __jsonUnmarshal__uniontypes__Shape(data []byte) (Shape, error) {
 		return nil, fmt.Errorf("unknown discriminator: %s", discriminator)
 	}
 }
+func __jsonMarshal__uniontypes__PaymentMethod(value PaymentMethod) (json.RawMessage, error) {
+	if value == nil {
+		return nil, fmt.Errorf("cannot marshal nil registered interface PaymentMethod")
+	}
+	var (
+		data          []byte
+		err           error
+		discriminator string
+	)
+	switch object := value.(type) {
+	case CreditCard:
+		discriminator = "CreditCard"
+		data, err = json.Marshal(object)
+	case BankTransfer:
+		discriminator = "BankTransfer"
+		data, err = json.Marshal(object)
+	case *DigitalWallet:
+		if object == nil {
+			return nil, fmt.Errorf("cannot marshal typed nil registered implementation %T for PaymentMethod", value)
+		}
+		discriminator = "DigitalWallet"
+		data, err = json.Marshal(object)
+	default:
+		return nil, fmt.Errorf("unregistered dynamic implementation %T for PaymentMethod", value)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("marshal registered implementation %T for PaymentMethod: %w", value, err)
+	}
+	return __jsonschema__marshalUnionObject(data,
+		"type",
+		discriminator,
+	)
+}
+
 func __jsonUnmarshal__uniontypes__PaymentMethod(data []byte) (PaymentMethod, error) {
 	var (
 		temp          map[string]json.RawMessage
@@ -222,6 +332,32 @@ func __jsonUnmarshal__uniontypes__PaymentMethod(data []byte) (PaymentMethod, err
 	default:
 		return nil, fmt.Errorf("unknown discriminator: %s", discriminator)
 	}
+}
+
+func __jsonschema__marshalUnionObject(data []byte, discriminatorProp, discriminatorValue string) (json.RawMessage, error) {
+	var object map[string]json.RawMessage
+	if err := json.Unmarshal(data, &object); err != nil {
+		return nil, fmt.Errorf("registered union payload must encode as a JSON object: %w", err)
+	}
+	if object == nil {
+		return nil, fmt.Errorf("registered union payload must encode as a JSON object, got null")
+	}
+	if encoded, ok := object[discriminatorProp]; ok {
+		var current string
+		if err := json.Unmarshal(encoded, &current); err != nil {
+			return nil, fmt.Errorf("discriminator property %q must be a string: %w", discriminatorProp, err)
+		}
+		if current != discriminatorValue {
+			return nil, fmt.Errorf("discriminator property %q is %q, want registered value %q", discriminatorProp, current, discriminatorValue)
+		}
+	} else {
+		encoded, err := json.Marshal(discriminatorValue)
+		if err != nil {
+			return nil, err
+		}
+		object[discriminatorProp] = encoded
+	}
+	return json.Marshal(object)
 }
 
 func __jsonschema__unmarshalDiscriminatorError(discriminator json.RawMessage, err error) error {

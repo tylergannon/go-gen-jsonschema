@@ -37,6 +37,24 @@ func (GeneratedTestResponse) Schema() json.RawMessage {
 	return data
 }
 
+// MarshalJSON is a generated custom json.Marshaler implementation for
+// Assertion.
+func (a Assertion) MarshalJSON() ([]byte, error) {
+	type Alias Assertion
+	type Wrapper struct {
+		Alias
+		Value json.RawMessage `json:"value"`
+	}
+	wrapper := Wrapper{Alias: Alias(a)}
+	var err error
+
+	if wrapper.Value, err = __jsonMarshal__messages__AssertionValue(a.Value); err != nil {
+		return nil, fmt.Errorf("field value: %w", err)
+	}
+
+	return json.Marshal(wrapper)
+}
+
 // UnmarshalJSON is a generated custom json.Unmarshaler implementation for
 // Assertion.
 func (a *Assertion) UnmarshalJSON(data []byte) (err error) {
@@ -51,13 +69,52 @@ func (a *Assertion) UnmarshalJSON(data []byte) (err error) {
 	}
 	__next := Assertion(wrapper.Alias)
 
-	if __next.Value, err = __jsonUnmarshal__messages__AssertionValue(wrapper.Value); err != nil {
+	var __decoded0 AssertionValue
+	if __decoded0, err = __jsonUnmarshal__messages__AssertionValue(wrapper.Value); err != nil {
 		return err
 	}
+	__next.Value = __decoded0
 
 	*a = __next
 	return nil
 }
+func __jsonMarshal__messages__AssertionValue(value AssertionValue) (json.RawMessage, error) {
+	if value == nil {
+		return nil, fmt.Errorf("cannot marshal nil registered interface AssertionValue")
+	}
+	var (
+		data          []byte
+		err           error
+		discriminator string
+	)
+	switch object := value.(type) {
+	case AssertNumericValue:
+		discriminator = "AssertNumericValue"
+		data, err = json.Marshal(object)
+	case AssertStringValue:
+		discriminator = "AssertStringValue"
+		data, err = json.Marshal(object)
+	case AssertBoolValue:
+		discriminator = "AssertBoolValue"
+		data, err = json.Marshal(object)
+	case AssertType:
+		discriminator = "AssertType"
+		data, err = json.Marshal(object)
+	case AssertArrayLength:
+		discriminator = "AssertArrayLength"
+		data, err = json.Marshal(object)
+	default:
+		return nil, fmt.Errorf("unregistered dynamic implementation %T for AssertionValue", value)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("marshal registered implementation %T for AssertionValue: %w", value, err)
+	}
+	return __jsonschema__marshalUnionObject(data,
+		"type",
+		discriminator,
+	)
+}
+
 func __jsonUnmarshal__messages__AssertionValue(data []byte) (AssertionValue, error) {
 	var (
 		temp          map[string]json.RawMessage
@@ -106,6 +163,32 @@ func __jsonUnmarshal__messages__AssertionValue(data []byte) (AssertionValue, err
 	default:
 		return nil, fmt.Errorf("unknown discriminator: %s", discriminator)
 	}
+}
+
+func __jsonschema__marshalUnionObject(data []byte, discriminatorProp, discriminatorValue string) (json.RawMessage, error) {
+	var object map[string]json.RawMessage
+	if err := json.Unmarshal(data, &object); err != nil {
+		return nil, fmt.Errorf("registered union payload must encode as a JSON object: %w", err)
+	}
+	if object == nil {
+		return nil, fmt.Errorf("registered union payload must encode as a JSON object, got null")
+	}
+	if encoded, ok := object[discriminatorProp]; ok {
+		var current string
+		if err := json.Unmarshal(encoded, &current); err != nil {
+			return nil, fmt.Errorf("discriminator property %q must be a string: %w", discriminatorProp, err)
+		}
+		if current != discriminatorValue {
+			return nil, fmt.Errorf("discriminator property %q is %q, want registered value %q", discriminatorProp, current, discriminatorValue)
+		}
+	} else {
+		encoded, err := json.Marshal(discriminatorValue)
+		if err != nil {
+			return nil, err
+		}
+		object[discriminatorProp] = encoded
+	}
+	return json.Marshal(object)
 }
 
 func __jsonschema__unmarshalDiscriminatorError(discriminator json.RawMessage, err error) error {

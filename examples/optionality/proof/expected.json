@@ -278,7 +278,7 @@
           "value": 0
         }
       },
-      "remarshaled": "{\"name\":\"pet\",\"pet\":{\"!kind\":\"Dog\",\"name\":\"Rex\"},\"timeout\":null,\"detail\":null}"
+      "remarshaled": "{\"name\":\"pet\",\"timeout\":null,\"detail\":null,\"pet\":{\"!kind\":\"Dog\",\"name\":\"Rex\"}}"
     },
     {
       "name": "unknown interface",
