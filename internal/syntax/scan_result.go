@@ -15,6 +15,19 @@ type PackageScanner interface {
 	Scan(*packages.Package) (ScanResult, error)
 }
 
+type ScanError struct {
+	Code     string
+	Position token.Position
+	Cause    error
+}
+
+func (e *ScanError) Error() string { return e.Cause.Error() }
+func (e *ScanError) Unwrap() error { return e.Cause }
+
+func markerScanError(code string, decl MarkerFunctionCall, err error) error {
+	return &ScanError{Code: code, Position: decl.CallExpr.Position(), Cause: err}
+}
+
 // TypeDecl refers to the
 type TypeDecl struct {
 	Node  *dst.DeclStmt
@@ -387,16 +400,24 @@ func (r *ScanResult) loadPackageInternal(seen seenPackages, typesToMap map[strin
 	for _, decl := range r.MarkerCalls {
 		switch decl.CallExpr.MustIdentifyFunc().TypeName {
 		case MarkerFuncNewEnumType:
-			r.Constants[decl.MustTypeArgument().TypeName] = &EnumSet{}
+			typeArg := decl.TypeArgument()
+			if typeArg == nil || typeArg.TypeName == "" {
+				return markerScanError("invalid_enum_registration", decl, fmt.Errorf("enum registration requires a named type argument"))
+			}
+			r.Constants[typeArg.TypeName] = &EnumSet{}
 		case MarkerFuncNewInterfaceImpl:
 			var (
 				err   error
 				iface = IfaceImplementations{}
 			)
 			if iface.Impls, err = decl.ParseTypesFromArgs(); err != nil {
-				return err
+				return markerScanError("invalid_interface_registration", decl, err)
 			}
-			r.Interfaces[decl.MustTypeArgument().TypeName] = iface
+			typeArg := decl.TypeArgument()
+			if typeArg == nil || typeArg.TypeName == "" {
+				return markerScanError("invalid_interface_registration", decl, fmt.Errorf("interface registration requires a named type argument"))
+			}
+			r.Interfaces[typeArg.TypeName] = iface
 			for _, impl := range iface.Impls {
 				if impl.PkgPath == r.Pkg.PkgPath {
 					r.localTypeNames[impl.TypeName] = true
@@ -408,7 +429,7 @@ func (r *ScanResult) loadPackageInternal(seen seenPackages, typesToMap map[strin
 		case MarkerFuncNewJSONSchemaMethod:
 			method, err := decl.ParseSchemaMethod()
 			if err != nil {
-				return err
+				return markerScanError("invalid_schema_method_registration", decl, err)
 			}
 			r.localTypeNames[method.Receiver.TypeName] = true
 			typesToMap[method.Receiver.TypeName] = true
@@ -416,7 +437,7 @@ func (r *ScanResult) loadPackageInternal(seen seenPackages, typesToMap map[strin
 		case MarkerFuncNewJSONSchemaBuilder:
 			fn, err := decl.ParseSchemaBuilder()
 			if err != nil {
-				return err
+				return markerScanError("invalid_schema_builder_registration", decl, err)
 			}
 			r.localTypeNames[fn.Receiver.TypeName] = true
 			typesToMap[fn.Receiver.TypeName] = true
@@ -424,14 +445,14 @@ func (r *ScanResult) loadPackageInternal(seen seenPackages, typesToMap map[strin
 		case MarkerFuncNewJSONSchemaFunc:
 			fn, err := decl.ParseSchemaFunc()
 			if err != nil {
-				return err
+				return markerScanError("invalid_schema_function_registration", decl, err)
 			}
 			r.localTypeNames[fn.Receiver.TypeName] = true
 			typesToMap[fn.Receiver.TypeName] = true
 			r.SchemaFuncs = append(r.SchemaFuncs, fn)
 
 		default:
-			return fmt.Errorf("unsupported marker function: %s", decl.CallExpr.MustIdentifyFunc())
+			return markerScanError("unsupported_marker_function", decl, fmt.Errorf("unsupported marker function: %s", decl.CallExpr.MustIdentifyFunc()))
 		}
 	}
 

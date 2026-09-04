@@ -21,6 +21,13 @@ import (
 var configTmplContents string
 
 func main() {
+	if len(os.Args) > 1 && (os.Args[1] == "version" || os.Args[1] == "inspect") {
+		os.Exit(runAgentCommand(os.Args[1:], os.Stdout, os.Stderr))
+	}
+	legacyMain()
+}
+
+func legacyMain() {
 
 	if len(os.Args) == 1 {
 		handleGen(1)
@@ -52,6 +59,8 @@ func printGlobalHelp() {
 	fmt.Println("\nSubcommands:")
 	fmt.Println("  gen      Generate output (default)")
 	fmt.Println("  new      Create a new project")
+	fmt.Println("  version  Report installed build identity and capabilities")
+	fmt.Println("  inspect  Inspect registered schema roots without writing files")
 	fmt.Println("\nRun '[subcommand] --help' for more details.")
 }
 
