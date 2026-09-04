@@ -2,6 +2,8 @@ package syntax
 
 import (
 	"go/token"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/dave/dst"
@@ -62,6 +64,38 @@ func TestUnknownLocalIdentifierFails(t *testing.T) {
 	err := scan.resolveTypeExpr(NewExpr(fieldType, holder.Pkg(), holder.File()), nil)
 	require.ErrorContains(t, err, "undeclared local UnknownLocal type")
 	require.ErrorContains(t, err, "local_func_defs.go")
+}
+
+func TestResolveTypeLocalMissingTypeDoesNotWriteToStdout(t *testing.T) {
+	scan := ScanResult{
+		Interfaces: map[string]IfaceImplementations{},
+		LocalNamedTypes: map[string]TypeSpec{
+			"Zulu":  {},
+			"Alpha": {},
+		},
+	}
+
+	stdoutPath := filepath.Join(t.TempDir(), "stdout")
+	stdout, err := os.Create(stdoutPath)
+	require.NoError(t, err)
+
+	originalStdout := os.Stdout
+	var resolveErr error
+	func() {
+		os.Stdout = stdout
+		defer func() { os.Stdout = originalStdout }()
+		_, resolveErr = scan.resolveTypeLocal("Missing")
+	}()
+	require.NoError(t, stdout.Close())
+
+	output, err := os.ReadFile(stdoutPath)
+	require.NoError(t, err)
+	require.Empty(t, output)
+	require.EqualError(
+		t,
+		resolveErr,
+		"resolveTypeLocal: type Missing not found; known local types: Alpha, Zulu",
+	)
 }
 
 func TestAlreadyLoadedRegisteredEnumResolves(t *testing.T) {

@@ -3,8 +3,8 @@ package syntax
 import (
 	"fmt"
 	"go/token"
-	"runtime/debug"
 	"slices"
+	"strings"
 
 	"github.com/dave/dst"
 	"github.com/dave/dst/decorator"
@@ -300,11 +300,16 @@ func (r *ScanResult) resolveTypeLocal(name string) (Expr, error) {
 	}
 	t, ok := r.LocalNamedTypes[name]
 	if !ok {
+		knownTypes := make([]string, 0, len(r.LocalNamedTypes))
 		for typeName := range r.LocalNamedTypes {
-			fmt.Println(typeName)
+			knownTypes = append(knownTypes, typeName)
 		}
-		fmt.Println(string(debug.Stack()))
-		return nil, fmt.Errorf("resolveTypeLocal:type %s not found", name)
+		slices.Sort(knownTypes)
+		return nil, fmt.Errorf(
+			"resolveTypeLocal: type %s not found; known local types: %s",
+			name,
+			strings.Join(knownTypes, ", "),
+		)
 	}
 	if ident, ok := t.Type().Expr().(*dst.Ident); ok {
 		return r.resolveType(r.Pkg.PkgPath, IdentExpr{STExpr: NewExpr(ident, t.Pkg(), t.File())})
