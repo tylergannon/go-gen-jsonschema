@@ -134,10 +134,19 @@ func TestLegacyHelpersUseResolvedPackageIdentity(t *testing.T) {
 	t.Cleanup(func() { require.NoError(t, os.RemoveAll(targetDir)) })
 	baseImport := "github.com/tylergannon/go-gen-jsonschema/internal/builder/testfixtures/" + filepath.Base(targetDir)
 
-	for _, side := range []string{"left", "right"} {
-		dir := filepath.Join(targetDir, side)
+	packages := []struct {
+		dir  string
+		name string
+	}{
+		{dir: "left", name: "events"},
+		{dir: "middle", name: "events1"},
+		{dir: "right", name: "events"},
+		{dir: "reserved", name: "json"},
+	}
+	for _, pkg := range packages {
+		dir := filepath.Join(targetDir, pkg.dir)
 		require.NoError(t, os.MkdirAll(dir, 0o755))
-		require.NoError(t, os.WriteFile(filepath.Join(dir, "types.go"), []byte(`package events
+		require.NoError(t, os.WriteFile(filepath.Join(dir, "types.go"), []byte(`package `+pkg.name+`
 
 type Event interface{ isEvent() }
 type Created struct { Name string `+"`json:\"name\"`"+` }
@@ -145,7 +154,7 @@ func (Created) isEvent() {}
 `), 0o644))
 		require.NoError(t, os.WriteFile(filepath.Join(dir, "schema.go"), []byte(`//go:build jsonschema
 
-package events
+package `+pkg.name+`
 
 import jsonschema "github.com/tylergannon/go-gen-jsonschema"
 
@@ -157,12 +166,16 @@ var _ = jsonschema.NewInterfaceImpl[Event](Created{})
 
 import (
 	left "`+baseImport+`/left"
+	middle "`+baseImport+`/middle"
 	right "`+baseImport+`/right"
+	reserved "`+baseImport+`/reserved"
 )
 
 type Owner struct {
 	Left left.Event `+"`json:\"left\"`"+`
+	Middle middle.Event `+"`json:\"middle\"`"+`
 	Right right.Event `+"`json:\"right\"`"+`
+	Reserved reserved.Event `+"`json:\"reserved\"`"+`
 }
 `), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(targetDir, "schema.go"), []byte(`//go:build jsonschema
@@ -183,17 +196,26 @@ import (
 	"encoding/json"
 	"testing"
 	left "`+baseImport+`/left"
+	middle "`+baseImport+`/middle"
 	right "`+baseImport+`/right"
+	reserved "`+baseImport+`/reserved"
 )
 
 func TestDistinctSameNamedInterfacesRoundTrip(t *testing.T) {
-	want := Owner{Left: left.Created{Name: "left"}, Right: right.Created{Name: "right"}}
+	want := Owner{
+		Left: left.Created{Name: "left"},
+		Middle: middle.Created{Name: "middle"},
+		Right: right.Created{Name: "right"},
+		Reserved: reserved.Created{Name: "reserved"},
+	}
 	data, err := json.Marshal(want)
 	if err != nil { t.Fatal(err) }
 	var got Owner
 	if err := json.Unmarshal(data, &got); err != nil { t.Fatal(err) }
 	if value, ok := got.Left.(left.Created); !ok || value.Name != "left" { t.Fatalf("left = %#v", got.Left) }
+	if value, ok := got.Middle.(middle.Created); !ok || value.Name != "middle" { t.Fatalf("middle = %#v", got.Middle) }
 	if value, ok := got.Right.(right.Created); !ok || value.Name != "right" { t.Fatalf("right = %#v", got.Right) }
+	if value, ok := got.Reserved.(reserved.Created); !ok || value.Name != "reserved" { t.Fatalf("reserved = %#v", got.Reserved) }
 }
 `), 0o644))
 
@@ -201,6 +223,10 @@ func TestDistinctSameNamedInterfacesRoundTrip(t *testing.T) {
 	generated, err := os.ReadFile(filepath.Join(targetDir, "jsonschema_gen.go"))
 	require.NoError(t, err)
 	require.Equal(t, 2, strings.Count(string(generated), "func __jsonUnmarshal__events__Event__"))
+	require.Equal(t, 1, strings.Count(string(generated), "func __jsonUnmarshal__events1__Event__"))
+	require.Equal(t, 1, strings.Count(string(generated), "func __jsonUnmarshal__json__Event__"))
+	require.Contains(t, string(generated), `events2 "`+baseImport+`/right"`)
+	require.Contains(t, string(generated), `json1 "`+baseImport+`/reserved"`)
 	exit, stdout, stderr, err := testutils.RunCommand("go", targetDir, "test", "./...")
 	require.NoError(t, err)
 	require.Equal(t, 0, exit, "stdout:\n%s\nstderr:\n%s", stdout, stderr)
