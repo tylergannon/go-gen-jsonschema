@@ -96,6 +96,7 @@ func TestInspectReportsUnknownCustomHookAndWireMismatches(t *testing.T) {
 	require.Equal(t, StatusUnknown, hookResult.Status)
 	require.Equal(t, "unknown_custom_json_hook", hookResult.Types[0].Diagnostics[0].Code)
 	require.Equal(t, "HookModel.Hook", hookResult.Types[0].Diagnostics[0].FieldPath)
+	require.Equal(t, "production_hook.go", filepath.Base(hookResult.Types[0].Diagnostics[0].Source.File))
 
 	mismatchResult := Inspect(InspectRequest{TargetDir: target, TypeNames: []string{"WireMismatch"}})
 	require.Equal(t, StatusUnsupported, mismatchResult.Status)
@@ -121,6 +122,18 @@ func TestInspectProviderWithoutRenderOptionStillReportsLimits(t *testing.T) {
 
 	require.Equal(t, StatusUnsupported, result.Status)
 	require.Equal(t, "provider_codec_unavailable", result.Types[0].Diagnostics[0].Code)
+}
+
+func TestInspectDoesNotAdvertiseArbitraryExternalType(t *testing.T) {
+	repoRoot, err := filepath.Abs(filepath.Join("..", ".."))
+	require.NoError(t, err)
+	target := filepath.Join(repoRoot, "internal", "builder", "testfixtures", "inspection_nested")
+
+	result := Inspect(InspectRequest{TargetDir: target, TypeNames: []string{"ExternalModel"}})
+
+	require.Equal(t, StatusUnknown, result.Status)
+	require.Equal(t, "unknown_external_type", result.Types[0].Diagnostics[0].Code)
+	require.Equal(t, "ExternalModel.URL", result.Types[0].Diagnostics[0].FieldPath)
 }
 
 func diagnosticFieldPaths(result Result) []string {

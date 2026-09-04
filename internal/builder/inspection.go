@@ -73,6 +73,14 @@ func Inspect(args InspectArgs) (PackageInspection, error) {
 	if err != nil {
 		return PackageInspection{}, fmt.Errorf("scan package %s: %w", pkgs[0].PkgPath, err)
 	}
+	productionMethods, err := syntax.FindProductionJSONMethods(pkgs[0].Dir, nil)
+	if err != nil {
+		return PackageInspection{}, fmt.Errorf("inspect production JSON methods in %s: %w", pkgs[0].Dir, err)
+	}
+	productionHooks := make(map[string]token.Position)
+	for _, method := range productionMethods {
+		productionHooks[method.Receiver] = method.Position
+	}
 
 	registered := make(map[string]token.Position)
 	for _, method := range scan.SchemaMethods {
@@ -103,7 +111,7 @@ func Inspect(args InspectArgs) (PackageInspection, error) {
 			TypePath: scan.Pkg.PkgPath + "." + name,
 			Position: position,
 		}
-		root.Findings = inspectStaticShape(scan, name)
+		root.Findings = inspectStaticShape(scan, name, productionHooks)
 		mapped, mapErr := inspectRoot(pkgs[0], name)
 		if mapErr != nil {
 			if typed, ok := mapErr.(*InspectionError); ok {
@@ -151,13 +159,13 @@ func inspectRoot(pkg *decorator.Package, name string) (mapped SchemaBuilder, err
 }
 
 type staticInspector struct {
-	rootName string
-	findings []InspectionFinding
-	seen     map[syntax.TypeID]bool
+	findings       []InspectionFinding
+	seen           map[syntax.TypeID]bool
+	productionHook map[string]token.Position
 }
 
-func inspectStaticShape(scan syntax.ScanResult, rootName string) []InspectionFinding {
-	inspector := staticInspector{rootName: rootName, seen: make(map[syntax.TypeID]bool)}
+func inspectStaticShape(scan syntax.ScanResult, rootName string, productionHooks map[string]token.Position) []InspectionFinding {
+	inspector := staticInspector{seen: make(map[syntax.TypeID]bool), productionHook: productionHooks}
 	typeSpec, ok := scan.LocalNamedTypes[rootName]
 	if !ok {
 		return nil
@@ -178,8 +186,8 @@ func (i *staticInspector) walkNamed(scan syntax.ScanResult, spec syntax.TypeSpec
 		i.add("unsupported_recursive_type", "unsupported", "recursive types are outside the v1 contract", "replace the recursive edge with a nonrecursive supported representation", typePath, fieldPath, spec.Position())
 		return
 	}
-	if hasJSONHook(scan, spec.Name()) {
-		i.add("unknown_custom_json_hook", "unknown", "custom JSON hooks can change the wire shape and cannot be proven by static inspection", "verify the hook against the generated schema or use a documented supported shape", typePath, fieldPath, spec.Position())
+	if found, position := i.hasJSONHook(scan, spec.Name()); found {
+		i.add("unknown_custom_json_hook", "unknown", "custom JSON hooks can change the wire shape and cannot be proven by static inspection", "verify the hook against the generated schema or use a documented supported shape", typePath, fieldPath, position)
 	}
 	i.seen[id] = true
 	if structNode, ok := spec.Type().Expr().(*dst.StructType); ok {
@@ -311,24 +319,27 @@ func (i *staticInspector) walkExpr(scan syntax.ScanResult, expr dst.Expr, typePa
 	}
 }
 
-func hasJSONHook(scan syntax.ScanResult, name string) bool {
+func (i *staticInspector) hasJSONHook(scan syntax.ScanResult, name string) (bool, token.Position) {
+	if position, ok := i.productionHook[name]; ok {
+		return true, position
+	}
 	if scan.Pkg == nil || scan.Pkg.Package == nil || scan.Pkg.Types == nil {
-		return false
+		return false, token.Position{}
 	}
 	object := scan.Pkg.Types.Scope().Lookup(name)
 	if object == nil {
-		return false
+		return false, token.Position{}
 	}
 	for _, typ := range []types.Type{object.Type(), types.NewPointer(object.Type())} {
 		methods := types.NewMethodSet(typ)
 		for index := 0; index < methods.Len(); index++ {
 			switch methods.At(index).Obj().Name() {
 			case "MarshalJSON", "UnmarshalJSON":
-				return true
+				return true, scan.Pkg.Fset.Position(methods.At(index).Obj().Pos())
 			}
 		}
 	}
-	return false
+	return false, token.Position{}
 }
 
 func isByteElement(scan syntax.ScanResult, expr dst.Expr) bool {

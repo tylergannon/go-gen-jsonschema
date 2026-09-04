@@ -1,6 +1,9 @@
 package inspection_nested
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"net/url"
+)
 
 type Event interface {
 	isEvent()
@@ -39,11 +42,6 @@ type HookValue struct {
 	Value string `json:"value"`
 }
 
-func (h HookValue) MarshalJSON() ([]byte, error) {
-	type plain HookValue
-	return json.Marshal(plain(h))
-}
-
 type HookModel struct {
 	Hook HookValue `json:"hook"`
 }
@@ -62,6 +60,10 @@ type MyByte uint8
 
 type ProviderModel struct {
 	Value string `json:"value"`
+}
+
+type ExternalModel struct {
+	URL url.URL `json:"url"`
 }
 
 func ProviderSchema(string) json.Marshaler {

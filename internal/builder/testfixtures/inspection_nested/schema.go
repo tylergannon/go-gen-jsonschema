@@ -13,6 +13,7 @@ func (Parent) Schema() json.RawMessage        { panic("not implemented") }
 func (HookModel) Schema() json.RawMessage     { panic("not implemented") }
 func (WireMismatch) Schema() json.RawMessage  { panic("not implemented") }
 func (ProviderModel) Schema() json.RawMessage { panic("not implemented") }
+func (ExternalModel) Schema() json.RawMessage { panic("not implemented") }
 
 var (
 	_ = jsonschema.NewJSONSchemaMethod(
@@ -27,4 +28,5 @@ var (
 		ProviderModel.Schema,
 		jsonschema.WithFunction(ProviderModel{}.Value, ProviderSchema),
 	)
+	_ = jsonschema.NewJSONSchemaMethod(ExternalModel.Schema)
 )
