@@ -1,7 +1,6 @@
 # Issue #63 support inventory
 
-Snapshot: 2026-09-04, branch `codex/issue-63-cleanup` before the #63
-integration changes owned by the other workers. This is an inspectable audit,
+Snapshot: 2026-09-04, branch `codex/issue-63-cleanup` including the parent integration of the no-op CLI flag removal. This is an inspectable audit,
 not a replacement for the accepted contract in `docs/spec/v1.md`.
 
 ## Exported API classification
@@ -43,7 +42,7 @@ encoding, and excludes unsupported mappings explicitly.
 | `-pretty`, `-target`, `-no-changes`, `-force` | `gen-jsonschema/main.go` | Supported generation controls. |
 | `--validate`, `--formats` | `gen-jsonschema/main.go` | Supported selected validation/decoding controls. |
 | `new -out`, `-pkg`, `-methods`, `--validate`, `--formats`, `--generate` | `gen-jsonschema/main.go` | Supported scaffold controls. |
-| `-num-test-samples` | `gen-jsonschema/main.go` on the base snapshot; it has no effect | Remove before API freeze; documentation has been removed in this slice and the CLI owner removes the flag. |
+| `-num-test-samples` | `gen-jsonschema/main.go` on the base snapshot; it has no effect | Remove before API freeze; the flag, internal fields, and documentation are removed together; executable help and rejection checks pass. |
 
 ## Shipped examples
 
@@ -61,14 +60,15 @@ encoding, and excludes unsupported mappings explicitly.
 | Issue | Factual disposition for parent | Action here |
 | --- | --- | --- |
 | #10 | Open. Several checklist items concern generated `UnmarshalJSON` ownership and cross-package behavior; current selected local-owner coverage does not establish all of that issue's remaining scope. | Leave open; no issue mutation. |
-| #17 | Open but superseded by the explicit `Optional[T]`/`Nullable[T]` contract in #32; its legacy `jsonschema:"optional"` plus null proposal is not current support. | Leave open; do not advertise the legacy tag. |
-| #28 | Open but superseded by closed #32; its primitive-only and deprecation proposal is obsolete. | Leave open; route users to the current wrapper contract. |
+| #17 | Open but superseded by the explicit `Optional[T]`/`Nullable[T]` contract in #32; its legacy `jsonschema:"optional"` plus null proposal is not current support. | Close as superseded by #32; do not advertise the legacy tag. |
+| #28 | Open but superseded by closed #32; its primitive-only and deprecation proposal is obsolete. | Close as superseded by #32; route users to the current wrapper contract. |
 | #32 | Closed. Its explicit wrapper decisions and proof requirements are the current historical source for Optional/Nullable behavior. | Treat as resolved provenance; current v1 limits remain in `docs/spec/v1.md`. |
 
 ## Checks for this slice
 
 - `GOFLAGS=-p=2 go test ./...` passed before editing.
-- Focused docs checks must confirm no owned current documentation names
-  `num-test-samples`, `Tool`, `BuildTool`, `examples/v1`, or the obsolete
-  provider bug report as supported behavior.
-- Website checks apply if the blessed website toolchain is available.
+- Focused stale-claim review passed for owned current documentation.
+- `TestBasic/test7-entrypoints` includes the builder schema golden and passed.
+- Final `GOFLAGS=-p=2 go test ./...` passed after removing the no-op flag.
+- Built CLI help omits the removed flag and rejects it with exit 2; see `cli-proof.txt`.
+- `npm ci` and `npm run check` passed using the committed website lockfile.
