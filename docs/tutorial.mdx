@@ -29,14 +29,15 @@ go mod tidy
 ```
 
 The generator writes a schema file and a `jsonschema_gen.go` file with the
-requested schema accessor, validation method, and any selected decoding
+requested schema accessor, validation method, and any selected codec
 methods. Commit `schema.go`, `jsonschema_gen.go`, and the complete
 `jsonschema/` directory.
 
 Schema generation and codecs are separate. A schema describes accepted JSON;
-`ValidateJSON` checks a document against it. Generated decoding exists only for
-the documented supported shapes, and generated union decoding does not add
-discriminators when concrete values are marshaled.
+`ValidateJSON` checks a document against it. Generated codecs exist only for
+the documented supported shapes. Union codecs on the containing struct add
+field-specific discriminators; concrete values marshaled alone use their
+normal Go JSON encoding.
 
 ## Registration entry points
 
@@ -98,10 +99,11 @@ var _ = jsonschema.NewJSONSchemaMethod(
 ```
 
 A direct `[]I` field becomes an array whose `items` contain the union. The
-generated JSON decoder preserves value versus pointer implementations and
-assigns the destination only after successful decoding. If the decoded value
-must be marshaled back into schema-valid JSON, its concrete implementation
-must emit the registered discriminator itself. See
+generated owner `MarshalJSON` emits the registered discriminator when called
+through `json.Marshal(batch)` or `json.Marshal(&batch)`. Its decoder preserves
+value versus pointer implementations and replaces the destination only after
+successful decoding. An absent `Optional[I]` is omitted; nil required unions or
+union slices are rejected during encoding. See
 [`examples/sealed_interface_slices`](../examples/sealed_interface_slices).
 
 ## Providers and shared definitions

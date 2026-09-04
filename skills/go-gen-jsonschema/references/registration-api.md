@@ -65,7 +65,7 @@ var _ = jsonschema.NewJSONSchemaMethod(
 An interface-typed field becomes a union (`anyOf`) of its registered
 implementations, discriminated by a `"type"` property. A direct
 one-dimensional slice field (`[]PaymentMethod`) becomes an array whose `items`
-contains that union. The generator emits `UnmarshalJSON` by default. Pass
+contains that union. The generator emits owner `MarshalJSON` and `UnmarshalJSON` by default. Pass
 `--formats=both` to add `go.yaml.in/yaml/v4` entry points for scalar values and
 every slice element. YAML is translated into the JSON data model and decoded
 through the same implementation. Both syntaxes use `type` as the default
@@ -111,7 +111,7 @@ var _ = jsonschema.NewJSONSchemaMethod(
 ```
 
 `Impl` binds each implementation to a stable wire discriminator used by both
-the generated schema and interface unmarshaler. The earlier split form remains
+the generated schema and owner encode/decode methods. The earlier split form remains
 supported for compatibility:
 
 ```go
