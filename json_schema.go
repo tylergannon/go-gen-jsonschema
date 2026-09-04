@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
+	"sort"
 )
 
 type DataType string
@@ -164,9 +166,11 @@ func writeObjectSchema(buf *bytes.Buffer, s *ObjectSchema) error {
 			if i > 0 {
 				_, _ = buf.WriteRune(',')
 			}
-			_, _ = buf.WriteRune('"')
-			_, _ = buf.WriteString(prop.Key)
-			_, _ = buf.WriteRune('"')
+			keyBytes, err := json.Marshal(prop.Key)
+			if err != nil {
+				return err
+			}
+			_, _ = buf.Write(keyBytes)
 			_, _ = buf.WriteRune(':')
 			_, _ = buf.Write(propBytes)
 		}
@@ -230,8 +234,8 @@ type JSONSchema struct {
 	AdditionalProperties any                   `json:"additionalProperties,omitempty" yaml:"additionalProperties,omitempty"`
 	Definitions          map[string]SchemaNode `json:"$defs,omitzero" yaml:"$defs,omitempty"`
 	Const                any                   `json:"const,omitempty"` // Provide a const value
-	// Strict will make all properties required and additionalProperties: false if
-	// not already set. pplies only if Type = "object".
+	// Strict will make all properties required and set additionalProperties to
+	// false. Applies only if Type = "object".
 	Strict bool `json:"-" yaml:"-"`
 }
 
@@ -245,26 +249,22 @@ func (s JSONSchema) MarshalJSON() ([]byte, error) {
 		v.Properties = make(map[string]json.Marshaler)
 	}
 	if s.Strict && v.Type == Object {
-		if v.AdditionalProperties == nil {
-			v.AdditionalProperties = false
-		}
+		v.AdditionalProperties = false
 		v.Required = make([]string, 0, len(s.Properties))
 		for k := range s.Properties {
 			v.Required = append(v.Required, k)
 		}
+		sort.Strings(v.Required)
 	}
 	return json.Marshal(v)
 }
 
 var _ json.Marshaler = JSONSchema{}
 
+// ConstSchema returns a schema that accepts exactly val. Named values whose
+// underlying type is int or string retain their corresponding JSON Schema type.
 func ConstSchema[T ~int | ~string](val T, description string) SchemaNode {
-	var schemaType DataType
-	if _, ok := any(val).(int); ok {
-		schemaType = "integer"
-	} else {
-		schemaType = "string"
-	}
+	schemaType := primitiveSchemaType(val)
 
 	res := basicMarshaler{
 		"type":  schemaType,
@@ -276,13 +276,14 @@ func ConstSchema[T ~int | ~string](val T, description string) SchemaNode {
 	return res
 }
 
+// EnumSchema returns a schema that accepts one of vals. Named values whose
+// underlying type is int or string retain their corresponding JSON Schema type.
+// If vals is empty, the returned node reports an error when marshaled.
 func EnumSchema[T ~int | ~string](description string, vals ...T) SchemaNode {
-	var schemaType DataType
-	if _, ok := any(vals[0]).(int); ok {
-		schemaType = "integer"
-	} else {
-		schemaType = "string"
+	if len(vals) == 0 {
+		return schemaErrorNode{err: errors.New("EnumSchema requires at least one value")}
 	}
+	schemaType := primitiveSchemaType(vals[0])
 	res := basicMarshaler{
 		"type": schemaType,
 		"enum": vals,
@@ -291,6 +292,21 @@ func EnumSchema[T ~int | ~string](description string, vals ...T) SchemaNode {
 		res["description"] = description
 	}
 	return res
+}
+
+func primitiveSchemaType[T ~int | ~string](val T) DataType {
+	if reflect.TypeOf(val).Kind() == reflect.Int {
+		return Integer
+	}
+	return String
+}
+
+type schemaErrorNode struct {
+	err error
+}
+
+func (s schemaErrorNode) MarshalJSON() ([]byte, error) {
+	return nil, s.err
 }
 
 func ArraySchema(items SchemaNode, description string) SchemaNode {
