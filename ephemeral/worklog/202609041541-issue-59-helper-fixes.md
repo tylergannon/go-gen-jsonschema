@@ -1,0 +1,3 @@
+decision: Bound implementation to the public manual schema helpers in json_schema.go and regression tests; issue #59's parent-coordinated contract makes Strict override explicit AdditionalProperties/Required and empty EnumSchema return a marshal-time error while retaining its SchemaNode signature.
+friction: A concurrent repository-wide test run hit the OS open-file limit in another agent; this worktree's required baseline go test ./... completed successfully, and later suites should use bounded parallelism if resource pressure recurs.
+proof: go test . and go test ./... both passed after implementation; the full suite's test-run fixtures regenerated unrelated nested go.sum entries, which were removed before checkpointing.
