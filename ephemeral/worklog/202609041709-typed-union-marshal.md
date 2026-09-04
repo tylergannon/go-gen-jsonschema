@@ -12,3 +12,6 @@ friction: An idempotence check initially ran before the fixture module was tidie
 proof: Baseline `GOFLAGS=-p=2 go test ./...` passed at 71ceca8 before edits.
 proof: Dedicated generated consumer tests pass through internal/builder TestBasic, including encode, schema validation, decode, semantic checks, pointer/value calls, field-specific discriminator variants, escaping, custom hooks, nil/error cases, and a byte-identical second generation.
 proof: Focused owner collision and duplicate legacy discriminator tests pass and preserve pre-existing sentinel artifacts on failure.
+proof: After merging origin/main 7991124, `GOFLAGS=-p=2 go test ./...` passed at 616a2eb, including the updated optionality transcript and sealed-interface slice example.
+
+final_state: Branch `codex/issue-57-union-marshal` contains the selected-root constructor dependency aff9a36, production JSON method discovery ebb76d7, typed-union codec implementation a0f9f9b, and main integration 616a2eb. No push, PR, merge to main, or issue mutation was performed.
