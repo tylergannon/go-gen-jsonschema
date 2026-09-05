@@ -1,0 +1,8 @@
+{
+  "name": "rc5-install-smoke",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "typescript": "6.0.3"
+  }
+}
