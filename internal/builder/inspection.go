@@ -1,9 +1,11 @@
 package builder
 
 import (
+	"errors"
 	"fmt"
 	"go/token"
 	"go/types"
+	"os/exec"
 	"reflect"
 	"slices"
 	"strconv"
@@ -64,11 +66,19 @@ func (e *InspectionError) Unwrap() error { return e.Cause }
 func Inspect(args InspectArgs) (PackageInspection, error) {
 	buildContext, err := syntax.ResolveBuildContext()
 	if err != nil {
+		certainty := "unknown"
+		remedy := "fix GOENV or GOFLAGS and run inspection again"
+		var commandError *exec.Error
+		var exitError *exec.ExitError
+		if errors.As(err, &commandError) || errors.As(err, &exitError) {
+			certainty = "toolchain"
+			remedy = "ensure the Go toolchain is available and go env succeeds, then run inspection again"
+		}
 		return PackageInspection{}, &InspectionError{
 			Code:      "build_context_unavailable",
-			Certainty: "unknown",
+			Certainty: certainty,
 			Message:   fmt.Sprintf("could not resolve the effective Go build context: %v", err),
-			Remedy:    "fix GOENV or GOFLAGS and run inspection again",
+			Remedy:    remedy,
 			Cause:     err,
 		}
 	}

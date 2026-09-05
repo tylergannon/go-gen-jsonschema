@@ -109,6 +109,8 @@ func classificationFromCertainty(certainty string) Classification {
 		return ClassificationInvalidRequest
 	case "internal":
 		return ClassificationInternal
+	case "toolchain":
+		return ClassificationToolchain
 	default:
 		return ClassificationUnknown
 	}

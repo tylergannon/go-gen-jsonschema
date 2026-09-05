@@ -90,6 +90,19 @@ func TestInspectJSONReportsUnresolvedBuildContextAsUnknown(t *testing.T) {
 	require.Equal(t, inspection.ClassificationUnknown, result.Diagnostics[0].Classification)
 }
 
+func TestInspectJSONReportsUnavailableGoAsToolchainFailure(t *testing.T) {
+	t.Setenv("PATH", t.TempDir())
+	var stdout, stderr bytes.Buffer
+	exitCode := runAgentCommand([]string{"inspect", "--json", "Root"}, &stdout, &stderr)
+	require.Equal(t, 1, exitCode)
+	require.Empty(t, stderr.String())
+	var result inspection.Result
+	require.NoError(t, json.Unmarshal(stdout.Bytes(), &result))
+	require.Equal(t, inspection.StatusError, result.Status)
+	require.Equal(t, "build_context_unavailable", result.Diagnostics[0].Code)
+	require.Equal(t, inspection.ClassificationToolchain, result.Diagnostics[0].Classification)
+}
+
 func TestInspectJSONUsesCustomTagsFromSavedGoEnv(t *testing.T) {
 	repoRoot, err := filepath.Abs(filepath.Join(".."))
 	require.NoError(t, err)
