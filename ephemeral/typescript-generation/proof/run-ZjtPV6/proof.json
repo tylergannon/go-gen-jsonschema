@@ -1,0 +1,7 @@
+{
+  "head": "f7cec98186bfbe1a06f38380f6656cc503725ffc",
+  "workingTree": "M README.md\n M gen-jsonschema/main.go\n M gen-jsonschema/main_test.go\n M internal/builder/builder.go\n?? .github/workflows/typescript.yml\n?? ephemeral/typescript-generation/\n?? ephemeral/worklog/20260904-ts-adapter.md\n?? ephemeral/worklog/20260904-ts-cli.md\n?? ephemeral/worklog/20260904-typescript-generation.md\n?? internal/builder/typegrammar.go\n?? internal/builder/typescript_output.go\n?? internal/builder/typescript_output_test.go\n?? internal/typescript/\n?? tests/",
+  "typescript": "6.0.3",
+  "go": "1.27.1",
+  "claims": []
+}

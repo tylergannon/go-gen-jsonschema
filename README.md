@@ -342,6 +342,40 @@ Only direct one-dimensional slices are supported. Fixed arrays, nested slices,
 named slice containers, `Optional[[]I]`, and `Nullable[[]I]` fail generation.
 An `Optional[I]` scalar is supported; `Nullable[I]` is not.
 
+## TypeScript declarations
+
+Pass `--typescript <directory>` to generate structural TypeScript declarations
+in `<directory>/types.ts` alongside the ordinary JSON Schema and Go outputs.
+Relative directories are resolved from the directory where the command is
+invoked; absolute paths also work.
+
+```go
+//go:generate go tool gen-jsonschema --typescript web/src/generated
+```
+
+Add `--typescript-barrel` to also generate `index.ts` with explicit type-only
+exports from `./types.js`:
+
+```ts
+import type { Person } from "./generated/index.js";
+```
+
+The generator only replaces files carrying its generated-file header. It will
+not overwrite an application-owned `types.ts` or `index.ts`. If a later run
+omits `--typescript-barrel`, it removes a previously generated `index.ts` while
+preserving an application-owned one. `--no-changes` checks these requested
+artifacts for missing or stale content as well as checking JSON Schemas.
+
+These declarations describe the admitted JSON structure for static TypeScript
+checking. They do not provide runtime decoding, validation, or definitive
+Go/TypeScript transport semantics; [issue #71](https://github.com/tylergannon/go-gen-jsonschema/issues/71)
+tracks that proof. Time values remain strings and numeric fields become
+`number`; TypeScript does not enforce Go integer ranges or JSON Schema formats.
+Enum literals that cannot be represented exactly are rejected. Unsupported
+static shapes, including runtime schema providers and custom JSON/text codecs,
+fail with a diagnostic. Generation itself has no Node, npm, or JavaScript-engine
+dependency.
+
 ## 🛡️ Validation
 
 Pass `--validate` to generation (and to `new`, so stubs match) and every
@@ -370,7 +404,8 @@ values).
 ## 🔁 Keeping schemas in sync (hooks & CI)
 
 Generation supports a check mode that fails — writing nothing — when
-regeneration would change any schema: `-no-changes`, or the env var
+regeneration would change any schema or requested TypeScript artifact:
+`-no-changes`, or the env var
 `JSONSCHEMA_NO_CHANGES=1` (which flows through `go generate` without editing
 directives).
 
@@ -419,10 +454,12 @@ your build-tagged `schema.go`.
 gen-jsonschema [gen] [options]     # generate (default subcommand)
   -target DIR          package to process (default: current directory)
   -pretty              pretty-print the .json output
-  -no-changes          fail, writing nothing, if regeneration would change any schema
+  -no-changes          fail, writing nothing, if schemas or requested TypeScript output would change
   -force               rewrite even when unchanged (incompatible with -no-changes)
   --validate           generate validation methods for the selected formats
   --formats MODE       decoding and validation: json (default) or both
+  --typescript DIR     generate structural TypeScript declarations in DIR
+  --typescript-barrel  also generate index.ts type-only exports (requires --typescript)
 
 gen-jsonschema new [options]       # scaffold schema.go
   -out FILE            output path ("" or "--" = stdout)

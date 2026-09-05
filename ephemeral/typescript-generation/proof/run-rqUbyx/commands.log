@@ -1,0 +1,9 @@
+$ /opt/homebrew/Cellar/go/1.27.1/libexec/bin/go build -o /Users/tyler/src/.worktrees/go-gen-jsonschema/typescript-generation/ephemeral/typescript-generation/proof/run-rqUbyx/gen-jsonschema ./gen-jsonschema
+exit=0
+
+$ /opt/homebrew/Cellar/go/1.27.1/libexec/bin/go mod tidy
+exit=0
+
+$ /Users/tyler/src/.worktrees/go-gen-jsonschema/typescript-generation/ephemeral/typescript-generation/proof/run-rqUbyx/gen-jsonschema gen --target /Users/tyler/src/.worktrees/go-gen-jsonschema/typescript-generation/ephemeral/typescript-generation/proof/run-rqUbyx/consumer --typescript consumer/generated --typescript-barrel
+exit=1
+2026/09/04 17:51:00 failed to format code: 6:1: expected 'IDENT', found 'import'

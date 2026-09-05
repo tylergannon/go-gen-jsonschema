@@ -4,8 +4,8 @@
 // A definition describes a Go type's JSON value structure, retaining numeric
 // kinds, pointer/value identity, collection shape, and field-local registrations.
 // Source loading must resolve aliases, embedding/field selection, registrations,
-// and JSON names before constructing this model. The existing builder has not
-// yet been adapted to produce it.
+// and JSON names before constructing this model. The builder's TypeDefinitions
+// adapter produces this model for the TypeScript backend.
 //
 // Types form a finite DAG. References may share definitions but may not introduce
 // recursion. Objects are closed, ordered sets of properties. Ordinary values are

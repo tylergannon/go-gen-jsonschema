@@ -1,12 +1,35 @@
 package main
 
 import (
+	"flag"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	"github.com/tylergannon/go-gen-jsonschema/internal/builder"
 )
+
+func TestGenTypeScriptFlags(t *testing.T) {
+	t.Parallel()
+
+	flags, options := newGenFlagSet(flag.ContinueOnError)
+	err := flags.Parse([]string{
+		"--typescript", "web/generated",
+		"--typescript-barrel",
+	})
+	require.NoError(t, err)
+	require.Equal(t, "web/generated", options.typeScriptDir)
+	require.True(t, options.typeScriptBarrel)
+}
+
+func TestGenTypeScriptFlagsDefaultToDisabled(t *testing.T) {
+	t.Parallel()
+
+	flags, options := newGenFlagSet(flag.ContinueOnError)
+	require.NoError(t, flags.Parse(nil))
+	require.Empty(t, options.typeScriptDir)
+	require.False(t, options.typeScriptBarrel)
+}
 
 func TestParseUnmarshalFormats(t *testing.T) {
 	t.Parallel()

@@ -55,28 +55,33 @@ func printGlobalHelp() {
 	fmt.Println("\nRun '[subcommand] --help' for more details.")
 }
 
-func handleGen(firstArg int) {
-	// Define the --pretty flag
-	var (
-		genCmd    = flag.NewFlagSet("gen", flag.ExitOnError)
-		pretty    = genCmd.Bool("pretty", false, "Enable pretty output")
-		target    = genCmd.String("target", "", "Path to target package (default to local wd)")
-		noChanges = genCmd.Bool("no-changes", false, "Fail if any schema changes are detected")
-		force     = genCmd.Bool("force", false, "Force regeneration of schemas even if no changes are detected")
-		validate  = genCmd.Bool("validate", false, "Generate schema validation methods for the selected formats")
-		formats   = genCmd.String("formats", "json", "Generated decoding and validation formats: json or both")
-		err       error
-	)
+type genOptions struct {
+	pretty           bool
+	target           string
+	noChanges        bool
+	force            bool
+	validate         bool
+	formats          string
+	typeScriptDir    string
+	typeScriptBarrel bool
+}
 
-	if *target == "" {
-		if *target, err = os.Getwd(); err != nil {
-			log.Fatal(err)
-		}
-	} else if st, err := os.Stat(*target); err != nil {
-		log.Fatal(err)
-	} else if !st.IsDir() {
-		log.Fatalf("%s is not a directory", *target)
-	}
+func newGenFlagSet(errorHandling flag.ErrorHandling) (*flag.FlagSet, *genOptions) {
+	options := &genOptions{}
+	genCmd := flag.NewFlagSet("gen", errorHandling)
+	genCmd.BoolVar(&options.pretty, "pretty", false, "Enable pretty output")
+	genCmd.StringVar(&options.target, "target", "", "Path to target package (default to local wd)")
+	genCmd.BoolVar(&options.noChanges, "no-changes", false, "Fail if any schema or requested TypeScript output changes are detected")
+	genCmd.BoolVar(&options.force, "force", false, "Force regeneration of schemas and requested TypeScript output even if no changes are detected")
+	genCmd.BoolVar(&options.validate, "validate", false, "Generate schema validation methods for the selected formats")
+	genCmd.StringVar(&options.formats, "formats", "json", "Generated decoding and validation formats: json or both")
+	genCmd.StringVar(&options.typeScriptDir, "typescript", "", "Generate structural TypeScript declarations in this directory")
+	genCmd.BoolVar(&options.typeScriptBarrel, "typescript-barrel", false, "Generate an index.ts type-only export (requires --typescript)")
+	return genCmd, options
+}
+
+func handleGen(firstArg int) {
+	genCmd, options := newGenFlagSet(flag.ExitOnError)
 
 	// Check if --help was requested
 	if len(os.Args) > 2 && os.Args[2] == "--help" {
@@ -86,24 +91,37 @@ func handleGen(firstArg int) {
 		return
 	}
 	_ = genCmd.Parse(os.Args[firstArg:])
-	unmarshalFormats, err := parseUnmarshalFormats(*formats)
+	if options.target == "" {
+		var err error
+		if options.target, err = os.Getwd(); err != nil {
+			log.Fatal(err)
+		}
+	} else if st, err := os.Stat(options.target); err != nil {
+		log.Fatal(err)
+	} else if !st.IsDir() {
+		log.Fatalf("%s is not a directory", options.target)
+	}
+
+	unmarshalFormats, err := parseUnmarshalFormats(options.formats)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Check environment variable
-	*noChanges = *noChanges || os.Getenv("JSONSCHEMA_NO_CHANGES") != ""
+	options.noChanges = options.noChanges || os.Getenv("JSONSCHEMA_NO_CHANGES") != ""
 
-	if *force && *noChanges {
+	if options.force && options.noChanges {
 		log.Fatal("Cannot use --force and --no-changes together")
 	}
 
 	if err = builder.Run(builder.BuilderArgs{
-		TargetDir:        *target,
-		Pretty:           *pretty,
-		NoChanges:        *noChanges,
-		Force:            *force,
-		Validate:         *validate,
+		TargetDir:        options.target,
+		Pretty:           options.pretty,
+		NoChanges:        options.noChanges,
+		Force:            options.force,
+		Validate:         options.validate,
+		TypeScriptDir:    options.typeScriptDir,
+		TypeScriptBarrel: options.typeScriptBarrel,
 		UnmarshalFormats: unmarshalFormats,
 	}); err != nil {
 		log.Fatal(err)

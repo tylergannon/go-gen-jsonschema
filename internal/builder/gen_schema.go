@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"go/constant"
 	"go/token"
 	"go/types"
 	"io"
@@ -459,55 +460,20 @@ func (s SchemaBuilder) HasNonRenderedTypes() bool {
 }
 
 // discoverEnum auto-discovers an enum from const declarations in the package
-func (s SchemaBuilder) discoverEnum(typeName string, scanRes syntax.ScanResult) *syntax.EnumSet {
+func (s SchemaBuilder) discoverEnum(typeName string, scanRes syntax.ScanResult) (*syntax.EnumSet, error) {
 	// Check if the type exists
 	typeSpec, ok := scanRes.LocalNamedTypes[typeName]
 	if !ok {
-		return nil
+		return nil, nil
 	}
-
-	// Create a new EnumSet
-	enumSet := &syntax.EnumSet{
-		TypeSpec: typeSpec,
+	enumSet, err := syntax.ResolveEnum(typeSpec)
+	if err != nil {
+		return nil, err
 	}
-
-	// Find all const declarations of this type in the decorated package files
-	for _, file := range scanRes.Pkg.Syntax {
-		for _, decl := range file.Decls {
-			genDecl, ok := decl.(*dst.GenDecl)
-			if !ok || genDecl.Tok != token.CONST {
-				continue
-			}
-
-			var currentType string
-			for _, spec := range genDecl.Specs {
-				valueSpec, ok := spec.(*dst.ValueSpec)
-				if !ok {
-					continue
-				}
-
-				// Check if this const has an explicit type
-				if valueSpec.Type != nil {
-					if ident, ok := valueSpec.Type.(*dst.Ident); ok {
-						currentType = ident.Name
-					}
-				}
-
-				// If this const is of our target type, add it to the enum
-				if currentType == typeName {
-					// Wrap the valueSpec in syntax.ValueSpec
-					wrapped := syntax.NewValueSpec(genDecl, valueSpec, scanRes.Pkg, file)
-					enumSet.Values = append(enumSet.Values, wrapped)
-				}
-			}
-		}
-	}
-
-	// Only return if we found values
 	if len(enumSet.Values) > 0 {
-		return enumSet
+		return enumSet, nil
 	}
-	return nil
+	return nil, nil
 }
 
 func (s SchemaBuilder) imports() *ImportMap {
@@ -640,112 +606,85 @@ func (s SchemaBuilder) mapEnumType(enum *syntax.EnumSet, seen syntax.SeenTypes) 
 		return err
 	}
 
-	// Determine if this is a string or int based enum
-	isIntEnum := false
-
-	// Check if there are any values to examine
-	if len(enum.Values) > 0 && len(enum.Values[0].Value().Values) > 0 {
-		// Check if the first value is an iota or integer
-		switch enum.Values[0].Value().Values[0].(type) {
-		case *dst.Ident: // iota
-			isIntEnum = true
-		}
+	schema, err := renderEnum(enum, false, enum.TypeSpec.Comments(), true, enum.TypeSpec.ID())
+	if err != nil {
+		return err
 	}
-
-	var (
-		sb            strings.Builder
-		countComments int
-	)
-
-	if isIntEnum {
-		// Handle integer enum
-		propType := PropertyNode[int]{
-			TypeID_: enum.TypeSpec.ID(),
-			Typ:     "integer",
-		}
-
-		for i, opt := range enum.Values {
-			var (
-				intValue int
-				comment  = opt.Comments()
-			)
-
-			// For iota enums, use the index as the value
-			intValue = i
-
-			if len(comment) > 0 {
-				if countComments > 0 {
-					sb.WriteString("\n\n")
-				}
-				countComments++
-				fmt.Fprintf(&sb, "%d", intValue)
-				sb.WriteString(": \n")
-				sb.WriteString(comment)
-			}
-			propType.Enum = append(propType.Enum, intValue)
-		}
-
-		if len(enum.TypeSpec.Comments()) > 0 {
-			propType.Desc = enum.TypeSpec.Comments()
-			if sb.Len() > 0 {
-				propType.Desc = propType.Desc + "\n\n" + sb.String()
-			}
-		} else if sb.Len() > 0 {
-			propType.Desc = sb.String()
-		}
-		s.AddSchema(enum.TypeSpec.ID(), propType)
-	} else {
-		// Handle string enum
-		propType := PropertyNode[string]{
-			TypeID_: enum.TypeSpec.ID(),
-			Typ:     "string",
-		}
-
-		for i, opt := range enum.Values {
-			var (
-				newValue string
-				comment  = opt.Comments()
-			)
-
-			// Handle different types of enum values
-			if len(opt.Value().Values) > 0 {
-				switch v := opt.Value().Values[0].(type) {
-				case *dst.BasicLit:
-					// String literal enum value
-					newValue = strings.Trim(v.Value, "\"")
-				default:
-					// Shouldn't happen for string enums, but fallback to index
-					newValue = fmt.Sprintf("%d", i)
-				}
-			} else {
-				// No explicit value, shouldn't happen for string enums
-				newValue = fmt.Sprintf("%d", i)
-			}
-
-			if len(comment) > 0 {
-				if countComments > 0 {
-					sb.WriteString("\n\n")
-				}
-				countComments++
-				sb.WriteString(newValue)
-				sb.WriteString(": \n")
-				sb.WriteString(comment)
-			}
-			propType.Enum = append(propType.Enum, newValue)
-		}
-
-		if len(enum.TypeSpec.Comments()) > 0 {
-			propType.Desc = enum.TypeSpec.Comments()
-			if sb.Len() > 0 {
-				propType.Desc = propType.Desc + "\n\n" + sb.String()
-			}
-		} else if sb.Len() > 0 {
-			propType.Desc = sb.String()
-		}
-		s.AddSchema(enum.TypeSpec.ID(), propType)
-	}
-
+	s.AddSchema(enum.TypeSpec.ID(), schema)
 	return nil
+}
+
+func renderEnum(enum *syntax.EnumSet, names bool, description string, withDescriptions bool, typeID syntax.TypeID) (JSONSchema, error) {
+	if len(enum.Values) == 0 {
+		return nil, fmt.Errorf("enum %s at %s has no constants of its exact named type", enum.TypeSpec.Name(), enum.TypeSpec.Position())
+	}
+	object := enum.TypeSpec.Pkg().Types.Scope().Lookup(enum.TypeSpec.Name())
+	basic, ok := object.Type().Underlying().(*types.Basic)
+	if !ok {
+		return nil, fmt.Errorf("enum %s at %s has unsupported underlying type %s", enum.TypeSpec.Name(), enum.TypeSpec.Position(), object.Type().Underlying())
+	}
+	if basic.Info()&types.IsString != 0 {
+		values := make([]string, 0, len(enum.Values))
+		for _, member := range enum.Values {
+			if member.Value.Kind() != constant.String {
+				return nil, fmt.Errorf("enum %s constant %s at %s is not an exact string", enum.TypeSpec.Name(), member.Name, member.Source)
+			}
+			values = append(values, constant.StringVal(member.Value))
+		}
+		return PropertyNode[string]{Typ: "string", Enum: values, Desc: enumDescription(description, enum.Values, values, withDescriptions), TypeID_: typeID}, nil
+	}
+	if basic.Info()&types.IsInteger == 0 {
+		return nil, fmt.Errorf("enum %s at %s must have a string or integer underlying type", enum.TypeSpec.Name(), enum.TypeSpec.Position())
+	}
+	if names {
+		values := make([]string, 0, len(enum.Values))
+		seen := make(map[string]string, len(enum.Values))
+		for _, member := range enum.Values {
+			exact := member.Value.ExactString()
+			if previous, duplicate := seen[exact]; duplicate {
+				return nil, fmt.Errorf("enum %s has ambiguous string-mode constants %s and %s with value %s", enum.TypeSpec.Name(), previous, member.Name, exact)
+			}
+			seen[exact] = member.Name
+			values = append(values, member.Name)
+		}
+		return PropertyNode[string]{Typ: "string", Enum: values, Desc: enumDescription(description, enum.Values, values, withDescriptions), TypeID_: typeID}, nil
+	}
+	values := make([]json.Number, 0, len(enum.Values))
+	labels := make([]string, 0, len(enum.Values))
+	for _, member := range enum.Values {
+		if member.Value.Kind() != constant.Int {
+			return nil, fmt.Errorf("enum %s constant %s at %s is not an exact integer", enum.TypeSpec.Name(), member.Name, member.Source)
+		}
+		exact := member.Value.ExactString()
+		values = append(values, json.Number(exact))
+		labels = append(labels, exact)
+	}
+	return PropertyNode[json.Number]{Typ: "integer", Enum: values, Desc: enumDescription(description, enum.Values, labels, withDescriptions), TypeID_: typeID}, nil
+}
+
+func enumDescription(base string, members []syntax.EnumValue, wireValues []string, enabled bool) string {
+	if !enabled {
+		return ""
+	}
+	var comments strings.Builder
+	for i, member := range members {
+		if member.Description == "" {
+			continue
+		}
+		if comments.Len() > 0 {
+			comments.WriteString("\n\n")
+		}
+		comments.WriteString(wireValues[i])
+		comments.WriteString(": \n")
+		comments.WriteString(member.Description)
+	}
+	if base != "" && comments.Len() > 0 {
+		return base + "\n\n" + comments.String()
+	}
+	if base != "" {
+		return base
+	}
+	return comments.String()
 }
 
 // mapType
@@ -1303,55 +1242,17 @@ func (s SchemaBuilder) renderStructField(owner syntax.StructType, f syntax.Struc
 				enumSet, okE := scanRes.Constants[ident.Name]
 				if !okE {
 					// Auto-discover enum from const declarations
-					enumSet = s.discoverEnum(ident.Name, scanRes)
+					enumSet, err = s.discoverEnum(ident.Name, scanRes)
+					if err != nil {
+						return nil, err
+					}
 					if enumSet == nil {
 						continue
 					}
 				}
-
-				// Determine if the enum is string-based by checking the type declaration
-				isStringEnum := false
-				// Check the underlying type of the enum
-				if typeExpr := enumSet.TypeSpec.Derive(); typeExpr.Excerpt != nil {
-					if ident, ok := typeExpr.Excerpt.(*dst.Ident); ok && ident.Name == "string" {
-						isStringEnum = true
-					}
-				}
-
-				// Use string mode if it's a string-based enum or WithStringerEnum was used
-				if isStringEnum || cfg.UseStringer {
-					var vals []string
-					for _, v := range enumSet.Values {
-						var value string
-						if isStringEnum && len(v.Value().Values) > 0 {
-							// Get the actual string value
-							if lit, ok := v.Value().Values[0].(*dst.BasicLit); ok {
-								value = strings.Trim(lit.Value, "\"")
-							} else {
-								value = v.Value().Names[0].Name
-							}
-						} else {
-							// For iota enums with string mode, use the constant name
-							value = v.Value().Names[0].Name
-						}
-						vals = append(vals, value)
-					}
-					schema = PropertyNode[string]{Typ: "string", Enum: vals, TypeID_: f.ID()}
-				} else {
-					var vals []int
-					iotaVal := 0
-					for _, v := range enumSet.Values {
-						if len(v.Value().Values) > 0 {
-							if bl, ok := v.Value().Values[0].(*dst.BasicLit); ok && bl.Kind == token.INT {
-								if n, err := strconv.Atoi(bl.Value); err == nil {
-									iotaVal = n
-								}
-							}
-						}
-						vals = append(vals, iotaVal)
-						iotaVal++
-					}
-					schema = PropertyNode[int]{Typ: "integer", Enum: vals, TypeID_: f.ID()}
+				schema, err = renderEnum(enumSet, cfg.UseStringer, "", false, f.ID())
+				if err != nil {
+					return nil, fmt.Errorf("field %s.%s enum: %w", owner.Name(), goField.Name, err)
 				}
 				specialSource = "enums"
 				break
@@ -1418,6 +1319,8 @@ func (s SchemaBuilder) renderStructField(owner syntax.StructType, f syntax.Struc
 func nullableSchema(schema JSONSchema) (JSONSchema, error) {
 	switch value := schema.(type) {
 	case PropertyNode[int]:
+		return nullableProperty(value)
+	case PropertyNode[json.Number]:
 		return nullableProperty(value)
 	case PropertyNode[string]:
 		return nullableProperty(value)
