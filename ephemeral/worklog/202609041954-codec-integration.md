@@ -96,3 +96,31 @@ the eventual PR update can fast-forward and does not discard published history.
   `ephemeral/pr-74-combined-title.txt` and
   `ephemeral/pr-74-combined-body.md`; permanent evidence links use artifact
   commit `dbcc9f2` and the exact validated candidate `5e1040a`.
+
+## Review convergence
+
+- Published clean head `17c1377` to PR #74 by non-force fast-forward from its
+  prior `6207608` head. The mandatory pre-push full Go suite passed, the combined
+  title/body were applied, and the PR was marked ready.
+- Independent adversarial review found one actual bug: two sibling anonymous
+  embeddings could each contribute a registered union field with the same Go
+  field name/JSON property. Generation succeeded, then emitted duplicate
+  `json.RawMessage` wrapper fields that did not compile. The review is retained
+  at `ephemeral/reviews/202609042006-adversarial-review-round-01.md`.
+- Adjudication: reject this exceptional ambiguous adapted-field composition
+  during shared builder model construction. This is before schema or Go/TS
+  artifact rendering, protects CLI and direct builder callers, and preserves
+  the accepted explicit owner-wrapper architecture without adding a generalized
+  field serializer.
+- Added `validateOwnerCodecInterfaceFields`, which reports both conflicting
+  embedding access paths and the shared Go field name or JSON property. The
+  regression uses `Owner.Left.Value` and `Owner.Right.Value`, asserts the clear
+  diagnostic, and proves preexisting schema/generated-source sentinels remain
+  byte-identical. Existing direct-field shadowing remains accepted.
+- Focused uncached regression and supported-shadow tests passed. Final
+  `go generate ./...`, clean diff, `JSONSCHEMA_NO_CHANGES=1 go generate ./...`,
+  clean diff, and `GOFLAGS='-count=1 -p=2' go test ./...` passed.
+- Infrastructure friction: the first attempt to start the final gate and even a
+  following `git status` hit host-level `Too many open files` process-creation
+  failures. No check started. After resource pressure cleared, the single final
+  sequence above completed successfully.

@@ -84,6 +84,33 @@ var _ = jsonschema.NewJSONSchemaMethod(Embedded.Schema)
 	assertOwnerCollisionSentinels(t, targetDir)
 }
 
+func TestOwnerCodecRejectsAmbiguousPromotedInterfaceFieldsBeforeWriting(t *testing.T) {
+	targetDir := writeOwnerCollisionFixture(t, "")
+	require.NoError(t, os.WriteFile(filepath.Join(targetDir, "types.go"), []byte(`package fixture
+
+type Value interface{ value() }
+type First struct{}
+func (First) value() {}
+
+type Left struct {
+	Value Value `+"`json:\"value\"`"+`
+}
+
+type Right struct {
+	Value Value `+"`json:\"value\"`"+`
+}
+
+type Owner struct {
+	Left
+	Right
+}
+`), 0o644))
+
+	err := Run(BuilderArgs{TargetDir: targetDir})
+	require.ErrorContains(t, err, `promoted registered interface fields Owner.Left.Value and Owner.Right.Value are ambiguous because they share Go field name "Value"`)
+	assertOwnerCollisionSentinels(t, targetDir)
+}
+
 func TestOwnerCodecRejectsForeignEmbeddedGeneratedOwnerBeforeWriting(t *testing.T) {
 	cwd, err := os.Getwd()
 	require.NoError(t, err)

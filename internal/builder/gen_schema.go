@@ -954,6 +954,8 @@ func (s SchemaBuilder) mapNamedType(t syntax.TypeID, seen syntax.SeenTypes) erro
 		}
 		if props, err := s.resolveLocalInterfaceProps(syntax.NewStructType(structType, typeSpec), nil, nil); err != nil {
 			return err
+		} else if err := validateOwnerCodecInterfaceFields(t.TypeName, props); err != nil {
+			return err
 		} else if len(props) > 0 {
 			s.customTypes[t.TypeName] = props
 		}
@@ -2143,6 +2145,38 @@ func (s SchemaBuilder) resolveLocalInterfaceProps(t syntax.StructType, seenProps
 		}
 	}
 	return props, nil
+}
+
+func validateOwnerCodecInterfaceFields(owner string, props []InterfaceProp) error {
+	goFields := make(map[string]string, len(props))
+	jsonFields := make(map[string]string, len(props))
+	for _, prop := range props {
+		path := prop.Accessor(owner)
+		goName := prop.FieldNames()
+		if previous, exists := goFields[goName]; exists {
+			return fmt.Errorf(
+				"cannot generate owner codec for %s: promoted registered interface fields %s and %s are ambiguous because they share Go field name %q",
+				owner,
+				previous,
+				path,
+				goName,
+			)
+		}
+		goFields[goName] = path
+
+		jsonName := prop.JSONName()
+		if previous, exists := jsonFields[jsonName]; exists {
+			return fmt.Errorf(
+				"cannot generate owner codec for %s: promoted registered interface fields %s and %s are ambiguous because they share JSON property %q",
+				owner,
+				previous,
+				path,
+				jsonName,
+			)
+		}
+		jsonFields[jsonName] = path
+	}
+	return nil
 }
 
 func validateInterfaceDiscriminators(owner, fieldName string, field registeredInterfaceField) error {
