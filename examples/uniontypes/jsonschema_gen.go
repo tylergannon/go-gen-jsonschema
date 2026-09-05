@@ -206,13 +206,13 @@ func __jsonMarshal__uniontypes__Shape__74d40a1a75c7fac5a60007269a3ee40c10f112332
 	switch object := value.(type) {
 	case Circle:
 		discriminator = "Circle"
-		data, err = json.Marshal(object)
+		data, err = json.Marshal(&object)
 	case Rectangle:
 		discriminator = "Rectangle"
-		data, err = json.Marshal(object)
+		data, err = json.Marshal(&object)
 	case Triangle:
 		discriminator = "Triangle"
-		data, err = json.Marshal(object)
+		data, err = json.Marshal(&object)
 	default:
 		return nil, fmt.Errorf("unregistered dynamic implementation %T for Shape", value)
 	}
@@ -274,10 +274,10 @@ func __jsonMarshal__uniontypes__PaymentMethod__a70c5746d90b3a75a2524c2e109425ff8
 	switch object := value.(type) {
 	case CreditCard:
 		discriminator = "CreditCard"
-		data, err = json.Marshal(object)
+		data, err = json.Marshal(&object)
 	case BankTransfer:
 		discriminator = "BankTransfer"
-		data, err = json.Marshal(object)
+		data, err = json.Marshal(&object)
 	case *DigitalWallet:
 		if object == nil {
 			return nil, fmt.Errorf("cannot marshal typed nil registered implementation %T for PaymentMethod", value)

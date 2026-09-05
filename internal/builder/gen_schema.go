@@ -453,6 +453,17 @@ func (s SchemaBuilder) IsSpecialType(typeName string) bool {
 func (s SchemaBuilder) validateOwnerCodecMethods() error {
 	owners := sortedCustomTypeNames(s.customTypes)
 	for _, owner := range owners {
+		foreignEmbedded, err := s.findForeignEmbeddedGeneratedCodec(owner)
+		if err != nil {
+			return err
+		}
+		if foreignEmbedded != "" {
+			return fmt.Errorf(
+				"cannot generate owner codec for %s: foreign embedded type %s has generated production JSON codecs and would promote a competing MarshalJSON",
+				owner,
+				foreignEmbedded,
+			)
+		}
 		embeddedOwner, err := s.findEmbeddedOwnerCodec(owner, map[string]bool{})
 		if err != nil {
 			return err
@@ -502,6 +513,51 @@ func (s SchemaBuilder) validateOwnerCodecMethods() error {
 		}
 	}
 	return nil
+}
+
+func (s SchemaBuilder) findForeignEmbeddedGeneratedCodec(owner string) (string, error) {
+	typeSpec, ok := s.Scan.LocalNamedTypes[owner]
+	if !ok {
+		return "", nil
+	}
+	structExpr, ok := typeSpec.Type().Expr().(*dst.StructType)
+	if !ok {
+		return "", nil
+	}
+	return s.findForeignEmbeddedGeneratedCodecIn(
+		syntax.NewStructType(structExpr, typeSpec),
+		map[syntax.TypeID]bool{},
+	)
+}
+
+func (s SchemaBuilder) findForeignEmbeddedGeneratedCodecIn(current syntax.StructType, seen map[syntax.TypeID]bool) (string, error) {
+	if seen[current.ID()] {
+		return "", nil
+	}
+	seen[current.ID()] = true
+	for _, field := range current.Fields() {
+		if !field.Embedded() {
+			continue
+		}
+		embedded, err := s.resolveEmbeddedType(field.TypeExpr, nil)
+		if err != nil {
+			return "", err
+		}
+		if embedded.Pkg().PkgPath != s.Scan.Pkg.PkgPath {
+			methods, err := syntax.FindGeneratedJSONMethods(embedded.Pkg().Dir, []string{embedded.Name()})
+			if err != nil {
+				return "", fmt.Errorf("discovering generated JSON methods for embedded type %s.%s: %w", embedded.Pkg().Name, embedded.Name(), err)
+			}
+			if len(methods) > 0 {
+				return embedded.Pkg().Name + "." + embedded.Name(), nil
+			}
+		}
+		found, err := s.findForeignEmbeddedGeneratedCodecIn(embedded, seen)
+		if err != nil || found != "" {
+			return found, err
+		}
+	}
+	return "", nil
 }
 
 func (s SchemaBuilder) findEmbeddedOwnerCodec(owner string, seen map[string]bool) (string, error) {

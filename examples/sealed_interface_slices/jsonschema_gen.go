@@ -101,7 +101,7 @@ func __jsonMarshal__sealed_interface_slices__Event__f699251ebf77bfc18a0aa8894e79
 	switch object := value.(type) {
 	case Created:
 		discriminator = "Created"
-		data, err = json.Marshal(object)
+		data, err = json.Marshal(&object)
 	case *Deleted:
 		if object == nil {
 			return nil, fmt.Errorf("cannot marshal typed nil registered implementation %T for Event", value)

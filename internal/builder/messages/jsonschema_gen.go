@@ -90,19 +90,19 @@ func __jsonMarshal__messages__AssertionValue__b1fca8d9909ae32fff90f6041750ea41d7
 	switch object := value.(type) {
 	case AssertNumericValue:
 		discriminator = "AssertNumericValue"
-		data, err = json.Marshal(object)
+		data, err = json.Marshal(&object)
 	case AssertStringValue:
 		discriminator = "AssertStringValue"
-		data, err = json.Marshal(object)
+		data, err = json.Marshal(&object)
 	case AssertBoolValue:
 		discriminator = "AssertBoolValue"
-		data, err = json.Marshal(object)
+		data, err = json.Marshal(&object)
 	case AssertType:
 		discriminator = "AssertType"
-		data, err = json.Marshal(object)
+		data, err = json.Marshal(&object)
 	case AssertArrayLength:
 		discriminator = "AssertArrayLength"
-		data, err = json.Marshal(object)
+		data, err = json.Marshal(&object)
 	default:
 		return nil, fmt.Errorf("unregistered dynamic implementation %T for AssertionValue", value)
 	}

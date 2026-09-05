@@ -271,10 +271,10 @@ func __jsonMarshal__v1_interfaces_options__IFace__2dd2038c39400c39843ecd49325d1b
 	switch object := value.(type) {
 	case Impl1:
 		discriminator = "impl_one"
-		data, err = json.Marshal(object)
+		data, err = json.Marshal(&object)
 	case Impl2:
 		discriminator = "impl \"two\""
-		data, err = json.Marshal(object)
+		data, err = json.Marshal(&object)
 	default:
 		return nil, fmt.Errorf("unregistered dynamic implementation %T for IFace", value)
 	}
@@ -331,10 +331,10 @@ func __jsonMarshal__v1_interfaces_options__IFace__a04a86009e718dec9553757564409d
 	switch object := value.(type) {
 	case Impl1:
 		discriminator = "Impl1"
-		data, err = json.Marshal(object)
+		data, err = json.Marshal(&object)
 	case Impl2:
 		discriminator = "Impl2"
-		data, err = json.Marshal(object)
+		data, err = json.Marshal(&object)
 	default:
 		return nil, fmt.Errorf("unregistered dynamic implementation %T for IFace", value)
 	}

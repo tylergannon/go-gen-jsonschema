@@ -105,6 +105,7 @@ func (e Envelope) MarshalJSON() ([]byte, error) {
 		Alternate json.RawMessage `json:"alternate,omitzero"`
 		Single    json.RawMessage `json:"single,omitzero"`
 		Hook      json.RawMessage `json:"hook,omitzero"`
+		ValueHook json.RawMessage `json:"value_hook,omitzero"`
 	}
 	wrapper := Wrapper{Alias: Alias(e)}
 	var err error
@@ -150,6 +151,12 @@ func (e Envelope) MarshalJSON() ([]byte, error) {
 		}
 	}
 
+	if e.ValueHook.Present {
+		if wrapper.ValueHook, err = __jsonMarshal__union_codec__Event__3819228088476b62a3b854ed676566a7d357007f0565758002ef919fdc9c36db(e.ValueHook.Value); err != nil {
+			return nil, fmt.Errorf("field value_hook: %w", err)
+		}
+	}
+
 	return json.Marshal(&wrapper)
 }
 
@@ -165,6 +172,7 @@ func (e *Envelope) UnmarshalJSON(data []byte) (err error) {
 		Alternate json.RawMessage `json:"alternate,omitzero"`
 		Single    json.RawMessage `json:"single,omitzero"`
 		Hook      json.RawMessage `json:"hook,omitzero"`
+		ValueHook json.RawMessage `json:"value_hook,omitzero"`
 	}
 	var wrapper Wrapper
 	if err = json.Unmarshal(data, &wrapper); err != nil {
@@ -231,6 +239,15 @@ func (e *Envelope) UnmarshalJSON(data []byte) (err error) {
 		__next.Hook.Present = true
 	}
 
+	if len(wrapper.ValueHook) > 0 {
+		var __decoded6 Event
+		if __decoded6, err = __jsonUnmarshal__union_codec__Event__3819228088476b62a3b854ed676566a7d357007f0565758002ef919fdc9c36db(wrapper.ValueHook); err != nil {
+			return err
+		}
+		__next.ValueHook.Value = __decoded6
+		__next.ValueHook.Present = true
+	}
+
 	*e = __next
 	return nil
 }
@@ -288,7 +305,7 @@ func __jsonMarshal__union_codec__Event__d876dc783764ce04c7c05b57ac5a514753dce5b2
 	switch object := value.(type) {
 	case Created:
 		discriminator = "created"
-		data, err = json.Marshal(object)
+		data, err = json.Marshal(&object)
 	case *Deleted:
 		if object == nil {
 			return nil, fmt.Errorf("cannot marshal typed nil registered implementation %T for Event", value)
@@ -297,7 +314,7 @@ func __jsonMarshal__union_codec__Event__d876dc783764ce04c7c05b57ac5a514753dce5b2
 		data, err = json.Marshal(object)
 	case Empty:
 		discriminator = ""
-		data, err = json.Marshal(object)
+		data, err = json.Marshal(&object)
 	default:
 		return nil, fmt.Errorf("unregistered dynamic implementation %T for Event", value)
 	}
@@ -360,7 +377,7 @@ func __jsonMarshal__union_codec__Event__9f3bb2b43192625bfe928e94158d825afc363600
 	switch object := value.(type) {
 	case Created:
 		discriminator = "Created"
-		data, err = json.Marshal(object)
+		data, err = json.Marshal(&object)
 	case *Deleted:
 		if object == nil {
 			return nil, fmt.Errorf("cannot marshal typed nil registered implementation %T for Event", value)
@@ -422,7 +439,7 @@ func __jsonMarshal__union_codec__Event__0b366fe25d55998ace16ceeeb59e61cf6e733c37
 	switch object := value.(type) {
 	case Created:
 		discriminator = "new\"event"
-		data, err = json.Marshal(object)
+		data, err = json.Marshal(&object)
 	case *Deleted:
 		if object == nil {
 			return nil, fmt.Errorf("cannot marshal typed nil registered implementation %T for Event", value)
@@ -485,7 +502,7 @@ func __jsonMarshal__union_codec__Event__b31d86dc058a4affdd27801115d163cb78198bbe
 	switch object := value.(type) {
 	case Created:
 		discriminator = "only"
-		data, err = json.Marshal(object)
+		data, err = json.Marshal(&object)
 	default:
 		return nil, fmt.Errorf("unregistered dynamic implementation %T for Event", value)
 	}
@@ -536,7 +553,7 @@ func __jsonMarshal__union_codec__Event__98b3b2298a112c1e5679dd3c04e6c2a6ac2aa71f
 	switch object := value.(type) {
 	case Hooked:
 		discriminator = "hooked"
-		data, err = json.Marshal(object)
+		data, err = json.Marshal(&object)
 	default:
 		return nil, fmt.Errorf("unregistered dynamic implementation %T for Event", value)
 	}
@@ -575,6 +592,57 @@ func __jsonUnmarshal__union_codec__Event__98b3b2298a112c1e5679dd3c04e6c2a6ac2aa7
 		return nil, fmt.Errorf("unknown discriminator: %s", discriminator)
 	}
 }
+func __jsonMarshal__union_codec__Event__3819228088476b62a3b854ed676566a7d357007f0565758002ef919fdc9c36db(value Event) (json.RawMessage, error) {
+	if value == nil {
+		return nil, fmt.Errorf("cannot marshal nil registered interface Event")
+	}
+	var (
+		data          []byte
+		err           error
+		discriminator string
+	)
+	switch object := value.(type) {
+	case PointerHookValue:
+		discriminator = "value-hook"
+		data, err = json.Marshal(&object)
+	default:
+		return nil, fmt.Errorf("unregistered dynamic implementation %T for Event", value)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("marshal registered implementation %T for Event: %w", value, err)
+	}
+	return __jsonschema__marshalUnionObject(data,
+		"valueHookKind",
+		discriminator,
+	)
+}
+
+func __jsonUnmarshal__union_codec__Event__3819228088476b62a3b854ed676566a7d357007f0565758002ef919fdc9c36db(data []byte) (Event, error) {
+	var (
+		temp          map[string]json.RawMessage
+		discriminator string
+		err           = json.Unmarshal(data, &temp)
+	)
+
+	if err != nil {
+		return nil, err
+	} else if _tempDiscriminator, ok := temp["valueHookKind"]; !ok {
+		// per-field discriminator property
+		return nil, fmt.Errorf("no discriminator property '%s' found", "valueHookKind")
+	} else if discriminator, err = __jsonschema__decodeDiscriminator(_tempDiscriminator); err != nil {
+		return nil, __jsonschema__unmarshalDiscriminatorError(_tempDiscriminator, err)
+	}
+	switch discriminator {
+	case "value-hook":
+		var obj PointerHookValue
+		if err = json.Unmarshal(data, &obj); err != nil {
+			return nil, err
+		}
+		return obj, nil
+	default:
+		return nil, fmt.Errorf("unknown discriminator: %s", discriminator)
+	}
+}
 func __jsonMarshal__union_codec__Event__936fec43fa1ab60ae150fdd1f2f9ae5c8e040745f1c958ef93339217f72343c1(value Event) (json.RawMessage, error) {
 	if value == nil {
 		return nil, fmt.Errorf("cannot marshal nil registered interface Event")
@@ -587,7 +655,7 @@ func __jsonMarshal__union_codec__Event__936fec43fa1ab60ae150fdd1f2f9ae5c8e040745
 	switch object := value.(type) {
 	case Created:
 		discriminator = "nested-created"
-		data, err = json.Marshal(object)
+		data, err = json.Marshal(&object)
 	case *Deleted:
 		if object == nil {
 			return nil, fmt.Errorf("cannot marshal typed nil registered implementation %T for Event", value)
