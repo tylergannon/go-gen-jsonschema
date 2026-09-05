@@ -291,7 +291,6 @@ type EnumEntry struct {
 	GoValueExpr string
 	WireName    string
 	IntValue    int
-	StringValue string
 }
 
 // EnumFieldPlan is the resolved source of truth for one registered enum field.
@@ -304,7 +303,6 @@ type EnumFieldPlan struct {
 	EnumType               syntax.TypeSpec
 	EnumTypeNameWithPrefix string
 	Entries                []EnumEntry
-	Underlying             enumUnderlying
 	StringMode             bool
 	Adapted                bool
 	MarshalerFunc          string
@@ -329,8 +327,6 @@ type YAMLType struct {
 type InterfaceOptionInfo struct {
 	TypeNameWithPrefix string
 	Discriminator      string
-	TypeName           string
-	PkgPath            string
 	Pointer            bool
 }
 
@@ -369,7 +365,6 @@ type TypeProviders struct {
 type InterfaceInfo struct {
 	TypeNameWithPrefix    string
 	TypeName              string
-	PkgPath               string
 	MarshalerFunc         string
 	UnmarshalerFunc       string
 	DiscriminatorPropName string
@@ -386,10 +381,6 @@ type SchemaBuilder struct {
 	Validate          bool
 	BuildTag          string
 	UnmarshalFormats  UnmarshalFormats
-	Imports           []string
-	OwnerCodecs       []OwnerCodec
-	YAMLTypes         []YAMLType
-	Interfaces        []InterfaceInfo
 	DiscriminatorProp string
 
 	// Field provider options per type (by receiver type name)
@@ -482,22 +473,20 @@ func (s SchemaBuilder) collectRefDefs(schema JSONSchema, defs map[string]JSONSch
 	}
 }
 
-func (s SchemaBuilder) HaveInterfaces() bool {
+type schemaTemplateData struct {
+	SchemaBuilder
+	Imports     []string
+	OwnerCodecs []OwnerCodec
+	YAMLTypes   []YAMLType
+	Interfaces  []InterfaceInfo
+}
+
+func (s schemaTemplateData) HaveInterfaces() bool {
 	return len(s.Interfaces) > 0
 }
 
-func (s SchemaBuilder) HaveEnumCodecs() bool {
+func (s schemaTemplateData) HaveEnumCodecs() bool {
 	return slices.ContainsFunc(s.OwnerCodecs, func(owner OwnerCodec) bool { return len(owner.EnumFields) > 0 })
-}
-
-// IsSpecialType returns true if the type has generated owner JSON codecs.
-func (s SchemaBuilder) IsSpecialType(typeName string) bool {
-	for _, st := range s.OwnerCodecs {
-		if st.Name == typeName {
-			return true
-		}
-	}
-	return false
 }
 
 func (s SchemaBuilder) validateOwnerCodecMethods() error {
@@ -1125,7 +1114,6 @@ func (s SchemaBuilder) resolveEnumFieldPlan(owner, fieldName string, field synta
 		Wrapper:         wrapper,
 		EnumType:        enumSet.TypeSpec,
 		Entries:         entries,
-		Underlying:      underlying,
 		StringMode:      config.UseStringer || underlying == enumUnderlyingString,
 		Adapted:         adapted,
 		MarshalerFunc:   "__jsonMarshalEnum__" + owner + "__" + fieldName,
@@ -1157,8 +1145,7 @@ func enumEntries(enumSet *syntax.EnumSet, enumType types.Type, underlying enumUn
 			entry := EnumEntry{ConstName: name.Name}
 			switch underlying {
 			case enumUnderlyingString:
-				entry.StringValue = constant.StringVal(constantObject.Val())
-				entry.WireName = entry.StringValue
+				entry.WireName = constant.StringVal(constantObject.Val())
 			case enumUnderlyingInteger:
 				entry.WireName = name.Name
 				if !stringMode {
@@ -1410,47 +1397,13 @@ func (s SchemaBuilder) sortedOwnerCodecNames() []string {
 	return names
 }
 
-func sortedCustomTypeNames(customTypes map[string][]InterfaceProp) []string {
-	names := make([]string, 0, len(customTypes))
-	for name := range customTypes {
-		names = append(names, name)
-	}
-	slices.Sort(names)
-	return names
-}
-
 func (s *SchemaBuilder) RenderGoCode() (err error) {
 	importMap := s.imports()
-	s.Imports = importMap.ImportStatements()
+	templateData := schemaTemplateData{
+		SchemaBuilder: *s,
+		Imports:       importMap.ImportStatements(),
+	}
 	generatedInterfaceHelpers := make(map[string]bool)
-
-	// for _, poop := range s.SchemaMethods() {
-	// 	t := s.Scan.LocalNamedTypes[poop.Receiver.TypeName]
-	// 	if st, ok := t.Type().Expr().(*dst.StructType); ok {
-	// 		_st := syntax.NewStructType(st, t.Derive())
-	// 		foo, err := _st.Flatten(
-	// 			func(ident syntax.IdentExpr) (syntax.Expr, error) {
-	// 				var (
-	// 					newType syntax.TypeSpec
-	// 					ok      bool
-	// 				)
-	// 				if ident.Concrete.Path == "" {
-	// 					if newType, ok = s.Scan.LocalNamedTypes[ident.Concrete.Name]; !ok {
-	// 						panic(fmt.Sprintf("unknown type %s", ident.Concrete.Name))
-	// 					}
-	// 				} else {
-	// 					if scan, ok := s.Scan.GetPackage(ident.Concrete.Path); !ok {
-	// 						panic(fmt.Sprintf("unknown type %s", ident.Concrete.Name))
-	// 					}
-
-	// 				}
-
-	// 			},
-	// 			nil,
-	// 		)
-
-	// 	}
-	// }
 
 	for _, n := range s.sortedOwnerCodecNames() {
 		itsProps := slices.Clone(s.customTypes[n])
@@ -1467,7 +1420,7 @@ func (s *SchemaBuilder) RenderGoCode() (err error) {
 				enumFields[i].Entries[j].GoValueExpr = importMap.PrefixExpr(enumFields[i].Entries[j].ConstName, enumPkg)
 			}
 		}
-		s.OwnerCodecs = append(s.OwnerCodecs, OwnerCodec{
+		templateData.OwnerCodecs = append(templateData.OwnerCodecs, OwnerCodec{
 			Name:        n,
 			UnionFields: itsProps,
 			EnumFields:  enumFields,
@@ -1494,18 +1447,15 @@ func (s *SchemaBuilder) RenderGoCode() (err error) {
 				opts = append(opts, InterfaceOptionInfo{
 					TypeNameWithPrefix: importMap.PrefixExpr(option.TypeName, pkg.Pkg),
 					Discriminator:      disc,
-					TypeName:           option.TypeName,
-					PkgPath:            option.PkgPath,
 					Pointer:            option.Indirection == syntax.Pointer,
 				})
 			}
 			// Determine discriminator property name for this field-specific unmarshaler (only if overridden)
 			discProp := ifaceProp.DiscPropName
-			s.Interfaces = append(s.Interfaces, InterfaceInfo{
+			templateData.Interfaces = append(templateData.Interfaces, InterfaceInfo{
 
 				TypeNameWithPrefix:    importMap.PrefixExpr(ifaceProp.Interface.TypeSpec.Name(), ifacePkg),
 				TypeName:              ifaceProp.Interface.TypeSpec.Name(),
-				PkgPath:               ifacePkg.PkgPath,
 				MarshalerFunc:         ifaceProp.MarshalerFunc(),
 				UnmarshalerFunc:       ifaceProp.UnmarshalerFunc(),
 				DiscriminatorPropName: discProp,
@@ -1518,7 +1468,7 @@ func (s *SchemaBuilder) RenderGoCode() (err error) {
 		for _, method := range s.SchemaMethods() {
 			yamlTypes[method.Receiver.TypeName] = true
 		}
-		for _, special := range s.OwnerCodecs {
+		for _, special := range templateData.OwnerCodecs {
 			yamlTypes[special.Name] = true
 		}
 		names := make([]string, 0, len(yamlTypes))
@@ -1527,13 +1477,13 @@ func (s *SchemaBuilder) RenderGoCode() (err error) {
 		}
 		slices.Sort(names)
 		for _, name := range names {
-			s.YAMLTypes = append(s.YAMLTypes, YAMLType{
+			templateData.YAMLTypes = append(templateData.YAMLTypes, YAMLType{
 				Name:    name,
 				Initial: strings.ToLower(name[0:1]),
 			})
 		}
 	}
-	data, err := RenderTemplate(schemasTemplate, s)
+	data, err := RenderTemplate(schemasTemplate, templateData)
 	if err != nil {
 		return err
 	}
@@ -1796,7 +1746,6 @@ type registeredInterfaceField struct {
 	Interface           syntax.IfaceImplementations
 	DiscPropName        string
 	DiscriminatorValues map[syntax.TypeID]string
-	FuncNameAlias       string
 	Optional            bool
 	Repeated            bool
 	V1                  bool
@@ -1942,12 +1891,10 @@ func (s SchemaBuilder) resolveRegisteredInterfaceField(owner syntax.StructType, 
 		if err := s.validateInterfaceImplementations(typeSpec, v1Cfg.Impls); err != nil {
 			return nil, fmt.Errorf("field %s.%s: %w", owner.Name(), v1GoField, err)
 		}
-		funcAlias := fmt.Sprintf("__jsonUnmarshal__%s__%s__%s__%s", typeSpec.Pkg().Name, typeSpec.Name(), owner.Name(), v1GoField)
 		return &registeredInterfaceField{
 			Interface:           syntax.IfaceImplementations{TypeSpec: typeSpec, Impls: v1Cfg.Impls},
 			DiscPropName:        v1Cfg.Disc,
 			DiscriminatorValues: cloneDiscriminatorValues(v1Cfg.DiscriminatorValues),
-			FuncNameAlias:       funcAlias,
 			Optional:            wrapper == syntax.WrapperOptional,
 			Repeated:            repeated,
 			V1:                  true,
@@ -2031,7 +1978,6 @@ type InterfaceProp struct {
 	Interface                   syntax.IfaceImplementations
 	DiscPropName                string
 	DiscriminatorValues         map[syntax.TypeID]string
-	FuncNameAlias               string
 	InterfaceTypeNameWithPrefix string
 	Optional                    bool
 	Repeated                    bool
@@ -2209,7 +2155,6 @@ func (s SchemaBuilder) resolveLocalInterfaceProps(t syntax.StructType, seenProps
 			Interface:           field.Interface,
 			DiscPropName:        field.DiscPropName,
 			DiscriminatorValues: cloneDiscriminatorValues(field.DiscriminatorValues),
-			FuncNameAlias:       field.FuncNameAlias,
 			Optional:            field.Optional,
 			Repeated:            field.Repeated,
 			EmbeddedPath:        slices.Clone(embeddedPath),
