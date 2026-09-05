@@ -93,6 +93,26 @@ func (NumericConfig) ValidateJSON(data []byte) error {
 	return __gen_jsonschema_compiled_NumericConfig.Validate(inst)
 }
 
+// MarshalJSON is a generated custom json.Marshaler implementation for
+// Config.
+func (c Config) MarshalJSON() ([]byte, error) {
+	type Alias Config
+	type Wrapper struct {
+		Alias
+		Pet json.RawMessage `json:"pet,omitzero"`
+	}
+	wrapper := Wrapper{Alias: Alias(c)}
+	var err error
+
+	if c.Pet.Present {
+		if wrapper.Pet, err = __jsonMarshal__optionality__Pet__99fc79bfac5bf178e029fc08a524617f8e613319b15e5a8ea77781f5d9c36cae(c.Pet.Value); err != nil {
+			return nil, fmt.Errorf("field pet: %w", err)
+		}
+	}
+
+	return json.Marshal(&wrapper)
+}
+
 // UnmarshalJSON is a generated custom json.Unmarshaler implementation for
 // Config.
 func (c *Config) UnmarshalJSON(data []byte) (err error) {
@@ -108,16 +128,47 @@ func (c *Config) UnmarshalJSON(data []byte) (err error) {
 	__next := Config(wrapper.Alias)
 
 	if len(wrapper.Pet) > 0 {
-		if __next.Pet.Value, err = __jsonUnmarshal__optionality__Pet__Config__Pet(wrapper.Pet); err != nil {
+		var __decoded0 Pet
+		if __decoded0, err = __jsonUnmarshal__optionality__Pet__99fc79bfac5bf178e029fc08a524617f8e613319b15e5a8ea77781f5d9c36cae(wrapper.Pet); err != nil {
 			return err
 		}
+		__next.Pet.Value = __decoded0
 		__next.Pet.Present = true
 	}
 
 	*c = __next
 	return nil
 }
-func __jsonUnmarshal__optionality__Pet__Config__Pet(data []byte) (Pet, error) {
+
+func __jsonMarshal__optionality__Pet__99fc79bfac5bf178e029fc08a524617f8e613319b15e5a8ea77781f5d9c36cae(value Pet) (json.RawMessage, error) {
+	if value == nil {
+		return nil, fmt.Errorf("cannot marshal nil registered interface Pet")
+	}
+	var (
+		data          []byte
+		err           error
+		discriminator string
+	)
+	switch object := value.(type) {
+	case Dog:
+		discriminator = "Dog"
+		data, err = json.Marshal(&object)
+	case Cat:
+		discriminator = "Cat"
+		data, err = json.Marshal(&object)
+	default:
+		return nil, fmt.Errorf("unregistered dynamic implementation %T for Pet", value)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("marshal registered implementation %T for Pet: %w", value, err)
+	}
+	return __jsonschema__marshalUnionObject(data,
+		"!kind",
+		discriminator,
+	)
+}
+
+func __jsonUnmarshal__optionality__Pet__99fc79bfac5bf178e029fc08a524617f8e613319b15e5a8ea77781f5d9c36cae(data []byte) (Pet, error) {
 	var (
 		temp          map[string]json.RawMessage
 		discriminator string
@@ -129,7 +180,7 @@ func __jsonUnmarshal__optionality__Pet__Config__Pet(data []byte) (Pet, error) {
 	} else if _tempDiscriminator, ok := temp["!kind"]; !ok {
 		// per-field discriminator property
 		return nil, fmt.Errorf("no discriminator property '%s' found", "!kind")
-	} else if err = json.Unmarshal(_tempDiscriminator, &discriminator); err != nil {
+	} else if discriminator, err = __jsonschema__decodeDiscriminator(_tempDiscriminator); err != nil {
 		return nil, __jsonschema__unmarshalDiscriminatorError(_tempDiscriminator, err)
 	}
 	switch discriminator {
@@ -148,6 +199,43 @@ func __jsonUnmarshal__optionality__Pet__Config__Pet(data []byte) (Pet, error) {
 	default:
 		return nil, fmt.Errorf("unknown discriminator: %s", discriminator)
 	}
+}
+
+func __jsonschema__marshalUnionObject(data []byte, discriminatorProp, discriminatorValue string) (json.RawMessage, error) {
+	var object map[string]json.RawMessage
+	if err := json.Unmarshal(data, &object); err != nil {
+		return nil, fmt.Errorf("registered union payload must encode as a JSON object: %w", err)
+	}
+	if object == nil {
+		return nil, fmt.Errorf("registered union payload must encode as a JSON object, got null")
+	}
+	if encoded, ok := object[discriminatorProp]; ok {
+		current, err := __jsonschema__decodeDiscriminator(encoded)
+		if err != nil {
+			return nil, fmt.Errorf("discriminator property %q must be a string: %w", discriminatorProp, err)
+		}
+		if current != discriminatorValue {
+			return nil, fmt.Errorf("discriminator property %q is %q, want registered value %q", discriminatorProp, current, discriminatorValue)
+		}
+	} else {
+		encoded, err := json.Marshal(discriminatorValue)
+		if err != nil {
+			return nil, err
+		}
+		object[discriminatorProp] = encoded
+	}
+	return json.Marshal(object)
+}
+
+func __jsonschema__decodeDiscriminator(discriminator json.RawMessage) (string, error) {
+	var value *string
+	if err := json.Unmarshal(discriminator, &value); err != nil {
+		return "", err
+	}
+	if value == nil {
+		return "", errors.New("JSON null is not a string")
+	}
+	return *value, nil
 }
 
 func __jsonschema__unmarshalDiscriminatorError(discriminator json.RawMessage, err error) error {

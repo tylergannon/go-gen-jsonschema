@@ -206,8 +206,8 @@ type JSONSchema struct {
     AdditionalProperties any                   `json:"additionalProperties,omitempty" yaml:"additionalProperties,omitempty"`
     Definitions          map[string]SchemaNode `json:"$defs,omitzero" yaml:"$defs,omitempty"`
     Const                any                   `json:"const,omitempty"` // Provide a const value
-    // Strict will make all properties required and additionalProperties: false if
-    // not already set. pplies only if Type = "object".
+    // Strict will make all properties required and set additionalProperties to
+    // false. Applies only if Type = "object".
     Strict bool `json:"-" yaml:"-"`
 }
 ```
@@ -590,7 +590,7 @@ func BoolSchema(description string) SchemaNode
 func ConstSchema[T ~int | ~string](val T, description string) SchemaNode
 ```
 
-
+ConstSchema returns a schema that accepts exactly val. Named values whose underlying type is int or string retain their corresponding JSON Schema type.
 
 <a name="EnumSchema"></a>
 ### func EnumSchema
@@ -599,7 +599,7 @@ func ConstSchema[T ~int | ~string](val T, description string) SchemaNode
 func EnumSchema[T ~int | ~string](description string, vals ...T) SchemaNode
 ```
 
-
+EnumSchema returns a schema that accepts one of vals. Named values whose underlying type is int or string retain their corresponding JSON Schema type. If vals is empty, the returned node reports an error when marshaled.
 
 <a name="IntSchema"></a>
 ### func IntSchema

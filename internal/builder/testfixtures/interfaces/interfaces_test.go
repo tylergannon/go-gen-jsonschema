@@ -35,6 +35,48 @@ func TestLegacyInterfaceSliceDecode(t *testing.T) {
 	}
 }
 
+func TestLegacyInterfaceMarshalCarriesDerivedDiscriminators(t *testing.T) {
+	value := FancyStruct{
+		IFace:  TestInterface1{Field1: "one"},
+		IFaces: []TestInterface{TestInterface2{Fork3: 3}, &PointerToTestInterface{Fork99: 99}},
+	}
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var wire struct {
+		IFace  map[string]json.RawMessage   `json:"iface"`
+		IFaces []map[string]json.RawMessage `json:"ifaces"`
+	}
+	if err := json.Unmarshal(encoded, &wire); err != nil {
+		t.Fatal(err)
+	}
+	want := []struct {
+		object map[string]json.RawMessage
+		value  string
+	}{
+		{object: wire.IFace, value: "TestInterface1"},
+		{object: wire.IFaces[0], value: "TestInterface2"},
+		{object: wire.IFaces[1], value: "PointerToTestInterface"},
+	}
+	for _, item := range want {
+		var got string
+		if err := json.Unmarshal(item.object["type"], &got); err != nil {
+			t.Fatal(err)
+		}
+		if got != item.value {
+			t.Fatalf("type = %q, want %q in %s", got, item.value, encoded)
+		}
+	}
+	var decoded FancyStruct
+	if err := json.Unmarshal(encoded, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(decoded, value) {
+		t.Fatalf("round trip = %#v, want %#v", decoded, value)
+	}
+}
+
 func TestLegacyInterfaceSliceErrorIsIndexedAndTransactional(t *testing.T) {
 	original := FancyStruct{IFace: TestInterface1{Field1: "original"}, IFaces: []TestInterface{TestInterface2{Fork3: 7}}}
 	got := original

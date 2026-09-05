@@ -4,7 +4,7 @@ Generate JSON Schemas from Go types for LLM tool definitions and structured
 output.
 
 The generator's primary output is a deterministic schema. Optional generated
-validation and selected JSON/YAML decoding helpers are separate capabilities;
+validation and selected JSON codecs/YAML input helpers are separate capabilities;
 schema generation does not create a general-purpose Go codec or guarantee a
 typed encode/decode round trip for every Go type.
 
@@ -88,7 +88,7 @@ mutually exclusive build-tagged files:
 | File | Build tag | Who writes it | Contents |
 |---|---|---|---|
 | `schema.go` | `//go:build jsonschema` | You | Panic stubs + marker registrations; compiled only during generation |
-| `jsonschema_gen.go` | `//go:build !jsonschema` | Generated | Real schema, validation, and selected decoding methods over an embedded `jsonschema/` directory |
+| `jsonschema_gen.go` | `//go:build !jsonschema` | Generated | Real schema, validation, and selected codec methods over an embedded `jsonschema/` directory |
 
 Your package compiles at every stage — before generation (stubs) and after
 (generated implementations).
@@ -240,6 +240,22 @@ var _ = jsonschema.NewJSONSchemaMethod(
 )
 ```
 
+String-mode fields receive generated codecs on the containing struct. Both
+`json.Marshal(Task{...})` and decoding into `*Task` use the registered constant
+names; the enum itself keeps its ordinary Go JSON behavior in numeric fields.
+One owner codec composes enum and union adapters.
+
+Registered enum fields cannot use the `json:",string"` option. The generator
+rejects that option before writing files because it disagrees with both the
+numeric schema representation and the generated string-mode adapter.
+
+Integer string mode supports direct `E`, `Optional[E]`, and `Nullable[E]`
+fields. Absent Optional and null Nullable values bypass conversion. Unknown
+names, undeclared values (including an undeclared zero), ambiguous aliases,
+custom enum JSON hooks, and unsupported adapted containers are rejected.
+Validate external JSON before decoding to enforce required fields and schema
+membership. See [the enum guide](website/src/content/docs/features/enums.md).
+
 The legacy package-level form `jsonschema.NewEnumType[Status]()` remains
 supported.
 
@@ -325,11 +341,20 @@ The compatible split form—`WithInterface`, `WithInterfaceImpls`, and
 `Impl` wire values are supplied, discriminator values still derive from Go type
 names.
 
-Generated union support owns decoding and validation. It does not add a
-discriminator when a concrete implementation is marshaled. If a decoded union
-must be marshaled back into schema-valid JSON, each concrete implementation
-must emit its registered discriminator with its own `MarshalJSON` method (or
-another explicit encoder).
+The generator emits a value-receiver `MarshalJSON` and pointer-receiver
+`UnmarshalJSON` on the containing struct. Encoding the owner adds each union
+field's registered discriminator; decoding preserves its registered value or
+pointer implementation. This works for `I`, `Optional[I]`, and direct `[]I`
+fields. Marshaling a concrete implementation by itself uses its normal Go
+encoding because discriminator configuration belongs to the field.
+
+Generated owner codecs reject unregistered dynamic types, nil required unions,
+typed-nil implementations, and nil required union slices. An allocated empty
+slice encodes as `[]`; an absent Optional is omitted. Custom concrete
+`MarshalJSON` hooks must return an object with a missing or matching string
+discriminator. Conflicting payloads are errors. Production owner JSON methods,
+including promoted methods that would interfere with generated codecs, are
+rejected before output is written. Validate external input before decoding.
 
 The legacy package-level form is still supported, but cannot be mixed with the
 per-field options above in the same package:

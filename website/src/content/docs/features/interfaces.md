@@ -5,8 +5,8 @@ description: Generate discriminated unions for interface-typed Go fields.
 
 An interface field becomes an `anyOf` over its registered implementations. A
 direct one-dimensional slice of that interface becomes an array with the union
-under `items.anyOf`. The generator writes `UnmarshalJSON` dispatch code for the
-containing struct.
+under `items.anyOf`. The generator writes `MarshalJSON` and `UnmarshalJSON`
+methods on the containing struct.
 
 ```go
 type PaymentMethod interface{ isPaymentMethod() }
@@ -44,8 +44,8 @@ var _ = jsonschema.NewJSONSchemaMethod(
 default discriminator property is `type`. The compatible split form using
 `WithInterfaceImpls` and `WithDiscriminator` remains supported; without
 explicit `Impl` values, wire discriminators derive from Go type names. Each
-implementation's JSON must carry the discriminator expected by the generated
-unmarshaler. Slice elements are decoded in order, and an invalid element reports
+field's generated encoder supplies the discriminator expected by the decoder.
+Slice elements are decoded in order, and an invalid element reports
 its zero-based index without partially assigning the destination slice.
 
 Value and pointer implementations remain value and pointer values after
@@ -54,24 +54,31 @@ registered interface fields and slice elements decode successfully.
 
 ## Marshaling interface values
 
-The generator writes `UnmarshalJSON` dispatch code. It does not add a
-discriminator when concrete implementations are marshaled. If decoded values
-must round-trip into schema-valid JSON, make each implementation emit the same
-discriminator required by the schema:
+Marshal the containing value or its pointer. Its generated codec supplies the
+field-specific discriminator:
 
 ```go
-func (c Card) MarshalJSON() ([]byte, error) {
-    type plain Card
-    return json.Marshal(struct {
-        Kind string `json:"!kind"`
-        plain
-    }{Kind: "card", plain: plain(c)})
-}
+payment := Payment{Methods: []PaymentMethod{
+    Card{Number: "example"},
+    &BankTransfer{Account: "example"},
+}}
+data, err := json.Marshal(payment)
+// {"methods":[{"!kind":"card","number":"example"},
+//             {"!kind":"bank_transfer","account":"example"}]}
 ```
 
-Without this method, ordinary `json.Marshal` emits the concrete fields but not
-`!kind`, so the result cannot be decoded by the generated union unmarshaler and
-does not satisfy the generated union schema.
+Marshaling `Card` by itself uses normal Go encoding; the same implementation
+may have a different discriminator in another owner field. No global
+implementation marshaler is required. A handwritten concrete hook may return
+an object with a missing or matching discriminator; conflicting/non-string
+discriminators, null, and non-object payloads are errors.
+
+Nil required unions, typed-nil implementations, nil required union slices, and
+unregistered dynamic types are rejected during encoding. An allocated empty
+slice emits `[]`; an absent `Optional[I]` is omitted. Production owner JSON
+method collisions are rejected before generation writes output. Use named
+fields when nesting owners that each need generated codecs; embedding such an
+owner would promote competing JSON methods and is rejected.
 
 The slice must be the direct field type. Fixed arrays, nested slices, named
 slice containers, `Optional[[]I]`, `Nullable[[]I]`, and inline interface

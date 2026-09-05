@@ -139,6 +139,45 @@ func (Owner) ValidateYAML(data []byte) error {
 	return __gen_jsonschema_compiled_Owner.Validate(inst)
 }
 
+// MarshalJSON is a generated custom json.Marshaler implementation for
+// Owner.
+func (o Owner) MarshalJSON() ([]byte, error) {
+	type Alias Owner
+	type Wrapper struct {
+		Alias
+		IF         json.RawMessage `json:"if" yaml:"yaml_if"`
+		IFaces     json.RawMessage `json:"ifs" yaml:"yaml_ifs"`
+		OptionalIF json.RawMessage `json:"optional_if,omitzero" yaml:"yaml_optional"`
+	}
+	wrapper := Wrapper{Alias: Alias(o)}
+	var err error
+
+	if wrapper.IF, err = __jsonMarshal__v1_interfaces_options__IFace__2dd2038c39400c39843ecd49325d1bd289ca31c82e3baebb63c590262181123a(o.IF); err != nil {
+		return nil, fmt.Errorf("field if: %w", err)
+	}
+
+	if o.IFaces == nil {
+		return nil, fmt.Errorf("field ifs: nil registered interface slice")
+	}
+	__raw1 := make([]json.RawMessage, len(o.IFaces))
+	for __index, __value := range o.IFaces {
+		if __raw1[__index], err = __jsonMarshal__v1_interfaces_options__IFace__a04a86009e718dec9553757564409d21fe8d2eadb5842542e0d84e5b5f99968b(__value); err != nil {
+			return nil, fmt.Errorf("field ifs[%d]: %w", __index, err)
+		}
+	}
+	if wrapper.IFaces, err = json.Marshal(__raw1); err != nil {
+		return nil, fmt.Errorf("field ifs: %w", err)
+	}
+
+	if o.OptionalIF.Present {
+		if wrapper.OptionalIF, err = __jsonMarshal__v1_interfaces_options__IFace__a04a86009e718dec9553757564409d21fe8d2eadb5842542e0d84e5b5f99968b(o.OptionalIF.Value); err != nil {
+			return nil, fmt.Errorf("field optional_if: %w", err)
+		}
+	}
+
+	return json.Marshal(&wrapper)
+}
+
 // UnmarshalJSON is a generated custom json.Unmarshaler implementation for
 // Owner.
 func (o *Owner) UnmarshalJSON(data []byte) (err error) {
@@ -155,13 +194,13 @@ func (o *Owner) UnmarshalJSON(data []byte) (err error) {
 	}
 	__next := Owner(wrapper.Alias)
 
-	if __next.IF, err = __jsonUnmarshal__v1_interfaces_options__IFace__Owner__IF(wrapper.IF); err != nil {
+	var __decoded0 IFace
+	if __decoded0, err = __jsonUnmarshal__v1_interfaces_options__IFace__2dd2038c39400c39843ecd49325d1bd289ca31c82e3baebb63c590262181123a(wrapper.IF); err != nil {
 		return err
 	}
+	__next.IF = __decoded0
 
-	if len(wrapper.IFaces) == 0 {
-		__next.IFaces = o.IFaces
-	} else {
+	if len(wrapper.IFaces) > 0 {
 		var __raw1 []json.RawMessage
 		if err = json.Unmarshal(wrapper.IFaces, &__raw1); err != nil {
 			return fmt.Errorf("field ifs: %w", err)
@@ -171,7 +210,7 @@ func (o *Owner) UnmarshalJSON(data []byte) (err error) {
 			__decoded1 = make([]IFace, len(__raw1))
 		}
 		for __index, __raw := range __raw1 {
-			if __decoded1[__index], err = __jsonUnmarshal__v1_interfaces_options__IFace__Owner__IFaces(__raw); err != nil {
+			if __decoded1[__index], err = __jsonUnmarshal__v1_interfaces_options__IFace__a04a86009e718dec9553757564409d21fe8d2eadb5842542e0d84e5b5f99968b(__raw); err != nil {
 				return fmt.Errorf("field ifs[%d]: %w", __index, err)
 			}
 		}
@@ -179,9 +218,11 @@ func (o *Owner) UnmarshalJSON(data []byte) (err error) {
 	}
 
 	if len(wrapper.OptionalIF) > 0 {
-		if __next.OptionalIF.Value, err = __jsonUnmarshal__v1_interfaces_options__IFace__Owner__OptionalIF(wrapper.OptionalIF); err != nil {
+		var __decoded2 IFace
+		if __decoded2, err = __jsonUnmarshal__v1_interfaces_options__IFace__a04a86009e718dec9553757564409d21fe8d2eadb5842542e0d84e5b5f99968b(wrapper.OptionalIF); err != nil {
 			return err
 		}
+		__next.OptionalIF.Value = __decoded2
 		__next.OptionalIF.Present = true
 	}
 
@@ -218,7 +259,35 @@ func (p *Plain) UnmarshalYAML(node *yaml.Node) error {
 	*p = next
 	return nil
 }
-func __jsonUnmarshal__v1_interfaces_options__IFace__Owner__IF(data []byte) (IFace, error) {
+func __jsonMarshal__v1_interfaces_options__IFace__2dd2038c39400c39843ecd49325d1bd289ca31c82e3baebb63c590262181123a(value IFace) (json.RawMessage, error) {
+	if value == nil {
+		return nil, fmt.Errorf("cannot marshal nil registered interface IFace")
+	}
+	var (
+		data          []byte
+		err           error
+		discriminator string
+	)
+	switch object := value.(type) {
+	case Impl1:
+		discriminator = "impl_one"
+		data, err = json.Marshal(&object)
+	case Impl2:
+		discriminator = "impl \"two\""
+		data, err = json.Marshal(&object)
+	default:
+		return nil, fmt.Errorf("unregistered dynamic implementation %T for IFace", value)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("marshal registered implementation %T for IFace: %w", value, err)
+	}
+	return __jsonschema__marshalUnionObject(data,
+		"!kind",
+		discriminator,
+	)
+}
+
+func __jsonUnmarshal__v1_interfaces_options__IFace__2dd2038c39400c39843ecd49325d1bd289ca31c82e3baebb63c590262181123a(data []byte) (IFace, error) {
 	var (
 		temp          map[string]json.RawMessage
 		discriminator string
@@ -230,7 +299,7 @@ func __jsonUnmarshal__v1_interfaces_options__IFace__Owner__IF(data []byte) (IFac
 	} else if _tempDiscriminator, ok := temp["!kind"]; !ok {
 		// per-field discriminator property
 		return nil, fmt.Errorf("no discriminator property '%s' found", "!kind")
-	} else if err = json.Unmarshal(_tempDiscriminator, &discriminator); err != nil {
+	} else if discriminator, err = __jsonschema__decodeDiscriminator(_tempDiscriminator); err != nil {
 		return nil, __jsonschema__unmarshalDiscriminatorError(_tempDiscriminator, err)
 	}
 	switch discriminator {
@@ -250,7 +319,35 @@ func __jsonUnmarshal__v1_interfaces_options__IFace__Owner__IF(data []byte) (IFac
 		return nil, fmt.Errorf("unknown discriminator: %s", discriminator)
 	}
 }
-func __jsonUnmarshal__v1_interfaces_options__IFace__Owner__IFaces(data []byte) (IFace, error) {
+func __jsonMarshal__v1_interfaces_options__IFace__a04a86009e718dec9553757564409d21fe8d2eadb5842542e0d84e5b5f99968b(value IFace) (json.RawMessage, error) {
+	if value == nil {
+		return nil, fmt.Errorf("cannot marshal nil registered interface IFace")
+	}
+	var (
+		data          []byte
+		err           error
+		discriminator string
+	)
+	switch object := value.(type) {
+	case Impl1:
+		discriminator = "Impl1"
+		data, err = json.Marshal(&object)
+	case Impl2:
+		discriminator = "Impl2"
+		data, err = json.Marshal(&object)
+	default:
+		return nil, fmt.Errorf("unregistered dynamic implementation %T for IFace", value)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("marshal registered implementation %T for IFace: %w", value, err)
+	}
+	return __jsonschema__marshalUnionObject(data,
+		"!kind",
+		discriminator,
+	)
+}
+
+func __jsonUnmarshal__v1_interfaces_options__IFace__a04a86009e718dec9553757564409d21fe8d2eadb5842542e0d84e5b5f99968b(data []byte) (IFace, error) {
 	var (
 		temp          map[string]json.RawMessage
 		discriminator string
@@ -262,7 +359,7 @@ func __jsonUnmarshal__v1_interfaces_options__IFace__Owner__IFaces(data []byte) (
 	} else if _tempDiscriminator, ok := temp["!kind"]; !ok {
 		// per-field discriminator property
 		return nil, fmt.Errorf("no discriminator property '%s' found", "!kind")
-	} else if err = json.Unmarshal(_tempDiscriminator, &discriminator); err != nil {
+	} else if discriminator, err = __jsonschema__decodeDiscriminator(_tempDiscriminator); err != nil {
 		return nil, __jsonschema__unmarshalDiscriminatorError(_tempDiscriminator, err)
 	}
 	switch discriminator {
@@ -282,37 +379,42 @@ func __jsonUnmarshal__v1_interfaces_options__IFace__Owner__IFaces(data []byte) (
 		return nil, fmt.Errorf("unknown discriminator: %s", discriminator)
 	}
 }
-func __jsonUnmarshal__v1_interfaces_options__IFace__Owner__OptionalIF(data []byte) (IFace, error) {
-	var (
-		temp          map[string]json.RawMessage
-		discriminator string
-		err           = json.Unmarshal(data, &temp)
-	)
 
-	if err != nil {
-		return nil, err
-	} else if _tempDiscriminator, ok := temp["!kind"]; !ok {
-		// per-field discriminator property
-		return nil, fmt.Errorf("no discriminator property '%s' found", "!kind")
-	} else if err = json.Unmarshal(_tempDiscriminator, &discriminator); err != nil {
-		return nil, __jsonschema__unmarshalDiscriminatorError(_tempDiscriminator, err)
+func __jsonschema__marshalUnionObject(data []byte, discriminatorProp, discriminatorValue string) (json.RawMessage, error) {
+	var object map[string]json.RawMessage
+	if err := json.Unmarshal(data, &object); err != nil {
+		return nil, fmt.Errorf("registered union payload must encode as a JSON object: %w", err)
 	}
-	switch discriminator {
-	case "Impl1":
-		var obj Impl1
-		if err = json.Unmarshal(data, &obj); err != nil {
+	if object == nil {
+		return nil, fmt.Errorf("registered union payload must encode as a JSON object, got null")
+	}
+	if encoded, ok := object[discriminatorProp]; ok {
+		current, err := __jsonschema__decodeDiscriminator(encoded)
+		if err != nil {
+			return nil, fmt.Errorf("discriminator property %q must be a string: %w", discriminatorProp, err)
+		}
+		if current != discriminatorValue {
+			return nil, fmt.Errorf("discriminator property %q is %q, want registered value %q", discriminatorProp, current, discriminatorValue)
+		}
+	} else {
+		encoded, err := json.Marshal(discriminatorValue)
+		if err != nil {
 			return nil, err
 		}
-		return obj, nil
-	case "Impl2":
-		var obj Impl2
-		if err = json.Unmarshal(data, &obj); err != nil {
-			return nil, err
-		}
-		return obj, nil
-	default:
-		return nil, fmt.Errorf("unknown discriminator: %s", discriminator)
+		object[discriminatorProp] = encoded
 	}
+	return json.Marshal(object)
+}
+
+func __jsonschema__decodeDiscriminator(discriminator json.RawMessage) (string, error) {
+	var value *string
+	if err := json.Unmarshal(discriminator, &value); err != nil {
+		return "", err
+	}
+	if value == nil {
+		return "", errors.New("JSON null is not a string")
+	}
+	return *value, nil
 }
 
 func __jsonschema__unmarshalDiscriminatorError(discriminator json.RawMessage, err error) error {

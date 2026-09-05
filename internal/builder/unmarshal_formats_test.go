@@ -53,7 +53,7 @@ func TestGeneratedUnmarshalFormats(t *testing.T) {
 
 			if tt.wantJSON {
 				require.Contains(t, source, "func (f *FancyStruct) UnmarshalJSON(")
-				require.Contains(t, source, "func __jsonUnmarshal__interfaces__TestInterface(")
+				require.Contains(t, source, "func __jsonUnmarshal__interfaces__TestInterface__")
 			} else {
 				require.NotContains(t, source, "UnmarshalJSON(")
 				require.NotContains(t, source, "__jsonUnmarshal__")

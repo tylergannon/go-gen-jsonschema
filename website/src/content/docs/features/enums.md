@@ -56,6 +56,32 @@ var _ = jsonschema.NewJSONSchemaMethod(
 Use `jsonschema.WithEnum(Config{}.LogLevel)` instead when the JSON contract
 should contain numeric values.
 
+## Encode and decode string mode
+
+Generation adds one value `MarshalJSON` and pointer `UnmarshalJSON` to the
+containing owner. These methods compose string-mode enum fields with any union
+fields. They use constant identifiers, so `LogInfo` becomes `"LogInfo"` even
+when a `String()` method returns different text. No global codec is added to
+the enum type; another field registered with `WithEnum` remains numeric.
+
+Supported adapted fields are direct integer-backed `E`, `Optional[E]`, and
+`Nullable[E]`. Optional absence is omitted; Nullable null remains null. Present
+values must match a declared constant. Decode errors leave the owner unchanged.
+Validate external JSON first to enforce required fields and schema membership.
+
+Unknown wire names and undeclared Go values are errors, including zero when
+there is no zero-valued constant. Duplicate underlying values with different
+names are ambiguous and rejected before generation writes files. Keep one
+canonical constant name per value for string mode, or retain numeric mode.
+Custom JSON hooks on adapted enum types and adapted pointers/slices or other
+containers are rejected; move conversion to a supported named owner field.
+Registered enum fields cannot use `json:",string"`; generation rejects that
+option before writing artifacts because its encoding differs from the schema.
+
+In the example below, `ApplicationConfig` uses string mode while `Task`
+intentionally uses numeric mode for the same enum types. Renaming constants
+changes the string-mode wire contract and requires compatibility review.
+
 The older package-level `NewEnumType[T]()` registration remains supported for
 string enums, but field-level options make the containing schema's behavior
 explicit and are preferred for new code.
