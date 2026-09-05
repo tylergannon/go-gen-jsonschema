@@ -128,8 +128,12 @@ func Inspect(args InspectArgs) (PackageInspection, error) {
 			TypePath: scan.Pkg.PkgPath + "." + name,
 			Position: position,
 		}
-		root.Findings = inspectStaticShape(scan, name, buildContext)
 		mapped, mapErr := inspectRoot(pkgs[0], name, buildContext)
+		shapeScan := scan
+		if mapped.Scan.Pkg != nil {
+			shapeScan = mapped.Scan
+		}
+		root.Findings = inspectStaticShape(shapeScan, mapped, name, buildContext)
 		if mapErr != nil {
 			var typed *InspectionError
 			if errors.As(mapErr, &typed) {
@@ -182,14 +186,16 @@ type staticInspector struct {
 	productionHooks   map[syntax.TypeID]token.Position
 	productionScanned map[string]bool
 	buildContext      syntax.BuildContext
+	unionFields       map[*dst.Field][]InterfaceProp
 }
 
-func inspectStaticShape(scan syntax.ScanResult, rootName string, buildContext syntax.BuildContext) []InspectionFinding {
+func inspectStaticShape(scan syntax.ScanResult, mapped SchemaBuilder, rootName string, buildContext syntax.BuildContext) []InspectionFinding {
 	inspector := staticInspector{
 		seen:              make(map[syntax.TypeID]bool),
 		productionHooks:   make(map[syntax.TypeID]token.Position),
 		productionScanned: make(map[string]bool),
 		buildContext:      buildContext,
+		unionFields:       resolvedUnionFields(mapped),
 	}
 	typeSpec, ok := scan.LocalNamedTypes[rootName]
 	if !ok {
@@ -203,6 +209,16 @@ func inspectStaticShape(scan syntax.ScanResult, rootName string, buildContext sy
 		return strings.Compare(a.Code, b.Code)
 	})
 	return inspector.findings
+}
+
+func resolvedUnionFields(mapped SchemaBuilder) map[*dst.Field][]InterfaceProp {
+	fields := make(map[*dst.Field][]InterfaceProp)
+	for _, props := range mapped.customTypes {
+		for _, prop := range props {
+			fields[prop.Field.Field] = append(fields[prop.Field.Field], prop)
+		}
+	}
+	return fields
 }
 
 func (i *staticInspector) walkNamed(scan syntax.ScanResult, spec syntax.TypeSpec, typePath, fieldPath string) {
@@ -241,6 +257,17 @@ func (i *staticInspector) walkNamed(scan syntax.ScanResult, spec syntax.TypeSpec
 				if field.HasJSONOption("string") {
 					i.add("unsupported_json_string", "unsupported", "json:,string changes the wire shape and is outside the v1 contract", "use the natural JSON scalar representation or a separate supported wire field", typePath, nextPath, field.Position())
 				}
+				if unionFields := i.unionFields[field.Field]; len(unionFields) > 0 {
+					if !supportedRegisteredInterfaceShape(scan, field.Type(), wrapper, inner) {
+						i.add("unsupported_interface_shape", "unsupported", "registered interfaces support only direct I, Optional[I], and direct []I fields", "move the union to a direct named field, Optional[I], or one-dimensional []I field", typePath, nextPath, field.Position())
+					}
+					if len(unionFields) != 1 {
+						i.add("unknown_union_plan", "unknown", "the resolved builder produced ambiguous union plans for this field", "report this diagnostic and the installed tool revision", typePath, nextPath, field.Position())
+						continue
+					}
+					i.walkUnionImplementations(scan, unionFields[0], typePath, nextPath)
+					continue
+				}
 				if inspectionRegisteredInterfaceField(scan, spec.Name(), name) {
 					if wrapper == syntax.WrapperNullable && isNamedInterface(scan, inner) {
 						// The resolved builder reports the narrower, positioned
@@ -249,7 +276,9 @@ func (i *staticInspector) walkNamed(scan syntax.ScanResult, spec syntax.TypeSpec
 					}
 					if !supportedRegisteredInterfaceShape(scan, field.Type(), wrapper, inner) {
 						i.add("unsupported_interface_shape", "unsupported", "registered interfaces support only direct I, Optional[I], and direct []I fields", "move the union to a direct named field, Optional[I], or one-dimensional []I field", typePath, nextPath, field.Position())
+						continue
 					}
+					i.add("unknown_union_plan", "unknown", "the registered interface field has no resolved field-specific plan", "use a supported direct union field or report this diagnostic and the installed tool revision", typePath, nextPath, field.Position())
 					continue
 				}
 				if wrapper != syntax.WrapperNone {
@@ -264,6 +293,39 @@ func (i *staticInspector) walkNamed(scan syntax.ScanResult, spec syntax.TypeSpec
 	}
 	i.walkExpr(scan, spec.Type().Expr(), typePath, fieldPath, spec.Position())
 	delete(i.seen, id)
+}
+
+func (i *staticInspector) walkUnionImplementations(scan syntax.ScanResult, field InterfaceProp, typePath, fieldPath string) {
+	for _, implementation := range field.Interface.Impls {
+		implementationScan, implementationSpec, ok := resolveInspectionType(scan, implementation)
+		implementationPath := fieldPath + "<" + implementation.String() + ">"
+		if !ok {
+			i.add(
+				"unknown_union_payload",
+				"unknown",
+				fmt.Sprintf("registered union implementation %s could not be resolved for inspection", implementation),
+				"make the concrete implementation available in the module graph",
+				typePath,
+				implementationPath,
+				field.Field.Position(),
+			)
+			continue
+		}
+		i.walkNamed(implementationScan, implementationSpec, typePath, implementationPath)
+	}
+}
+
+func resolveInspectionType(scan syntax.ScanResult, id syntax.TypeID) (syntax.ScanResult, syntax.TypeSpec, bool) {
+	pkgPath := id.PkgPath
+	if pkgPath == "" {
+		pkgPath = scan.Pkg.PkgPath
+	}
+	target, ok := scan.GetPackage(pkgPath)
+	if !ok {
+		return syntax.ScanResult{}, syntax.TypeSpec{}, false
+	}
+	spec, ok := target.LocalNamedTypes[id.TypeName]
+	return target, spec, ok
 }
 
 func (i *staticInspector) walkExpr(scan syntax.ScanResult, expr dst.Expr, typePath, fieldPath string, position token.Position) {

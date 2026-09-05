@@ -55,6 +55,17 @@ func TestTargetLoaderValidatesTheSameSourceInReadonlyAndWritableModes(t *testing
 	}
 }
 
+func TestTargetLoaderReturnsTypedNoGoPackageError(t *testing.T) {
+	target := t.TempDir()
+	context, err := ResolveBuildContext()
+	require.NoError(t, err)
+
+	_, err = LoadTargetWithBuildContext(target, context, true)
+	var noGoPackage *NoGoPackageError
+	require.ErrorAs(t, err, &noGoPackage)
+	require.Equal(t, target, noGoPackage.TargetDir)
+}
+
 func TestParsePackagePositionPreservesSpaces(t *testing.T) {
 	t.Parallel()
 

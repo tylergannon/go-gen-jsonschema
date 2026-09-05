@@ -285,6 +285,34 @@ func TestInspectLoadsForeignLegacyInterfacesFromTargetGraph(t *testing.T) {
 	require.Equal(t, "union_encode_unavailable", result.Types[0].Diagnostics[0].Code)
 }
 
+func TestInspectTraversesResolvedUnionPayloadHooks(t *testing.T) {
+	repoRoot, err := filepath.Abs(filepath.Join("..", ".."))
+	require.NoError(t, err)
+	target := filepath.Join(repoRoot, "internal", "builder", "testfixtures", "v1_interfaces_options")
+
+	result := Inspect(InspectRequest{TargetDir: target, TypeNames: []string{"Owner"}})
+
+	require.Equal(t, StatusUnsupported, result.Status)
+	var hook *Diagnostic
+	capabilities := make(map[string]Status)
+	for _, capability := range result.Types[0].Capabilities {
+		capabilities[capability.Name] = capability.Status
+	}
+	for index := range result.Types[0].Diagnostics {
+		if result.Types[0].Diagnostics[index].Code == "unknown_custom_json_hook" {
+			hook = &result.Types[0].Diagnostics[index]
+			break
+		}
+	}
+	require.NotNil(t, hook)
+	require.Contains(t, hook.FieldPath, "Owner.")
+	require.Contains(t, hook.FieldPath, "Impl1")
+	require.NotNil(t, hook.Source)
+	require.Equal(t, "types.go", filepath.Base(hook.Source.File))
+	require.Equal(t, StatusUnknown, capabilities["json_decode"])
+	require.Equal(t, StatusUnsupported, capabilities["json_encode"])
+}
+
 func diagnosticFieldPaths(result Result) []string {
 	var paths []string
 	for _, diagnostic := range result.Types[0].Diagnostics {

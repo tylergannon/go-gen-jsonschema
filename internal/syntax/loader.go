@@ -3,6 +3,7 @@ package syntax
 import (
 	"fmt"
 	"go/token"
+	"os"
 	"slices"
 	"strconv"
 	"strings"
@@ -60,14 +61,36 @@ func LoadReadonlyWithBuildContext(path string, context BuildContext) ([]*decorat
 // the operation's effective build context. readonly prevents module-file
 // updates but does not change which source models are accepted.
 func LoadTargetWithBuildContext(targetDir string, context BuildContext, readonly bool) ([]*decorator.Package, error) {
+	entries, err := os.ReadDir(targetDir)
+	if err != nil {
+		return nil, err
+	}
+	hasSource := slices.ContainsFunc(entries, func(entry os.DirEntry) bool {
+		return !entry.IsDir() && strings.HasSuffix(entry.Name(), ".go") && !strings.HasSuffix(entry.Name(), "_test.go")
+	})
+	if !hasSource {
+		return nil, &NoGoPackageError{TargetDir: targetDir}
+	}
 	loaded, err := loadFromDirWithBuildContext(targetDir, ".", context, readonly)
 	if err != nil {
 		return nil, err
+	}
+	if !hasLoadableGoPackage(loaded) {
+		return nil, &NoGoPackageError{TargetDir: targetDir}
 	}
 	if err := validateLoadedPackages(loaded); err != nil {
 		return nil, err
 	}
 	return loaded, nil
+}
+
+func hasLoadableGoPackage(loaded []*decorator.Package) bool {
+	for _, pkg := range loaded {
+		if pkg != nil && (len(pkg.GoFiles) > 0 || len(pkg.CompiledGoFiles) > 0 || len(pkg.Syntax) > 0) {
+			return true
+		}
+	}
+	return false
 }
 
 func loadFromDirWithBuildContext(dir, pattern string, context BuildContext, readonly bool) ([]*decorator.Package, error) {
@@ -125,6 +148,14 @@ func packageConfig(context BuildContext) packages.Config {
 type PackageLoadError struct {
 	Errors        []packages.Error
 	MissingImport bool
+}
+
+type NoGoPackageError struct {
+	TargetDir string
+}
+
+func (e *NoGoPackageError) Error() string {
+	return fmt.Sprintf("target %s contains no loadable Go package", e.TargetDir)
 }
 
 func (e *PackageLoadError) Error() string {

@@ -27,10 +27,15 @@ func Inspect(request InspectRequest) Result {
 		code := "package_load_failed"
 		remedy := "fix the reported Go package or module error and run inspection again"
 		var position token.Position
+		var noGoPackage *syntax.NoGoPackageError
 		var loadErr *syntax.PackageLoadError
 		var scanErr *syntax.ScanError
 		var inspectionErr *builder.InspectionError
 		switch {
+		case errors.As(err, &noGoPackage):
+			classification = ClassificationInvalidRequest
+			code = "invalid_target"
+			remedy = "pass --target with a directory containing a loadable Go package"
 		case errors.As(err, &scanErr):
 			classification = classificationFromCertainty(scanErr.Certainty)
 			code = scanErr.Code

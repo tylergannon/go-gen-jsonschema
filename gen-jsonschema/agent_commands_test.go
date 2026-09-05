@@ -41,6 +41,19 @@ func TestInvalidInspectFlagStillWritesOneJSONResult(t *testing.T) {
 	require.Equal(t, "invalid_request", result.Diagnostics[0].Code)
 }
 
+func TestInspectJSONRejectsExistingDirectoryWithoutGoPackage(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	exitCode := runAgentCommand([]string{"inspect", "--json", "--target", t.TempDir()}, &stdout, &stderr)
+
+	require.Equal(t, 2, exitCode)
+	require.Empty(t, stderr.String())
+	var result inspection.Result
+	require.NoError(t, json.Unmarshal(stdout.Bytes(), &result))
+	require.Equal(t, inspection.StatusInvalid, result.Status)
+	require.Equal(t, "invalid_target", result.Diagnostics[0].Code)
+	require.Equal(t, inspection.ClassificationInvalidRequest, result.Diagnostics[0].Classification)
+}
+
 func TestInspectJSONReportsUnsupportedWithoutStdoutNoise(t *testing.T) {
 	repoRoot, err := filepath.Abs(filepath.Join(".."))
 	require.NoError(t, err)
