@@ -410,9 +410,9 @@ and the imported marker/runtime package must use that same release:
 go get -tool github.com/tylergannon/go-gen-jsonschema/gen-jsonschema@v1.0.0-rc.5
 ```
 
-The combined surface starts in `v1.0.0-rc.5`. Until that release is published,
-`@latest` remains `v1.0.0-rc.4`, which includes TypeScript declarations but
-predates the owner codecs.
+This combined surface requires `v1.0.0-rc.5` or newer. `v1.0.0-rc.4` includes
+TypeScript declarations but predates generated owner codecs. Pin the version
+explicitly.
 
 Generate validation and TypeScript declarations together. The field
 registrations shown above automatically select the containing struct's enum and

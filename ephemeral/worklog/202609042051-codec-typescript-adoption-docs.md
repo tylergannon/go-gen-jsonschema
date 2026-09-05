@@ -4,7 +4,9 @@ correction: The merged TypeScript output is structural only; do not describe the
 
 decision: Document one generation run for schemas, generated Go owner codecs, validation, and TypeScript declarations. Owner codecs are selected by `WithInterface` and `WithStringerEnum` registrations and need no separate CLI flag.
 
-decision: Reproducible consumers must pin the generator and imported marker/runtime package to the same module release. The current v1.0.0-rc.4 tag predates merge commit 4374753's owner-codec integration, so another published tag is required before adopting the combined surface from a release.
+decision: Reproducible consumers must pin the generator and imported marker/runtime package to the same module release. The combined surface requires v1.0.0-rc.5 or newer; v1.0.0-rc.4 includes declarations but predates generated owner codecs.
+
+correction: Avoid time-sensitive claims about what `@latest` resolves to; state the durable minimum release and require an explicit version pin.
 
 doc_bug: The website CLI reference omits `--typescript` and `--typescript-barrel`, and its no-change descriptions mention schemas only -> align it with live CLI help and requested TypeScript artifact behavior.
 

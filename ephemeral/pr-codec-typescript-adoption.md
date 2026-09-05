@@ -1,6 +1,6 @@
 The merged TypeScript declarations and field-aware Go codecs were documented separately, leaving consumers without one correct setup path and leaving the website and shipped skill CLI references stale. This change documents a single pinned-release generation flow for validation, TypeScript declarations, and automatically selected owner codecs, then shows validation before Go decoding and the TypeScript runtime-validation boundary.
 
-It also states that the combined published surface begins with planned `v1.0.0-rc.5`: current `v1.0.0-rc.4` has TypeScript declarations but predates the owner codec merge. Issue #71 remains the broader executed Go/JavaScript transport proof; it is not presented as a generated TypeScript runtime codec or validator.
+It also states the durable release floor: the combined surface requires `v1.0.0-rc.5` or newer, while `v1.0.0-rc.4` has TypeScript declarations but predates generated owner codecs. Issue #71 remains the broader executed Go/JavaScript transport proof; it is not presented as a generated TypeScript runtime codec or validator.
 
 Validation:
 

@@ -78,8 +78,9 @@ and the whole `jsonschema/` directory (each `T.json` schema comes with a
 ## TypeScript declarations and the Go JSON boundary
 
 For a Go and TypeScript integration, pin one explicit module release for both
-the tool and imported marker/runtime package. The combined surface starts in
-`v1.0.0-rc.5`:
+the tool and imported marker/runtime package. This combined surface requires
+`v1.0.0-rc.5` or newer; `v1.0.0-rc.4` includes TypeScript declarations but
+predates generated owner codecs:
 
 ```bash
 go get -tool github.com/tylergannon/go-gen-jsonschema/gen-jsonschema@v1.0.0-rc.5
