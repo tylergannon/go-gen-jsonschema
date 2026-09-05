@@ -15,6 +15,37 @@ type PackageScanner interface {
 	Scan(*packages.Package) (ScanResult, error)
 }
 
+type ScanError struct {
+	Code      string
+	Certainty string
+	Remedy    string
+	Position  token.Position
+	Cause     error
+}
+
+func (e *ScanError) Error() string { return e.Cause.Error() }
+func (e *ScanError) Unwrap() error { return e.Cause }
+
+func markerScanError(code string, decl MarkerFunctionCall, err error) error {
+	return &ScanError{
+		Code:      code,
+		Certainty: "invalid",
+		Remedy:    "fix the reported registration and run inspection again",
+		Position:  decl.CallExpr.Position(),
+		Cause:     err,
+	}
+}
+
+func unsupportedModelScanError(code string, expr Expr, err error) error {
+	return &ScanError{
+		Code:      code,
+		Certainty: "unsupported",
+		Remedy:    "replace the generic model shape with a documented supported shape",
+		Position:  expr.Position(),
+		Cause:     err,
+	}
+}
+
 // TypeDecl refers to the
 type TypeDecl struct {
 	Node  *dst.DeclStmt
@@ -214,6 +245,9 @@ type ScanResult struct {
 	LocalNamedTypes map[string]TypeSpec
 	remoteTypes     typesMap
 	deps            map[string]ScanResult
+	buildContext    *BuildContext
+	loadDir         string
+	loadReadonly    bool
 	// temp variable used during resolution only.
 	resolveQueue            []TypeSpec
 	alreadyTraversedLocally map[string]bool
@@ -248,8 +282,27 @@ func (s seenPackages) add(pkg *decorator.Package) (seenPackages, bool) {
 // Note: we pass a non-nil map to loadPackageInternal(...) so we can safely store references
 // to local types without panicking.
 func LoadPackage(pkg *decorator.Package) (res ScanResult, err error) {
-	res = newScanResult(pkg, map[string]ScanResult{})
+	context, err := ResolveBuildContext()
+	if err != nil {
+		return ScanResult{}, err
+	}
+	return LoadPackageWithBuildContext(pkg, context)
+}
+
+// LoadPackageWithBuildContext scans using a previously resolved operation
+// context, including any remote package loads discovered during traversal.
+func LoadPackageWithBuildContext(pkg *decorator.Package, context BuildContext) (res ScanResult, err error) {
+	res = newScanResultWithBuildContext(pkg, map[string]ScanResult{}, &context)
 	// Pass an empty map so we never do `typesToMap[foo] = true` on a nil map.
+	err = res.loadPackageInternal(seenPackages{}, make(map[string]bool))
+	return
+}
+
+// LoadPackageReadonlyWithBuildContext scans without allowing remote package
+// discovery to update the target module's go.mod or go.sum.
+func LoadPackageReadonlyWithBuildContext(pkg *decorator.Package, context BuildContext) (res ScanResult, err error) {
+	res = newScanResultWithBuildContext(pkg, map[string]ScanResult{}, &context)
+	res.loadReadonly = true
 	err = res.loadPackageInternal(seenPackages{}, make(map[string]bool))
 	return
 }
@@ -265,7 +318,11 @@ func loadPackageForTest(pkg *decorator.Package, typesToInclude ...string) (ScanR
 }
 
 func newScanResult(pkg *decorator.Package, deps map[string]ScanResult) ScanResult {
-	return ScanResult{
+	return newScanResultWithBuildContext(pkg, deps, nil)
+}
+
+func newScanResultWithBuildContext(pkg *decorator.Package, deps map[string]ScanResult, context *BuildContext) ScanResult {
+	result := ScanResult{
 		Pkg:                     pkg,
 		Constants:               make(map[string]*EnumSet),
 		MarkerCalls:             make([]MarkerFunctionCall, 0),
@@ -276,8 +333,13 @@ func newScanResult(pkg *decorator.Package, deps map[string]ScanResult) ScanResul
 		remoteTypes:             typesMap{},
 		localTypeNames:          make(map[string]bool),
 		deps:                    deps,
+		buildContext:            context,
 		alreadyTraversedLocally: make(map[string]bool),
 	}
+	if pkg != nil {
+		result.loadDir = pkg.Dir
+	}
+	return result
 }
 
 type typesMap map[string]map[string]bool
@@ -387,16 +449,24 @@ func (r *ScanResult) loadPackageInternal(seen seenPackages, typesToMap map[strin
 	for _, decl := range r.MarkerCalls {
 		switch decl.CallExpr.MustIdentifyFunc().TypeName {
 		case MarkerFuncNewEnumType:
-			r.Constants[decl.MustTypeArgument().TypeName] = &EnumSet{}
+			typeArg := decl.TypeArgument()
+			if typeArg == nil || typeArg.TypeName == "" {
+				return markerScanError("invalid_enum_registration", decl, fmt.Errorf("enum registration requires a named type argument"))
+			}
+			r.Constants[typeArg.TypeName] = &EnumSet{}
 		case MarkerFuncNewInterfaceImpl:
 			var (
 				err   error
 				iface = IfaceImplementations{}
 			)
 			if iface.Impls, err = decl.ParseTypesFromArgs(); err != nil {
-				return err
+				return markerScanError("invalid_interface_registration", decl, err)
 			}
-			r.Interfaces[decl.MustTypeArgument().TypeName] = iface
+			typeArg := decl.TypeArgument()
+			if typeArg == nil || typeArg.TypeName == "" {
+				return markerScanError("invalid_interface_registration", decl, fmt.Errorf("interface registration requires a named type argument"))
+			}
+			r.Interfaces[typeArg.TypeName] = iface
 			for _, impl := range iface.Impls {
 				if impl.PkgPath == r.Pkg.PkgPath {
 					r.localTypeNames[impl.TypeName] = true
@@ -408,7 +478,7 @@ func (r *ScanResult) loadPackageInternal(seen seenPackages, typesToMap map[strin
 		case MarkerFuncNewJSONSchemaMethod:
 			method, err := decl.ParseSchemaMethod()
 			if err != nil {
-				return err
+				return markerScanError("invalid_schema_method_registration", decl, err)
 			}
 			r.localTypeNames[method.Receiver.TypeName] = true
 			typesToMap[method.Receiver.TypeName] = true
@@ -416,7 +486,7 @@ func (r *ScanResult) loadPackageInternal(seen seenPackages, typesToMap map[strin
 		case MarkerFuncNewJSONSchemaBuilder:
 			fn, err := decl.ParseSchemaBuilder()
 			if err != nil {
-				return err
+				return markerScanError("invalid_schema_builder_registration", decl, err)
 			}
 			r.localTypeNames[fn.Receiver.TypeName] = true
 			typesToMap[fn.Receiver.TypeName] = true
@@ -424,14 +494,14 @@ func (r *ScanResult) loadPackageInternal(seen seenPackages, typesToMap map[strin
 		case MarkerFuncNewJSONSchemaFunc:
 			fn, err := decl.ParseSchemaFunc()
 			if err != nil {
-				return err
+				return markerScanError("invalid_schema_function_registration", decl, err)
 			}
 			r.localTypeNames[fn.Receiver.TypeName] = true
 			typesToMap[fn.Receiver.TypeName] = true
 			r.SchemaFuncs = append(r.SchemaFuncs, fn)
 
 		default:
-			return fmt.Errorf("unsupported marker function: %s", decl.CallExpr.MustIdentifyFunc())
+			return markerScanError("unsupported_marker_function", decl, fmt.Errorf("unsupported marker function: %s", decl.CallExpr.MustIdentifyFunc()))
 		}
 	}
 
@@ -493,9 +563,17 @@ func (r *ScanResult) resolveTypeExpr(_expr Expr, seen SeenTypes) error {
 	switch expr := _expr.Expr().(type) {
 	case *dst.IndexExpr, *dst.IndexListExpr:
 		if kind, _, ok := wrapperExpr(_expr); ok {
-			return fmt.Errorf("%s is supported only as the complete type of a direct named struct field at %s", kind, _expr.Position())
+			return unsupportedModelScanError(
+				"unsupported_wrapper_placement",
+				_expr,
+				fmt.Errorf("%s is supported only as the complete type of a direct named struct field at %s", kind, _expr.Position()),
+			)
 		}
-		return fmt.Errorf("unsupported generic type %s at %s", _expr.Details(), _expr.Position())
+		return unsupportedModelScanError(
+			"unsupported_generic_type",
+			_expr,
+			fmt.Errorf("unsupported generic type %s at %s", _expr.Details(), _expr.Position()),
+		)
 	case *dst.ParenExpr:
 		return r.resolveTypeExpr(_expr.NewExpr(expr.X), seen)
 	case *dst.StarExpr:
@@ -539,6 +617,11 @@ func (r *ScanResult) resolveTypeExpr(_expr Expr, seen SeenTypes) error {
 	case *dst.Ident:
 		if expr.Path == "" || expr.Path == r.Pkg.PkgPath {
 			// It's either a basic type or a locally-defined named type
+			if expr.Name == "any" {
+				if _, shadowed := r.LocalNamedTypes[expr.Name]; !shadowed {
+					return nil
+				}
+			}
 			if BasicTypes[expr.Name] {
 				return nil // basic type
 			}
@@ -653,10 +736,12 @@ func (r *ScanResult) resolveTypes() error {
 			if err = remote.resolveTypes(); err != nil {
 				return fmt.Errorf("resolving type at %s: %w", pkgPath, err)
 			}
-		} else if pkgs, err := Load(pkgPath); err != nil {
+		} else if pkgs, err := r.loadRemotePackage(pkgPath); err != nil {
 			return err
 		} else {
-			remote = newScanResult(pkgs[0], r.deps)
+			remote = newScanResultWithBuildContext(pkgs[0], r.deps, r.buildContext)
+			remote.loadDir = r.loadDir
+			remote.loadReadonly = r.loadReadonly
 			if err = remote.loadPackageInternal(seenPackages{}, typeNames); err != nil {
 				return fmt.Errorf("resolving type at %s: %w", pkgPath, err)
 			}
@@ -664,6 +749,13 @@ func (r *ScanResult) resolveTypes() error {
 		}
 	}
 	return nil
+}
+
+func (r *ScanResult) loadRemotePackage(pkgPath string) ([]*decorator.Package, error) {
+	if r.buildContext != nil {
+		return loadFromDirWithBuildContext(r.loadDir, pkgPath, *r.buildContext, r.loadReadonly)
+	}
+	return Load(pkgPath)
 }
 
 func (r *ScanResult) requestType(typeName string) error {

@@ -75,6 +75,24 @@ and the whole `jsonschema/` directory (each `T.json` schema comes with a
    [references/hooks-and-ci.md](references/hooks-and-ci.md) for lefthook and
    GitHub Actions recipes (auto-stage vs fail-on-drift).
 
+## Inspect the installed tool and model
+
+For an existing installation, read `go tool gen-jsonschema --help` first.
+Only call `version`/`inspect` if listed: older binaries can interpret unknown
+subcommands as generation requests. With a discovery-capable pinned version:
+
+```bash
+go tool gen-jsonschema version --json
+go tool gen-jsonschema inspect --json --target ./models Request
+```
+
+Inspect registered roots before generation. Use per-operation capabilities and
+stable diagnostic codes/classifications, not schema support alone, to decide
+whether the model has a proven JSON boundary. Inspection preserves target files
+and does not execute user hooks. Exit 3 means unsupported/unknown, 2 invalid
+request/source, and 1 internal/toolchain failure; fix the reported cause before
+claiming support. Omit type names to inspect all registered roots.
+
 ## Minimal example
 
 ```go

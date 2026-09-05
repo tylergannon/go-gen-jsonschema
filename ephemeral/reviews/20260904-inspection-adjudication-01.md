@@ -1,0 +1,9 @@
+# Adjudication of round 01 finding 3
+
+Parent review challenged the production-hook build-tag finding in `20260904-inspection-round-01.md`. I rechecked the accepted build-tag model in `README.md:85-93`, `skills/go-gen-jsonschema/SKILL.md:23-32`, and `docs/internal-dev-notes.md:26-30`: `schema.go` is generation-only under the reserved `jsonschema` tag, while `jsonschema_gen.go` is production-only under `!jsonschema`. The first half of the round-01 finding was therefore overbroad and is withdrawn: a method in a `//go:build jsonschema` generation file is not a supported production hook that inspection must discover.
+
+The second half remains a concrete invocation mismatch in the original checkpoint. `FindProductionJSONMethods` originally parsed `GOFLAGS` directly into `build.Default.BuildTags`; with `GOFLAGS=-tags=jsonschema`, it considered the reserved generation file active and could report the allowed declaration stubs in `schema.go` as `unknown_custom_json_hook`, despite the helper’s stated guarantee that generation-only stubs are excluded. The correct production context must remove the reserved `jsonschema` tag from GOFLAGS before `MatchFile`, while preserving any caller-selected non-reserved tags. This is narrower than the original P1 wording and should be treated as a conditional P2 boundary issue unless the CLI explicitly documents `GOFLAGS=-tags=jsonschema` as unsupported.
+
+The current shared worktree contains an uncommitted correction implementing `productionBuildTags()` by deleting the reserved tag before matching. That correction addresses the remaining issue; the review artifact intentionally remains a record of the checkpoint review and is not rewritten.
+
+No product files were changed by this adjudication. No additional test was run while the parent’s full generation gate was active.

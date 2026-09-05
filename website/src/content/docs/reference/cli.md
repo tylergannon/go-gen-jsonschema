@@ -17,6 +17,27 @@ The CLI generates schemas. Validation and selected JSON/YAML decoding methods
 are optional generated capabilities; schema generation does not provide a
 general-purpose Go codec.
 
+## Discover and inspect
+
+```sh
+go tool gen-jsonschema version --json
+go tool gen-jsonschema inspect --json --target ./models Request Response
+```
+
+Read `--help` before using these subcommands on an older installation.
+`version` reports executable identity and installed capabilities. `inspect`
+reports each registered root's schema, JSON encode/decode, validation, and YAML
+support separately. Omit type names to inspect all registered roots.
+
+Inspection does not write source/generated/module files or invoke user hooks.
+External Go caches may be populated. `--json` emits one versioned JSON result
+to stdout; human mode writes to stderr. Exit 0 means supported/help, 2 invalid
+request/source, 3 unsupported/unknown, and 1 internal/toolchain error.
+
+See the [machine result contract](https://github.com/tylergannon/go-gen-jsonschema/blob/main/docs/agent-cli.md)
+for field definitions and compatibility rules. Both commands support `--help`,
+including structured `--json --help`.
+
 ## Generate
 
 ```text

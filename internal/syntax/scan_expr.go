@@ -77,7 +77,6 @@ func ParseValueExprForMarkerFunctionCall(e ValueSpec) []MarkerFunctionCall {
 		if id, ok := callExpr.IdentifyFunc(); !ok || id.PkgPath != SchemaPackagePath {
 			continue
 		} else if !slices.Contains(markerFunctions, id.TypeName) {
-			fmt.Println("Unsupported MarkerFunction", id.TypeName)
 			continue
 		}
 		results = append(results, MarkerFunctionCall{
@@ -517,9 +516,8 @@ func (m MarkerFunctionCall) ParseSchemaMethod() (SchemaMethod, error) {
 		}
 		return res, nil
 	default:
-		fmt.Printf("ArgBoo --> %T %#v", expr, expr)
+		return SchemaMethod{}, fmt.Errorf("schema method receiver has unsupported expression %T at %s", expr, m.CallExpr.Position())
 	}
-	return SchemaMethod{}, nil
 }
 
 func parseLitForType(expr Expr) (TypeID, error) {
@@ -545,7 +543,6 @@ func parseLitForType(expr Expr) (TypeID, error) {
 		}
 		return parseFuncFromExpr(expr.NewExpr(p.X)), nil
 	default:
-		fmt.Printf("Unrecognized -- %T %#v\n", expr, expr)
-		return TypeID{}, fmt.Errorf("unrecognized -- %T %#v", expr, expr)
+		return TypeID{}, fmt.Errorf("unrecognized registration type %T at %s", expr, expr.Position())
 	}
 }

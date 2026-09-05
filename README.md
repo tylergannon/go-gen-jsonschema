@@ -413,6 +413,19 @@ the compatible split form `WithInterface(field)`,
 These markers are no-ops at runtime — the generator reads them from the AST of
 your build-tagged `schema.go`.
 
+## Inspect a model before generation
+
+```bash
+go tool gen-jsonschema version --json
+go tool gen-jsonschema inspect --json --target ./models Request
+```
+
+Inspection reports schema, encoding, decoding, validation, and YAML support
+separately without writing source, generated output, or module files. Use the
+installed binary's capability report to distinguish implemented behavior from
+the v1 release target. See [the machine CLI contract](docs/agent-cli.md) for
+result fields, exit codes, and compatibility with older installations.
+
 ## 💻 CLI reference
 
 ```
