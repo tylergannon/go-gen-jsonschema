@@ -132,6 +132,15 @@ type Ordinary struct {
 	Value string `json:"value"`
 }
 
+type State int
+
+const (
+	StateOpen   State = 1
+	StateClosed State = 9
+)
+
+func (State) String() string { return "not-the-wire-name" }
+
 func (o *Ordinary) MarshalJSON() ([]byte, error) {
 	ordinaryMarshalCalls++
 	return json.Marshal(struct {
@@ -164,6 +173,7 @@ type Envelope struct {
 	ValueHook jsonschema.Optional[Event]  `json:"value_hook,omitzero"`
 	Nested    Nested                      `json:"nested"`
 	Ordinary  Ordinary                    `json:"ordinary"`
+	State     State                       `json:"state"`
 	Label     string                      `json:"label"`
 	Omitted   jsonschema.Optional[string] `json:"omitted,omitzero"`
 }

@@ -5,7 +5,7 @@
 package {{.Scan.Pkg.Name}}
 
 import (
-    {{- if .Validate }}
+    {{- if or .Validate (and .HaveEnumCodecs .GeneratesJSONUnmarshalers) }}
     "bytes"
     {{- end }}
     "embed"
@@ -173,6 +173,9 @@ func ({{.Initial}} {{.Name}}) MarshalJSON() ([]byte, error) {
 		{{range .UnionFields -}}
 		{{.FieldNames}} json.RawMessage {{.StructTag}}
 		{{ end -}}
+		{{range .EnumFields -}}
+		{{.FieldNames}} json.RawMessage {{.StructTag}}
+		{{ end -}}
 	}
 	wrapper := Wrapper{Alias: Alias({{.Initial}})}
 	var err error
@@ -212,6 +215,27 @@ func ({{.Initial}} {{.Name}}) MarshalJSON() ([]byte, error) {
 	}
 	{{end}}
 	{{end}}
+	{{range $i, $prop := .EnumFields}}
+	{{if .Optional}}
+	if {{$initial}}.{{$prop.FieldNames}}.Present {
+		if wrapper.{{$prop.FieldNames}}, err = {{$prop.MarshalerFunc}}({{$initial}}.{{$prop.FieldNames}}.Value); err != nil {
+			return nil, fmt.Errorf("field {{$prop.JSONName}}: %w", err)
+		}
+	}
+	{{else if .Nullable}}
+	if {{$initial}}.{{$prop.FieldNames}}.Present {
+		if wrapper.{{$prop.FieldNames}}, err = {{$prop.MarshalerFunc}}({{$initial}}.{{$prop.FieldNames}}.Value); err != nil {
+			return nil, fmt.Errorf("field {{$prop.JSONName}}: %w", err)
+		}
+	} else {
+		wrapper.{{$prop.FieldNames}} = json.RawMessage("null")
+	}
+	{{else}}
+	if wrapper.{{$prop.FieldNames}}, err = {{$prop.MarshalerFunc}}({{$initial}}.{{$prop.FieldNames}}); err != nil {
+		return nil, fmt.Errorf("field {{$prop.JSONName}}: %w", err)
+	}
+	{{end}}
+	{{end}}
 	return json.Marshal(&wrapper)
 }
 
@@ -222,6 +246,9 @@ func ({{.Initial}} *{{.Name}}) UnmarshalJSON(data []byte) (err error) {
 	type Wrapper struct {
 		Alias
 		{{range .UnionFields -}}
+		{{.FieldNames}} json.RawMessage {{.StructTag}}
+		{{ end -}}
+		{{range .EnumFields -}}
 		{{.FieldNames}} json.RawMessage {{.StructTag}}
 		{{ end -}}
 	}
@@ -271,11 +298,82 @@ func ({{.Initial}} *{{.Name}}) UnmarshalJSON(data []byte) (err error) {
 	{{$prop.Accessor "__next"}} = __decoded{{$i}}
 	{{end}}
 	{{end}}
+	{{range $i, $prop := .EnumFields}}
+	{{if .Optional}}
+	if len(wrapper.{{$prop.FieldNames}}) > 0 {
+		if __jsonschema__isJSONNull(wrapper.{{$prop.FieldNames}}) {
+			return fmt.Errorf("field {{$prop.JSONName}}: Optional value cannot be JSON null")
+		}
+		var __enumDecoded{{$i}} {{$prop.EnumTypeNameWithPrefix}}
+		if __enumDecoded{{$i}}, err = {{$prop.UnmarshalerFunc}}(wrapper.{{$prop.FieldNames}}); err != nil {
+			return fmt.Errorf("field {{$prop.JSONName}}: %w", err)
+		}
+		__next.{{$prop.FieldNames}}.Value = __enumDecoded{{$i}}
+		__next.{{$prop.FieldNames}}.Present = true
+	}
+	{{else if .Nullable}}
+	if len(wrapper.{{$prop.FieldNames}}) == 0 {
+		return fmt.Errorf("field {{$prop.JSONName}}: required nullable string-mode enum is missing")
+	}
+	if !__jsonschema__isJSONNull(wrapper.{{$prop.FieldNames}}) {
+		var __enumDecoded{{$i}} {{$prop.EnumTypeNameWithPrefix}}
+		if __enumDecoded{{$i}}, err = {{$prop.UnmarshalerFunc}}(wrapper.{{$prop.FieldNames}}); err != nil {
+			return fmt.Errorf("field {{$prop.JSONName}}: %w", err)
+		}
+		__next.{{$prop.FieldNames}}.Value = __enumDecoded{{$i}}
+		__next.{{$prop.FieldNames}}.Present = true
+	}
+	{{else}}
+	var __enumDecoded{{$i}} {{$prop.EnumTypeNameWithPrefix}}
+	if __enumDecoded{{$i}}, err = {{$prop.UnmarshalerFunc}}(wrapper.{{$prop.FieldNames}}); err != nil {
+		return fmt.Errorf("field {{$prop.JSONName}}: %w", err)
+	}
+	__next.{{$prop.FieldNames}} = __enumDecoded{{$i}}
+	{{end}}
+	{{end}}
 	*{{.Initial}} = __next
 	return nil
 }
+
+{{ range .EnumFields -}}
+func {{.MarshalerFunc}}(value {{.EnumTypeNameWithPrefix}}) (json.RawMessage, error) {
+	switch value {
+	{{range .Entries -}}
+	case {{.GoValueExpr}}:
+		return json.Marshal({{printf "%q" .WireName}})
+	{{end -}}
+	default:
+		return nil, errors.New("undeclared value for string-mode enum {{.EnumType.Name}}")
+	}
+}
+
+func {{.UnmarshalerFunc}}(data []byte) ({{.EnumTypeNameWithPrefix}}, error) {
+	var zero {{.EnumTypeNameWithPrefix}}
+	if __jsonschema__isJSONNull(data) {
+		return zero, errors.New("string-mode enum {{.EnumType.Name}} cannot be JSON null")
+	}
+	var wire string
+	if err := json.Unmarshal(data, &wire); err != nil {
+		return zero, fmt.Errorf("string-mode enum {{.EnumType.Name}} requires a JSON string: %w", err)
+	}
+	switch wire {
+	{{range .Entries -}}
+	case {{printf "%q" .WireName}}:
+		return {{.GoValueExpr}}, nil
+	{{end -}}
+	default:
+		return zero, fmt.Errorf("unknown string-mode enum {{.EnumType.Name}} name %q", wire)
+	}
+}
+{{ end -}}
 {{ end -}}
 
+{{ end -}}
+
+{{ if and .HaveEnumCodecs .GeneratesJSONUnmarshalers -}}
+func __jsonschema__isJSONNull(data []byte) bool {
+	return bytes.Equal(bytes.TrimSpace(data), []byte("null"))
+}
 {{ end -}}
 
 {{ if .GeneratesYAMLUnmarshalers -}}

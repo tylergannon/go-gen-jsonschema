@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"go/constant"
 	"go/token"
 	"go/types"
 	"io"
@@ -53,13 +54,12 @@ func NewForTypes(pkg *decorator.Package, typeNames []string) (SchemaBuilder, err
 		DiscriminatorProp: DefaultDiscriminatorPropName,
 		TypeProvidersMap:  map[string][]FieldProvider{},
 		IfaceV1:           map[string]map[string]interfaceFieldConfig{},
-		EnumV1: make(map[string]map[string]struct {
-			UseStringer bool
-		}),
-		RenderedTypes: []string{},
-		Rendered:      map[string]bool{},
-		RefTypes:      map[syntax.TypeID]bool{},
-		RefDefs:       map[string]refDef{},
+		EnumV1:            make(map[string]map[string]enumFieldConfig),
+		enumFields:        make(map[string][]EnumFieldPlan),
+		RenderedTypes:     []string{},
+		Rendered:          map[string]bool{},
+		RefTypes:          map[syntax.TypeID]bool{},
+		RefDefs:           map[string]refDef{},
 	}
 	// First, collect providers so they're available during mapping
 	var foundNewInterfaceOpts bool
@@ -120,16 +120,16 @@ func NewForTypes(pkg *decorator.Package, typeNames []string) (SchemaBuilder, err
 				builder.IfaceV1[recv][opt.FieldName] = curr
 			case "WithEnum", "WithStringerEnum":
 				if builder.EnumV1[recv] == nil {
-					builder.EnumV1[recv] = make(map[string]struct {
-						UseStringer bool
-					})
+					builder.EnumV1[recv] = make(map[string]enumFieldConfig)
 				}
-				if _, ok := builder.EnumV1[recv][opt.FieldName]; !ok {
-					useStringer := opt.Kind == "WithStringerEnum"
-					builder.EnumV1[recv][opt.FieldName] = struct {
-						UseStringer bool
-					}{UseStringer: useStringer}
+				useStringer := opt.Kind == "WithStringerEnum"
+				if previous, ok := builder.EnumV1[recv][opt.FieldName]; ok {
+					if previous.UseStringer != useStringer {
+						return fmt.Errorf("field %s.%s: cannot combine WithEnum and WithStringerEnum", recv, opt.FieldName)
+					}
+					return fmt.Errorf("field %s.%s: duplicate enum registration", recv, opt.FieldName)
 				}
+				builder.EnumV1[recv][opt.FieldName] = enumFieldConfig{UseStringer: useStringer}
 
 			case "WithDiscriminator":
 				if builder.IfaceV1[recv] == nil {
@@ -271,8 +271,55 @@ func selectedRoot(typeNames []string, candidate string) bool {
 type OwnerCodec struct {
 	Name        string
 	UnionFields []InterfaceProp
+	EnumFields  []EnumFieldPlan
 	Initial     string
 }
+
+type enumFieldConfig struct {
+	UseStringer bool
+}
+
+type enumUnderlying int
+
+const (
+	enumUnderlyingInteger enumUnderlying = iota
+	enumUnderlyingString
+)
+
+type EnumEntry struct {
+	ConstName   string
+	GoValueExpr string
+	WireName    string
+	IntValue    int
+	StringValue string
+}
+
+// EnumFieldPlan is the resolved source of truth for one registered enum field.
+// Schema rendering and generated field adapters consume the same entries.
+type EnumFieldPlan struct {
+	Field                  syntax.StructField
+	GoName                 string
+	JSONName               string
+	Wrapper                syntax.WrapperKind
+	EnumType               syntax.TypeSpec
+	EnumTypeNameWithPrefix string
+	Entries                []EnumEntry
+	Underlying             enumUnderlying
+	StringMode             bool
+	Adapted                bool
+	MarshalerFunc          string
+	UnmarshalerFunc        string
+}
+
+func (e EnumFieldPlan) FieldNames() string { return e.GoName }
+func (e EnumFieldPlan) StructTag() string {
+	if e.Field.Field.Tag == nil {
+		return ""
+	}
+	return e.Field.Field.Tag.Value
+}
+func (e EnumFieldPlan) Optional() bool { return e.Wrapper == syntax.WrapperOptional }
+func (e EnumFieldPlan) Nullable() bool { return e.Wrapper == syntax.WrapperNullable }
 
 type YAMLType struct {
 	Name    string
@@ -333,6 +380,7 @@ type SchemaBuilder struct {
 	Scan              syntax.ScanResult
 	schemas           schemaMap
 	customTypes       map[string][]InterfaceProp
+	enumFields        map[string][]EnumFieldPlan
 	Subdir            string
 	Pretty            bool
 	Validate          bool
@@ -352,9 +400,7 @@ type SchemaBuilder struct {
 	IfaceV1 map[string]map[string]interfaceFieldConfig
 
 	// Enum options: receiver -> field -> config
-	EnumV1 map[string]map[string]struct {
-		UseStringer bool // WithStringerEnum was used
-	}
+	EnumV1 map[string]map[string]enumFieldConfig
 
 	// Types requesting rendered provider execution
 	RenderedTypes []string
@@ -440,6 +486,10 @@ func (s SchemaBuilder) HaveInterfaces() bool {
 	return len(s.Interfaces) > 0
 }
 
+func (s SchemaBuilder) HaveEnumCodecs() bool {
+	return slices.ContainsFunc(s.OwnerCodecs, func(owner OwnerCodec) bool { return len(owner.EnumFields) > 0 })
+}
+
 // IsSpecialType returns true if the type has generated owner JSON codecs.
 func (s SchemaBuilder) IsSpecialType(typeName string) bool {
 	for _, st := range s.OwnerCodecs {
@@ -451,7 +501,7 @@ func (s SchemaBuilder) IsSpecialType(typeName string) bool {
 }
 
 func (s SchemaBuilder) validateOwnerCodecMethods() error {
-	owners := sortedCustomTypeNames(s.customTypes)
+	owners := s.sortedOwnerCodecNames()
 	for _, owner := range owners {
 		foreignEmbedded, err := s.findForeignEmbeddedGeneratedCodec(owner)
 		if err != nil {
@@ -565,7 +615,7 @@ func (s SchemaBuilder) findEmbeddedOwnerCodec(owner string, seen map[string]bool
 	if err != nil {
 		return "", err
 	}
-	for _, candidate := range sortedCustomTypeNames(s.customTypes) {
+	for _, candidate := range s.sortedOwnerCodecNames() {
 		if embedded[candidate] {
 			return candidate, nil
 		}
@@ -694,6 +744,13 @@ func (s SchemaBuilder) imports() *ImportMap {
 				} else {
 					importMap.AddPackage(scan.Pkg)
 				}
+			}
+		}
+	}
+	for _, enumFields := range s.enumFields {
+		for _, field := range enumFields {
+			if field.Adapted {
+				importMap.AddPackage(field.EnumType.Pkg())
 			}
 		}
 	}
@@ -961,6 +1018,13 @@ func (s SchemaBuilder) mapNamedType(t syntax.TypeID, seen syntax.SeenTypes) erro
 		return fmt.Errorf("circular dependency found for type %s at %s", t.TypeName, typeSpec.Position())
 	}
 	if structType, ok := typeSpec.Type().Expr().(*dst.StructType); ok {
+		enumFields, enumErr := s.resolveLocalEnumFields(syntax.NewStructType(structType, typeSpec))
+		if enumErr != nil {
+			return enumErr
+		}
+		if len(enumFields) > 0 {
+			s.enumFields[t.TypeName] = enumFields
+		}
 		if props, err := s.resolveLocalInterfaceProps(syntax.NewStructType(structType, typeSpec), nil, nil); err != nil {
 			return err
 		} else if len(props) > 0 {
@@ -973,6 +1037,172 @@ func (s SchemaBuilder) mapNamedType(t syntax.TypeID, seen syntax.SeenTypes) erro
 		s.AddSchema(t, schema)
 	}
 	return nil
+}
+
+func (s SchemaBuilder) resolveLocalEnumFields(owner syntax.StructType) ([]EnumFieldPlan, error) {
+	configs := s.EnumV1[owner.Name()]
+	if len(configs) == 0 {
+		return nil, nil
+	}
+	fields := make(map[string]syntax.StructField)
+	for _, field := range owner.Fields() {
+		for _, name := range field.Field.Names {
+			fields[name.Name] = field
+		}
+	}
+	fieldNames := make([]string, 0, len(configs))
+	for fieldName := range configs {
+		fieldNames = append(fieldNames, fieldName)
+	}
+	slices.Sort(fieldNames)
+	plans := make([]EnumFieldPlan, 0, len(fieldNames))
+	for _, fieldName := range fieldNames {
+		field, ok := fields[fieldName]
+		if !ok {
+			return nil, fmt.Errorf("field %s.%s: registered enum field was not found", owner.Name(), fieldName)
+		}
+		if len(field.Field.Names) != 1 || field.Skip() {
+			return nil, fmt.Errorf("field %s.%s: registered enum must be a single JSON field", owner.Name(), fieldName)
+		}
+		plan, err := s.resolveEnumFieldPlan(owner.Name(), fieldName, field, configs[fieldName])
+		if err != nil {
+			return nil, err
+		}
+		if plan != nil {
+			plans = append(plans, *plan)
+		}
+	}
+	return plans, nil
+}
+
+func (s SchemaBuilder) resolveEnumFieldPlan(owner, fieldName string, field syntax.StructField, config enumFieldConfig) (*EnumFieldPlan, error) {
+	wrapper, inner, err := field.Wrapper()
+	if err != nil {
+		return nil, err
+	}
+	fieldType := field.Type()
+	if wrapper != syntax.WrapperNone {
+		fieldType = inner
+	}
+	ident, direct := fieldType.(*dst.Ident)
+	if !direct {
+		if config.UseStringer {
+			return nil, fmt.Errorf("field %s.%s: WithStringerEnum supports only a direct named enum, Optional[E], or Nullable[E] at %s", owner, fieldName, field.Position())
+		}
+		return nil, nil
+	}
+	pkgPath := ident.Path
+	if pkgPath == "" {
+		pkgPath = s.Scan.Pkg.PkgPath
+	}
+	scanResult, ok := s.Scan.GetPackage(pkgPath)
+	if !ok {
+		return nil, fmt.Errorf("field %s.%s: could not resolve enum package %s", owner, fieldName, pkgPath)
+	}
+	enumSet, ok := scanResult.Constants[ident.Name]
+	if !ok {
+		enumSet = s.discoverEnum(ident.Name, scanResult)
+	}
+	if enumSet == nil {
+		return nil, fmt.Errorf("field %s.%s: no constants declared for enum type %s", owner, fieldName, ident.Name)
+	}
+	object := scanResult.Pkg.Types.Scope().Lookup(ident.Name)
+	if object == nil {
+		return nil, fmt.Errorf("field %s.%s: could not resolve enum type %s", owner, fieldName, ident.Name)
+	}
+	named, ok := object.Type().(*types.Named)
+	if !ok {
+		return nil, fmt.Errorf("field %s.%s: enum type %s is not a defined type", owner, fieldName, ident.Name)
+	}
+	basic, ok := named.Underlying().(*types.Basic)
+	if !ok {
+		return nil, fmt.Errorf("field %s.%s: enum type %s must have an integer or string underlying type", owner, fieldName, ident.Name)
+	}
+	underlying := enumUnderlyingInteger
+	switch {
+	case basic.Info()&types.IsInteger != 0:
+	case basic.Info()&types.IsString != 0:
+		underlying = enumUnderlyingString
+	default:
+		return nil, fmt.Errorf("field %s.%s: enum type %s must have an integer or string underlying type", owner, fieldName, ident.Name)
+	}
+
+	entries, err := enumEntries(enumSet, object.Type(), underlying, config.UseStringer, scanResult.Pkg.PkgPath != s.Scan.Pkg.PkgPath)
+	if err != nil {
+		return nil, fmt.Errorf("field %s.%s: %w", owner, fieldName, err)
+	}
+	jsonNames := field.PropNames()
+	if len(jsonNames) != 1 {
+		return nil, fmt.Errorf("field %s.%s: registered enum must resolve to one JSON property", owner, fieldName)
+	}
+	adapted := config.UseStringer && underlying == enumUnderlyingInteger
+	if adapted {
+		methods, err := syntax.FindProductionJSONMethods(scanResult.Pkg.Dir, []string{ident.Name})
+		if err != nil {
+			return nil, fmt.Errorf("field %s.%s: discovering enum JSON methods: %w", owner, fieldName, err)
+		}
+		if len(methods) > 0 {
+			return nil, fmt.Errorf("field %s.%s: cannot adapt string-mode enum %s because production %s is declared at %s", owner, fieldName, ident.Name, methods[0].Name, methods[0].Position)
+		}
+	}
+	return &EnumFieldPlan{
+		Field:           field,
+		GoName:          fieldName,
+		JSONName:        jsonNames[0],
+		Wrapper:         wrapper,
+		EnumType:        enumSet.TypeSpec,
+		Entries:         entries,
+		Underlying:      underlying,
+		StringMode:      config.UseStringer || underlying == enumUnderlyingString,
+		Adapted:         adapted,
+		MarshalerFunc:   "__jsonMarshalEnum__" + owner + "__" + fieldName,
+		UnmarshalerFunc: "__jsonUnmarshalEnum__" + owner + "__" + fieldName,
+	}, nil
+}
+
+func enumEntries(enumSet *syntax.EnumSet, enumType types.Type, underlying enumUnderlying, stringMode, remote bool) ([]EnumEntry, error) {
+	seenValues := map[string]string{}
+	var entries []EnumEntry
+	for _, valueSpec := range enumSet.Values {
+		for _, name := range valueSpec.Value().Names {
+			object := enumSet.TypeSpec.Pkg().Types.Scope().Lookup(name.Name)
+			constantObject, ok := object.(*types.Const)
+			if !ok || !types.Identical(constantObject.Type(), enumType) {
+				continue
+			}
+			if remote && !token.IsExported(name.Name) && stringMode && underlying == enumUnderlyingInteger {
+				return nil, fmt.Errorf("string-mode enum constant %s is not exported", name.Name)
+			}
+			exact := constantObject.Val().ExactString()
+			if previous, exists := seenValues[exact]; exists && previous != name.Name {
+				if stringMode && underlying == enumUnderlyingInteger {
+					return nil, fmt.Errorf("enum constants %s and %s have duplicate underlying value %s", previous, name.Name, exact)
+				}
+				continue
+			}
+			seenValues[exact] = name.Name
+			entry := EnumEntry{ConstName: name.Name}
+			switch underlying {
+			case enumUnderlyingString:
+				entry.StringValue = constant.StringVal(constantObject.Val())
+				entry.WireName = entry.StringValue
+			case enumUnderlyingInteger:
+				entry.WireName = name.Name
+				if !stringMode {
+					intValue, err := strconv.Atoi(exact)
+					if err != nil {
+						return nil, fmt.Errorf("enum constant %s value %s cannot be represented by the schema integer model", name.Name, exact)
+					}
+					entry.IntValue = intValue
+				}
+			}
+			entries = append(entries, entry)
+		}
+	}
+	if len(entries) == 0 {
+		return nil, fmt.Errorf("enum %s has no declared constants", enumSet.TypeSpec.Name())
+	}
+	return entries, nil
 }
 
 func (s SchemaBuilder) renderSchema(t syntax.TypeExpr, description string, seen syntax.SeenTypes) (JSONSchema, error) {
@@ -1189,6 +1419,24 @@ func (s SchemaBuilder) writeSchema(t syntax.TypeID, targetDir string, noChanges 
 	return wroteNew, nil
 }
 
+func (s SchemaBuilder) sortedOwnerCodecNames() []string {
+	owners := map[string]bool{}
+	for name := range s.customTypes {
+		owners[name] = true
+	}
+	for name, fields := range s.enumFields {
+		if slices.ContainsFunc(fields, func(field EnumFieldPlan) bool { return field.Adapted }) {
+			owners[name] = true
+		}
+	}
+	names := make([]string, 0, len(owners))
+	for name := range owners {
+		names = append(names, name)
+	}
+	slices.Sort(names)
+	return names
+}
+
 func sortedCustomTypeNames(customTypes map[string][]InterfaceProp) []string {
 	names := make([]string, 0, len(customTypes))
 	for name := range customTypes {
@@ -1231,15 +1479,25 @@ func (s *SchemaBuilder) RenderGoCode() (err error) {
 	// 	}
 	// }
 
-	for _, n := range sortedCustomTypeNames(s.customTypes) {
+	for _, n := range s.sortedOwnerCodecNames() {
 		itsProps := slices.Clone(s.customTypes[n])
 		for i := range itsProps {
 			ifacePkg := itsProps[i].Interface.TypeSpec.Pkg()
 			itsProps[i].InterfaceTypeNameWithPrefix = importMap.PrefixExpr(itsProps[i].Interface.TypeSpec.Name(), ifacePkg)
 		}
+		enumFields := slices.Clone(s.enumFields[n])
+		enumFields = slices.DeleteFunc(enumFields, func(field EnumFieldPlan) bool { return !field.Adapted })
+		for i := range enumFields {
+			enumPkg := enumFields[i].EnumType.Pkg()
+			enumFields[i].EnumTypeNameWithPrefix = importMap.PrefixExpr(enumFields[i].EnumType.Name(), enumPkg)
+			for j := range enumFields[i].Entries {
+				enumFields[i].Entries[j].GoValueExpr = importMap.PrefixExpr(enumFields[i].Entries[j].ConstName, enumPkg)
+			}
+		}
 		s.OwnerCodecs = append(s.OwnerCodecs, OwnerCodec{
 			Name:        n,
 			UnionFields: itsProps,
+			EnumFields:  enumFields,
 			Initial:     strings.ToLower(n[0:1]),
 		})
 		for _, ifaceProp := range itsProps {
@@ -1443,81 +1701,9 @@ func (s SchemaBuilder) renderStructField(owner syntax.StructType, f syntax.Struc
 		}
 	}
 	if schema == nil {
-		// Enums v1
-		if cfgs, okEnum := s.EnumV1[owner.Name()]; okEnum {
-			for _, goField := range f.Field.Names {
-				cfg, ok2 := cfgs[goField.Name]
-				if !ok2 {
-					continue
-				}
-				ident, ok := renderType.(*dst.Ident)
-				if !ok {
-					continue
-				}
-				pkgPath := ident.Path
-				if pkgPath == "" {
-					pkgPath = s.Scan.Pkg.PkgPath
-				}
-				scanRes, okp := s.Scan.GetPackage(pkgPath)
-				if !okp {
-					continue
-				}
-				enumSet, okE := scanRes.Constants[ident.Name]
-				if !okE {
-					// Auto-discover enum from const declarations
-					enumSet = s.discoverEnum(ident.Name, scanRes)
-					if enumSet == nil {
-						continue
-					}
-				}
-
-				// Determine if the enum is string-based by checking the type declaration
-				isStringEnum := false
-				// Check the underlying type of the enum
-				if typeExpr := enumSet.TypeSpec.Derive(); typeExpr.Excerpt != nil {
-					if ident, ok := typeExpr.Excerpt.(*dst.Ident); ok && ident.Name == "string" {
-						isStringEnum = true
-					}
-				}
-
-				// Use string mode if it's a string-based enum or WithStringerEnum was used
-				if isStringEnum || cfg.UseStringer {
-					var vals []string
-					for _, v := range enumSet.Values {
-						var value string
-						if isStringEnum && len(v.Value().Values) > 0 {
-							// Get the actual string value
-							if lit, ok := v.Value().Values[0].(*dst.BasicLit); ok {
-								value = strings.Trim(lit.Value, "\"")
-							} else {
-								value = v.Value().Names[0].Name
-							}
-						} else {
-							// For iota enums with string mode, use the constant name
-							value = v.Value().Names[0].Name
-						}
-						vals = append(vals, value)
-					}
-					schema = PropertyNode[string]{Typ: "string", Enum: vals, TypeID_: f.ID()}
-				} else {
-					var vals []int
-					iotaVal := 0
-					for _, v := range enumSet.Values {
-						if len(v.Value().Values) > 0 {
-							if bl, ok := v.Value().Values[0].(*dst.BasicLit); ok && bl.Kind == token.INT {
-								if n, err := strconv.Atoi(bl.Value); err == nil {
-									iotaVal = n
-								}
-							}
-						}
-						vals = append(vals, iotaVal)
-						iotaVal++
-					}
-					schema = PropertyNode[int]{Typ: "integer", Enum: vals, TypeID_: f.ID()}
-				}
-				specialSource = "enums"
-				break
-			}
+		if plan, ok := s.resolvedEnumField(owner.Name(), f); ok {
+			schema = plan.schema(f.ID(), f.Comments())
+			specialSource = "enums"
 		}
 		// Registered interfaces, including the one supported container shape:
 		// a direct one-dimensional slice of the registered interface.
@@ -1575,6 +1761,32 @@ func (s SchemaBuilder) renderStructField(owner syntax.StructType, f syntax.Struc
 		})
 	}
 	return props, nil
+}
+
+func (s SchemaBuilder) resolvedEnumField(owner string, field syntax.StructField) (EnumFieldPlan, bool) {
+	for _, plan := range s.enumFields[owner] {
+		for _, name := range field.Field.Names {
+			if plan.GoName == name.Name {
+				return plan, true
+			}
+		}
+	}
+	return EnumFieldPlan{}, false
+}
+
+func (e EnumFieldPlan) schema(typeID syntax.TypeID, description string) JSONSchema {
+	if e.StringMode {
+		values := make([]string, 0, len(e.Entries))
+		for _, entry := range e.Entries {
+			values = append(values, entry.WireName)
+		}
+		return PropertyNode[string]{Typ: "string", Enum: values, TypeID_: typeID, Desc: description}
+	}
+	values := make([]int, 0, len(e.Entries))
+	for _, entry := range e.Entries {
+		values = append(values, entry.IntValue)
+	}
+	return PropertyNode[int]{Typ: "integer", Enum: values, TypeID_: typeID, Desc: description}
 }
 
 func nullableSchema(schema JSONSchema) (JSONSchema, error) {

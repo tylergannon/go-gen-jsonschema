@@ -3,6 +3,7 @@ package union_codec
 import (
 	"encoding/json"
 	"errors"
+	"strings"
 
 	jsonschema "github.com/tylergannon/go-gen-jsonschema"
 )
@@ -22,6 +23,22 @@ type Deleted struct {
 }
 
 func (*Deleted) isEvent() {}
+
+type Empty struct {
+	Name     string `json:"name"`
+	NullKind bool   `json:"-"`
+}
+
+func (Empty) isEvent() {}
+
+func (e Empty) MarshalJSON() ([]byte, error) {
+	if e.NullKind {
+		return json.Marshal(map[string]any{"!kind": nil, "name": e.Name})
+	}
+	return json.Marshal(struct {
+		Name string `json:"name"`
+	}{Name: e.Name})
+}
 
 type Unregistered struct {
 	Value string `json:"value"`
@@ -115,10 +132,31 @@ type Ordinary struct {
 	Value string `json:"value"`
 }
 
-func (o Ordinary) MarshalJSON() ([]byte, error) {
+type State int
+
+const (
+	StateOpen   State = 1
+	StateClosed State = 9
+)
+
+func (State) String() string { return "not-the-wire-name" }
+
+func (o *Ordinary) MarshalJSON() ([]byte, error) {
 	ordinaryMarshalCalls++
-	type alias Ordinary
-	return json.Marshal(alias(o))
+	return json.Marshal(struct {
+		Value string `json:"value"`
+	}{Value: "custom:" + o.Value})
+}
+
+func (o *Ordinary) UnmarshalJSON(data []byte) error {
+	var wire struct {
+		Value string `json:"value"`
+	}
+	if err := json.Unmarshal(data, &wire); err != nil {
+		return err
+	}
+	o.Value = strings.TrimPrefix(wire.Value, "custom:")
+	return nil
 }
 
 type Nested struct {
@@ -135,6 +173,7 @@ type Envelope struct {
 	ValueHook jsonschema.Optional[Event]  `json:"value_hook,omitzero"`
 	Nested    Nested                      `json:"nested"`
 	Ordinary  Ordinary                    `json:"ordinary"`
+	State     State                       `json:"state"`
 	Label     string                      `json:"label"`
 	Omitted   jsonschema.Optional[string] `json:"omitted,omitzero"`
 }

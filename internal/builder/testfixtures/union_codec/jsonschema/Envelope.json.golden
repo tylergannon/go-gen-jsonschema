@@ -295,6 +295,13 @@
       ],
       "additionalProperties": false
     },
+    "state": {
+      "type": "string",
+      "enum": [
+        "StateOpen",
+        "StateClosed"
+      ]
+    },
     "label": {
       "type": "string"
     },
@@ -307,6 +314,7 @@
     "events",
     "nested",
     "ordinary",
+    "state",
     "label"
   ],
   "additionalProperties": false

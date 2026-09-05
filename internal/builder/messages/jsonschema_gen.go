@@ -48,11 +48,11 @@ func (a Assertion) MarshalJSON() ([]byte, error) {
 	wrapper := Wrapper{Alias: Alias(a)}
 	var err error
 
-	if wrapper.Value, err = __jsonMarshal__messages__AssertionValue(a.Value); err != nil {
+	if wrapper.Value, err = __jsonMarshal__messages__AssertionValue__b1fca8d9909ae32fff90f6041750ea41d70c459290984ac2f3337fdb6320c7dc(a.Value); err != nil {
 		return nil, fmt.Errorf("field value: %w", err)
 	}
 
-	return json.Marshal(wrapper)
+	return json.Marshal(&wrapper)
 }
 
 // UnmarshalJSON is a generated custom json.Unmarshaler implementation for
@@ -70,7 +70,7 @@ func (a *Assertion) UnmarshalJSON(data []byte) (err error) {
 	__next := Assertion(wrapper.Alias)
 
 	var __decoded0 AssertionValue
-	if __decoded0, err = __jsonUnmarshal__messages__AssertionValue(wrapper.Value); err != nil {
+	if __decoded0, err = __jsonUnmarshal__messages__AssertionValue__b1fca8d9909ae32fff90f6041750ea41d70c459290984ac2f3337fdb6320c7dc(wrapper.Value); err != nil {
 		return err
 	}
 	__next.Value = __decoded0
@@ -78,7 +78,8 @@ func (a *Assertion) UnmarshalJSON(data []byte) (err error) {
 	*a = __next
 	return nil
 }
-func __jsonMarshal__messages__AssertionValue(value AssertionValue) (json.RawMessage, error) {
+
+func __jsonMarshal__messages__AssertionValue__b1fca8d9909ae32fff90f6041750ea41d70c459290984ac2f3337fdb6320c7dc(value AssertionValue) (json.RawMessage, error) {
 	if value == nil {
 		return nil, fmt.Errorf("cannot marshal nil registered interface AssertionValue")
 	}
@@ -115,7 +116,7 @@ func __jsonMarshal__messages__AssertionValue(value AssertionValue) (json.RawMess
 	)
 }
 
-func __jsonUnmarshal__messages__AssertionValue(data []byte) (AssertionValue, error) {
+func __jsonUnmarshal__messages__AssertionValue__b1fca8d9909ae32fff90f6041750ea41d70c459290984ac2f3337fdb6320c7dc(data []byte) (AssertionValue, error) {
 	var (
 		temp          map[string]json.RawMessage
 		discriminator string
@@ -126,7 +127,7 @@ func __jsonUnmarshal__messages__AssertionValue(data []byte) (AssertionValue, err
 		return nil, err
 	} else if _tempDiscriminator, ok := temp["type"]; !ok {
 		return nil, errNoDiscriminator
-	} else if err = json.Unmarshal(_tempDiscriminator, &discriminator); err != nil {
+	} else if discriminator, err = __jsonschema__decodeDiscriminator(_tempDiscriminator); err != nil {
 		return nil, __jsonschema__unmarshalDiscriminatorError(_tempDiscriminator, err)
 	}
 	switch discriminator {
@@ -174,8 +175,8 @@ func __jsonschema__marshalUnionObject(data []byte, discriminatorProp, discrimina
 		return nil, fmt.Errorf("registered union payload must encode as a JSON object, got null")
 	}
 	if encoded, ok := object[discriminatorProp]; ok {
-		var current string
-		if err := json.Unmarshal(encoded, &current); err != nil {
+		current, err := __jsonschema__decodeDiscriminator(encoded)
+		if err != nil {
 			return nil, fmt.Errorf("discriminator property %q must be a string: %w", discriminatorProp, err)
 		}
 		if current != discriminatorValue {
@@ -189,6 +190,17 @@ func __jsonschema__marshalUnionObject(data []byte, discriminatorProp, discrimina
 		object[discriminatorProp] = encoded
 	}
 	return json.Marshal(object)
+}
+
+func __jsonschema__decodeDiscriminator(discriminator json.RawMessage) (string, error) {
+	var value *string
+	if err := json.Unmarshal(discriminator, &value); err != nil {
+		return "", err
+	}
+	if value == nil {
+		return "", errors.New("JSON null is not a string")
+	}
+	return *value, nil
 }
 
 func __jsonschema__unmarshalDiscriminatorError(discriminator json.RawMessage, err error) error {

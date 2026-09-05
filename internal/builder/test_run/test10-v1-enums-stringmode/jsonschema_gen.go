@@ -4,10 +4,15 @@
 package v1_enums_stringmode
 
 import (
+	"bytes"
 	"embed"
 	"encoding/json"
 	"errors"
 	"fmt"
+
+	palette "github.com/tylergannon/go-gen-jsonschema/internal/builder/testfixtures/v1_enums_stringmode/palette"
+
+	jsonschema "github.com/santhosh-tekuri/jsonschema/v6"
 )
 
 //go:embed jsonschema
@@ -19,6 +24,35 @@ func __gen_jsonschema_panic(fname string, err error) {
 	panic(fmt.Sprintf("error reading %s from embedded FS: %s", fname, err.Error()))
 }
 
+// Compiled JSON schemas for validation, initialized once at startup.
+var (
+	__gen_jsonschema_compiled_Paint *jsonschema.Schema
+)
+
+func init() {
+	compile := func(typeName string, schemaData json.RawMessage) *jsonschema.Schema {
+		doc, err := jsonschema.UnmarshalJSON(bytes.NewReader(schemaData))
+		if err != nil {
+			panic(fmt.Sprintf("go-gen-jsonschema: failed to parse schema for %s: %s", typeName, err))
+		}
+		c := jsonschema.NewCompiler()
+		url := typeName + ".json"
+		if err := c.AddResource(url, doc); err != nil {
+			panic(fmt.Sprintf("go-gen-jsonschema: failed to add schema resource for %s: %s", typeName, err))
+		}
+		sch, err := c.Compile(url)
+		if err != nil {
+			panic(fmt.Sprintf("go-gen-jsonschema: failed to compile schema for %s: %s", typeName, err))
+		}
+		return sch
+	}
+
+	{
+		var __zero Paint
+		__gen_jsonschema_compiled_Paint = compile("Paint", __zero.Schema())
+	}
+}
+
 func (Paint) Schema() json.RawMessage {
 	const fileName = "jsonschema/Paint.json"
 	data, err := __gen_jsonschema_fs.ReadFile(fileName)
@@ -26,4 +60,253 @@ func (Paint) Schema() json.RawMessage {
 		__gen_jsonschema_panic(fileName, err)
 	}
 	return data
+}
+
+// ValidateJSON validates the given JSON bytes against the schema for Paint.
+func (Paint) ValidateJSON(data []byte) error {
+	inst, err := jsonschema.UnmarshalJSON(bytes.NewReader(data))
+	if err != nil {
+		return err
+	}
+	return __gen_jsonschema_compiled_Paint.Validate(inst)
+}
+
+// MarshalJSON is a generated custom json.Marshaler implementation for
+// Paint.
+func (p Paint) MarshalJSON() ([]byte, error) {
+	type Alias Paint
+	type Wrapper struct {
+		Alias
+		C        json.RawMessage `json:"c"`
+		Nullable json.RawMessage `json:"nullable"`
+		Optional json.RawMessage `json:"optional,omitzero"`
+		Remote   json.RawMessage `json:"remote"`
+	}
+	wrapper := Wrapper{Alias: Alias(p)}
+	var err error
+
+	if wrapper.C, err = __jsonMarshalEnum__Paint__C(p.C); err != nil {
+		return nil, fmt.Errorf("field c: %w", err)
+	}
+
+	if p.Nullable.Present {
+		if wrapper.Nullable, err = __jsonMarshalEnum__Paint__Nullable(p.Nullable.Value); err != nil {
+			return nil, fmt.Errorf("field nullable: %w", err)
+		}
+	} else {
+		wrapper.Nullable = json.RawMessage("null")
+	}
+
+	if p.Optional.Present {
+		if wrapper.Optional, err = __jsonMarshalEnum__Paint__Optional(p.Optional.Value); err != nil {
+			return nil, fmt.Errorf("field optional: %w", err)
+		}
+	}
+
+	if wrapper.Remote, err = __jsonMarshalEnum__Paint__Remote(p.Remote); err != nil {
+		return nil, fmt.Errorf("field remote: %w", err)
+	}
+
+	return json.Marshal(&wrapper)
+}
+
+// UnmarshalJSON is a generated custom json.Unmarshaler implementation for
+// Paint.
+func (p *Paint) UnmarshalJSON(data []byte) (err error) {
+	type Alias Paint
+	type Wrapper struct {
+		Alias
+		C        json.RawMessage `json:"c"`
+		Nullable json.RawMessage `json:"nullable"`
+		Optional json.RawMessage `json:"optional,omitzero"`
+		Remote   json.RawMessage `json:"remote"`
+	}
+	var wrapper Wrapper
+	if err = json.Unmarshal(data, &wrapper); err != nil {
+		return err
+	}
+	__next := Paint(wrapper.Alias)
+
+	var __enumDecoded0 Color
+	if __enumDecoded0, err = __jsonUnmarshalEnum__Paint__C(wrapper.C); err != nil {
+		return fmt.Errorf("field c: %w", err)
+	}
+	__next.C = __enumDecoded0
+
+	if len(wrapper.Nullable) == 0 {
+		return fmt.Errorf("field nullable: required nullable string-mode enum is missing")
+	}
+	if !__jsonschema__isJSONNull(wrapper.Nullable) {
+		var __enumDecoded1 Color
+		if __enumDecoded1, err = __jsonUnmarshalEnum__Paint__Nullable(wrapper.Nullable); err != nil {
+			return fmt.Errorf("field nullable: %w", err)
+		}
+		__next.Nullable.Value = __enumDecoded1
+		__next.Nullable.Present = true
+	}
+
+	if len(wrapper.Optional) > 0 {
+		if __jsonschema__isJSONNull(wrapper.Optional) {
+			return fmt.Errorf("field optional: Optional value cannot be JSON null")
+		}
+		var __enumDecoded2 Color
+		if __enumDecoded2, err = __jsonUnmarshalEnum__Paint__Optional(wrapper.Optional); err != nil {
+			return fmt.Errorf("field optional: %w", err)
+		}
+		__next.Optional.Value = __enumDecoded2
+		__next.Optional.Present = true
+	}
+
+	var __enumDecoded3 palette.Level
+	if __enumDecoded3, err = __jsonUnmarshalEnum__Paint__Remote(wrapper.Remote); err != nil {
+		return fmt.Errorf("field remote: %w", err)
+	}
+	__next.Remote = __enumDecoded3
+
+	*p = __next
+	return nil
+}
+
+func __jsonMarshalEnum__Paint__C(value Color) (json.RawMessage, error) {
+	switch value {
+	case ColorZero:
+		return json.Marshal("ColorZero")
+	case ColorRed:
+		return json.Marshal("ColorRed")
+	case ColorGreen:
+		return json.Marshal("ColorGreen")
+	case ColorBlue:
+		return json.Marshal("ColorBlue")
+	default:
+		return nil, errors.New("undeclared value for string-mode enum Color")
+	}
+}
+
+func __jsonUnmarshalEnum__Paint__C(data []byte) (Color, error) {
+	var zero Color
+	if __jsonschema__isJSONNull(data) {
+		return zero, errors.New("string-mode enum Color cannot be JSON null")
+	}
+	var wire string
+	if err := json.Unmarshal(data, &wire); err != nil {
+		return zero, fmt.Errorf("string-mode enum Color requires a JSON string: %w", err)
+	}
+	switch wire {
+	case "ColorZero":
+		return ColorZero, nil
+	case "ColorRed":
+		return ColorRed, nil
+	case "ColorGreen":
+		return ColorGreen, nil
+	case "ColorBlue":
+		return ColorBlue, nil
+	default:
+		return zero, fmt.Errorf("unknown string-mode enum Color name %q", wire)
+	}
+}
+func __jsonMarshalEnum__Paint__Nullable(value Color) (json.RawMessage, error) {
+	switch value {
+	case ColorZero:
+		return json.Marshal("ColorZero")
+	case ColorRed:
+		return json.Marshal("ColorRed")
+	case ColorGreen:
+		return json.Marshal("ColorGreen")
+	case ColorBlue:
+		return json.Marshal("ColorBlue")
+	default:
+		return nil, errors.New("undeclared value for string-mode enum Color")
+	}
+}
+
+func __jsonUnmarshalEnum__Paint__Nullable(data []byte) (Color, error) {
+	var zero Color
+	if __jsonschema__isJSONNull(data) {
+		return zero, errors.New("string-mode enum Color cannot be JSON null")
+	}
+	var wire string
+	if err := json.Unmarshal(data, &wire); err != nil {
+		return zero, fmt.Errorf("string-mode enum Color requires a JSON string: %w", err)
+	}
+	switch wire {
+	case "ColorZero":
+		return ColorZero, nil
+	case "ColorRed":
+		return ColorRed, nil
+	case "ColorGreen":
+		return ColorGreen, nil
+	case "ColorBlue":
+		return ColorBlue, nil
+	default:
+		return zero, fmt.Errorf("unknown string-mode enum Color name %q", wire)
+	}
+}
+func __jsonMarshalEnum__Paint__Optional(value Color) (json.RawMessage, error) {
+	switch value {
+	case ColorZero:
+		return json.Marshal("ColorZero")
+	case ColorRed:
+		return json.Marshal("ColorRed")
+	case ColorGreen:
+		return json.Marshal("ColorGreen")
+	case ColorBlue:
+		return json.Marshal("ColorBlue")
+	default:
+		return nil, errors.New("undeclared value for string-mode enum Color")
+	}
+}
+
+func __jsonUnmarshalEnum__Paint__Optional(data []byte) (Color, error) {
+	var zero Color
+	if __jsonschema__isJSONNull(data) {
+		return zero, errors.New("string-mode enum Color cannot be JSON null")
+	}
+	var wire string
+	if err := json.Unmarshal(data, &wire); err != nil {
+		return zero, fmt.Errorf("string-mode enum Color requires a JSON string: %w", err)
+	}
+	switch wire {
+	case "ColorZero":
+		return ColorZero, nil
+	case "ColorRed":
+		return ColorRed, nil
+	case "ColorGreen":
+		return ColorGreen, nil
+	case "ColorBlue":
+		return ColorBlue, nil
+	default:
+		return zero, fmt.Errorf("unknown string-mode enum Color name %q", wire)
+	}
+}
+func __jsonMarshalEnum__Paint__Remote(value palette.Level) (json.RawMessage, error) {
+	switch value {
+	case palette.LevelLow:
+		return json.Marshal("LevelLow")
+	case palette.LevelHigh:
+		return json.Marshal("LevelHigh")
+	default:
+		return nil, errors.New("undeclared value for string-mode enum Level")
+	}
+}
+
+func __jsonUnmarshalEnum__Paint__Remote(data []byte) (palette.Level, error) {
+	var zero palette.Level
+	if __jsonschema__isJSONNull(data) {
+		return zero, errors.New("string-mode enum Level cannot be JSON null")
+	}
+	var wire string
+	if err := json.Unmarshal(data, &wire); err != nil {
+		return zero, fmt.Errorf("string-mode enum Level requires a JSON string: %w", err)
+	}
+	switch wire {
+	case "LevelLow":
+		return palette.LevelLow, nil
+	case "LevelHigh":
+		return palette.LevelHigh, nil
+	default:
+		return zero, fmt.Errorf("unknown string-mode enum Level name %q", wire)
+	}
+}
+func __jsonschema__isJSONNull(data []byte) bool {
+	return bytes.Equal(bytes.TrimSpace(data), []byte("null"))
 }

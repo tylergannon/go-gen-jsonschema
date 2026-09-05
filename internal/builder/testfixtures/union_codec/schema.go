@@ -46,6 +46,7 @@ var _ = jsonschema.NewJSONSchemaMethod(
 		jsonschema.Discriminator("valueHookKind"),
 		jsonschema.Impl("value-hook", PointerHookValue{}),
 	),
+	jsonschema.WithStringerEnum(Envelope{}.State),
 )
 
 var _ = jsonschema.NewJSONSchemaMethod(

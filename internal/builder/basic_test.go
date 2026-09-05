@@ -203,9 +203,10 @@ func TestBasic(t *testing.T) {
 			},
 		},
 		{
-			inputDir:  "builder/testfixtures/v1_enums_stringmode",
-			testName:  "test10-v1-enums-stringmode",
-			runGinkgo: false,
+			inputDir:   "builder/testfixtures/v1_enums_stringmode",
+			testName:   "test10-v1-enums-stringmode",
+			runGinkgo:  false,
+			idempotent: true,
 			files: []string{
 				"jsonschema/Paint.json",
 				"jsonschema_gen.go",

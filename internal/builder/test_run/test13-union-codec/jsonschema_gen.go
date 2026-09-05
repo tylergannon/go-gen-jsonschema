@@ -106,6 +106,7 @@ func (e Envelope) MarshalJSON() ([]byte, error) {
 		Single    json.RawMessage `json:"single,omitzero"`
 		Hook      json.RawMessage `json:"hook,omitzero"`
 		ValueHook json.RawMessage `json:"value_hook,omitzero"`
+		State     json.RawMessage `json:"state"`
 	}
 	wrapper := Wrapper{Alias: Alias(e)}
 	var err error
@@ -157,6 +158,10 @@ func (e Envelope) MarshalJSON() ([]byte, error) {
 		}
 	}
 
+	if wrapper.State, err = __jsonMarshalEnum__Envelope__State(e.State); err != nil {
+		return nil, fmt.Errorf("field state: %w", err)
+	}
+
 	return json.Marshal(&wrapper)
 }
 
@@ -173,6 +178,7 @@ func (e *Envelope) UnmarshalJSON(data []byte) (err error) {
 		Single    json.RawMessage `json:"single,omitzero"`
 		Hook      json.RawMessage `json:"hook,omitzero"`
 		ValueHook json.RawMessage `json:"value_hook,omitzero"`
+		State     json.RawMessage `json:"state"`
 	}
 	var wrapper Wrapper
 	if err = json.Unmarshal(data, &wrapper); err != nil {
@@ -248,8 +254,44 @@ func (e *Envelope) UnmarshalJSON(data []byte) (err error) {
 		__next.ValueHook.Present = true
 	}
 
+	var __enumDecoded0 State
+	if __enumDecoded0, err = __jsonUnmarshalEnum__Envelope__State(wrapper.State); err != nil {
+		return fmt.Errorf("field state: %w", err)
+	}
+	__next.State = __enumDecoded0
+
 	*e = __next
 	return nil
+}
+
+func __jsonMarshalEnum__Envelope__State(value State) (json.RawMessage, error) {
+	switch value {
+	case StateOpen:
+		return json.Marshal("StateOpen")
+	case StateClosed:
+		return json.Marshal("StateClosed")
+	default:
+		return nil, errors.New("undeclared value for string-mode enum State")
+	}
+}
+
+func __jsonUnmarshalEnum__Envelope__State(data []byte) (State, error) {
+	var zero State
+	if __jsonschema__isJSONNull(data) {
+		return zero, errors.New("string-mode enum State cannot be JSON null")
+	}
+	var wire string
+	if err := json.Unmarshal(data, &wire); err != nil {
+		return zero, fmt.Errorf("string-mode enum State requires a JSON string: %w", err)
+	}
+	switch wire {
+	case "StateOpen":
+		return StateOpen, nil
+	case "StateClosed":
+		return StateClosed, nil
+	default:
+		return zero, fmt.Errorf("unknown string-mode enum State name %q", wire)
+	}
 }
 
 // MarshalJSON is a generated custom json.Marshaler implementation for
@@ -292,6 +334,10 @@ func (n *Nested) UnmarshalJSON(data []byte) (err error) {
 
 	*n = __next
 	return nil
+}
+
+func __jsonschema__isJSONNull(data []byte) bool {
+	return bytes.Equal(bytes.TrimSpace(data), []byte("null"))
 }
 func __jsonMarshal__union_codec__Event__d876dc783764ce04c7c05b57ac5a514753dce5b278d62078a9c81ae1f960a186(value Event) (json.RawMessage, error) {
 	if value == nil {

@@ -36,6 +36,23 @@
             "id"
           ],
           "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "!kind": {
+              "type": "string",
+              "const": ""
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "!kind",
+            "name"
+          ],
+          "additionalProperties": false
         }
       ]
     },
@@ -278,6 +295,13 @@
       ],
       "additionalProperties": false
     },
+    "state": {
+      "type": "string",
+      "enum": [
+        "StateOpen",
+        "StateClosed"
+      ]
+    },
     "label": {
       "type": "string"
     },
@@ -290,6 +314,7 @@
     "events",
     "nested",
     "ordinary",
+    "state",
     "label"
   ],
   "additionalProperties": false

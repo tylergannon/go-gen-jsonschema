@@ -20,6 +20,7 @@ func validEnvelope() Envelope {
 		ValueHook: jsonschema.Optional[Event]{Present: true, Value: PointerHookValue{Name: "value-hook"}},
 		Nested:    Nested{Event: &Deleted{ID: "nested"}},
 		Ordinary:  Ordinary{Value: "ordinary"},
+		State:     StateClosed,
 		Label:     "label",
 	}
 }
@@ -200,7 +201,7 @@ func TestGeneratedDecodeErrorIsTransactionalAndSuccessReplaces(t *testing.T) {
 	}
 
 	got = original
-	input := []byte(`{"primary":{"!kind":"created","name":"replacement"},"events":[],"nested":{"event":{"nestedKind":"nested-created","name":"nested"}},"ordinary":{"value":"new"},"label":"new"}`)
+	input := []byte(`{"primary":{"!kind":"created","name":"replacement"},"events":[],"nested":{"event":{"nestedKind":"nested-created","name":"nested"}},"ordinary":{"value":"new"},"state":"StateOpen","label":"new"}`)
 	if err := (Envelope{}).ValidateJSON(input); err != nil {
 		t.Fatalf("manual replacement input failed schema validation: %v", err)
 	}
@@ -212,6 +213,9 @@ func TestGeneratedDecodeErrorIsTransactionalAndSuccessReplaces(t *testing.T) {
 	}
 	if got.Events == nil || len(got.Events) != 0 {
 		t.Fatalf("events = %#v, want non-nil empty replacement", got.Events)
+	}
+	if got.State != StateOpen {
+		t.Fatalf("state = %v, want StateOpen", got.State)
 	}
 }
 
@@ -229,6 +233,7 @@ func assertDiscriminators(t *testing.T, data []byte) {
 	assertObjectString(t, root["value_hook"], "valueHookKind", "value-hook")
 	assertObjectString(t, root["value_hook"], "name", "custom:value-hook")
 	assertObjectString(t, root["ordinary"], "value", "custom:ordinary")
+	assertStringValue(t, root["state"], "StateClosed")
 	var nested map[string]json.RawMessage
 	if err := json.Unmarshal(root["nested"], &nested); err != nil {
 		t.Fatal(err)
@@ -289,7 +294,18 @@ func assertEnvelopeMeaning(t *testing.T, got Envelope) {
 	if value, ok := got.Nested.Event.(*Deleted); !ok || value.ID != "nested" {
 		t.Fatalf("nested = %#v", got.Nested)
 	}
-	if got.Ordinary.Value != "ordinary" || got.Label != "label" || got.Omitted.Present {
+	if got.Ordinary.Value != "ordinary" || got.State != StateClosed || got.Label != "label" || got.Omitted.Present {
 		t.Fatalf("ordinary fields = %#v", got)
+	}
+}
+
+func assertStringValue(t *testing.T, data []byte, want string) {
+	t.Helper()
+	var got string
+	if err := json.Unmarshal(data, &got); err != nil {
+		t.Fatal(err)
+	}
+	if got != want {
+		t.Fatalf("value = %q, want %q", got, want)
 	}
 }

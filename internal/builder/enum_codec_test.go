@@ -1,0 +1,126 @@
+package builder
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+)
+
+func TestStringModeEnumRejectsDuplicateUnderlyingValuesBeforeWriting(t *testing.T) {
+	targetDir := writeEnumCodecFixture(t, `type Color int
+const (
+	ColorRed Color = 1
+	ColorCrimson Color = 1
+)
+type Owner struct { Color Color `+"`json:\"color\"`"+` }
+`, "")
+	err := Run(BuilderArgs{TargetDir: targetDir})
+	require.ErrorContains(t, err, "ColorRed and ColorCrimson have duplicate underlying value 1")
+	assertOwnerCollisionSentinels(t, targetDir)
+}
+
+func TestNonAdaptedEnumsAllowAliasValues(t *testing.T) {
+	for _, test := range []struct {
+		name   string
+		types  string
+		option string
+	}{
+		{
+			name: "numeric mode",
+			types: `type Color int
+const (
+	ColorRed Color = 1
+	ColorCrimson Color = 1
+)
+type Owner struct { Color Color ` + "`json:\"color\"`" + ` }
+`,
+			option: `jsonschema.WithEnum(Owner{}.Color),`,
+		},
+		{
+			name: "string backed",
+			types: `type Color string
+const (
+	ColorRed Color = "red"
+	ColorCrimson Color = "red"
+)
+type Owner struct { Color Color ` + "`json:\"color\"`" + ` }
+`,
+			option: `jsonschema.WithStringerEnum(Owner{}.Color),`,
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			targetDir := writeEnumCodecFixture(t, test.types, test.option)
+			require.NoError(t, Run(BuilderArgs{TargetDir: targetDir}))
+		})
+	}
+}
+
+func TestStringModeEnumRejectsUnsupportedContainerBeforeWriting(t *testing.T) {
+	targetDir := writeEnumCodecFixture(t, `type Color int
+const ColorRed Color = 1
+type Owner struct { Colors []Color `+"`json:\"colors\"`"+` }
+`, `jsonschema.WithStringerEnum(Owner{}.Colors),`)
+	err := Run(BuilderArgs{TargetDir: targetDir})
+	require.ErrorContains(t, err, "supports only a direct named enum, Optional[E], or Nullable[E]")
+	assertOwnerCollisionSentinels(t, targetDir)
+}
+
+func TestStringModeEnumRejectsProductionJSONHooksBeforeWriting(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		hook string
+	}{
+		{name: "marshal", hook: `func (Color) MarshalJSON() ([]byte, error) { return []byte("1"), nil }`},
+		{name: "unmarshal", hook: `func (*Color) UnmarshalJSON([]byte) error { return nil }`},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			targetDir := writeEnumCodecFixture(t, `type Color int
+const ColorRed Color = 1
+type Owner struct { Color Color `+"`json:\"color\"`"+` }
+`+test.hook+"\n", "")
+			err := Run(BuilderArgs{TargetDir: targetDir})
+			require.ErrorContains(t, err, "cannot adapt string-mode enum Color because production")
+			assertOwnerCollisionSentinels(t, targetDir)
+		})
+	}
+}
+
+func TestEnumOnlyOwnerReusesOwnerCodecCollisionAudit(t *testing.T) {
+	targetDir := writeEnumCodecFixture(t, `type Color int
+const ColorRed Color = 1
+type Owner struct { Color Color `+"`json:\"color\"`"+` }
+func (Owner) MarshalJSON() ([]byte, error) { return []byte("{}"), nil }
+`, "")
+	err := Run(BuilderArgs{TargetDir: targetDir})
+	require.ErrorContains(t, err, "handwritten production MarshalJSON")
+	assertOwnerCollisionSentinels(t, targetDir)
+}
+
+func writeEnumCodecFixture(t *testing.T, types, option string) string {
+	t.Helper()
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+	targetDir, err := os.MkdirTemp(filepath.Join(cwd, "testfixtures"), "enum_codec_")
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, os.RemoveAll(targetDir)) })
+	require.NoError(t, os.WriteFile(filepath.Join(targetDir, "types.go"), []byte("package fixture\n\n"+types), 0o644))
+	if option == "" {
+		option = `jsonschema.WithStringerEnum(Owner{}.Color),`
+	}
+	require.NoError(t, os.WriteFile(filepath.Join(targetDir, "schema.go"), []byte(`//go:build jsonschema
+
+package fixture
+
+import (
+	"encoding/json"
+	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+)
+
+func (Owner) Schema() json.RawMessage { panic("not implemented") }
+var _ = jsonschema.NewJSONSchemaMethod(Owner.Schema, `+option+`)
+`), 0o644))
+	writeOwnerCollisionSentinels(t, targetDir)
+	return targetDir
+}
