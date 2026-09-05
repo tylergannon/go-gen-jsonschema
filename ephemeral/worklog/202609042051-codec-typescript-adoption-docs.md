@@ -1,6 +1,6 @@
 # Codec and TypeScript adoption documentation
 
-correction: The merged TypeScript output is structural only; do not describe the existing Go roundtrip plus `tsc` proof as executed JavaScript transport. Cross-language runtime proof remains owned by #71.
+correction: The merged TypeScript output is structural only; do not describe a Go roundtrip plus `tsc` compilation as executed JavaScript transport. Adoption proof must run JavaScript; #71 retains the broader transport matrix.
 
 decision: Document one generation run for schemas, generated Go owner codecs, validation, and TypeScript declarations. Owner codecs are selected by `WithInterface` and `WithStringerEnum` registrations and need no separate CLI flag.
 
@@ -20,4 +20,8 @@ correction: Root remains the manager; this worker owns the bounded documentation
 
 proof: `npm ci && npm run check` in `website/` built 13 routes and verified all internal links across 17 HTML pages; final `go test ./...` and `git diff --check` passed. The test suite left no temporary `enum_json_string_*` fixture in this worktree.
 
-state: Documentation is ready for review on `codex/codec-adoption-docs`; no feature code, tag, push, or release was performed.
+state: Documentation was published for review on `codex/codec-adoption-docs`; no feature code, tag, or release was performed.
+
+decision: Root accepted the bounded cross-runtime proof at artifact commit 74396ed for adoption readiness. It exercises Go to Node to Go with registered union and enum values plus Optional present-empty and Nullable null, while leaving #71's broader matrix open.
+
+state: Cherry-picked the accepted proof artifact into the documentation PR. Publishing `v1.0.0-rc.5` remains a post-merge release action owned by root.
