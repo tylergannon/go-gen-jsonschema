@@ -1,0 +1,6 @@
+candidate_path=/Users/tyler/src/.worktrees/go-gen-jsonschema/v1-codec-integration
+candidate_sha=5e1040a99ba7f51f126601bd84ad5e6b912847d2
+go_version=go version go1.27.1 darwin/arm64
+node_version=v26.8.1
+npm_version=11.19.0
+canonical_fixture_sha1=c404933201626d2539fc72309ca4edb8d2a80c8a

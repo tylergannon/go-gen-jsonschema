@@ -1,0 +1,25 @@
+=== RUN   TestGeneratedMixedCodecMatchesSchemaAndRoundTrips
+    codec_test.go:30: encoded_json={"numeric_state":2,"ordinary-name":"ordinary","meta":{"visible":"visible"},"primary":{"kind":"created","name":"first"},"alternate":{"!kind":"alt-created","name":"alternate"},"maybe":{"id":"optional","kind":"deleted"},"events":[{"kind":"created","name":"slice-value"},{"id":"slice-pointer","kind":"deleted"}],"null_state":null,"nullable_state":"StateDone","optional_state":"StateNew","string_state":"StateDone"}
+--- PASS: TestGeneratedMixedCodecMatchesSchemaAndRoundTrips (0.00s)
+=== RUN   TestGeneratedDecodeFailuresDoNotMutateReceiver
+=== RUN   TestGeneratedDecodeFailuresDoNotMutateReceiver/unknown_string_enum
+    codec_test.go:132: rejected="field string_state: unknown string-mode enum State name \"NotRegistered\"" receiver_unchanged=true
+=== RUN   TestGeneratedDecodeFailuresDoNotMutateReceiver/unknown_second_union_discriminator
+    codec_test.go:132: rejected="field events[1]: unknown discriminator: unknown" receiver_unchanged=true
+=== RUN   TestGeneratedDecodeFailuresDoNotMutateReceiver/null_optional_enum
+    codec_test.go:132: rejected="field optional_state: Optional value cannot be JSON null" receiver_unchanged=true
+=== RUN   TestGeneratedDecodeFailuresDoNotMutateReceiver/missing_nullable_enum
+    codec_test.go:132: rejected="field nullable_state: required nullable string-mode enum is missing" receiver_unchanged=true
+--- PASS: TestGeneratedDecodeFailuresDoNotMutateReceiver (0.00s)
+    --- PASS: TestGeneratedDecodeFailuresDoNotMutateReceiver/unknown_string_enum (0.00s)
+    --- PASS: TestGeneratedDecodeFailuresDoNotMutateReceiver/unknown_second_union_discriminator (0.00s)
+    --- PASS: TestGeneratedDecodeFailuresDoNotMutateReceiver/null_optional_enum (0.00s)
+    --- PASS: TestGeneratedDecodeFailuresDoNotMutateReceiver/missing_nullable_enum (0.00s)
+=== RUN   TestGeneratedValidationRejectsUnknownNumericEnum
+    codec_test.go:154: rejected_numeric_enum="jsonschema validation failed with 'file:///var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/codec-ts-consumer.bjUzOf/consumer/Envelope.json#'\n- at '/numeric_state': value must be one of 0, 1, 2"
+--- PASS: TestGeneratedValidationRejectsUnknownNumericEnum (0.00s)
+=== RUN   TestGeneratedCodecUsesOneParentWrapperAndSealedSwitches
+    codec_test.go:193: owner_methods=1/1 special_fields_rawmessage=8 ordinary_fields_via_alias=4 sealed_variants=Created,*Deleted global_state_codec=false
+--- PASS: TestGeneratedCodecUsesOneParentWrapperAndSealedSwitches (0.00s)
+PASS
+ok  	example.com/codec-ts-consumer	0.258s

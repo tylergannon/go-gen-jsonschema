@@ -57,7 +57,8 @@ git -C "$candidate_path" status --porcelain=v1 --untracked-files=all > "$output_
   cd "$candidate_path"
   GOFLAGS=-p=2 go build -trimpath -o "$run_dir/bin/gen-jsonschema" ./gen-jsonschema
 )
-shasum "$run_dir/bin/gen-jsonschema" > "$output_dir/generator-binary.sha1"
+binary_sha1=$(shasum "$run_dir/bin/gen-jsonschema" | awk '{print $1}')
+echo "$binary_sha1  gen-jsonschema" > "$output_dir/generator-binary.sha1"
 
 (
   cd "$consumer_dir"
@@ -71,6 +72,9 @@ shasum "$run_dir/bin/gen-jsonschema" > "$output_dir/generator-binary.sha1"
     --typescript-barrel \
     > "$output_dir/generate.stdout" \
     2> "$output_dir/generate.stderr"
+  # Generated validation code introduces its validator dependency, which is not
+  # visible to the pre-generation tidy used to build the input package.
+  GOFLAGS=-p=2 go mod tidy
   GOFLAGS=-p=2 go test -count=1 ./... -v \
     > "$output_dir/go-test.stdout" \
     2> "$output_dir/go-test.stderr"
@@ -107,5 +111,10 @@ fi
   echo "canonical_fixture_unchanged=true"
   echo "candidate_tracked_state_unchanged=true"
 } > "$output_dir/result.txt"
+
+(
+  cd "$output_dir"
+  find . -type f ! -name artifact-sha1.txt -print0 | sort -z | xargs -0 shasum
+) > "$output_dir/artifact-sha1.txt"
 
 cat "$output_dir/result.txt"
