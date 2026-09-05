@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"github.com/dave/dst/decorator"
-	"github.com/tylergannon/go-gen-jsonschema/internal/syntax"
-	"github.com/tylergannon/go-gen-jsonschema/internal/typescript"
+	"github.com/tylergannon/polytype/internal/syntax"
+	"github.com/tylergannon/polytype/internal/typescript"
 )
 
 type BuilderArgs struct {

@@ -1,10 +1,10 @@
-module github.com/tylergannon/go-gen-jsonschema/internal/builder/testfixtures/union_codec
+module github.com/tylergannon/polytype/internal/builder/testfixtures/union_codec
 
 go 1.27
 
 require (
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2
-	github.com/tylergannon/go-gen-jsonschema v0.2.1
+	github.com/tylergannon/polytype v0.2.1
 )
 
 require (
@@ -16,4 +16,4 @@ require (
 	golang.org/x/tools v0.49.0 // indirect
 )
 
-replace github.com/tylergannon/go-gen-jsonschema => ../../../../
+replace github.com/tylergannon/polytype => ../../../../

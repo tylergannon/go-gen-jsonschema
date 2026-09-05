@@ -1,5 +1,5 @@
 package wrapper_root
 
-import jsonschema "github.com/tylergannon/go-gen-jsonschema"
+import "github.com/tylergannon/polytype"
 
-type Config jsonschema.Optional[int]
+type Config polytype.Optional[int]

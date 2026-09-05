@@ -1,6 +1,6 @@
 # Issue 30: omitted JSON tag name plan
 
-Issue: [#30 — JSON tag with omitted name renders an empty schema property](https://github.com/tylergannon/go-gen-jsonschema/issues/30)
+Issue: [#30 — JSON tag with omitted name renders an empty schema property](https://github.com/tylergannon/polytype/issues/30)
 
 ## Goal
 

@@ -49,6 +49,6 @@ Status key: [ ] pending  [~] in progress  [x] done
 - Implement interface options: WithInterface/WithInterfaceImpls/WithDiscriminator; fixtures for discovered vs explicit impls.
 
 ## Nice-to-haves (post-v1)
-- [ ] gen-jsonschema init/check/doctor commands (cobra)
+- [ ] polytype init/check/doctor commands (cobra)
 - [ ] VSCode snippets and quickstart template
 - [ ] Public API doc polishing and website page

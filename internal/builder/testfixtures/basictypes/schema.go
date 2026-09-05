@@ -5,7 +5,7 @@ package basictypes
 import (
 	"encoding/json"
 
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+	"github.com/tylergannon/polytype"
 )
 
 func (TypeInItsOwnDecl) Schema() json.RawMessage {
@@ -25,8 +25,8 @@ func (StringTypeInSharedDecl) Schema() json.RawMessage {
 }
 
 var (
-	_ = jsonschema.NewJSONSchemaMethod(TypeInItsOwnDecl.Schema)
-	_ = jsonschema.NewJSONSchemaMethod(TypeInNestedDecl.Schema)
-	_ = jsonschema.NewJSONSchemaMethod(TypeInSharedDecl.Schema)
-	_ = jsonschema.NewJSONSchemaMethod(StringTypeInSharedDecl.Schema)
+	_ = polytype.NewJSONSchemaMethod(TypeInItsOwnDecl.Schema)
+	_ = polytype.NewJSONSchemaMethod(TypeInNestedDecl.Schema)
+	_ = polytype.NewJSONSchemaMethod(TypeInSharedDecl.Schema)
+	_ = polytype.NewJSONSchemaMethod(StringTypeInSharedDecl.Schema)
 )

@@ -1,6 +1,6 @@
 package remotestruct
 
-import "github.com/tylergannon/go-gen-jsonschema/internal/builder/testfixtures/traversal/remoteenum"
+import "github.com/tylergannon/polytype/internal/builder/testfixtures/traversal/remoteenum"
 
 // RemoteStruct must render with concrete properties, not as an empty schema.
 type RemoteStruct struct {

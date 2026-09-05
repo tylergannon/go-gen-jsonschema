@@ -44,7 +44,7 @@ func TestFlattenTypes(t *testing.T) {
 		file.Decls = append(file.Decls, &dst.GenDecl{Tok: token.TYPE, Specs: []dst.Spec{ts}})
 		buf := bytes.Buffer{}
 		printer := decorator.NewRestorerWithImports(
-			"github.com/tylergannon/go-gen-jsonschema/internal/syntax/testfixtures/structtype",
+			"github.com/tylergannon/polytype/internal/syntax/testfixtures/structtype",
 			gopackages.New("./testfixtures/structtype"),
 		)
 		require.NoError(t, printer.Fprint(&buf, file))

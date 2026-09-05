@@ -5,7 +5,7 @@ package comments
 import (
 	"encoding/json"
 
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+	"github.com/tylergannon/polytype"
 )
 
 func (StructType) SchemaBuilder() json.RawMessage {
@@ -13,6 +13,6 @@ func (StructType) SchemaBuilder() json.RawMessage {
 }
 
 var (
-	_ = jsonschema.NewEnumType[StringType]()
-	_ = jsonschema.NewJSONSchemaMethod(StructType.SchemaBuilder)
+	_ = polytype.NewEnumType[StringType]()
+	_ = polytype.NewJSONSchemaMethod(StructType.SchemaBuilder)
 )

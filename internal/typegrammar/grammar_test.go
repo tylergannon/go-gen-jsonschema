@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	g "github.com/tylergannon/go-gen-jsonschema/internal/typegrammar"
+	g "github.com/tylergannon/polytype/internal/typegrammar"
 )
 
 func ExampleDefinitions_Validate() {

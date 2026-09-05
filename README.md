@@ -1,4 +1,4 @@
-# go-gen-jsonschema 🧩
+# polytype 🧩
 
 Generate JSON Schemas from Go types for LLM tool definitions and structured
 output.
@@ -14,7 +14,7 @@ typed encode/decode round trip for every Go type.
 
 - **Docs**: https://go-gen-jsonschema.tylergannon.com
 - **LLM/agent-friendly docs**: [llms.txt](llms.txt)
-- **Agent skill**: [skills/go-gen-jsonschema](skills/go-gen-jsonschema/SKILL.md)
+- **Agent skill**: [skills/polytype](skills/polytype/SKILL.md)
 
 ## 🚀 Quick Start
 
@@ -25,10 +25,10 @@ friends the full workflow (setup, registration API, doc-comment conventions,
 git-hook integration):
 
 ```bash
-npx skills add tylergannon/go-gen-jsonschema
+npx skills add tylergannon/polytype
 ```
 
-Then just ask your agent to "add go-gen-jsonschema to this project."
+Then just ask your agent to "add polytype to this project."
 
 ### Setting up by hand
 
@@ -36,20 +36,20 @@ Then just ask your agent to "add go-gen-jsonschema to this project."
    every contributor and CI runs the same binary):
 
    ```bash
-   go get -tool github.com/tylergannon/go-gen-jsonschema/gen-jsonschema@latest
+   go get -tool github.com/tylergannon/polytype/polytype@latest
    ```
 
 2. **Add a generate directive** next to your types (include `--validate` for
    generated validation; add `--formats=both` when inputs may be YAML):
 
    ```go
-   //go:generate go tool gen-jsonschema --validate --formats=both
+   //go:generate go tool polytype --validate --formats=both
    ```
 
 3. **Scaffold the registration file and generate:**
 
    ```bash
-   go tool gen-jsonschema new -out schema.go -methods 'Person=Schema' --validate --formats=both --generate
+   go tool polytype new -out schema.go -methods 'Person=Schema' --validate --formats=both --generate
    go mod tidy   # records dependencies added by validation or opted-in YAML decoding
    ```
 
@@ -97,9 +97,9 @@ Your package compiles at every stage — before generation (stubs) and after
 // types.go
 package contacts
 
-import jsonschema "github.com/tylergannon/go-gen-jsonschema"
+import "github.com/tylergannon/polytype"
 
-//go:generate go tool gen-jsonschema --validate
+//go:generate go tool polytype --validate
 
 // Person is a single contact extracted from the document.
 type Person struct {
@@ -110,10 +110,10 @@ type Person struct {
     Age int `json:"age"`
 
     // Email address. Omit when not stated in the source text.
-    Email jsonschema.Optional[string] `json:"email,omitzero"`
+    Email polytype.Optional[string] `json:"email,omitzero"`
 
     // Phone number. Emit null when the source explicitly has no phone number.
-    Phone jsonschema.Nullable[string] `json:"phone"`
+    Phone polytype.Nullable[string] `json:"phone"`
 }
 ```
 
@@ -125,7 +125,7 @@ package contacts
 
 import (
     "encoding/json"
-    jsonschema "github.com/tylergannon/go-gen-jsonschema"
+    "github.com/tylergannon/polytype"
 )
 
 // Stubs so the package compiles before generation.
@@ -133,7 +133,7 @@ func (Person) Schema() json.RawMessage     { panic("not implemented") }
 func (Person) ValidateJSON(_ []byte) error { panic("not implemented") }
 func (Person) ValidateYAML(_ []byte) error { panic("not implemented") }
 
-var _ = jsonschema.Declare(Person.Schema)
+var _ = polytype.Declare(Person.Schema)
 ```
 
 `go generate ./...` produces `jsonschema/Person.json`:
@@ -176,8 +176,8 @@ type User struct {
 | `description:"..."` | Overrides the doc comment as the property description |
 | `jsonschema:"ref=definitions/T"` | Emit a `$ref` instead of inlining (you must define the referenced schema yourself) |
 
-Use `jsonschema.Optional[T]` when a property may be absent and must not be
-null. Use `jsonschema.Nullable[T]` when the property is required but may be
+Use `polytype.Optional[T]` when a property may be absent and must not be
+null. Use `polytype.Nullable[T]` when the property is required but may be
 null. Both wrappers expose `Present` and `Value`; present zero and empty values
 remain distinguishable from absence/null. Plain `json.Unmarshal` cannot tell a
 missing Nullable key from an explicit null, so call generated `ValidateJSON`
@@ -196,7 +196,7 @@ field; aliases, nesting, embedding, and unsupported Nullable shapes fail
 generation.
 
 Migration note: `jsonschema:"optional"` is no longer honored. Replace it with
-`jsonschema.Optional[T]` and add `json:",omitzero"`; otherwise the field is
+`polytype.Optional[T]` and add `json:",omitzero"`; otherwise the field is
 required when schemas are regenerated.
 
 By default nested struct types are **inlined** at every use site — no `$defs`,
@@ -233,7 +233,7 @@ type Task struct {
 
 ```go
 // schema.go (//go:build jsonschema)
-var _ = jsonschema.Declare(Task.Schema).
+var _ = polytype.Declare(Task.Schema).
     Enum(Task{}.Status).          // ["pending", "in_progress", "completed"]
     StringerEnum(Task{}.LogLevel) // ["LogDebug", "LogInfo", "LogError"]
 ```
@@ -257,7 +257,7 @@ membership. See [the enum guide](website/src/content/docs/features/enums.md).
 Migration: `NewJSONSchemaMethod(Task.Schema, WithEnum(Task{}.Status))` is now
 `Declare(Task.Schema).Enum(Task{}.Status)`. The legacy forms
 (`NewJSONSchemaMethod`/`NewJSONSchemaFunc` with `With*` options, and the
-package-level `jsonschema.NewEnumType[Status]()`) remain supported and
+package-level `polytype.NewEnumType[Status]()`) remain supported and
 source-compatible; see their `Deprecated:` godoc for the fluent equivalent of
 each.
 
@@ -302,11 +302,11 @@ type Payment struct {
 
 ```go
 // schema.go (//go:build jsonschema)
-var _ = jsonschema.Declare(Payment.Schema).
+var _ = polytype.Declare(Payment.Schema).
     Interface(
         Payment{}.Methods,
-        jsonschema.Impl("credit_card", CreditCard{}),
-        jsonschema.Impl("bank_transfer", BankTransfer{}),
+        polytype.Impl("credit_card", CreditCard{}),
+        polytype.Impl("bank_transfer", BankTransfer{}),
     )
 ```
 
@@ -314,7 +314,7 @@ Opt into YAML alongside the default JSON unmarshaler in the generation
 directive:
 
 ```go
-//go:generate go tool gen-jsonschema --formats=both
+//go:generate go tool polytype --formats=both
 ```
 
 With the default discriminator, ordinary YAML can be decoded directly:
@@ -352,7 +352,7 @@ Impl(...), ...))` is now `Declare(Payment.Schema).Interface(Payment{}.Methods,
 Impl(...), ...)`. The legacy forms (`NewJSONSchemaMethod`/`NewJSONSchemaFunc`
 with `With*` options, the split `WithInterface`/`WithInterfaceImpls`/
 `WithDiscriminator` options, and the package-level
-`jsonschema.NewInterfaceImpl[I](...)`) remain supported and source-compatible;
+`polytype.NewInterfaceImpl[I](...)`) remain supported and source-compatible;
 see their `Deprecated:` godoc for the fluent equivalent of each.
 
 The generator emits a value-receiver `MarshalJSON` and pointer-receiver
@@ -374,7 +374,7 @@ The legacy package-level form is still supported, but cannot be mixed with the
 per-field options above in the same package:
 
 ```go
-var _ = jsonschema.NewInterfaceImpl[PaymentMethod](CreditCard{}, BankTransfer{})
+var _ = polytype.NewInterfaceImpl[PaymentMethod](CreditCard{}, BankTransfer{})
 ```
 
 Only direct one-dimensional slices are supported. Fixed arrays, nested slices,
@@ -389,7 +389,7 @@ Relative directories are resolved from the directory where the command is
 invoked; absolute paths also work.
 
 ```go
-//go:generate go tool gen-jsonschema --typescript web/src/generated
+//go:generate go tool polytype --typescript web/src/generated
 ```
 
 Add `--typescript-barrel` to also generate `index.ts` with explicit type-only
@@ -407,7 +407,7 @@ artifacts for missing or stale content as well as checking JSON Schemas.
 
 These declarations describe the admitted JSON structure for static TypeScript
 checking. They do not provide runtime decoding, validation, or definitive
-Go/TypeScript transport semantics; [issue #71](https://github.com/tylergannon/go-gen-jsonschema/issues/71)
+Go/TypeScript transport semantics; [issue #71](https://github.com/tylergannon/polytype/issues/71)
 tracks that proof. Time values remain strings and numeric fields become
 `number`; TypeScript does not enforce Go integer ranges or JSON Schema formats.
 Enum literals that cannot be represented exactly are rejected. Unsupported
@@ -421,7 +421,7 @@ Pin an explicit module release that contains both capabilities; the generator
 and the imported marker/runtime package must use that same release:
 
 ```bash
-go get -tool github.com/tylergannon/go-gen-jsonschema/gen-jsonschema@v1.0.0-rc.5
+go get -tool github.com/tylergannon/polytype/polytype@v1.0.0-rc.5
 ```
 
 This combined surface requires `v1.0.0-rc.5` or newer. `v1.0.0-rc.4` includes
@@ -433,7 +433,7 @@ registrations shown above automatically select the containing struct's enum and
 union JSON codecs; there is no separate codec flag:
 
 ```go
-//go:generate go tool gen-jsonschema --validate --typescript web/src/generated --typescript-barrel
+//go:generate go tool polytype --validate --typescript web/src/generated --typescript-barrel
 ```
 
 Run `go generate ./...`, then `go mod tidy`, and commit `schema.go`,
@@ -498,7 +498,7 @@ directives).
 # lefthook.yml — fail the commit on schema drift
 pre-commit:
   commands:
-    gen-jsonschema-check:
+    polytype-check:
       glob: "*.go"
       run: JSONSCHEMA_NO_CHANGES=1 go generate ./...
 ```
@@ -510,7 +510,7 @@ pre-commit:
 ```
 
 Prefer auto-regenerating in the hook instead of failing? See
-[the agent skill's hooks guide](skills/go-gen-jsonschema/references/hooks-and-ci.md)
+[the agent skill's hooks guide](skills/polytype/references/hooks-and-ci.md)
 for the auto-stage variant and trade-offs.
 
 ## 📖 Registration API
@@ -531,9 +531,9 @@ onto the returned `*Declaration[T]`:
 | `.Interface(field, options...)` | Field is a sealed interface (`Discriminator(name)`, `Impl(value, impl)`) |
 
 ```go
-var _ = jsonschema.Declare(Person.Schema)
+var _ = polytype.Declare(Person.Schema)
 
-var _ = jsonschema.Declare(Task.Schema).
+var _ = polytype.Declare(Task.Schema).
     Enum(Task{}.Status).
     StringerEnum(Task{}.LogLevel)
 ```
@@ -550,7 +550,7 @@ schema accessor stub) has no fluent form yet and is unaffected.
 ## 💻 CLI reference
 
 ```
-gen-jsonschema [gen] [options]     # generate (default subcommand)
+polytype [gen] [options]     # generate (default subcommand)
   -target DIR          package to process (default: current directory)
   -pretty              pretty-print the .json output
   -no-changes          fail, writing nothing, if schemas or requested TypeScript output would change
@@ -560,7 +560,7 @@ gen-jsonschema [gen] [options]     # generate (default subcommand)
   --typescript DIR     generate structural TypeScript declarations in DIR
   --typescript-barrel  also generate index.ts type-only exports (requires --typescript)
 
-gen-jsonschema new [options]       # scaffold schema.go
+polytype new [options]       # scaffold schema.go
   -out FILE            output path ("" or "--" = stdout)
   -pkg NAME            package name override (stdout mode)
   -methods 'T=Schema,U=Schema'     types to register (required)
@@ -574,9 +574,12 @@ Environment: `JSONSCHEMA_NO_CHANGES` (any non-empty value) ≡ `-no-changes`.
 ## 🏗️ Manual schema construction
 
 When a statically generated schema won't cut it, build one with the helper
-types (see [json_schema.go](json_schema.go)):
+types from the `jsonschema` subpackage (see
+[jsonschema/json_schema.go](jsonschema/json_schema.go)):
 
 ```go
+import "github.com/tylergannon/polytype/jsonschema"
+
 schema := &jsonschema.JSONSchema{
     Type:        jsonschema.Object,
     Description: "A user object",
@@ -609,9 +612,9 @@ prompting), use `ObjectSchema` and add fields with `AddProperty` /
 ## 🛠️ Development
 
 ```bash
-git clone https://github.com/tylergannon/go-gen-jsonschema.git
-cd go-gen-jsonschema
-go build ./gen-jsonschema
+git clone https://github.com/tylergannon/polytype.git
+cd polytype
+go build ./polytype
 go test ./...
 just lint    # task runner is `just`
 ```

@@ -1,4 +1,4 @@
-package jsonschema
+package polytype
 
 import (
 	"os"
@@ -67,12 +67,12 @@ func requireGoGenerateDirective(t *testing.T, dir, exampleName string) {
 		require.NoError(t, err)
 		for _, line := range strings.Split(string(data), "\n") {
 			line = strings.TrimSpace(line)
-			if strings.HasPrefix(line, "//go:generate") && strings.Contains(line, "gen-jsonschema") {
+			if strings.HasPrefix(line, "//go:generate") && strings.Contains(line, "polytype") {
 				return
 			}
 		}
 	}
-	t.Fatalf("example %s has no //go:generate directive invoking gen-jsonschema", exampleName)
+	t.Fatalf("example %s has no //go:generate directive invoking polytype", exampleName)
 }
 
 // requireGeneratedArtifactsExist fails unless every expected artifact

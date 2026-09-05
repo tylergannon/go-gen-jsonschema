@@ -5,13 +5,13 @@ package nullable_interface
 import (
 	"encoding/json"
 
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+	"github.com/tylergannon/polytype"
 )
 
 func (Config) Schema() json.RawMessage { panic("not implemented") }
 
-var _ = jsonschema.NewJSONSchemaMethod(
+var _ = polytype.NewJSONSchemaMethod(
 	Config.Schema,
-	jsonschema.WithInterface(Config{}.Value),
-	jsonschema.WithInterfaceImpls(Config{}.Value, Text{}),
+	polytype.WithInterface(Config{}.Value),
+	polytype.WithInterfaceImpls(Config{}.Value, Text{}),
 )

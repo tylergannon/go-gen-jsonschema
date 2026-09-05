@@ -1,6 +1,6 @@
 package enums_stringmode
 
-//go:generate go run ../../gen-jsonschema/
+//go:generate go run ../../polytype/
 
 type Color int
 

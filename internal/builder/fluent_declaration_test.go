@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tylergannon/go-gen-jsonschema/internal/syntax"
+	"github.com/tylergannon/polytype/internal/syntax"
 )
 
 // writeFluentFixture writes a single-file package to a fresh temp directory
@@ -56,7 +56,7 @@ package fixture
 import (
 	"encoding/json"
 
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+	"github.com/tylergannon/polytype"
 )
 
 type Example struct {
@@ -79,15 +79,15 @@ func BoolSchemaFunc(_ bool) json.Marshaler {
 var _ = %s
 `
 
-const legacyProviderRegistration = `jsonschema.NewJSONSchemaMethod(
+const legacyProviderRegistration = `polytype.NewJSONSchemaMethod(
 	Example.Schema,
-	jsonschema.WithStructAccessorMethod(Example{}.A, (Example).ASchema),
-	jsonschema.WithStructFunctionMethod(Example{}.B, (Example).BSchema),
-	jsonschema.WithFunction(Example{}.C, BoolSchemaFunc),
-	jsonschema.WithRenderProviders(),
+	polytype.WithStructAccessorMethod(Example{}.A, (Example).ASchema),
+	polytype.WithStructFunctionMethod(Example{}.B, (Example).BSchema),
+	polytype.WithFunction(Example{}.C, BoolSchemaFunc),
+	polytype.WithRenderProviders(),
 )`
 
-const fluentProviderRegistration = `jsonschema.Declare(Example.Schema).
+const fluentProviderRegistration = `polytype.Declare(Example.Schema).
 	Accessor(Example{}.A, Example.ASchema).
 	Method(Example{}.B, Example.BSchema).
 	Function(Example{}.C, BoolSchemaFunc).
@@ -113,7 +113,7 @@ package fixture
 import (
 	"encoding/json"
 
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+	"github.com/tylergannon/polytype"
 )
 
 type Example struct {
@@ -132,13 +132,13 @@ func (*Example) BSchema(_ int) json.Marshaler {
 var _ = %s
 `
 
-const legacyPointerProviderRegistration = `jsonschema.NewJSONSchemaMethod(
+const legacyPointerProviderRegistration = `polytype.NewJSONSchemaMethod(
 	(*Example).Schema,
-	jsonschema.WithStructAccessorMethod(Example{}.A, (*Example).ASchema),
-	jsonschema.WithStructFunctionMethod(Example{}.B, (*Example).BSchema),
+	polytype.WithStructAccessorMethod(Example{}.A, (*Example).ASchema),
+	polytype.WithStructFunctionMethod(Example{}.B, (*Example).BSchema),
 )`
 
-const fluentPointerProviderRegistration = `jsonschema.Declare((*Example).Schema).
+const fluentPointerProviderRegistration = `polytype.Declare((*Example).Schema).
 	Accessor(Example{}.A, (*Example).ASchema).
 	Method(Example{}.B, (*Example).BSchema)`
 
@@ -167,7 +167,7 @@ package fixture
 import (
 	"encoding/json"
 
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+	"github.com/tylergannon/polytype"
 )
 
 type Paint string
@@ -189,13 +189,13 @@ func (Widget) Schema() json.RawMessage { panic("not implemented") }
 var _ = %s
 `
 
-const legacyEnumRegistration = `jsonschema.NewJSONSchemaMethod(
+const legacyEnumRegistration = `polytype.NewJSONSchemaMethod(
 	Widget.Schema,
-	jsonschema.WithEnum(Widget{}.Direct),
-	jsonschema.WithStringerEnum(Widget{}.ViaStringer),
+	polytype.WithEnum(Widget{}.Direct),
+	polytype.WithStringerEnum(Widget{}.ViaStringer),
 )`
 
-const fluentEnumRegistration = `jsonschema.Declare(Widget.Schema).
+const fluentEnumRegistration = `polytype.Declare(Widget.Schema).
 	Enum(Widget{}.Direct).
 	StringerEnum(Widget{}.ViaStringer)`
 
@@ -217,7 +217,7 @@ package fixture
 import (
 	"encoding/json"
 
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+	"github.com/tylergannon/polytype"
 )
 
 type Shared struct {
@@ -233,11 +233,11 @@ type Owner struct {
 func (Owner) Schema() json.RawMessage { panic("not implemented") }
 
 var _ = %s
-var _ = jsonschema.NewJSONSchemaMethod(Owner.Schema)
+var _ = polytype.NewJSONSchemaMethod(Owner.Schema)
 `
 
-const legacyRefRegistration = `jsonschema.NewJSONSchemaMethod(Shared.Schema, jsonschema.AsRef())`
-const fluentRefRegistration = `jsonschema.Declare(Shared.Schema).Ref()`
+const legacyRefRegistration = `polytype.NewJSONSchemaMethod(Shared.Schema, polytype.AsRef())`
+const fluentRefRegistration = `polytype.Declare(Shared.Schema).Ref()`
 
 // TestFluentRefParityWithLegacy proves that .Ref() produces the same
 // "$ref"-based owner schema as AsRef().
@@ -258,7 +258,7 @@ package fixture
 import (
 	"encoding/json"
 
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+	"github.com/tylergannon/polytype"
 )
 
 type Value interface{ value() }
@@ -284,22 +284,22 @@ func (Owner) Schema() json.RawMessage { panic("not implemented") }
 var _ = %s
 `
 
-const legacyInterfaceRegistration = `jsonschema.NewJSONSchemaMethod(
+const legacyInterfaceRegistration = `polytype.NewJSONSchemaMethod(
 	Owner.Schema,
-	jsonschema.WithInterface(
+	polytype.WithInterface(
 		Owner{}.Value,
-		jsonschema.Discriminator("kind"),
-		jsonschema.Impl("first", First{}),
-		jsonschema.Impl("second", Second{}),
+		polytype.Discriminator("kind"),
+		polytype.Impl("first", First{}),
+		polytype.Impl("second", Second{}),
 	),
 )`
 
-const fluentInterfaceRegistration = `jsonschema.Declare(Owner.Schema).
+const fluentInterfaceRegistration = `polytype.Declare(Owner.Schema).
 	Interface(
 		Owner{}.Value,
-		jsonschema.Discriminator("kind"),
-		jsonschema.Impl("first", First{}),
-		jsonschema.Impl("second", Second{}),
+		polytype.Discriminator("kind"),
+		polytype.Impl("first", First{}),
+		polytype.Impl("second", Second{}),
 	)`
 
 // TestFluentInterfaceParityWithLegacy proves that a sealed-interface fluent
@@ -337,7 +337,7 @@ package fixture
 import (
 	"encoding/json"
 
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+	"github.com/tylergannon/polytype"
 )
 
 type Value interface{ value() }
@@ -350,8 +350,8 @@ type Stranger struct { Enabled bool ` + "`json:\"enabled\"`" + ` }
 type Owner struct { Value Value ` + "`json:\"value\"`" + ` }
 func (Owner) Schema() json.RawMessage { panic("not implemented") }
 
-var _ = jsonschema.Declare(Owner.Schema).
-	Interface(Owner{}.Value, jsonschema.Impl("stranger", Stranger{}))
+var _ = polytype.Declare(Owner.Schema).
+	Interface(Owner{}.Value, polytype.Impl("stranger", Stranger{}))
 `
 	require.NoError(t, os.WriteFile(filepath.Join(targetDir, "schema.go"), []byte(source), 0o644))
 
@@ -388,7 +388,7 @@ package fixture
 import (
 	"encoding/json"
 
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+	"github.com/tylergannon/polytype"
 )
 
 type Example struct {
@@ -399,7 +399,7 @@ func (Example) Schema() json.RawMessage { panic("not implemented") }
 
 func freeAccessorSchema(Example) json.Marshaler { panic("not implemented") }
 
-var _ = jsonschema.Declare(Example.Schema).
+var _ = polytype.Declare(Example.Schema).
 	Accessor(Example{}.A, freeAccessorSchema).
 	RenderProviders()
 `
@@ -411,7 +411,7 @@ var _ = jsonschema.Declare(Example.Schema).
 	require.Empty(t, pkgs[0].Errors)
 
 	_, err = New(pkgs[0])
-	require.ErrorContains(t, err, "jsonschema.Declare: .Accessor provider must be a Example method expression, not a free function")
+	require.ErrorContains(t, err, "polytype.Declare: .Accessor provider must be a Example method expression, not a free function")
 	require.ErrorContains(t, err, "schema.go")
 }
 
@@ -443,7 +443,7 @@ package fixture
 import (
 	"encoding/json"
 
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+	"github.com/tylergannon/polytype"
 )
 
 type Passthrough struct{}
@@ -456,7 +456,7 @@ type Example struct {
 
 func (Example) Schema() json.RawMessage { panic("not implemented") }
 
-var _ = jsonschema.Declare(Example.Schema).
+var _ = polytype.Declare(Example.Schema).
 	Function(Example{}.H, Passthrough.PassthroughSchema).
 	RenderProviders()
 `
@@ -468,6 +468,6 @@ var _ = jsonschema.Declare(Example.Schema).
 	require.Empty(t, pkgs[0].Errors)
 
 	_, err = New(pkgs[0])
-	require.ErrorContains(t, err, "jsonschema.Declare: .Function provider is not a supported method expression or free function")
+	require.ErrorContains(t, err, "polytype.Declare: .Function provider is not a supported method expression or free function")
 	require.ErrorContains(t, err, "schema.go")
 }

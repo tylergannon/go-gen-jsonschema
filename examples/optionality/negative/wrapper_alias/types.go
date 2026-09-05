@@ -1,8 +1,8 @@
 package wrapper_alias
 
-import jsonschema "github.com/tylergannon/go-gen-jsonschema"
+import "github.com/tylergannon/polytype"
 
-type MaybeInt = jsonschema.Optional[int]
+type MaybeInt = polytype.Optional[int]
 
 type Config struct {
 	Value MaybeInt `json:"value,omitzero"`

@@ -11,14 +11,14 @@ func (Product) Schema() json.RawMessage       { panic("not implemented") }
 func (Configuration) Schema() json.RawMessage { panic("not implemented") }
 
 // Register Product - iota enums will be represented as integers by default
-// var _ = jsonschema.NewJSONSchemaMethod(Product.Schema)
+// var _ = polytype.NewJSONSchemaMethod(Product.Schema)
 // This would crash because iota enums can't be used without field-level config
 
 // COMMENTED OUT: EnumContainer type not defined
 // // Register Configuration with field-level enum configuration to use string mode
-// var _ = jsonschema.NewJSONSchemaMethod(
+// var _ = polytype.NewJSONSchemaMethod(
 // 	EnumContainer.Schema,
-// 	jsonschema.WithEnum(EnumContainer{}.MySimpleEnum),
+// 	polytype.WithEnum(EnumContainer{}.MySimpleEnum),
 // )
 
 // IMPORTANT: Pure iota-based enums CANNOT be registered globally with NewEnumType

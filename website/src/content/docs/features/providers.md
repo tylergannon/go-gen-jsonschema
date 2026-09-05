@@ -11,7 +11,7 @@ func BoolSchema(_ bool) json.Marshaler {
     return json.RawMessage(`{"type":"boolean"}`)
 }
 
-var _ = jsonschema.Declare(Config.Schema).
+var _ = polytype.Declare(Config.Schema).
     Function(Config{}.Enabled, BoolSchema).
     RenderProviders()
 ```
@@ -35,5 +35,5 @@ Provider implementations must be available in normal builds because
 `RenderedSchema()` calls them at runtime. A rendered type does not receive
 `ValidateJSON()` because its schema depends on runtime values.
 
-See [`examples/providers_rendering`](https://github.com/tylergannon/go-gen-jsonschema/tree/main/examples/providers_rendering)
+See [`examples/providers_rendering`](https://github.com/tylergannon/polytype/tree/main/examples/providers_rendering)
 for all three provider shapes and a runtime test.

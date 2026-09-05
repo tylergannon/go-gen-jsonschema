@@ -2,7 +2,7 @@
 // of registered interface unions. The session worklog records its contract.
 package sealed_interface_slices
 
-//go:generate go run ../../gen-jsonschema/ --pretty
+//go:generate go run ../../polytype/ --pretty
 
 // Event is a sealed union for the purposes of schema generation: the schema
 // registration lists every concrete implementation accepted on the wire.

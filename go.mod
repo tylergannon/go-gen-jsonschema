@@ -1,4 +1,4 @@
-module github.com/tylergannon/go-gen-jsonschema
+module github.com/tylergannon/polytype
 
 go 1.27
 

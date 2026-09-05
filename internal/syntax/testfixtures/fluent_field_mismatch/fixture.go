@@ -12,7 +12,7 @@ package fluentfieldmismatch
 import (
 	"encoding/json"
 
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+	"github.com/tylergannon/polytype"
 )
 
 type Owner struct {
@@ -25,5 +25,5 @@ type Other struct {
 
 func (Owner) Schema() json.RawMessage { panic("not implemented") }
 
-var _ = jsonschema.Declare(Owner.Schema).
+var _ = polytype.Declare(Owner.Schema).
 	Enum(Other{}.X)

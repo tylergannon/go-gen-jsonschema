@@ -6,15 +6,15 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tylergannon/go-gen-jsonschema/internal/testutils"
+	"github.com/tylergannon/polytype/internal/testutils"
 )
 
 func TestGeneratedUnmarshalFormats(t *testing.T) {
 	cwd, err := os.Getwd()
 	require.NoError(t, err)
 	repoRoot := filepath.Clean(filepath.Join(cwd, "..", ".."))
-	generator := filepath.Join(t.TempDir(), "gen-jsonschema")
-	exitCode, stdout, stderr, err := testutils.RunCommand("go", repoRoot, "build", "-o", generator, "./gen-jsonschema")
+	generator := filepath.Join(t.TempDir(), "polytype")
+	exitCode, stdout, stderr, err := testutils.RunCommand("go", repoRoot, "build", "-o", generator, "./polytype")
 	require.NoError(t, err)
 	require.Equal(t, 0, exitCode, "stdout:\n%s\nstderr:\n%s", stdout, stderr)
 

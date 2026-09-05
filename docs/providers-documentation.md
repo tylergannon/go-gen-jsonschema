@@ -9,12 +9,12 @@ schema rendering; they do not create a codec for the field's Go value.
 Use one of these options on a schema registration:
 
 ```go
-var _ = jsonschema.NewJSONSchemaMethod(
+var _ = polytype.NewJSONSchemaMethod(
     Example.Schema,
-    jsonschema.WithStructAccessorMethod(Example{}.A, (Example).ASchema),
-    jsonschema.WithStructFunctionMethod(Example{}.B, (Example).BSchema),
-    jsonschema.WithFunction(Example{}.C, BoolSchema),
-    jsonschema.WithRenderProviders(),
+    polytype.WithStructAccessorMethod(Example{}.A, (Example).ASchema),
+    polytype.WithStructFunctionMethod(Example{}.B, (Example).BSchema),
+    polytype.WithFunction(Example{}.C, BoolSchema),
+    polytype.WithRenderProviders(),
 )
 ```
 

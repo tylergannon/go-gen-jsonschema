@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tylergannon/go-gen-jsonschema/internal/syntax"
+	"github.com/tylergannon/polytype/internal/syntax"
 )
 
 // TestAsRefDefinitionNameCollisionFailsDuringGeneration proves that two
@@ -18,7 +18,7 @@ func TestAsRefDefinitionNameCollisionFailsDuringGeneration(t *testing.T) {
 	t.Parallel()
 
 	depDir := writeAsRefCollisionDepFixture(t)
-	depImportPath := "github.com/tylergannon/go-gen-jsonschema/internal/builder/testfixtures/" + filepath.Base(depDir)
+	depImportPath := "github.com/tylergannon/polytype/internal/builder/testfixtures/" + filepath.Base(depDir)
 
 	targetDir := writeAsRefCollisionRootFixture(t, depImportPath)
 	pkgs, err := syntax.Load(targetDir)
@@ -82,7 +82,7 @@ package fixture
 import (
 	"encoding/json"
 
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+	"github.com/tylergannon/polytype"
 	dep "` + depImportPath + `"
 )
 
@@ -100,9 +100,9 @@ type Container struct {
 func (Container) Schema() json.RawMessage { panic("not implemented") }
 
 var (
-	_ = jsonschema.NewJSONSchemaMethod(Shared.Schema, jsonschema.AsRef())
-	_ = jsonschema.NewJSONSchemaMethod(dep.Shared.Schema, jsonschema.AsRef())
-	_ = jsonschema.NewJSONSchemaMethod(Container.Schema)
+	_ = polytype.NewJSONSchemaMethod(Shared.Schema, polytype.AsRef())
+	_ = polytype.NewJSONSchemaMethod(dep.Shared.Schema, polytype.AsRef())
+	_ = polytype.NewJSONSchemaMethod(Container.Schema)
 )
 `
 	require.NoError(t, os.WriteFile(filepath.Join(targetDir, "schema.go"), []byte(source), 0o644))

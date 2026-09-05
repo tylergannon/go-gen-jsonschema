@@ -1,6 +1,6 @@
 package optionality
 
-import schema "github.com/tylergannon/go-gen-jsonschema"
+import schema "github.com/tylergannon/polytype"
 
 //go:generate go run ./gen
 

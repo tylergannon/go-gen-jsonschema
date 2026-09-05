@@ -2,7 +2,7 @@
 applyTo: '**'
 ---
 
-# go-gen-jsonschema Internal Developer Notes
+# polytype Internal Developer Notes
 
 > Historical copy retained for design provenance. For current supported
 > behavior, use [`docs/spec/v1.md`](../spec/v1.md), the website documentation,

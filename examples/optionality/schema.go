@@ -5,13 +5,13 @@ package optionality
 import (
 	"encoding/json"
 
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+	"github.com/tylergannon/polytype"
 )
 
 func (Config) Schema() json.RawMessage        { panic("not implemented") }
 func (NumericConfig) Schema() json.RawMessage { panic("not implemented") }
 
-var _ = jsonschema.Declare(Config.Schema).
-	Interface(Config{}.Pet, jsonschema.Discriminator("!kind"), jsonschema.Impl("Dog", Dog{}), jsonschema.Impl("Cat", Cat{}))
+var _ = polytype.Declare(Config.Schema).
+	Interface(Config{}.Pet, polytype.Discriminator("!kind"), polytype.Impl("Dog", Dog{}), polytype.Impl("Cat", Cat{}))
 
-var _ = jsonschema.Declare(NumericConfig.Schema)
+var _ = polytype.Declare(NumericConfig.Schema)

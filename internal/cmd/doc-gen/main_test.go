@@ -30,7 +30,7 @@ const (
 )
 type Task struct { Status Status }
 func (Task) Schema() []byte { return nil }
-var _ = jsonschema.NewJSONSchemaMethod(Task.Schema, jsonschema.WithEnum(Task{}.Status))
+var _ = polytype.NewJSONSchemaMethod(Task.Schema, polytype.WithEnum(Task{}.Status))
 `)
 	got, err := extract(path, section{
 		Source:        "example.go",
@@ -56,14 +56,14 @@ func TestExtractSelectsFluentChainRegistration(t *testing.T) {
 
 type Task struct { Status string }
 func (Task) Schema() []byte { return nil }
-var _ = jsonschema.Declare(Task.Schema).Enum(Task{}.Status)
+var _ = polytype.Declare(Task.Schema).Enum(Task{}.Status)
 `)
 	got, err := extract(path, section{Source: "example.go", Registrations: []string{"Task.Schema"}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	joined := string(bytes.Join(got, []byte("\n")))
-	if !strings.Contains(joined, "jsonschema.Declare(Task.Schema).Enum(Task{}.Status)") {
+	if !strings.Contains(joined, "polytype.Declare(Task.Schema).Enum(Task{}.Status)") {
 		t.Errorf("output missing fluent chain:\n%s", joined)
 	}
 }

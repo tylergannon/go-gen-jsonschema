@@ -1,8 +1,8 @@
 package test_options
 
-import jsonschema "github.com/tylergannon/go-gen-jsonschema"
+import "github.com/tylergannon/polytype"
 
-//go:generate go run ../../gen-jsonschema/
+//go:generate go run ../../polytype/
 
 // Person represents a person with basic information
 type Person struct {
@@ -13,7 +13,7 @@ type Person struct {
 	Age int `json:"age"`
 
 	// Email is an optional email address
-	Email jsonschema.Optional[string] `json:"email,omitzero"`
+	Email polytype.Optional[string] `json:"email,omitzero"`
 }
 
 // Team represents a team of people

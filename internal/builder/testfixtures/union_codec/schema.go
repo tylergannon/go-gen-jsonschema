@@ -5,56 +5,56 @@ package union_codec
 import (
 	"encoding/json"
 
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+	"github.com/tylergannon/polytype"
 )
 
 func (Envelope) Schema() json.RawMessage   { panic("not implemented") }
 func (Envelope) ValidateJSON([]byte) error { panic("not implemented") }
 func (Nested) Schema() json.RawMessage     { panic("not implemented") }
 
-var _ = jsonschema.NewJSONSchemaMethod(
+var _ = polytype.NewJSONSchemaMethod(
 	Envelope.Schema,
-	jsonschema.WithInterface(
+	polytype.WithInterface(
 		Envelope{}.Primary,
-		jsonschema.Discriminator("!kind"),
-		jsonschema.Impl("created", Created{}),
-		jsonschema.Impl("deleted", (*Deleted)(nil)),
-		jsonschema.Impl("", Empty{}),
+		polytype.Discriminator("!kind"),
+		polytype.Impl("created", Created{}),
+		polytype.Impl("deleted", (*Deleted)(nil)),
+		polytype.Impl("", Empty{}),
 	),
-	jsonschema.WithInterface(Envelope{}.Events),
-	jsonschema.WithInterfaceImpls(Envelope{}.Events, Created{}, (*Deleted)(nil)),
-	jsonschema.WithInterface(Envelope{}.Optional),
-	jsonschema.WithInterfaceImpls(Envelope{}.Optional, Created{}, (*Deleted)(nil)),
-	jsonschema.WithInterface(
+	polytype.WithInterface(Envelope{}.Events),
+	polytype.WithInterfaceImpls(Envelope{}.Events, Created{}, (*Deleted)(nil)),
+	polytype.WithInterface(Envelope{}.Optional),
+	polytype.WithInterfaceImpls(Envelope{}.Optional, Created{}, (*Deleted)(nil)),
+	polytype.WithInterface(
 		Envelope{}.Alternate,
-		jsonschema.Discriminator("kind\"quoted"),
-		jsonschema.Impl("new\"event", Created{}),
-		jsonschema.Impl("gone", (*Deleted)(nil)),
+		polytype.Discriminator("kind\"quoted"),
+		polytype.Impl("new\"event", Created{}),
+		polytype.Impl("gone", (*Deleted)(nil)),
 	),
-	jsonschema.WithInterface(
+	polytype.WithInterface(
 		Envelope{}.Single,
-		jsonschema.Discriminator("single"),
-		jsonschema.Impl("only", Created{}),
+		polytype.Discriminator("single"),
+		polytype.Impl("only", Created{}),
 	),
-	jsonschema.WithInterface(
+	polytype.WithInterface(
 		Envelope{}.Hook,
-		jsonschema.Discriminator("hookKind"),
-		jsonschema.Impl("hooked", Hooked{}),
+		polytype.Discriminator("hookKind"),
+		polytype.Impl("hooked", Hooked{}),
 	),
-	jsonschema.WithInterface(
+	polytype.WithInterface(
 		Envelope{}.ValueHook,
-		jsonschema.Discriminator("valueHookKind"),
-		jsonschema.Impl("value-hook", PointerHookValue{}),
+		polytype.Discriminator("valueHookKind"),
+		polytype.Impl("value-hook", PointerHookValue{}),
 	),
-	jsonschema.WithStringerEnum(Envelope{}.State),
+	polytype.WithStringerEnum(Envelope{}.State),
 )
 
-var _ = jsonschema.NewJSONSchemaMethod(
+var _ = polytype.NewJSONSchemaMethod(
 	Nested.Schema,
-	jsonschema.WithInterface(
+	polytype.WithInterface(
 		Nested{}.Event,
-		jsonschema.Discriminator("nestedKind"),
-		jsonschema.Impl("nested-created", Created{}),
-		jsonschema.Impl("nested-deleted", (*Deleted)(nil)),
+		polytype.Discriminator("nestedKind"),
+		polytype.Impl("nested-created", Created{}),
+		polytype.Impl("nested-deleted", (*Deleted)(nil)),
 	),
 )

@@ -1,7 +1,7 @@
 package wrapper_in_container
 
-import jsonschema "github.com/tylergannon/go-gen-jsonschema"
+import "github.com/tylergannon/polytype"
 
 type Config struct {
-	Values []jsonschema.Optional[int] `json:"values"`
+	Values []polytype.Optional[int] `json:"values"`
 }

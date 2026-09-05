@@ -3,10 +3,10 @@
 Status: design investigation; do not implement until the user chooses a
 direction.
 
-Primary issue: [GitHub issue #28](https://github.com/tylergannon/go-gen-jsonschema/issues/28)
+Primary issue: [GitHub issue #28](https://github.com/tylergannon/polytype/issues/28)
 
 Related prerequisite bug:
-[GitHub issue #29](https://github.com/tylergannon/go-gen-jsonschema/issues/29)
+[GitHub issue #29](https://github.com/tylergannon/polytype/issues/29)
 
 Full implementation plan:
 [issue-28-optional-plan.md](issue-28-optional-plan.md)
@@ -298,8 +298,8 @@ type FieldValueSemantics struct {
 The classifier should recognize only canonical library types:
 
 ```text
-github.com/tylergannon/go-gen-jsonschema.Optional[T]
-github.com/tylergannon/go-gen-jsonschema.Nullable[T]
+github.com/tylergannon/polytype.Optional[T]
+github.com/tylergannon/polytype.Nullable[T]
 ```
 
 Every scanner and builder path consumes the same normalized inner expression

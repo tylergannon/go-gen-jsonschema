@@ -2,7 +2,7 @@
 applyTo: '**'
 ---
 
-# go-gen-jsonschema tutorial
+# polytype tutorial
 
 This tutorial follows the current v1 contract. The authoritative capability
 matrix is [`docs/spec/v1.md`](spec/v1.md); the compiling examples below show
@@ -13,14 +13,14 @@ the supported registration and generated-code paths.
 Use a Go tool directive so the generator version is recorded in `go.mod`:
 
 ```bash
-go get -tool github.com/tylergannon/go-gen-jsonschema/gen-jsonschema@latest
+go get -tool github.com/tylergannon/polytype/polytype@latest
 ```
 
 Add a generation directive beside the types, create a build-tagged
 `schema.go`, and run:
 
 ```bash
-go tool gen-jsonschema new \
+go tool polytype new \
   -out schema.go \
   -methods 'Person=Schema' \
   --validate \
@@ -46,7 +46,7 @@ The normal entry point is a method marker:
 ```go
 func (Person) Schema() json.RawMessage { panic("not implemented") }
 
-var _ = jsonschema.NewJSONSchemaMethod(Person.Schema)
+var _ = polytype.NewJSONSchemaMethod(Person.Schema)
 ```
 
 `NewJSONSchemaFunc[T](func(T) json.RawMessage, options...)` registers a free
@@ -65,8 +65,8 @@ Use `Optional[T]` when a property may be absent and must not be null. Use
 ```go
 type Person struct {
     Name  string                        `json:"name"`
-    Email jsonschema.Optional[string]   `json:"email,omitzero"`
-    Phone jsonschema.Nullable[string]   `json:"phone"`
+    Email polytype.Optional[string]   `json:"email,omitzero"`
+    Phone polytype.Nullable[string]   `json:"phone"`
 }
 ```
 
@@ -85,7 +85,7 @@ marker/runtime package. Generate validation and TypeScript declarations in the
 same run:
 
 ```bash
-go get -tool github.com/tylergannon/go-gen-jsonschema/gen-jsonschema@v1.0.0-rc.5
+go get -tool github.com/tylergannon/polytype/polytype@v1.0.0-rc.5
 ```
 
 This combined surface requires `v1.0.0-rc.5` or newer. `v1.0.0-rc.4` includes
@@ -93,7 +93,7 @@ TypeScript declarations but predates generated owner codecs. Pin the version
 explicitly.
 
 ```go
-//go:generate go tool gen-jsonschema --validate --typescript web/src/generated --typescript-barrel
+//go:generate go tool polytype --validate --typescript web/src/generated --typescript-barrel
 ```
 
 The barrel flag is optional. Registrations such as `WithInterface` and
@@ -119,7 +119,7 @@ The TypeScript output contains structural declarations only. Consumers use
 for untrusted values because TypeScript annotations are erased. Generated
 TypeScript runtime decoders and validators are not provided. The broader
 executed Go/JavaScript transport proof remains tracked by
-[#71](https://github.com/tylergannon/go-gen-jsonschema/issues/71).
+[#71](https://github.com/tylergannon/polytype/issues/71).
 
 ## Enums and interfaces
 
@@ -131,12 +131,12 @@ For a discriminated interface, list its concrete implementations at the field
 where the union is used:
 
 ```go
-var _ = jsonschema.NewJSONSchemaMethod(
+var _ = polytype.NewJSONSchemaMethod(
     Batch.Schema,
-    jsonschema.WithInterface(
+    polytype.WithInterface(
         Batch{}.Events,
-        jsonschema.Impl("created", Created{}),
-        jsonschema.Impl("deleted", (*Deleted)(nil)),
+        polytype.Impl("created", Created{}),
+        polytype.Impl("deleted", (*Deleted)(nil)),
     ),
 )
 ```

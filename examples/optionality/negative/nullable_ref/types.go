@@ -1,7 +1,7 @@
 package nullable_ref
 
-import jsonschema "github.com/tylergannon/go-gen-jsonschema"
+import "github.com/tylergannon/polytype"
 
 type Config struct {
-	Value jsonschema.Nullable[string] `json:"value" jsonschema:"ref=definitions/Value"`
+	Value polytype.Nullable[string] `json:"value" jsonschema:"ref=definitions/Value"`
 }

@@ -23,8 +23,8 @@ import (
 
 	"github.com/dave/dst"
 	"github.com/dave/dst/decorator"
-	"github.com/tylergannon/go-gen-jsonschema/internal/common"
-	"github.com/tylergannon/go-gen-jsonschema/internal/syntax"
+	"github.com/tylergannon/polytype/internal/common"
+	"github.com/tylergannon/polytype/internal/syntax"
 )
 
 //go:embed schemas.go.tmpl

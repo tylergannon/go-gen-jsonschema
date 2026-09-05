@@ -1,6 +1,6 @@
 package indirecttypes
 
-//go:generate go run ../../gen-jsonschema/
+//go:generate go run ../../polytype/
 
 // This example demonstrates various forms of indirection in type definitions
 // including pointers, slices, and type aliases.

@@ -20,12 +20,12 @@ function install_staticcheck() {
 }
 
 install_staticcheck
-go install github.com/tylergannon/go-gen-jsonschema/gen-jsonschema@latest
+go install github.com/tylergannon/polytype/polytype@latest
 # fmt / imports
 go install golang.org/x/tools/cmd/goimports@latest
 go install golang.org/x/vuln/cmd/govulncheck@latest
 go install golang.org/x/tools/gopls/internal/analysis/modernize/cmd/modernize@latest
-go install github.com/tylergannon/go-gen-jsonschema/gen-jsonschema@latest
+go install github.com/tylergannon/polytype/polytype@latest
 
 go mod download all
 go mod tidy

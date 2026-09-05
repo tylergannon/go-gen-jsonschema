@@ -1,7 +1,7 @@
 package embedded_wrapper
 
-import jsonschema "github.com/tylergannon/go-gen-jsonschema"
+import "github.com/tylergannon/polytype"
 
 type Config struct {
-	jsonschema.Optional[int]
+	polytype.Optional[int]
 }

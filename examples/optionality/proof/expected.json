@@ -315,7 +315,7 @@
     },
     {
       "name": "embedded wrapper",
-      "reason": "embedded jsonschema.Optional is unsupported"
+      "reason": "embedded polytype.Optional is unsupported"
     },
     {
       "name": "wrapper root",

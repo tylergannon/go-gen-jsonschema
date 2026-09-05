@@ -29,7 +29,7 @@ type Task struct {
 
 ```go
 // schema.go (//go:build jsonschema)
-var _ = jsonschema.Declare(Task.Schema).
+var _ = polytype.Declare(Task.Schema).
     Enum(Task{}.Status)
 ```
 
@@ -52,7 +52,7 @@ const (
     LogError
 )
 
-var _ = jsonschema.Declare(Config.Schema).
+var _ = polytype.Declare(Config.Schema).
     StringerEnum(Config{}.LogLevel)
 ```
 
@@ -114,12 +114,12 @@ Preferred per-field registration:
 
 ```go
 // schema.go (//go:build jsonschema)
-var _ = jsonschema.Declare(Payment.Schema).
+var _ = polytype.Declare(Payment.Schema).
     Interface(
         Payment{}.Methods,
-        jsonschema.Discriminator("!kind"), // optional; default "type"
-        jsonschema.Impl("credit_card", CreditCard{}),
-        jsonschema.Impl("bank_transfer", BankTransfer{}),
+        polytype.Discriminator("!kind"), // optional; default "type"
+        polytype.Impl("credit_card", CreditCard{}),
+        polytype.Impl("bank_transfer", BankTransfer{}),
     )
 ```
 
@@ -173,9 +173,9 @@ the type's bare name:
 
 ```go
 // schema.go (//go:build jsonschema)
-var _ = jsonschema.Declare(Shared.Schema).Ref()
+var _ = polytype.Declare(Shared.Schema).Ref()
 
-var _ = jsonschema.Declare(Container.Schema) // references Shared
+var _ = polytype.Declare(Container.Schema) // references Shared
 ```
 
 Notes:
@@ -202,8 +202,8 @@ membership, and nested structure. Validate LLM output *before* `json.Unmarshal`.
 ## CLI reference
 
 ```bash
-gen-jsonschema                 # same as `gen` in the current package
-gen-jsonschema gen [flags]
+polytype                 # same as `gen` in the current package
+polytype gen [flags]
   -pretty            # indent the .json output
   -target DIR        # package to process (default: cwd)
   -no-changes        # fail (writing nothing) if schemas or requested TypeScript output would change
@@ -212,7 +212,7 @@ gen-jsonschema gen [flags]
   --formats MODE     # decoding and validation: json (default) or both
   --typescript DIR   # generate structural TypeScript declarations in DIR
   --typescript-barrel # also generate index.ts type-only exports; requires --typescript
-gen-jsonschema new [flags]
+polytype new [flags]
   -out FILE          # stub file path ("" or "--" = stdout)
   -pkg NAME          # package name override (stdout mode)
   -methods 'T=Schema,U=Schema'   # required; one entry per type
@@ -226,7 +226,7 @@ Environment: `JSONSCHEMA_NO_CHANGES` (any non-empty value) is equivalent to
 checks requested TypeScript artifacts as well as schemas.
 
 When installed via the go.mod tool directive, invoke everything as
-`go tool gen-jsonschema ...`.
+`go tool polytype ...`.
 
 ## Generated layout
 

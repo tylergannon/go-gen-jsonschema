@@ -1,7 +1,7 @@
 package nested_wrapper
 
-import jsonschema "github.com/tylergannon/go-gen-jsonschema"
+import "github.com/tylergannon/polytype"
 
 type Config struct {
-	Value jsonschema.Optional[jsonschema.Optional[int]] `json:"value,omitzero"`
+	Value polytype.Optional[polytype.Optional[int]] `json:"value,omitzero"`
 }

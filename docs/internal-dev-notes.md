@@ -2,7 +2,7 @@
 applyTo: '**'
 ---
 
-# go-gen-jsonschema Internal Developer Notes
+# polytype Internal Developer Notes
 
 > Historical snapshot: this document records early implementation experiments.
 > Current support and release boundaries are in [`docs/spec/v1.md`](spec/v1.md)
@@ -21,19 +21,19 @@ Changelog
 - Introduced TemplateHoleNode to emit raw template placeholders; added TypeProviders plumbing in SchemaBuilder (now used in codegen template generation), and prepped template imports (bytes, text/template). Tests still green.
 
 
-This is an internal, living document for deep understanding, navigation, and refactoring of go-gen-jsonschema. It is deliberately exhaustive. Keep this up to date.
+This is an internal, living document for deep understanding, navigation, and refactoring of polytype. It is deliberately exhaustive. Keep this up to date.
 
 ## 0) Quick facts
 - Purpose: Generate JSON Schemas from Go types for LLM tool/function calls.
 - Outputs: jsonschema/*.json (+ *.sum) and jsonschema_gen.go with method impls + custom Unmarshalers.
 - Build tag flow: `//go:build jsonschema` gates stub methods/markers; generator loads package with `-tags=jsonschema`.
 - Entry points:
-  - CLI: gen-jsonschema/gen
+  - CLI: polytype/gen
   - Core: internal/syntax (scan) → internal/builder (render) → files + gen code.
 - Supported features: structs, primitives, arrays, enums, union types via interfaces, refs via struct tag, Optional/Nullable wrapper fields, description tags/comments.
 
 ## 1) Architecture map
-- gen-jsonschema (CLI)
+- polytype (CLI)
   - main.go: subcommands gen (default), new. Calls builder.Run(...)
   - tmpl/config.go.tmpl: used by `new` to scaffold.
 - internal/syntax (package loader, AST scanner, type resolver)
@@ -55,7 +55,7 @@ This is an internal, living document for deep understanding, navigation, and ref
    - schema.go (under build tag) + method stubs returning json.RawMessage
    - marker calls: NewJSONSchemaMethod, NewEnumType, NewInterfaceImpl, etc.
    - go:generate directive to run the generator.
-2. gen-jsonschema gen: loads package with jsonschema tag; internal/syntax finds markers, types, enums, interfaces; resolves types recursively (local + remote) and enforces invariants.
+2. polytype gen: loads package with jsonschema tag; internal/syntax finds markers, types, enums, interfaces; resolves types recursively (local + remote) and enforces invariants.
 3. internal/builder maps each registered type into internal schema nodes.
    - Primitives → PropertyNode
    - Arrays → ArrayNode
@@ -76,8 +76,8 @@ This is an internal, living document for deep understanding, navigation, and ref
 
 ## 4) Tag semantics
 - json: standard behavior for names, skipping ("-").
-- jsonschema.Optional[T]: direct named field is not required and must use `json:",omitzero"`.
-- jsonschema.Nullable[T]: direct named field remains required and its schema accepts null.
+- polytype.Optional[T]: direct named field is not required and must use `json:",omitzero"`.
+- polytype.Nullable[T]: direct named field remains required and its schema accepts null.
 - jsonschema:"ref=...": replace field schema with $ref (field skipped from traversal).
 - description:"...": overrides comment-sourced description for the field.
 

@@ -8,11 +8,11 @@ description: Validate generated JSON or YAML and prevent committed schemas from 
 Add `--validate` to both the generation directive and the scaffold command:
 
 ```go
-//go:generate go tool gen-jsonschema --validate
+//go:generate go tool polytype --validate
 ```
 
 ```bash
-go tool gen-jsonschema new \
+go tool polytype new \
   -out schema.go \
   -methods 'ToolInput=Schema' \
   --validate \

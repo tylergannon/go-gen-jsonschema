@@ -5,17 +5,17 @@ package v1_enums_stringmode
 import (
 	"encoding/json"
 
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+	"github.com/tylergannon/polytype"
 )
 
 func (Paint) Schema() json.RawMessage { panic("not implemented") }
 
-var _ = jsonschema.NewJSONSchemaMethod(
+var _ = polytype.NewJSONSchemaMethod(
 	Paint.Schema,
-	jsonschema.WithStringerEnum(Paint{}.C),
-	jsonschema.WithStringerEnum(Paint{}.Optional),
-	jsonschema.WithStringerEnum(Paint{}.Nullable),
-	jsonschema.WithEnum(Paint{}.Numeric),
-	jsonschema.WithStringerEnum(Paint{}.Finish),
-	jsonschema.WithStringerEnum(Paint{}.Remote),
+	polytype.WithStringerEnum(Paint{}.C),
+	polytype.WithStringerEnum(Paint{}.Optional),
+	polytype.WithStringerEnum(Paint{}.Nullable),
+	polytype.WithEnum(Paint{}.Numeric),
+	polytype.WithStringerEnum(Paint{}.Finish),
+	polytype.WithStringerEnum(Paint{}.Remote),
 )

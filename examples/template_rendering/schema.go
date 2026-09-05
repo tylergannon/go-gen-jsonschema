@@ -5,20 +5,20 @@ package template_rendering
 import (
 	"encoding/json"
 
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+	"github.com/tylergannon/polytype"
 )
 
 func (WorkItem) Schema() json.RawMessage { panic("not implemented") }
 
 var (
 	// Use WithEnum option to configure field-level enum
-	_ = jsonschema.NewJSONSchemaMethod(
+	_ = polytype.NewJSONSchemaMethod(
 		WorkItem.Schema,
-		jsonschema.WithEnum(WorkItem{}.Status),
+		polytype.WithEnum(WorkItem{}.Status),
 	)
 
 	// Also need this for now (shouldn't be required!)
-	_ = jsonschema.NewEnumType[Status]()
+	_ = polytype.NewEnumType[Status]()
 )
 
 // PROBLEM: This generates jsonschema/WorkItem.json.tmpl with {{.status}}

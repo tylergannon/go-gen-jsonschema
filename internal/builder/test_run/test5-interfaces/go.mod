@@ -1,9 +1,9 @@
-module github.com/tylergannon/go-gen-jsonschema/internal/builder/testfixtures/interfaces
+module github.com/tylergannon/polytype/internal/builder/testfixtures/interfaces
 
 go 1.27
 
 require (
-	github.com/tylergannon/go-gen-jsonschema v0.2.1
+	github.com/tylergannon/polytype v0.2.1
 	go.yaml.in/yaml/v4 v4.0.0-rc.6
 )
 
@@ -15,4 +15,4 @@ require (
 	golang.org/x/tools v0.49.0 // indirect
 )
 
-replace github.com/tylergannon/go-gen-jsonschema => ../../../../
+replace github.com/tylergannon/polytype => ../../../../

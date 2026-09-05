@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"slices"
 
-	"github.com/tylergannon/go-gen-jsonschema/internal/typescript"
+	"github.com/tylergannon/polytype/internal/typescript"
 )
 
 const (

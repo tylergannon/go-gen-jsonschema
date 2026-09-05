@@ -11,7 +11,7 @@ const proofRoot = resolve(process.env.TS_PROOF_DIR || join(repo, "ephemeral/type
 mkdirSync(proofRoot, { recursive: true });
 const run = mkdtempSync(join(proofRoot, "run-"));
 const consumer = join(run, "consumer");
-const cli = join(run, "gen-jsonschema");
+const cli = join(run, "polytype");
 const logs = [];
 const claims = [];
 const go = execFileSync("go", ["env", "GOROOT"], { encoding: "utf8" }).trim() + "/bin/go";
@@ -50,10 +50,10 @@ try {
   command(go, ["run", "./tests/typescript/projection/generate", join(projection, "generated")], { cwd: repo });
   command(process.execPath, [ts, "--project", join(projection, "tsconfig.json"), "--pretty", "false"]);
   claim("Fresh backend projection output passes exact-literal, empty-module, discriminator, Unicode, and escaping compiler obligations");
-  command(go, ["build", "-o", cli, "./gen-jsonschema"], { cwd: repo });
+  command(go, ["build", "-o", cli, "./polytype"], { cwd: repo });
   mkdirSync(consumer);
   cpSync(join(here, "fixture"), consumer, { recursive: true });
-  writeFileSync(join(consumer, "go.mod"), `module example.com/ts-consumer\n\ngo ${goVersion}\n\nrequire github.com/tylergannon/go-gen-jsonschema v0.0.0\nreplace github.com/tylergannon/go-gen-jsonschema => ${JSON.stringify(repo)}\n`);
+  writeFileSync(join(consumer, "go.mod"), `module example.com/ts-consumer\n\ngo ${goVersion}\n\nrequire github.com/tylergannon/polytype v0.0.0\nreplace github.com/tylergannon/polytype => ${JSON.stringify(repo)}\n`);
   writeFileSync(join(consumer, "package.json"), '{"type":"module"}\n');
   command(go, ["mod", "tidy"], { cwd: consumer });
   const goOnlyPath = join(run, "go-only-path");
@@ -121,7 +121,7 @@ try {
 
   const schemaPath = join(consumer, "schema.go");
   const schema = readFileSync(schemaPath, "utf8");
-  writeFileSync(schemaPath, schema.replace("// ADDED_VARIANT", 'jsonschema.Impl("renamed", Renamed{}),'));
+  writeFileSync(schemaPath, schema.replace("// ADDED_VARIANT", 'polytype.Impl("renamed", Renamed{}),'));
   generate(["--typescript", generated, "--typescript-barrel"]);
   const added = compiler(["consumer.ts"], "failure");
   assert.match(added, /TS2345/);

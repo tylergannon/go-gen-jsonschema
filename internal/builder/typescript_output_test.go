@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tylergannon/go-gen-jsonschema/internal/typescript"
+	"github.com/tylergannon/polytype/internal/typescript"
 )
 
 func generatedTypeScriptFile(name, body string) typescript.File {

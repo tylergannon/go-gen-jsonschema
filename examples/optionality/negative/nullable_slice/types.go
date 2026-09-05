@@ -1,7 +1,7 @@
 package nullable_slice
 
-import jsonschema "github.com/tylergannon/go-gen-jsonschema"
+import "github.com/tylergannon/polytype"
 
 type Config struct {
-	Value jsonschema.Nullable[[]int] `json:"value"`
+	Value polytype.Nullable[[]int] `json:"value"`
 }

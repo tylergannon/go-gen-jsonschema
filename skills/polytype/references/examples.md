@@ -16,23 +16,23 @@ type Detail struct {
 }
 
 type Config struct {
-	Name       string                        `json:"name"`
-	MaxRetries jsonschema.Optional[int]      `json:"max_retries,omitzero"`
-	Nickname   jsonschema.Optional[string]   `json:"nickname,omitzero"`
-	Metadata   jsonschema.Optional[Detail]   `json:"metadata,omitzero"`
-	Backup     jsonschema.Optional[*Detail]  `json:"backup,omitzero"`
-	Tags       jsonschema.Optional[[]string] `json:"tags,omitzero"`
-	Pet        jsonschema.Optional[Pet]      `json:"pet,omitzero"`
-	Timeout    jsonschema.Nullable[int]      `json:"timeout"`
-	Detail     jsonschema.Nullable[Detail]   `json:"detail"`
+	Name       string                      `json:"name"`
+	MaxRetries polytype.Optional[int]      `json:"max_retries,omitzero"`
+	Nickname   polytype.Optional[string]   `json:"nickname,omitzero"`
+	Metadata   polytype.Optional[Detail]   `json:"metadata,omitzero"`
+	Backup     polytype.Optional[*Detail]  `json:"backup,omitzero"`
+	Tags       polytype.Optional[[]string] `json:"tags,omitzero"`
+	Pet        polytype.Optional[Pet]      `json:"pet,omitzero"`
+	Timeout    polytype.Nullable[int]      `json:"timeout"`
+	Detail     polytype.Nullable[Detail]   `json:"detail"`
 }
 ```
 
 Source: [`examples/optionality/schema.go`](../../../examples/optionality/schema.go)
 
 ```go
-var _ = jsonschema.Declare(Config.Schema).
-	Interface(Config{}.Pet, jsonschema.Discriminator("!kind"), jsonschema.Impl("Dog", Dog{}), jsonschema.Impl("Cat", Cat{}))
+var _ = polytype.Declare(Config.Schema).
+	Interface(Config{}.Pet, polytype.Discriminator("!kind"), polytype.Impl("Dog", Dog{}), polytype.Impl("Cat", Cat{}))
 ```
 
 ## Enums
@@ -97,7 +97,7 @@ type ApplicationConfig struct {
 Source: [`examples/stringer_enums/schema.go`](../../../examples/stringer_enums/schema.go)
 
 ```go
-var _ = jsonschema.Declare(ApplicationConfig.Schema).
+var _ = polytype.Declare(ApplicationConfig.Schema).
 	StringerEnum(ApplicationConfig{}.LogLevel).
 	StringerEnum(ApplicationConfig{}.DefaultPriority)
 ```
@@ -133,7 +133,7 @@ Source: [`examples/providers_rendering/schema.go`](../../../examples/providers_r
 
 ```go
 // v1: RenderProviders() generates RenderedSchema() that executes providers.
-var _ = jsonschema.Declare(Example.Schema).
+var _ = polytype.Declare(Example.Schema).
 	Accessor(Example{}.A, (Example).ASchema).
 	Method(Example{}.B, (Example).BSchema).
 	Function(Example{}.C, BoolSchema).
@@ -170,12 +170,12 @@ Source: [`examples/interfaces_options/schema.go`](../../../examples/interfaces_o
 
 ```go
 // v1 interface options example
-var _ = jsonschema.Declare(Owner.Schema).
+var _ = polytype.Declare(Owner.Schema).
 	Interface(
 		Owner{}.IF,
-		jsonschema.Discriminator("!kind"),
-		jsonschema.Impl("impl_one", Impl1{}),
-		jsonschema.Impl("impl_two", Impl2{}),
+		polytype.Discriminator("!kind"),
+		polytype.Impl("impl_one", Impl1{}),
+		polytype.Impl("impl_two", Impl2{}),
 	)
 ```
 
@@ -218,12 +218,12 @@ Source: [`examples/sealed_interface_slices/schema.go`](../../../examples/sealed_
 ```go
 // The field selector still identifies the complete slice field; the generator
 // derives the registered interface from its element type.
-var _ = jsonschema.Declare(Batch.Schema).
+var _ = polytype.Declare(Batch.Schema).
 	Interface(
 		Batch{}.Events,
-		jsonschema.Discriminator("!kind"),
-		jsonschema.Impl("Created", Created{}),
-		jsonschema.Impl("Deleted", (*Deleted)(nil)),
+		polytype.Discriminator("!kind"),
+		polytype.Impl("Created", Created{}),
+		polytype.Impl("Deleted", (*Deleted)(nil)),
 	)
 ```
 
@@ -259,8 +259,8 @@ const (
 // NullableConfig exercises the two nullable shapes that retain reusable
 // contracts without widening Nullable support to arbitrary schema nodes.
 type NullableConfig struct {
-	Mode   jsonschema.Nullable[Mode]   `json:"mode"`
-	Shared jsonschema.Nullable[Shared] `json:"shared"`
+	Mode   polytype.Nullable[Mode]   `json:"mode"`
+	Shared polytype.Nullable[Shared] `json:"shared"`
 }
 ```
 
@@ -269,12 +269,12 @@ Source: [`examples/ref_types/schema.go`](../../../examples/ref_types/schema.go)
 ```go
 // Shared is registered as its own top-level schema and, via Ref(), as a
 // definition referenced from other schemas instead of being inlined there.
-var _ = jsonschema.Declare(Shared.Schema).Ref()
+var _ = polytype.Declare(Shared.Schema).Ref()
 
-var _ = jsonschema.Declare(Container.Schema)
+var _ = polytype.Declare(Container.Schema)
 
 var (
-	_ = jsonschema.Declare(NullableConfig.Schema)
-	_ = jsonschema.NewEnumType[Mode]()
+	_ = polytype.Declare(NullableConfig.Schema)
+	_ = polytype.NewEnumType[Mode]()
 )
 ```

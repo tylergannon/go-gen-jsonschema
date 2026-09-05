@@ -1,6 +1,6 @@
 package enums
 
-//go:generate go run ../../gen-jsonschema/
+//go:generate go run ../../polytype/
 
 // Status represents the state of an item in the system.
 // This enum type will be represented as a string with a fixed set of possible values.

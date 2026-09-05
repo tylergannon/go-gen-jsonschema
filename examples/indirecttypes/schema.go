@@ -5,7 +5,7 @@ package indirecttypes
 import (
 	"encoding/json"
 
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+	"github.com/tylergannon/polytype"
 )
 
 // Schema methods for all the types we want to generate schemas for.
@@ -75,20 +75,20 @@ func (ComplexStruct) Schema() json.RawMessage {
 // Register all the types with the schema generator.
 // Each type that needs a schema must be registered here.
 var (
-	_ = jsonschema.Declare(SimpleInt.Schema)
-	_ = jsonschema.Declare(PointerToInt.Schema)
-	_ = jsonschema.Declare(PointerToSimpleInt.Schema)
-	_ = jsonschema.Declare(SliceOfInt.Schema)
-	_ = jsonschema.Declare(SliceOfSimpleInt.Schema)
-	_ = jsonschema.Declare(SliceOfPointerToInt.Schema)
-	_ = jsonschema.Declare(SliceOfPointerToSimpleInt.Schema)
-	_ = jsonschema.Declare(NamedSliceType.Schema)
-	_ = jsonschema.Declare(Person.Schema)
-	_ = jsonschema.Declare(PointerToPerson.Schema)
-	_ = jsonschema.Declare(SliceOfPerson.Schema)
-	_ = jsonschema.Declare(SliceOfPointerToPerson.Schema)
+	_ = polytype.Declare(SimpleInt.Schema)
+	_ = polytype.Declare(PointerToInt.Schema)
+	_ = polytype.Declare(PointerToSimpleInt.Schema)
+	_ = polytype.Declare(SliceOfInt.Schema)
+	_ = polytype.Declare(SliceOfSimpleInt.Schema)
+	_ = polytype.Declare(SliceOfPointerToInt.Schema)
+	_ = polytype.Declare(SliceOfPointerToSimpleInt.Schema)
+	_ = polytype.Declare(NamedSliceType.Schema)
+	_ = polytype.Declare(Person.Schema)
+	_ = polytype.Declare(PointerToPerson.Schema)
+	_ = polytype.Declare(SliceOfPerson.Schema)
+	_ = polytype.Declare(SliceOfPointerToPerson.Schema)
 	// COMMENTED OUT: Map types are not yet supported
-	// _ = jsonschema.Declare(MapOfStringToPerson.Schema)
-	// _ = jsonschema.Declare(MapOfStringToPointerToPerson.Schema)
-	_ = jsonschema.Declare(ComplexStruct.Schema)
+	// _ = polytype.Declare(MapOfStringToPerson.Schema)
+	// _ = polytype.Declare(MapOfStringToPointerToPerson.Schema)
+	_ = polytype.Declare(ComplexStruct.Schema)
 )

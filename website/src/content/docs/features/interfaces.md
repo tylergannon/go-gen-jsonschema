@@ -29,12 +29,12 @@ type Payment struct {
 Register the field, its implementations, and optionally a custom discriminator:
 
 ```go
-var _ = jsonschema.Declare(Payment.Schema).
+var _ = polytype.Declare(Payment.Schema).
     Interface(
         Payment{}.Methods,
-        jsonschema.Discriminator("!kind"),
-        jsonschema.Impl("card", Card{}),
-        jsonschema.Impl("bank_transfer", (*BankTransfer)(nil)),
+        polytype.Discriminator("!kind"),
+        polytype.Impl("card", Card{}),
+        polytype.Impl("bank_transfer", (*BankTransfer)(nil)),
     )
 ```
 
@@ -87,6 +87,6 @@ declarations are rejected.
 
 An `Optional[I]` scalar interface field is supported. `Nullable[I]` is not.
 
-See the compiling [`examples/sealed_interface_slices`](https://github.com/tylergannon/go-gen-jsonschema/tree/main/examples/sealed_interface_slices)
+See the compiling [`examples/sealed_interface_slices`](https://github.com/tylergannon/polytype/tree/main/examples/sealed_interface_slices)
 package for schema and runtime coverage, including value and pointer
 implementations.

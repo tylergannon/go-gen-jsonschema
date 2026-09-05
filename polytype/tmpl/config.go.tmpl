@@ -1,11 +1,11 @@
-{{/* gotype:github.com/tylergannon/go-gen-jsonschema/gen-jsonschema.configArg*/ -}}
+{{/* gotype:github.com/tylergannon/polytype/polytype.configArg*/ -}}
 //go:build {{.BuildTag}}
 
 package {{.PkgName}}
 
 import (
     "encoding/json"
-    jsonschema "github.com/tylergannon/go-gen-jsonschema"
+    "github.com/tylergannon/polytype"
 )
 {{ range .Methods }}
 func ({{.TypeName}}) {{.MethodName}}() json.RawMessage {
@@ -25,6 +25,6 @@ func ({{.TypeName}}) ValidateYAML(_ []byte) error {
 
 var (
 	{{ range .Methods -}}
-    _ = jsonschema.Declare({{.TypeName}}.{{.MethodName}})
+    _ = polytype.Declare({{.TypeName}}.{{.MethodName}})
 	{{ end -}}
 )

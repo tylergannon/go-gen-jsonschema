@@ -1,6 +1,6 @@
 package structtype
 
-import "github.com/tylergannon/go-gen-jsonschema/internal/syntax/testfixtures/structtype/structsubpkg"
+import "github.com/tylergannon/polytype/internal/syntax/testfixtures/structtype/structsubpkg"
 
 type ArrayOfSuperStruct []*structsubpkg.SuperStructure
 

@@ -1,11 +1,11 @@
 {
-  "name": "go-gen-jsonschema-docs",
+  "name": "polytype-docs",
   "type": "module",
   "version": "0.0.1",
   "scripts": {
     "dev": "astro dev",
     "start": "astro dev",
-    "prebuild": "cp ../llms.txt ./public/llms.txt && $(go env GOPATH)/bin/gomarkdoc -e -o './src/content/docs/api/index.md' ../",
+    "prebuild": "cp ../llms.txt ./public/llms.txt && $(go env GOPATH)/bin/gomarkdoc -e -o './src/content/docs/api/index.md' ../ ../jsonschema",
     "build": "astro build",
     "check-links": "node ./scripts/check-links.mjs",
     "check": "npm run build && npm run check-links",

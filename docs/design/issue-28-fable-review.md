@@ -5,8 +5,8 @@ Date: 2026-07-10. Reviewer: Claude Fable 5.
 
 Inputs: [decision brief](issue-28-optionality-decision-brief.md),
 [implementation plan](issue-28-optional-plan.md),
-[issue #28](https://github.com/tylergannon/go-gen-jsonschema/issues/28),
-[issue #29](https://github.com/tylergannon/go-gen-jsonschema/issues/29),
+[issue #28](https://github.com/tylergannon/polytype/issues/28),
+[issue #29](https://github.com/tylergannon/polytype/issues/29),
 a fresh read of the repository at commit `79576b1`, and primary external
 sources fetched 2026-07-10.
 
@@ -353,7 +353,7 @@ feature is selling will quietly mint the fourth semantics anyway.
 
 The brief's classifier normalizes "direct fields" but the plan doesn't say
 what happens to `[]Optional[T]`, map values, embedded wrappers, a named
-type defined *as* a wrapper (`type MyOpt jsonschema.Optional[int]`), an
+type defined *as* a wrapper (`type MyOpt polytype.Optional[int]`), an
 alias of one, or a wrapper as a registered schema root. Semantics for most
 of these are incoherent (an array element cannot be "absent";
 `Optional` outside an object property has no `required` array to be

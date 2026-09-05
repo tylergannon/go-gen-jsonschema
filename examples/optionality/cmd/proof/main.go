@@ -10,8 +10,8 @@ import (
 	"runtime"
 	"strings"
 
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
-	example "github.com/tylergannon/go-gen-jsonschema/examples/optionality"
+	"github.com/tylergannon/polytype"
+	example "github.com/tylergannon/polytype/examples/optionality"
 )
 
 type caseResult struct {
@@ -117,7 +117,7 @@ func run() (transcript, error) {
 		{"wrapper in container", "wrapper_in_container", "supported only as the complete type of a direct named struct field"},
 		{"wrapper alias", "wrapper_alias", "supported only as the complete type of a direct named struct field"},
 		{"defined wrapper", "defined_wrapper", "supported only as the complete type of a direct named struct field"},
-		{"embedded wrapper", "embedded_wrapper", "embedded jsonschema.Optional is unsupported"},
+		{"embedded wrapper", "embedded_wrapper", "embedded polytype.Optional is unsupported"},
 		{"wrapper root", "wrapper_root", "supported only as the complete type of a direct named struct field"},
 		{"nullable interface", "nullable_interface", "does not support registered interfaces"},
 		{"nullable ref", "nullable_ref", "does not support explicit refs"},
@@ -125,7 +125,7 @@ func run() (transcript, error) {
 	}
 	for _, item := range negative {
 		target := filepath.Join(root, "examples", "optionality", "negative", item.dir)
-		cmd := exec.Command("go", "run", "./gen-jsonschema", "gen", "--target", target)
+		cmd := exec.Command("go", "run", "./polytype", "gen", "--target", target)
 		cmd.Dir = root
 		output, commandErr := cmd.CombinedOutput()
 		if commandErr == nil || !strings.Contains(string(output), item.reason) {
@@ -136,8 +136,8 @@ func run() (transcript, error) {
 	return result, nil
 }
 
-func presentInt(value int) jsonschema.Optional[int] {
-	return jsonschema.Optional[int]{Present: true, Value: value}
+func presentInt(value int) polytype.Optional[int] {
+	return polytype.Optional[int]{Present: true, Value: value}
 }
 
 func sameConfig(a, b example.Config) bool {

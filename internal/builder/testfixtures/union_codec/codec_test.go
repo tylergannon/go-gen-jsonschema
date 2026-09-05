@@ -6,18 +6,18 @@ import (
 	"strings"
 	"testing"
 
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+	"github.com/tylergannon/polytype"
 )
 
 func validEnvelope() Envelope {
 	return Envelope{
 		Primary:   Created{Name: "first"},
 		Events:    []Event{Created{Name: "second"}, &Deleted{ID: "gone"}},
-		Optional:  jsonschema.Optional[Event]{Present: true, Value: &Deleted{ID: "optional"}},
-		Alternate: jsonschema.Optional[Event]{Present: true, Value: Created{Name: "alternate"}},
-		Single:    jsonschema.Optional[Event]{Present: true, Value: Created{Name: "single"}},
-		Hook:      jsonschema.Optional[Event]{Present: true, Value: Hooked{Name: "hook"}},
-		ValueHook: jsonschema.Optional[Event]{Present: true, Value: PointerHookValue{Name: "value-hook"}},
+		Optional:  polytype.Optional[Event]{Present: true, Value: &Deleted{ID: "optional"}},
+		Alternate: polytype.Optional[Event]{Present: true, Value: Created{Name: "alternate"}},
+		Single:    polytype.Optional[Event]{Present: true, Value: Created{Name: "single"}},
+		Hook:      polytype.Optional[Event]{Present: true, Value: Hooked{Name: "hook"}},
+		ValueHook: polytype.Optional[Event]{Present: true, Value: PointerHookValue{Name: "value-hook"}},
 		Nested:    Nested{Event: &Deleted{ID: "nested"}},
 		Ordinary:  Ordinary{Value: "ordinary"},
 		State:     StateClosed,
@@ -81,11 +81,11 @@ func TestGeneratedUnionMarshalValidateDecodeRoundTrip(t *testing.T) {
 func TestOptionalUnionAbsenceAndEmptySlice(t *testing.T) {
 	value := validEnvelope()
 	value.Events = []Event{}
-	value.Optional = jsonschema.Optional[Event]{}
-	value.Alternate = jsonschema.Optional[Event]{}
-	value.Single = jsonschema.Optional[Event]{}
-	value.Hook = jsonschema.Optional[Event]{}
-	value.ValueHook = jsonschema.Optional[Event]{}
+	value.Optional = polytype.Optional[Event]{}
+	value.Alternate = polytype.Optional[Event]{}
+	value.Single = polytype.Optional[Event]{}
+	value.Hook = polytype.Optional[Event]{}
+	value.ValueHook = polytype.Optional[Event]{}
 	encoded, err := json.Marshal(value)
 	if err != nil {
 		t.Fatal(err)
@@ -116,7 +116,7 @@ func TestUnionMarshalErrors(t *testing.T) {
 		{name: "nil slice", edit: func(v *Envelope) { v.Events = nil }, want: "field events: nil registered interface slice"},
 		{name: "nil slice element", edit: func(v *Envelope) { v.Events[1] = nil }, want: "field events[1]: cannot marshal nil registered interface"},
 		{name: "typed nil slice element", edit: func(v *Envelope) { v.Events[1] = typedNil }, want: "field events[1]: cannot marshal typed nil"},
-		{name: "present nil optional", edit: func(v *Envelope) { v.Optional = jsonschema.Optional[Event]{Present: true} }, want: "field optional: cannot marshal nil registered interface"},
+		{name: "present nil optional", edit: func(v *Envelope) { v.Optional = polytype.Optional[Event]{Present: true} }, want: "field optional: cannot marshal nil registered interface"},
 		{name: "unregistered dynamic type", edit: func(v *Envelope) { v.Primary = Unregistered{Value: "x"} }, want: "unregistered dynamic implementation"},
 		{name: "null empty discriminator", edit: func(v *Envelope) { v.Primary = Empty{Name: "x", NullKind: true} }, want: "discriminator property \"!kind\" must be a string"},
 		{name: "custom conflict", edit: func(v *Envelope) { v.Hook.Value = Hooked{Name: "x", Behavior: "conflict"} }, want: "is \"other\", want registered value \"hooked\""},

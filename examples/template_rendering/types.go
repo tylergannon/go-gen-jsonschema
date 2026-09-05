@@ -1,4 +1,4 @@
-//go:generate go run ../../gen-jsonschema/
+//go:generate go run ../../polytype/
 package template_rendering
 
 // Status is a simple string enum
