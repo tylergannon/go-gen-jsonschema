@@ -1,5 +1,7 @@
 package interfaces_options
 
+//go:generate go run ../../gen-jsonschema/
+
 type IFace interface{ isIface() }
 
 type Impl1 struct {

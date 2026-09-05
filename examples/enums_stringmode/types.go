@@ -1,5 +1,7 @@
 package enums_stringmode
 
+//go:generate go run ../../gen-jsonschema/
+
 type Color int
 
 const (
