@@ -10,8 +10,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/tylergannon/go-gen-jsonschema/internal/typegrammar"
-	"github.com/tylergannon/go-gen-jsonschema/internal/typescript"
+	"github.com/tylergannon/polytype/internal/typegrammar"
+	"github.com/tylergannon/polytype/internal/typescript"
 )
 
 const packagePath = "example.com/projection-probe"

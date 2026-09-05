@@ -1,6 +1,6 @@
 ---
 title: CLI reference
-description: Commands and flags supported by gen-jsonschema.
+description: Commands and flags supported by polytype.
 ---
 
 ## Installation
@@ -8,10 +8,10 @@ description: Commands and flags supported by gen-jsonschema.
 Use Go's tool directive to pin the generator version in `go.mod`:
 
 ```bash
-go get -tool github.com/tylergannon/go-gen-jsonschema/gen-jsonschema@latest
+go get -tool github.com/tylergannon/polytype/polytype@latest
 ```
 
-Invoke the pinned CLI as `go tool gen-jsonschema`.
+Invoke the pinned CLI as `go tool polytype`.
 
 The CLI generates schemas. Validation and selected JSON codecs/YAML input methods
 are optional generated capabilities; schema generation does not provide a
@@ -20,8 +20,8 @@ general-purpose Go codec.
 ## Generate
 
 ```text
-go tool gen-jsonschema
-go tool gen-jsonschema gen [flags]
+go tool polytype
+go tool polytype gen [flags]
   -pretty            indent schema JSON
   -target DIR        package to process (default: current directory)
   -no-changes        fail without writing when schemas or requested TypeScript output would change
@@ -38,7 +38,7 @@ The command without a subcommand is equivalent to `gen`.
 ## Scaffold a registration file
 
 ```text
-go tool gen-jsonschema new [flags]
+go tool polytype new [flags]
   -out FILE          output path; empty or -- writes to stdout
   -pkg NAME          package name override for stdout mode
   -methods LIST      required comma-separated Type=Method entries
@@ -50,7 +50,7 @@ go tool gen-jsonschema new [flags]
 Example:
 
 ```bash
-go tool gen-jsonschema new \
+go tool polytype new \
   -out schema.go \
   -methods 'Person=Schema,Address=Schema' \
   --validate \
@@ -72,7 +72,7 @@ One directive can generate validation, Go owner codecs selected by field
 registrations, and TypeScript declarations:
 
 ```go
-//go:generate go tool gen-jsonschema --validate --typescript web/src/generated --typescript-barrel
+//go:generate go tool polytype --validate --typescript web/src/generated --typescript-barrel
 ```
 
 `.Interface` and `.StringerEnum` registrations cause the containing Go
@@ -80,5 +80,5 @@ struct's JSON methods to be generated automatically; there is no codec flag.
 The TypeScript output provides static declarations only, with no runtime decoder
 or validator. Validate untrusted values in the TypeScript application, and call
 the generated Go `ValidateJSON` method before `json.Unmarshal`. Issue
-[#71](https://github.com/tylergannon/go-gen-jsonschema/issues/71) tracks broader
+[#71](https://github.com/tylergannon/polytype/issues/71) tracks broader
 executed Go/JavaScript transport proof.

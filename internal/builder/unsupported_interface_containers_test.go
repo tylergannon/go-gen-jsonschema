@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tylergannon/go-gen-jsonschema/internal/syntax"
+	"github.com/tylergannon/polytype/internal/syntax"
 )
 
 func TestUnsupportedRegisteredInterfaceContainersFailDuringGeneration(t *testing.T) {
@@ -35,10 +35,10 @@ type Owner struct {
 
 func (Owner) Schema() json.RawMessage { panic("not implemented") }
 
-var _ = jsonschema.NewJSONSchemaMethod(
+var _ = polytype.NewJSONSchemaMethod(
 	Owner.Schema,
-	jsonschema.WithInterface(Owner{}.Values),
-	jsonschema.WithInterfaceImpls(Owner{}.Values, First{}),
+	polytype.WithInterface(Owner{}.Values),
+	polytype.WithInterfaceImpls(Owner{}.Values, First{}),
 )
 `,
 		},
@@ -51,10 +51,10 @@ type Owner struct {
 
 func (Owner) Schema() json.RawMessage { panic("not implemented") }
 
-var _ = jsonschema.NewJSONSchemaMethod(
+var _ = polytype.NewJSONSchemaMethod(
 	Owner.Schema,
-	jsonschema.WithInterface(Owner{}.Values),
-	jsonschema.WithInterfaceImpls(Owner{}.Values, First{}),
+	polytype.WithInterface(Owner{}.Values),
+	polytype.WithInterfaceImpls(Owner{}.Values, First{}),
 )
 `,
 		},
@@ -62,15 +62,15 @@ var _ = jsonschema.NewJSONSchemaMethod(
 			name: "v1 nullable slice field",
 			body: commonTypes + `
 type Owner struct {
-	Values jsonschema.Nullable[[]Variant] ` + "`json:\"values\"`" + `
+	Values polytype.Nullable[[]Variant] ` + "`json:\"values\"`" + `
 }
 
 func (Owner) Schema() json.RawMessage { panic("not implemented") }
 
-var _ = jsonschema.NewJSONSchemaMethod(
+var _ = polytype.NewJSONSchemaMethod(
 	Owner.Schema,
-	jsonschema.WithInterface(Owner{}.Values),
-	jsonschema.WithInterfaceImpls(Owner{}.Values, First{}),
+	polytype.WithInterface(Owner{}.Values),
+	polytype.WithInterfaceImpls(Owner{}.Values, First{}),
 )
 `,
 		},
@@ -78,15 +78,15 @@ var _ = jsonschema.NewJSONSchemaMethod(
 			name: "v1 optional slice field",
 			body: commonTypes + `
 type Owner struct {
-	Values jsonschema.Optional[[]Variant] ` + "`json:\"values,omitzero\"`" + `
+	Values polytype.Optional[[]Variant] ` + "`json:\"values,omitzero\"`" + `
 }
 
 func (Owner) Schema() json.RawMessage { panic("not implemented") }
 
-var _ = jsonschema.NewJSONSchemaMethod(
+var _ = polytype.NewJSONSchemaMethod(
 	Owner.Schema,
-	jsonschema.WithInterface(Owner{}.Values),
-	jsonschema.WithInterfaceImpls(Owner{}.Values, First{}),
+	polytype.WithInterface(Owner{}.Values),
+	polytype.WithInterfaceImpls(Owner{}.Values, First{}),
 )
 `,
 		},
@@ -101,10 +101,10 @@ type Owner struct {
 
 func (Owner) Schema() json.RawMessage { panic("not implemented") }
 
-var _ = jsonschema.NewJSONSchemaMethod(
+var _ = polytype.NewJSONSchemaMethod(
 	Owner.Schema,
-	jsonschema.WithInterface(Owner{}.Values),
-	jsonschema.WithInterfaceImpls(Owner{}.Values, First{}),
+	polytype.WithInterface(Owner{}.Values),
+	polytype.WithInterfaceImpls(Owner{}.Values, First{}),
 )
 `,
 		},
@@ -118,8 +118,8 @@ type Owner struct {
 func (Owner) Schema() json.RawMessage { panic("not implemented") }
 
 var (
-	_ = jsonschema.NewJSONSchemaMethod(Owner.Schema)
-	_ = jsonschema.NewInterfaceImpl[Variant](First{})
+	_ = polytype.NewJSONSchemaMethod(Owner.Schema)
+	_ = polytype.NewInterfaceImpl[Variant](First{})
 )
 `,
 		},
@@ -133,8 +133,8 @@ type Owner struct {
 func (Owner) Schema() json.RawMessage { panic("not implemented") }
 
 var (
-	_ = jsonschema.NewJSONSchemaMethod(Owner.Schema)
-	_ = jsonschema.NewInterfaceImpl[Variant](First{})
+	_ = polytype.NewJSONSchemaMethod(Owner.Schema)
+	_ = polytype.NewInterfaceImpl[Variant](First{})
 )
 `,
 		},
@@ -142,14 +142,14 @@ var (
 			name: "legacy nullable slice field",
 			body: commonTypes + `
 type Owner struct {
-	Values jsonschema.Nullable[[]Variant] ` + "`json:\"values\"`" + `
+	Values polytype.Nullable[[]Variant] ` + "`json:\"values\"`" + `
 }
 
 func (Owner) Schema() json.RawMessage { panic("not implemented") }
 
 var (
-	_ = jsonschema.NewJSONSchemaMethod(Owner.Schema)
-	_ = jsonschema.NewInterfaceImpl[Variant](First{})
+	_ = polytype.NewJSONSchemaMethod(Owner.Schema)
+	_ = polytype.NewInterfaceImpl[Variant](First{})
 )
 `,
 		},
@@ -157,14 +157,14 @@ var (
 			name: "legacy optional slice field",
 			body: commonTypes + `
 type Owner struct {
-	Values jsonschema.Optional[[]Variant] ` + "`json:\"values,omitzero\"`" + `
+	Values polytype.Optional[[]Variant] ` + "`json:\"values,omitzero\"`" + `
 }
 
 func (Owner) Schema() json.RawMessage { panic("not implemented") }
 
 var (
-	_ = jsonschema.NewJSONSchemaMethod(Owner.Schema)
-	_ = jsonschema.NewInterfaceImpl[Variant](First{})
+	_ = polytype.NewJSONSchemaMethod(Owner.Schema)
+	_ = polytype.NewInterfaceImpl[Variant](First{})
 )
 `,
 		},
@@ -180,8 +180,8 @@ type Owner struct {
 func (Owner) Schema() json.RawMessage { panic("not implemented") }
 
 var (
-	_ = jsonschema.NewJSONSchemaMethod(Owner.Schema)
-	_ = jsonschema.NewInterfaceImpl[Variant](First{})
+	_ = polytype.NewJSONSchemaMethod(Owner.Schema)
+	_ = polytype.NewInterfaceImpl[Variant](First{})
 )
 `,
 		},
@@ -193,8 +193,8 @@ type Variants []Variant
 func (Variants) Schema() json.RawMessage { panic("not implemented") }
 
 var (
-	_ = jsonschema.NewJSONSchemaMethod(Variants.Schema)
-	_ = jsonschema.NewInterfaceImpl[Variant](First{})
+	_ = polytype.NewJSONSchemaMethod(Variants.Schema)
+	_ = polytype.NewInterfaceImpl[Variant](First{})
 )
 `,
 		},
@@ -240,8 +240,8 @@ type Owner struct {
 func (Owner) Schema() json.RawMessage { panic("not implemented") }
 
 var (
-	_ = jsonschema.NewJSONSchemaMethod(Owner.Schema)
-	_ = jsonschema.NewInterfaceImpl[Variant](First{})
+	_ = polytype.NewJSONSchemaMethod(Owner.Schema)
+	_ = polytype.NewInterfaceImpl[Variant](First{})
 )
 `)
 	pkgs, err := syntax.Load(targetDir)
@@ -272,7 +272,7 @@ package fixture
 import (
 	"encoding/json"
 
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+	"github.com/tylergannon/polytype"
 )
 ` + body
 	require.NoError(t, os.WriteFile(filepath.Join(targetDir, "schema.go"), []byte(source), 0o644))

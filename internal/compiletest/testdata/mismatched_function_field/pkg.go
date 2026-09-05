@@ -3,7 +3,7 @@ package mismatched_function_field
 import (
 	"encoding/json"
 
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+	"github.com/tylergannon/polytype"
 )
 
 type Example struct {
@@ -18,4 +18,4 @@ func BSchemaFunc(int) json.Marshaler {
 
 // Field A is a string, but BSchemaFunc takes an int: the field and provider
 // must jointly infer the same F, so this must fail to compile.
-var _ = jsonschema.Declare(Example.Schema).Function(Example{}.A, BSchemaFunc)
+var _ = polytype.Declare(Example.Schema).Function(Example{}.A, BSchemaFunc)

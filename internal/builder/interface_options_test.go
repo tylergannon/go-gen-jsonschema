@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tylergannon/go-gen-jsonschema/internal/syntax"
+	"github.com/tylergannon/polytype/internal/syntax"
 )
 
 func TestInlineInterfaceRegistrationDiagnostics(t *testing.T) {
@@ -19,28 +19,28 @@ func TestInlineInterfaceRegistrationDiagnostics(t *testing.T) {
 	}{
 		{
 			name:      "missing implementations",
-			options:   `jsonschema.WithInterface(Owner{}.Value, jsonschema.Discriminator("kind"))`,
+			options:   `polytype.WithInterface(Owner{}.Value, polytype.Discriminator("kind"))`,
 			wantError: "missing interface implementations",
 		},
 		{
 			name:      "duplicate wire value",
-			options:   `jsonschema.WithInterface(Owner{}.Value, jsonschema.Impl("same", First{}), jsonschema.Impl("same", Second{}))`,
+			options:   `polytype.WithInterface(Owner{}.Value, polytype.Impl("same", First{}), polytype.Impl("same", Second{}))`,
 			wantError: `duplicate discriminator value "same"`,
 		},
 		{
 			name:      "duplicate implementation",
-			options:   `jsonschema.WithInterface(Owner{}.Value, jsonschema.Impl("first", First{}), jsonschema.Impl("again", First{}))`,
+			options:   `polytype.WithInterface(Owner{}.Value, polytype.Impl("first", First{}), polytype.Impl("again", First{}))`,
 			wantError: "duplicate discriminator registration",
 		},
 		{
 			name: "mixed registration forms",
-			options: `jsonschema.WithInterface(Owner{}.Value, jsonschema.Impl("first", First{})),
-	jsonschema.WithInterfaceImpls(Owner{}.Value, First{})`,
+			options: `polytype.WithInterface(Owner{}.Value, polytype.Impl("first", First{})),
+	polytype.WithInterfaceImpls(Owner{}.Value, First{})`,
 			wantError: "cannot combine Impl(...) options with WithInterfaceImpls",
 		},
 		{
 			name:      "implementation does not satisfy interface",
-			options:   `jsonschema.WithInterface(Owner{}.Value, jsonschema.Impl("stranger", Stranger{}))`,
+			options:   `polytype.WithInterface(Owner{}.Value, polytype.Impl("stranger", Stranger{}))`,
 			wantError: "does not implement Value",
 		},
 	}
@@ -78,7 +78,7 @@ package fixture
 import (
 	"encoding/json"
 
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+	"github.com/tylergannon/polytype"
 )
 
 type Value interface{ value() }
@@ -94,7 +94,7 @@ type Stranger struct { Enabled bool ` + "`json:\"enabled\"`" + ` }
 type Owner struct { Value Value ` + "`json:\"value\"`" + ` }
 func (Owner) Schema() json.RawMessage { panic("not implemented") }
 
-var _ = jsonschema.NewJSONSchemaMethod(
+var _ = polytype.NewJSONSchemaMethod(
 	Owner.Schema,
 	` + options + `,
 )

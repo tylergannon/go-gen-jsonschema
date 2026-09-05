@@ -12,9 +12,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/tylergannon/go-gen-jsonschema/internal/builder"
-	"github.com/tylergannon/go-gen-jsonschema/internal/common"
-	"github.com/tylergannon/go-gen-jsonschema/internal/syntax"
+	"github.com/tylergannon/polytype/internal/builder"
+	"github.com/tylergannon/polytype/internal/common"
+	"github.com/tylergannon/polytype/internal/syntax"
 )
 
 //go:embed tmpl/config.go.tmpl

@@ -10,8 +10,8 @@ import (
 )
 
 // fluentChainLink represents one chained method call on top of a
-// jsonschema.Declare(...) marker call, e.g. the `.Accessor(field, provider)`
-// in `jsonschema.Declare(Example.Schema).Accessor(field, provider)`.
+// polytype.Declare(...) marker call, e.g. the `.Accessor(field, provider)`
+// in `polytype.Declare(Example.Schema).Accessor(field, provider)`.
 type fluentChainLink struct {
 	methodName string
 	call       *dst.CallExpr
@@ -31,7 +31,7 @@ var fluentMethodToOptionKind = map[string]SchemaMethodOptionKind{
 
 // parseFluentChain walks a call expression down through any chained
 // SelectorExpr/CallExpr links (e.g. `.Accessor(...).Method(...)`) looking
-// for a base call that identifies as jsonschema.Declare(...). It returns the
+// for a base call that identifies as polytype.Declare(...). It returns the
 // base Declare(...) call, the chain links in source (left-to-right,
 // outermost-last) order, and whether a Declare(...)-rooted chain was found
 // at all. A false result means outer is not a fluent jsonschema
@@ -43,7 +43,7 @@ func parseFluentChain(outer CallExpr) (CallExpr, []fluentChainLink, bool) {
 	)
 	for {
 		// The decorator collapses a package-qualified call target (e.g. the
-		// base jsonschema.Declare(...) call) into a plain *dst.Ident rather
+		// base polytype.Declare(...) call) into a plain *dst.Ident rather
 		// than a *dst.SelectorExpr, the same way it does for method-
 		// expression receivers (see unwrapSchemaMethodReceiver). So check
 		// for the Declare(...) base before assuming Fun is a chain-link
@@ -67,7 +67,7 @@ func parseFluentChain(outer CallExpr) (CallExpr, []fluentChainLink, bool) {
 	}
 }
 
-// ParseFluentDeclaration resolves a jsonschema.Declare(...) fluent
+// ParseFluentDeclaration resolves a polytype.Declare(...) fluent
 // registration (optionally chained with supported option methods) into the
 // same SchemaMethod shape produced by the legacy NewJSONSchemaMethod /
 // NewJSONSchemaFunc marker calls, so every downstream consumer (builder,
@@ -79,7 +79,7 @@ func parseFluentChain(outer CallExpr) (CallExpr, []fluentChainLink, bool) {
 func (m MarkerFunctionCall) ParseFluentDeclaration(localFuncs []FuncDecl) (method SchemaMethod, isMethodRoot bool, err error) {
 	funcArgs := m.CallExpr.Args()
 	if len(funcArgs) != 1 {
-		return SchemaMethod{}, false, fmt.Errorf("jsonschema.Declare expects exactly one argument (the schema func), at %s", m.CallExpr.Position())
+		return SchemaMethod{}, false, fmt.Errorf("polytype.Declare expects exactly one argument (the schema func), at %s", m.CallExpr.Position())
 	}
 
 	var receiver TypeID
@@ -97,7 +97,7 @@ func (m MarkerFunctionCall) ParseFluentDeclaration(localFuncs []FuncDecl) (metho
 		fn, ok := findLocalFuncDecl(localFuncs, expr.Name)
 		if !ok {
 			return SchemaMethod{}, false, fmt.Errorf(
-				"jsonschema.Declare: could not resolve free function %q at %s; it must be declared in this package (use a method expression or NewJSONSchemaFunc for other cases)",
+				"polytype.Declare: could not resolve free function %q at %s; it must be declared in this package (use a method expression or NewJSONSchemaFunc for other cases)",
 				expr.Name, m.CallExpr.Position(),
 			)
 		}
@@ -108,7 +108,7 @@ func (m MarkerFunctionCall) ParseFluentDeclaration(localFuncs []FuncDecl) (metho
 		schemaMethodName = expr.Name
 		isMethodRoot = false
 	default:
-		return SchemaMethod{}, false, fmt.Errorf("jsonschema.Declare: unsupported schema func expression (%T) at %s", expr, m.CallExpr.Position())
+		return SchemaMethod{}, false, fmt.Errorf("polytype.Declare: unsupported schema func expression (%T) at %s", expr, m.CallExpr.Position())
 	}
 
 	opts, err := parseFluentChainOptions(m.fluentLinks, receiver, m)
@@ -134,14 +134,14 @@ func findLocalFuncDecl(funcDecls []FuncDecl, name string) (*dst.FuncDecl, bool) 
 }
 
 // freeFuncReceiver extracts T from a free function's sole parameter, for a
-// jsonschema.Declare(fn) call where fn is a bare identifier (as opposed to a
+// polytype.Declare(fn) call where fn is a bare identifier (as opposed to a
 // method expression, whose receiver is read directly off the AST by
 // unwrapSchemaMethodReceiver). Declare[T any](fn func(T) json.RawMessage)
 // guarantees fn has exactly one parameter, so this only fails for a
 // malformed declaration (empty parameter list).
 func freeFuncReceiver(fn *dst.FuncDecl, pkg *decorator.Package, file *dst.File) (TypeID, error) {
 	if fn.Type.Params == nil || len(fn.Type.Params.List) == 0 {
-		return TypeID{}, fmt.Errorf("jsonschema.Declare: free function %s must take exactly one parameter (the receiver type)", fn.Name.Name)
+		return TypeID{}, fmt.Errorf("polytype.Declare: free function %s must take exactly one parameter (the receiver type)", fn.Name.Name)
 	}
 	return parseFuncFromExpr(NewExpr(fn.Type.Params.List[0].Type, pkg, file)), nil
 }
@@ -271,7 +271,7 @@ func parseInterfaceNestedOptions(nestedArgs []dst.Expr, fieldName string, pos Ex
 }
 
 // parseFluentChainOptions converts the chained method calls following a
-// jsonschema.Declare(...) base call into the same []SchemaMethodOptionInfo
+// polytype.Declare(...) base call into the same []SchemaMethodOptionInfo
 // shape the legacy WithXxx(...) option list produces. Every method name not
 // recognized here is a scanner error rather than a silent skip: unlike the
 // legacy option list (which tolerates unrelated call expressions mixed into
@@ -292,20 +292,20 @@ func parseFluentChainOptions(links []fluentChainLink, receiver TypeID, m MarkerF
 			out = append(out, SchemaMethodOptionInfo{Kind: SchemaMethodOptionKind("AsRef")})
 		case "Enum", "StringerEnum":
 			if len(ceArgs) != 1 {
-				return nil, fmt.Errorf("jsonschema.Declare: .%s expects one field argument at %s", link.methodName, pos.Position())
+				return nil, fmt.Errorf("polytype.Declare: .%s expects one field argument at %s", link.methodName, pos.Position())
 			}
 			fieldName, ok := fieldNameForReceiver(ceArgs[0], receiver)
 			if !ok {
-				return nil, fmt.Errorf("jsonschema.Declare: .%s expects a field selector on %s{} at %s", link.methodName, receiver.TypeName, pos.Position())
+				return nil, fmt.Errorf("polytype.Declare: .%s expects a field selector on %s{} at %s", link.methodName, receiver.TypeName, pos.Position())
 			}
 			out = append(out, SchemaMethodOptionInfo{Kind: fluentMethodToOptionKind[link.methodName], FieldName: fieldName})
 		case "Accessor", "Method", "Function":
 			if len(ceArgs) != 2 {
-				return nil, fmt.Errorf("jsonschema.Declare: .%s expects a field and provider argument at %s", link.methodName, pos.Position())
+				return nil, fmt.Errorf("polytype.Declare: .%s expects a field and provider argument at %s", link.methodName, pos.Position())
 			}
 			fieldName, ok := fieldNameForReceiver(ceArgs[0], receiver)
 			if !ok {
-				return nil, fmt.Errorf("jsonschema.Declare: .%s expects a field selector on %s{} at %s", link.methodName, receiver.TypeName, pos.Position())
+				return nil, fmt.Errorf("polytype.Declare: .%s expects a field selector on %s{} at %s", link.methodName, receiver.TypeName, pos.Position())
 			}
 			providerName, providerIsMethod, matched := providerRef(ceArgs[1], receiver)
 			if !matched {
@@ -320,7 +320,7 @@ func parseFluentChainOptions(links []fluentChainLink, receiver TypeID, m MarkerF
 				// silently dropping it would reproduce the same
 				// silently-generated-panic gap as the isMethod mismatch
 				// below.
-				return nil, fmt.Errorf("jsonschema.Declare: .%s provider is not a supported method expression or free function at %s", link.methodName, pos.Position())
+				return nil, fmt.Errorf("polytype.Declare: .%s provider is not a supported method expression or free function at %s", link.methodName, pos.Position())
 			}
 			// Accessor/Method require a receiver method expression; Function
 			// requires a free function. Go's type system accepts either
@@ -328,9 +328,9 @@ func parseFluentChainOptions(links []fluentChainLink, receiver TypeID, m MarkerF
 			// is the only place that can catch the mismatch.
 			if wantMethod := link.methodName != "Function"; providerIsMethod != wantMethod {
 				if wantMethod {
-					return nil, fmt.Errorf("jsonschema.Declare: .%s provider must be a %s method expression, not a free function, at %s", link.methodName, receiver.TypeName, pos.Position())
+					return nil, fmt.Errorf("polytype.Declare: .%s provider must be a %s method expression, not a free function, at %s", link.methodName, receiver.TypeName, pos.Position())
 				}
-				return nil, fmt.Errorf("jsonschema.Declare: .Function provider must be a free function, not a %s method expression, at %s", receiver.TypeName, pos.Position())
+				return nil, fmt.Errorf("polytype.Declare: .Function provider must be a free function, not a %s method expression, at %s", receiver.TypeName, pos.Position())
 			}
 			out = append(out, SchemaMethodOptionInfo{
 				Kind:             fluentMethodToOptionKind[link.methodName],
@@ -340,11 +340,11 @@ func parseFluentChainOptions(links []fluentChainLink, receiver TypeID, m MarkerF
 			})
 		case "Interface":
 			if len(ceArgs) < 1 {
-				return nil, fmt.Errorf("jsonschema.Declare: .Interface expects a field argument at %s", pos.Position())
+				return nil, fmt.Errorf("polytype.Declare: .Interface expects a field argument at %s", pos.Position())
 			}
 			fieldName, ok := fieldNameForReceiver(ceArgs[0], receiver)
 			if !ok {
-				return nil, fmt.Errorf("jsonschema.Declare: .Interface expects a field selector on %s{} at %s", receiver.TypeName, pos.Position())
+				return nil, fmt.Errorf("polytype.Declare: .Interface expects a field selector on %s{} at %s", receiver.TypeName, pos.Position())
 			}
 			out = append(out, SchemaMethodOptionInfo{Kind: SchemaMethodOptionKind("WithInterface"), FieldName: fieldName})
 			nested, err := parseInterfaceNestedOptions(ceArgs[1:], fieldName, pos)
@@ -353,7 +353,7 @@ func parseFluentChainOptions(links []fluentChainLink, receiver TypeID, m MarkerF
 			}
 			out = append(out, nested...)
 		default:
-			return nil, fmt.Errorf("jsonschema.Declare: unsupported chain method %q at %s", link.methodName, pos.Position())
+			return nil, fmt.Errorf("polytype.Declare: unsupported chain method %q at %s", link.methodName, pos.Position())
 		}
 	}
 	return out, nil

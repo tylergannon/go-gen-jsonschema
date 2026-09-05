@@ -3,7 +3,7 @@ package basictypes
 //go:generate go run ./gen
 
 import (
-	"github.com/tylergannon/go-gen-jsonschema/internal/builder/testfixtures/indirecttypes/indirectsubpkg"
+	"github.com/tylergannon/polytype/internal/builder/testfixtures/indirecttypes/indirectsubpkg"
 )
 
 // IntType is Foobarbax

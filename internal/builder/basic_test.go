@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tylergannon/go-gen-jsonschema/internal/testutils"
+	"github.com/tylergannon/polytype/internal/testutils"
 )
 
 type testCase struct {

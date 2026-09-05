@@ -3,13 +3,13 @@ package nullable_provider
 import (
 	"encoding/json"
 
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+	"github.com/tylergannon/polytype"
 )
 
 type Config struct {
-	Value jsonschema.Nullable[string] `json:"value"`
+	Value polytype.Nullable[string] `json:"value"`
 }
 
-func ValueSchema(jsonschema.Nullable[string]) json.Marshaler {
+func ValueSchema(polytype.Nullable[string]) json.Marshaler {
 	return json.RawMessage(`{"type":"string"}`)
 }

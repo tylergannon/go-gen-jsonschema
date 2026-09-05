@@ -5,7 +5,7 @@ package structs
 import (
 	"encoding/json"
 
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+	"github.com/tylergannon/polytype"
 )
 
 func (StructType1) Schema() json.RawMessage {
@@ -25,9 +25,9 @@ func (JSONTagNames) Schema() json.RawMessage {
 }
 
 var (
-	_ = jsonschema.NewJSONSchemaMethod(StructType1.Schema)
-	_ = jsonschema.NewJSONSchemaMethod(StructType2.Schema)
-	_ = jsonschema.NewJSONSchemaMethod(StructWithRefs.Schema)
-	_ = jsonschema.NewJSONSchemaMethod(JSONTagNames.Schema)
-	_ = jsonschema.NewEnumType[EnumType123]()
+	_ = polytype.NewJSONSchemaMethod(StructType1.Schema)
+	_ = polytype.NewJSONSchemaMethod(StructType2.Schema)
+	_ = polytype.NewJSONSchemaMethod(StructWithRefs.Schema)
+	_ = polytype.NewJSONSchemaMethod(JSONTagNames.Schema)
+	_ = polytype.NewEnumType[EnumType123]()
 )

@@ -2,6 +2,6 @@
 
 package remoteenum
 
-import jsonschema "github.com/tylergannon/go-gen-jsonschema"
+import "github.com/tylergannon/polytype"
 
-var _ = jsonschema.NewEnumType[RemoteEnum]()
+var _ = polytype.NewEnumType[RemoteEnum]()

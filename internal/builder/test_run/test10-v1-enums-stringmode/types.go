@@ -1,8 +1,8 @@
 package v1_enums_stringmode
 
 import (
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
-	"github.com/tylergannon/go-gen-jsonschema/internal/builder/testfixtures/v1_enums_stringmode/palette"
+	"github.com/tylergannon/polytype"
+	"github.com/tylergannon/polytype/internal/builder/testfixtures/v1_enums_stringmode/palette"
 )
 
 //go:generate go run ./gen
@@ -31,10 +31,10 @@ const (
 )
 
 type Paint struct {
-	C        Color                      `json:"c"`
-	Optional jsonschema.Optional[Color] `json:"optional,omitzero"`
-	Nullable jsonschema.Nullable[Color] `json:"nullable"`
-	Numeric  Color                      `json:"numeric"`
-	Finish   Finish                     `json:"finish"`
-	Remote   palette.Level              `json:"remote"`
+	C        Color                    `json:"c"`
+	Optional polytype.Optional[Color] `json:"optional,omitzero"`
+	Nullable polytype.Nullable[Color] `json:"nullable"`
+	Numeric  Color                    `json:"numeric"`
+	Finish   Finish                   `json:"finish"`
+	Remote   palette.Level            `json:"remote"`
 }

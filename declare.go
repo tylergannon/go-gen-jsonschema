@@ -1,4 +1,4 @@
-package jsonschema
+package polytype
 
 import "encoding/json"
 

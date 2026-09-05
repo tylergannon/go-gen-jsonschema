@@ -5,16 +5,16 @@ package providers_builder
 import (
 	"encoding/json"
 
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+	"github.com/tylergannon/polytype"
 )
 
 func (Example) Schema() json.RawMessage { panic("not implemented") }
 
 // Register via method form with providers and rendered
-var _ = jsonschema.NewJSONSchemaMethod(
+var _ = polytype.NewJSONSchemaMethod(
 	Example.Schema,
-	jsonschema.WithStructAccessorMethod(Example{}.A, (Example).ASchema),
-	jsonschema.WithStructFunctionMethod(Example{}.B, (Example).BSchema),
-	jsonschema.WithFunction(Example{}.C, BoolSchemaFunc),
-	jsonschema.WithRenderProviders(),
+	polytype.WithStructAccessorMethod(Example{}.A, (Example).ASchema),
+	polytype.WithStructFunctionMethod(Example{}.B, (Example).BSchema),
+	polytype.WithFunction(Example{}.C, BoolSchemaFunc),
+	polytype.WithRenderProviders(),
 )

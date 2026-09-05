@@ -2,7 +2,7 @@
 
 Status: reconstructed design plan; no feature implementation has begun.
 
-Source: [GitHub issue #28](https://github.com/tylergannon/go-gen-jsonschema/issues/28),
+Source: [GitHub issue #28](https://github.com/tylergannon/polytype/issues/28),
 "Optional[T]: value-type optional fields with presence detection."
 
 Decision brief:
@@ -18,8 +18,8 @@ Represent the three JSON property contracts explicitly in Go:
 | Go field | Required | Nullable | No-value representation |
 |---|---:|---:|---|
 | `T` | yes | no | none |
-| `jsonschema.Optional[T]` | no | no | property absent |
-| `jsonschema.Nullable[T]` | yes | yes | property present as `null` |
+| `polytype.Optional[T]` | no | no | property absent |
+| `polytype.Nullable[T]` | yes | yes | property present as `null` |
 
 Decision: implement both wrappers and let authors choose the correct protocol
 semantics. The user approved this direction after reviewing our analysis and
@@ -39,7 +39,7 @@ permissive schemas.
 
 ### Fix exported-field traversal
 
-[GitHub issue #29](https://github.com/tylergannon/go-gen-jsonschema/issues/29)
+[GitHub issue #29](https://github.com/tylergannon/polytype/issues/29)
 proves that `internal/syntax.skipField` currently skips exported fields and
 traverses unexported fields. Fix it before adding generic traversal.
 
@@ -53,13 +53,13 @@ Required proof:
 
 The same implementation unit must also correct the adjacent registered-
 interface inversion proven in
-[this #29 follow-up](https://github.com/tylergannon/go-gen-jsonschema/issues/29#issuecomment-4937428864).
+[this #29 follow-up](https://github.com/tylergannon/polytype/issues/29#issuecomment-4937428864).
 Fixing exported-field traversal alone activates that dormant failure, so #29
 must not merge with only the visibility assertion repaired.
 
 ### Fix omitted JSON-tag names
 
-[GitHub issue #30](https://github.com/tylergannon/go-gen-jsonschema/issues/30)
+[GitHub issue #30](https://github.com/tylergannon/polytype/issues/30)
 proves that `json:",omitzero"` currently renders a schema property named `""`
 instead of falling back to the Go field name. Fix it before documenting that
 tag as the Optional idiom.
@@ -165,7 +165,7 @@ type Node struct {
 	ID string `json:"id"`
 
 	// Maximum retry attempts. Zero disables retries; omit to inherit a default.
-	MaxRetries jsonschema.Optional[int] `json:"max_retries,omitzero"`
+	MaxRetries polytype.Optional[int] `json:"max_retries,omitzero"`
 }
 ```
 
@@ -191,7 +191,7 @@ type Node struct {
 	ID string `json:"id"`
 
 	// Maximum retry attempts. Null means inherit a default; zero disables retries.
-	MaxRetries jsonschema.Nullable[int] `json:"max_retries"`
+	MaxRetries polytype.Nullable[int] `json:"max_retries"`
 }
 ```
 
@@ -218,9 +218,9 @@ type RetryPolicy struct {
 }
 
 type Options struct {
-	Tags      jsonschema.Optional[[]string]    `json:"tags,omitzero"`
-	Policy    jsonschema.Nullable[RetryPolicy] `json:"policy"`
-	PolicyPtr jsonschema.Nullable[*RetryPolicy] `json:"policy_ptr"`
+	Tags      polytype.Optional[[]string]    `json:"tags,omitzero"`
+	Policy    polytype.Nullable[RetryPolicy] `json:"policy"`
+	PolicyPtr polytype.Nullable[*RetryPolicy] `json:"policy_ptr"`
 }
 ```
 
@@ -238,8 +238,8 @@ The exact nullable schema encoding depends on the rendered inner node:
 Add one `internal/syntax` helper that recognizes only canonical library types:
 
 ```text
-github.com/tylergannon/go-gen-jsonschema.Optional[T]
-github.com/tylergannon/go-gen-jsonschema.Nullable[T]
+github.com/tylergannon/polytype.Optional[T]
+github.com/tylergannon/polytype.Nullable[T]
 ```
 
 Return the original inner expression plus an enum describing required,
@@ -387,7 +387,7 @@ Add a runnable `examples/optionality/` package with:
 - generated validation tests for all three semantics;
 - an OpenAI-strict-compatible object that uses no omittable fields.
 
-Update `skills/go-gen-jsonschema/SKILL.md` and add an expanded reference so
+Update `skills/polytype/SKILL.md` and add an expanded reference so
 another agent can use the feature without reading implementation code. Cover:
 
 - the three semantic cases and a selection table;

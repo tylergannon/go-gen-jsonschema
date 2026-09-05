@@ -20,7 +20,7 @@ type Task struct {
     Status Status `json:"status"`
 }
 
-var _ = jsonschema.Declare(Task.Schema).
+var _ = polytype.Declare(Task.Schema).
     Enum(Task{}.Status)
 ```
 
@@ -45,7 +45,7 @@ type Config struct {
     LogLevel LogLevel `json:"logLevel"`
 }
 
-var _ = jsonschema.Declare(Config.Schema).
+var _ = polytype.Declare(Config.Schema).
     StringerEnum(Config{}.LogLevel)
 ```
 
@@ -92,5 +92,5 @@ enum type silently degrades the ones left unmarked (they lose their
 constraint and their shared TypeScript type). Keep a shared enum type on the
 package-level `NewEnumType[T]()` form; it has no fluent replacement.
 
-See the compiling [`examples/stringer_enums`](https://github.com/tylergannon/go-gen-jsonschema/tree/main/examples/stringer_enums)
+See the compiling [`examples/stringer_enums`](https://github.com/tylergannon/polytype/tree/main/examples/stringer_enums)
 package for a complete example.

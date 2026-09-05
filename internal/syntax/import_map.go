@@ -8,8 +8,8 @@ import (
 )
 
 const (
-	SchemaPackagePath   = "github.com/tylergannon/go-gen-jsonschema"
-	schemaPackagePrefix = "jsonschema"
+	SchemaPackagePath   = "github.com/tylergannon/polytype"
+	schemaPackagePrefix = "polytype"
 )
 
 type ImportMap []*dst.ImportSpec
@@ -30,7 +30,7 @@ func (m ImportMap) GetPackageForPrefix(prefix string) (string, bool) {
 	return "", false
 }
 
-// GetGenJSONPrefix returns the prefix used for the go-gen-jsonschema package
+// GetGenJSONPrefix returns the prefix used for the polytype package
 // in the given import map, or else returns false for the second result
 // if that package is not present in the file.
 func (m ImportMap) GetGenJSONPrefix() (string, bool) {

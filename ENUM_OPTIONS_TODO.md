@@ -1,8 +1,8 @@
-# go-gen-jsonschema: Critical Issues and Implementation TODOs
+# polytype: Critical Issues and Implementation TODOs
 
 ## Executive Summary
 
-The v1 Options pattern introduced in go-gen-jsonschema is fundamentally broken for enum types. While it works correctly for interface-based unions, the enum-related options (`WithEnum`, `WithEnumMode`, `WithEnumName`) create template files but fail to generate the necessary rendering code, resulting in templates being returned as raw text instead of rendered JSON schemas. Additionally, iota-based enums cause panics when registered globally, and the Options pattern requires redundant global registrations instead of being self-contained.
+The v1 Options pattern introduced in polytype is fundamentally broken for enum types. While it works correctly for interface-based unions, the enum-related options (`WithEnum`, `WithEnumMode`, `WithEnumName`) create template files but fail to generate the necessary rendering code, resulting in templates being returned as raw text instead of rendered JSON schemas. Additionally, iota-based enums cause panics when registered globally, and the Options pattern requires redundant global registrations instead of being self-contained.
 
 ## Problem Analysis
 
@@ -55,11 +55,11 @@ newValue = strings.Trim(opt.Value().Values[0].(*dst.BasicLit).Value, "\"")
 **Current Requirement**:
 ```go
 // Must declare BOTH field-level AND global registration
-var _ = jsonschema.NewJSONSchemaMethod(
+var _ = polytype.NewJSONSchemaMethod(
     WorkItem.Schema,
-    jsonschema.WithEnum(WorkItem{}.Priority),  // Field-level
+    polytype.WithEnum(WorkItem{}.Priority),  // Field-level
 )
-var _ = jsonschema.NewEnumType[Priority]()     // Global (redundant!)
+var _ = polytype.NewEnumType[Priority]()     // Global (redundant!)
 ```
 
 **Desired Behavior**:
@@ -97,7 +97,7 @@ This should generate `{"enum": ["red", "green"]}` when `WithEnumMode(EnumStrings
 **Issue**: Iota enums cause panic when registered globally with `NewEnumType`
 ```bash
 cd examples/broken/iota_global
-go run github.com/tylergannon/go-gen-jsonschema/gen-jsonschema
+go run github.com/tylergannon/polytype/polytype
 # panic: interface conversion: dst.Expr is *dst.Ident, not *dst.BasicLit
 ```
 
@@ -105,7 +105,7 @@ go run github.com/tylergannon/go-gen-jsonschema/gen-jsonschema
 **Issue**: WithEnum creates templates but doesn't generate rendering code
 ```bash
 cd examples/broken/template_rendering
-go run github.com/tylergannon/go-gen-jsonschema/gen-jsonschema
+go run github.com/tylergannon/polytype/polytype
 # Creates WorkItem.json.tmpl with {{.status}} placeholder
 # Schema() returns raw template, not rendered JSON
 ```
@@ -357,7 +357,7 @@ echo "Testing Enum Options Fixes..."
 # Test 1: Iota Enum Panic (should not panic after fix)
 echo "Test 1: Iota Enum Global Registration"
 cd examples/broken/iota_global
-if go run github.com/tylergannon/go-gen-jsonschema/gen-jsonschema 2>&1 | grep -q "panic"; then
+if go run github.com/tylergannon/polytype/polytype 2>&1 | grep -q "panic"; then
     echo "❌ FAIL: Still panics on iota enum"
     exit 1
 else
@@ -367,7 +367,7 @@ fi
 # Test 2: Template Rendering (should generate valid JSON, not template)
 echo "Test 2: Template Rendering"
 cd ../template_rendering
-go run github.com/tylergannon/go-gen-jsonschema/gen-jsonschema
+go run github.com/tylergannon/polytype/polytype
 if grep -q "{{" jsonschema/WorkItem.json*; then
     echo "❌ FAIL: Template not rendered"
     exit 1
@@ -380,7 +380,7 @@ echo "Test 3: Self-Contained WithEnum"
 cd ../self_contained
 # Remove global registrations and test
 sed -i.bak '/NewEnumType/d' schema.go
-if go run github.com/tylergannon/go-gen-jsonschema/gen-jsonschema; then
+if go run github.com/tylergannon/polytype/polytype; then
     echo "✅ PASS: WithEnum is self-sufficient"
 else
     echo "❌ FAIL: WithEnum requires global registration"
@@ -391,7 +391,7 @@ mv schema.go.bak schema.go
 # Test 4: Stringer Support
 echo "Test 4: Stringer Enum Support"
 cd ../stringer_enum
-go run github.com/tylergannon/go-gen-jsonschema/gen-jsonschema
+go run github.com/tylergannon/polytype/polytype
 if grep -q '"DEBUG"' jsonschema/Config.json*; then
     echo "✅ PASS: Stringer values used"
 else
@@ -402,7 +402,7 @@ fi
 # Test 5: Custom Names
 echo "Test 5: Custom Enum Names"
 cd ../custom_names
-go run github.com/tylergannon/go-gen-jsonschema/gen-jsonschema
+go run github.com/tylergannon/polytype/polytype
 if grep -q '"red"' jsonschema/Theme.json*; then
     echo "✅ PASS: Custom names applied"
 else
@@ -480,24 +480,24 @@ package enums_complete
 
 import (
     "encoding/json"
-    jsonschema "github.com/tylergannon/go-gen-jsonschema"
+    jsonschema "github.com/tylergannon/polytype"
 )
 
 func (Config) Schema() json.RawMessage { panic("not implemented") }
 
 // This ALONE should be sufficient - no global registrations needed!
-var _ = jsonschema.NewJSONSchemaMethod(
+var _ = polytype.NewJSONSchemaMethod(
     Config.Schema,
     
     // Status: string enum, auto-discovered
-    jsonschema.WithEnum(Config{}.Status),
+    polytype.WithEnum(Config{}.Status),
     
     // LogLevel: use Stringer values
-    jsonschema.WithEnum(Config{}.LogLevel),
+    polytype.WithEnum(Config{}.LogLevel),
     jsonschema.WithEnumMode(jsonschema.EnumStrings),
     
     // Theme: custom names for iota values
-    jsonschema.WithEnum(Config{}.Theme),
+    polytype.WithEnum(Config{}.Theme),
     jsonschema.WithEnumMode(jsonschema.EnumStrings),
     jsonschema.WithEnumName(ColorRed, "red"),
     jsonschema.WithEnumName(ColorGreen, "green"),
@@ -505,9 +505,9 @@ var _ = jsonschema.NewJSONSchemaMethod(
 )
 
 // NO NEED for any of these:
-// var _ = jsonschema.NewEnumType[Status]()    // NOT NEEDED!
-// var _ = jsonschema.NewEnumType[LogLevel]()  // NOT NEEDED!
-// var _ = jsonschema.NewEnumType[Color]()     // NOT NEEDED!
+// var _ = polytype.NewEnumType[Status]()    // NOT NEEDED!
+// var _ = polytype.NewEnumType[LogLevel]()  // NOT NEEDED!
+// var _ = polytype.NewEnumType[Color]()     // NOT NEEDED!
 ```
 
 ### Expected Output: jsonschema/Config.json
@@ -580,14 +580,14 @@ package iota_global
 
 import (
     "encoding/json"
-    jsonschema "github.com/tylergannon/go-gen-jsonschema"
+    jsonschema "github.com/tylergannon/polytype"
 )
 
 func (Task) Schema() json.RawMessage { panic("not implemented") }
 
 var (
-    _ = jsonschema.NewJSONSchemaMethod(Task.Schema)
-    _ = jsonschema.NewEnumType[Priority]() // PANICS during generation!
+    _ = polytype.NewJSONSchemaMethod(Task.Schema)
+    _ = polytype.NewEnumType[Priority]() // PANICS during generation!
 )
 ```
 
@@ -626,14 +626,14 @@ package iota_options
 
 import (
     "encoding/json"
-    jsonschema "github.com/tylergannon/go-gen-jsonschema"
+    jsonschema "github.com/tylergannon/polytype"
 )
 
 func (Config) Schema() json.RawMessage { panic("not implemented") }
 
-var _ = jsonschema.NewJSONSchemaMethod(
+var _ = polytype.NewJSONSchemaMethod(
     Config.Schema,
-    jsonschema.WithEnum(Config{}.LogLevel),
+    polytype.WithEnum(Config{}.LogLevel),
     jsonschema.WithEnumMode(jsonschema.EnumStrings),
 )
 ```
@@ -673,19 +673,19 @@ package self_contained
 
 import (
     "encoding/json"
-    jsonschema "github.com/tylergannon/go-gen-jsonschema"
+    jsonschema "github.com/tylergannon/polytype"
 )
 
 func (Document) Schema() json.RawMessage { panic("not implemented") }
 
 // This SHOULD be sufficient on its own
-var _ = jsonschema.NewJSONSchemaMethod(
+var _ = polytype.NewJSONSchemaMethod(
     Document.Schema,
-    jsonschema.WithEnum(Document{}.Status),
+    polytype.WithEnum(Document{}.Status),
 )
 
 // But currently ALSO requires this redundant registration:
-// var _ = jsonschema.NewEnumType[Status]()
+// var _ = polytype.NewEnumType[Status]()
 // Without it, the Status field won't have enum values in the schema
 ```
 
@@ -731,18 +731,18 @@ package stringer_enum
 
 import (
     "encoding/json"
-    jsonschema "github.com/tylergannon/go-gen-jsonschema"
+    jsonschema "github.com/tylergannon/polytype"
 )
 
 func (Theme) Schema() json.RawMessage { panic("not implemented") }
 
-var _ = jsonschema.NewJSONSchemaMethod(
+var _ = polytype.NewJSONSchemaMethod(
     Theme.Schema,
-    jsonschema.WithEnum(Theme{}.Primary),
+    polytype.WithEnum(Theme{}.Primary),
     jsonschema.WithEnumMode(jsonschema.EnumStrings),
-    jsonschema.WithEnum(Theme{}.Secondary),
+    polytype.WithEnum(Theme{}.Secondary),
     jsonschema.WithEnumMode(jsonschema.EnumStrings),
-    jsonschema.WithEnum(Theme{}.Background),
+    polytype.WithEnum(Theme{}.Background),
     jsonschema.WithEnumMode(jsonschema.EnumStrings),
 )
 ```
@@ -781,14 +781,14 @@ package custom_names
 
 import (
     "encoding/json"
-    jsonschema "github.com/tylergannon/go-gen-jsonschema"
+    jsonschema "github.com/tylergannon/polytype"
 )
 
 func (Product) Schema() json.RawMessage { panic("not implemented") }
 
-var _ = jsonschema.NewJSONSchemaMethod(
+var _ = polytype.NewJSONSchemaMethod(
     Product.Schema,
-    jsonschema.WithEnum(Product{}.Size),
+    polytype.WithEnum(Product{}.Size),
     jsonschema.WithEnumMode(jsonschema.EnumStrings),
     jsonschema.WithEnumName(Small, "S"),
     jsonschema.WithEnumName(Medium, "M"),
@@ -845,17 +845,17 @@ package mixed_enums
 
 import (
     "encoding/json"
-    jsonschema "github.com/tylergannon/go-gen-jsonschema"
+    jsonschema "github.com/tylergannon/polytype"
 )
 
 func (Alert) Schema() json.RawMessage { panic("not implemented") }
 
-var _ = jsonschema.NewJSONSchemaMethod(
+var _ = polytype.NewJSONSchemaMethod(
     Alert.Schema,
     // String enum should work as-is
-    jsonschema.WithEnum(Alert{}.Priority),
+    polytype.WithEnum(Alert{}.Priority),
     // Iota enum should use Stringer
-    jsonschema.WithEnum(Alert{}.Severity),
+    polytype.WithEnum(Alert{}.Severity),
     jsonschema.WithEnumMode(jsonschema.EnumStrings),
 )
 ```
@@ -898,7 +898,7 @@ package provider_enums
 
 import (
     "encoding/json"
-    jsonschema "github.com/tylergannon/go-gen-jsonschema"
+    jsonschema "github.com/tylergannon/polytype"
 )
 
 func (Config) Schema() json.RawMessage { panic("not implemented") }
@@ -918,10 +918,10 @@ func (c Config) SettingsSchema() json.Marshaler {
     }
 }
 
-var _ = jsonschema.NewJSONSchemaMethod(
+var _ = polytype.NewJSONSchemaMethod(
     Config.Schema,
-    jsonschema.WithEnum(Config{}.Environment),
-    jsonschema.WithStructAccessorMethod(Config{}.Settings, (Config).SettingsSchema),
+    polytype.WithEnum(Config{}.Environment),
+    polytype.WithStructAccessorMethod(Config{}.Settings, (Config).SettingsSchema),
 )
 ```
 

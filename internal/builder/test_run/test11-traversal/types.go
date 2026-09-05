@@ -5,8 +5,8 @@ package traversal
 import (
 	"time"
 
-	"github.com/tylergannon/go-gen-jsonschema/internal/builder/testfixtures/traversal/remoteenum"
-	"github.com/tylergannon/go-gen-jsonschema/internal/builder/testfixtures/traversal/remotestruct"
+	"github.com/tylergannon/polytype/internal/builder/testfixtures/traversal/remoteenum"
+	"github.com/tylergannon/polytype/internal/builder/testfixtures/traversal/remotestruct"
 )
 
 // TraversalHolder proves exported field traversal across package boundaries.

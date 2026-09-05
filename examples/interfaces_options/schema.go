@@ -5,16 +5,16 @@ package interfaces_options
 import (
 	"encoding/json"
 
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+	"github.com/tylergannon/polytype"
 )
 
 func (Owner) Schema() json.RawMessage { panic("not implemented") }
 
 // v1 interface options example
-var _ = jsonschema.Declare(Owner.Schema).
+var _ = polytype.Declare(Owner.Schema).
 	Interface(
 		Owner{}.IF,
-		jsonschema.Discriminator("!kind"),
-		jsonschema.Impl("impl_one", Impl1{}),
-		jsonschema.Impl("impl_two", Impl2{}),
+		polytype.Discriminator("!kind"),
+		polytype.Impl("impl_one", Impl1{}),
+		polytype.Impl("impl_two", Impl2{}),
 	)

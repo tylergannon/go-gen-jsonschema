@@ -12,8 +12,8 @@ import (
 )
 
 const (
-	pkgPath = "github.com/tylergannon/go-gen-jsonschema/internal/syntax/testfixtures/typescanner"
-	subpkg  = "github.com/tylergannon/go-gen-jsonschema/internal/syntax/testfixtures/typescanner/scannersubpkg"
+	pkgPath = "github.com/tylergannon/polytype/internal/syntax/testfixtures/typescanner"
+	subpkg  = "github.com/tylergannon/polytype/internal/syntax/testfixtures/typescanner/scannersubpkg"
 )
 
 type fileSpecs struct {
@@ -295,7 +295,7 @@ func TestFluentChainFieldSelectorMismatchFailsToLoad(t *testing.T) {
 
 	_, err = LoadPackage(pkgs[0])
 	require.Error(t, err)
-	require.ErrorContains(t, err, "jsonschema.Declare: .Enum expects a field selector on Owner{}")
+	require.ErrorContains(t, err, "polytype.Declare: .Enum expects a field selector on Owner{}")
 	require.ErrorContains(t, err, "fixture.go")
 }
 

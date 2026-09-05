@@ -1,11 +1,11 @@
 ---
-name: go-gen-jsonschema
+name: polytype
 description: >
   Use when adding or maintaining JSON Schemas, typed-union JSON codecs, and YAML input for Go
   structs.
 ---
 
-# go-gen-jsonschema
+# polytype
 
 Code generator that turns Go structs into JSON Schema files plus Go accessors,
 optional validation, and selectable JSON/YAML input. Schema generation is
@@ -17,8 +17,8 @@ properties are emitted in struct field order (deterministic, prompt-controllable
 `Optional[T]` fields optional, and Go doc comments become the schema
 `description` fields.
 
-Import path: `github.com/tylergannon/go-gen-jsonschema` (library markers) and
-`github.com/tylergannon/go-gen-jsonschema/gen-jsonschema` (CLI).
+Import path: `github.com/tylergannon/polytype` (library markers) and
+`github.com/tylergannon/polytype/polytype` (CLI).
 
 ## Mental model: two build-tagged files
 
@@ -39,17 +39,17 @@ and the whole `jsonschema/` directory (each `T.json` schema comes with a
    every contributor and CI runs the same binary):
 
    ```bash
-   go get -tool github.com/tylergannon/go-gen-jsonschema/gen-jsonschema@latest
+   go get -tool github.com/tylergannon/polytype/polytype@latest
    ```
 
 2. **Add the generate directive** to the file defining your types:
 
    ```go
-   //go:generate go tool gen-jsonschema
+   //go:generate go tool polytype
    ```
 
    Add `--validate` to generate validation methods (recommended for LLM
-   output): `//go:generate go tool gen-jsonschema --validate`. Add
+   output): `//go:generate go tool polytype --validate`. Add
    `--formats=both` when inputs may be JSON or YAML; validation then includes
    `ValidateYAML`.
 
@@ -57,7 +57,7 @@ and the whole `jsonschema/` directory (each `T.json` schema comes with a
    and stubs from your flags), then generation runs immediately via `--generate`:
 
    ```bash
-   go tool gen-jsonschema new -out schema.go -methods 'Person=Schema,Address=Schema' --validate --generate
+   go tool polytype new -out schema.go -methods 'Person=Schema,Address=Schema' --validate --generate
    ```
 
    Pass `--formats=both` to `new` as well when the generation directive uses it.
@@ -83,14 +83,14 @@ the tool and imported marker/runtime package. This combined surface requires
 predates generated owner codecs:
 
 ```bash
-go get -tool github.com/tylergannon/go-gen-jsonschema/gen-jsonschema@v1.0.0-rc.5
+go get -tool github.com/tylergannon/polytype/polytype@v1.0.0-rc.5
 ```
 
 Generate the schema, validation, Go output, and TypeScript declarations in one
 run:
 
 ```go
-//go:generate go tool gen-jsonschema --validate --typescript web/src/generated --typescript-barrel
+//go:generate go tool polytype --validate --typescript web/src/generated --typescript-barrel
 ```
 
 The barrel flag is optional. Field registrations such as `.Interface` and
@@ -110,9 +110,9 @@ compilation alone; issue #71 owns the broader Go/JavaScript transport proof.
 // types.go
 package contacts
 
-import jsonschema "github.com/tylergannon/go-gen-jsonschema"
+import "github.com/tylergannon/polytype"
 
-//go:generate go tool gen-jsonschema --validate
+//go:generate go tool polytype --validate
 
 // Person is a single contact extracted from the document.
 type Person struct {
@@ -123,10 +123,10 @@ type Person struct {
     Age int `json:"age"`
 
     // Email address. Omit when not stated in the source text.
-    Email jsonschema.Optional[string] `json:"email,omitzero"`
+    Email polytype.Optional[string] `json:"email,omitzero"`
 
     // Required key; null means no phone number was supplied.
-    Phone jsonschema.Nullable[string] `json:"phone"`
+    Phone polytype.Nullable[string] `json:"phone"`
 }
 ```
 
@@ -138,7 +138,7 @@ package contacts
 
 import (
     "encoding/json"
-    jsonschema "github.com/tylergannon/go-gen-jsonschema"
+    "github.com/tylergannon/polytype"
 )
 
 // Stubs so the package compiles before generation; jsonschema_gen.go
@@ -146,7 +146,7 @@ import (
 func (Person) Schema() json.RawMessage     { panic("not implemented") }
 func (Person) ValidateJSON(_ []byte) error { panic("not implemented") }
 
-var _ = jsonschema.Declare(Person.Schema)
+var _ = polytype.Declare(Person.Schema)
 ```
 
 Run `go generate ./...`, then use it:
@@ -179,8 +179,8 @@ Timestamp string `json:"timestamp"`
 
 ## Required vs optional
 
-Ordinary fields and `jsonschema.Nullable[T]` fields are required.
-`jsonschema.Optional[T]` fields are omitted from `required` and must use
+Ordinary fields and `polytype.Nullable[T]` fields are required.
+`polytype.Optional[T]` fields are omitted from `required` and must use
 `json:",omitzero"`. Optional rejects JSON null; Nullable accepts null. Both
 preserve present zero and empty values through their `Present` and `Value`
 fields. Validate before unmarshaling when missing-vs-null matters, because plain

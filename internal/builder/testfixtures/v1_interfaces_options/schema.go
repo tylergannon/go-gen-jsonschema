@@ -5,7 +5,7 @@ package v1_interfaces_options
 import (
 	"encoding/json"
 
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+	"github.com/tylergannon/polytype"
 )
 
 func (Owner) Schema() json.RawMessage   { panic("not implemented") }
@@ -16,20 +16,20 @@ func (Plain) Schema() json.RawMessage   { panic("not implemented") }
 func (Plain) ValidateJSON([]byte) error { panic("not implemented") }
 func (Plain) ValidateYAML([]byte) error { panic("not implemented") }
 
-var _ = jsonschema.NewJSONSchemaMethod(Plain.Schema)
+var _ = polytype.NewJSONSchemaMethod(Plain.Schema)
 
-var _ = jsonschema.NewJSONSchemaMethod(
+var _ = polytype.NewJSONSchemaMethod(
 	Owner.Schema,
-	jsonschema.WithInterface(
+	polytype.WithInterface(
 		Owner{}.IF,
-		jsonschema.Discriminator("!kind"),
-		jsonschema.Impl("impl_one", Impl1{}),
-		jsonschema.Impl("impl \"two\"", Impl2{}),
+		polytype.Discriminator("!kind"),
+		polytype.Impl("impl_one", Impl1{}),
+		polytype.Impl("impl \"two\"", Impl2{}),
 	),
-	jsonschema.WithInterface(Owner{}.IFaces),
-	jsonschema.WithInterfaceImpls(Owner{}.IFaces, Impl1{}, Impl2{}),
-	jsonschema.WithDiscriminator(Owner{}.IFaces, "!kind"),
-	jsonschema.WithInterface(Owner{}.OptionalIF),
-	jsonschema.WithInterfaceImpls(Owner{}.OptionalIF, Impl1{}, Impl2{}),
-	jsonschema.WithDiscriminator(Owner{}.OptionalIF, "!kind"),
+	polytype.WithInterface(Owner{}.IFaces),
+	polytype.WithInterfaceImpls(Owner{}.IFaces, Impl1{}, Impl2{}),
+	polytype.WithDiscriminator(Owner{}.IFaces, "!kind"),
+	polytype.WithInterface(Owner{}.OptionalIF),
+	polytype.WithInterfaceImpls(Owner{}.OptionalIF, Impl1{}, Impl2{}),
+	polytype.WithDiscriminator(Owner{}.OptionalIF, "!kind"),
 )

@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tylergannon/go-gen-jsonschema/internal/typegrammar"
+	"github.com/tylergannon/polytype/internal/typegrammar"
 )
 
 const testPackage = "example.com/model"

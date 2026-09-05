@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tylergannon/go-gen-jsonschema/internal/syntax"
-	"github.com/tylergannon/go-gen-jsonschema/internal/testutils"
+	"github.com/tylergannon/polytype/internal/syntax"
+	"github.com/tylergannon/polytype/internal/testutils"
 )
 
 func TestOwnerCodecRejectsProductionJSONMethodBeforeWriting(t *testing.T) {
@@ -76,7 +76,7 @@ type Owner struct { Embedded }
 	require.NoError(t, err)
 	schema = append(schema, []byte(`
 func (Embedded) Schema() json.RawMessage { panic("not implemented") }
-var _ = jsonschema.NewJSONSchemaMethod(Embedded.Schema)
+var _ = polytype.NewJSONSchemaMethod(Embedded.Schema)
 `)...)
 	require.NoError(t, os.WriteFile(schemaPath, schema, 0o644))
 	err = Run(BuilderArgs{TargetDir: targetDir})
@@ -117,7 +117,7 @@ func TestOwnerCodecRejectsForeignEmbeddedGeneratedOwnerBeforeWriting(t *testing.
 	targetDir, err := os.MkdirTemp(filepath.Join(cwd, "testfixtures"), "foreign_embedded_owner_")
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, os.RemoveAll(targetDir)) })
-	baseImport := "github.com/tylergannon/go-gen-jsonschema/internal/builder/testfixtures/" + filepath.Base(targetDir)
+	baseImport := "github.com/tylergannon/polytype/internal/builder/testfixtures/" + filepath.Base(targetDir)
 	depDir := filepath.Join(targetDir, "dep")
 	require.NoError(t, os.MkdirAll(depDir, 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(depDir, "types.go"), []byte(`package dep
@@ -133,12 +133,12 @@ package dep
 
 import (
 	"encoding/json"
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+	"github.com/tylergannon/polytype"
 )
 
 func (Embedded) Schema() json.RawMessage { panic("not implemented") }
-var _ = jsonschema.NewJSONSchemaMethod(Embedded.Schema)
-var _ = jsonschema.NewInterfaceImpl[Value](First{})
+var _ = polytype.NewJSONSchemaMethod(Embedded.Schema)
+var _ = polytype.NewInterfaceImpl[Value](First{})
 `), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(depDir, "jsonschema_gen.go"), []byte(`//go:build !jsonschema
 
@@ -165,12 +165,12 @@ package fixture
 
 import (
 	"encoding/json"
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+	"github.com/tylergannon/polytype"
 )
 
 func (Owner) Schema() json.RawMessage { panic("not implemented") }
-var _ = jsonschema.NewJSONSchemaMethod(Owner.Schema)
-var _ = jsonschema.NewInterfaceImpl[Value](First{})
+var _ = polytype.NewJSONSchemaMethod(Owner.Schema)
+var _ = polytype.NewInterfaceImpl[Value](First{})
 `), 0o644))
 	writeOwnerCollisionSentinels(t, targetDir)
 
@@ -205,14 +205,14 @@ package fixture
 
 import (
 	"encoding/json"
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
-	"github.com/tylergannon/go-gen-jsonschema/internal/builder/testfixtures/`+filepath.Base(targetDir)+`/left"
-	"github.com/tylergannon/go-gen-jsonschema/internal/builder/testfixtures/`+filepath.Base(targetDir)+`/right"
+	"github.com/tylergannon/polytype"
+	"github.com/tylergannon/polytype/internal/builder/testfixtures/`+filepath.Base(targetDir)+`/left"
+	"github.com/tylergannon/polytype/internal/builder/testfixtures/`+filepath.Base(targetDir)+`/right"
 )
 
 func (Owner) Schema() json.RawMessage { panic("not implemented") }
-var _ = jsonschema.NewJSONSchemaMethod(Owner.Schema)
-var _ = jsonschema.NewInterfaceImpl[Value](left.Same{}, right.Same{})
+var _ = polytype.NewJSONSchemaMethod(Owner.Schema)
+var _ = polytype.NewInterfaceImpl[Value](left.Same{}, right.Same{})
 `), 0o644))
 	writeOwnerCollisionSentinels(t, targetDir)
 
@@ -227,7 +227,7 @@ func TestLegacyHelpersUseResolvedPackageIdentity(t *testing.T) {
 	targetDir, err := os.MkdirTemp(filepath.Join(cwd, "testfixtures"), "legacy_helper_identity_")
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, os.RemoveAll(targetDir)) })
-	baseImport := "github.com/tylergannon/go-gen-jsonschema/internal/builder/testfixtures/" + filepath.Base(targetDir)
+	baseImport := "github.com/tylergannon/polytype/internal/builder/testfixtures/" + filepath.Base(targetDir)
 
 	packages := []struct {
 		dir  string
@@ -251,9 +251,9 @@ func (Created) isEvent() {}
 
 package `+pkg.name+`
 
-import jsonschema "github.com/tylergannon/go-gen-jsonschema"
+import "github.com/tylergannon/polytype"
 
-var _ = jsonschema.NewInterfaceImpl[Event](Created{})
+var _ = polytype.NewInterfaceImpl[Event](Created{})
 `), 0o644))
 	}
 
@@ -279,11 +279,11 @@ package fixture
 
 import (
 	"encoding/json"
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+	"github.com/tylergannon/polytype"
 )
 
 func (Owner) Schema() json.RawMessage { panic("not implemented") }
-var _ = jsonschema.NewJSONSchemaMethod(Owner.Schema)
+var _ = polytype.NewJSONSchemaMethod(Owner.Schema)
 `), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(targetDir, "codec_test.go"), []byte(`package fixture
 
@@ -349,13 +349,13 @@ package fixture
 
 import (
 	"encoding/json"
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+	"github.com/tylergannon/polytype"
 )
 
 func (Owner) Schema() json.RawMessage { panic("not implemented") }
 `+stub+`
-var _ = jsonschema.NewJSONSchemaMethod(Owner.Schema)
-var _ = jsonschema.NewInterfaceImpl[Value](First{})
+var _ = polytype.NewJSONSchemaMethod(Owner.Schema)
+var _ = polytype.NewInterfaceImpl[Value](First{})
 `), 0o644))
 	writeOwnerCollisionSentinels(t, targetDir)
 	return targetDir

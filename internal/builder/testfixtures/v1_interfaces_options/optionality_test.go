@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+	"github.com/tylergannon/polytype"
 	yaml "go.yaml.in/yaml/v4"
 )
 
@@ -107,8 +107,8 @@ timeout: null
 	original := Owner{
 		IF:      Impl1{X: "original"},
 		IFaces:  []IFace{Impl2{Y: 7}},
-		Label:   jsonschema.Optional[string]{Present: true, Value: "original"},
-		Timeout: jsonschema.Nullable[int]{Present: true, Value: 9},
+		Label:   polytype.Optional[string]{Present: true, Value: "original"},
+		Timeout: polytype.Nullable[int]{Present: true, Value: 9},
 	}
 	got = original
 	bad := []byte(`

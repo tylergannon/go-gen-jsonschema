@@ -1,6 +1,6 @@
 package structs
 
-import jsonschema "github.com/tylergannon/go-gen-jsonschema"
+import "github.com/tylergannon/polytype"
 
 //go:generate go run ./gen
 
@@ -49,8 +49,8 @@ type StructType2 struct {
 }
 
 type StructWithRefs struct {
-	Ref1 jsonschema.Optional[StructType1] `json:"ref1,omitzero" jsonschema:"ref=definitions/StructType1"`
-	Ref2 StructType2                      `json:"ref2" jsonschema:"ref=definitions/StructType2"`
+	Ref1 polytype.Optional[StructType1] `json:"ref1,omitzero" jsonschema:"ref=definitions/StructType1"`
+	Ref2 StructType2                    `json:"ref2" jsonschema:"ref=definitions/StructType2"`
 }
 
 type JSONTagNames struct {

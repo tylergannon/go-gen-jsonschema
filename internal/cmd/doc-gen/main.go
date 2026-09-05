@@ -17,7 +17,7 @@ import (
 
 const (
 	manifestPath = "internal/cmd/doc-gen/skill-examples.json"
-	outputPath   = "skills/go-gen-jsonschema/references/examples.md"
+	outputPath   = "skills/polytype/references/examples.md"
 )
 
 type manifest struct {

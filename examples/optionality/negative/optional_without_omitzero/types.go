@@ -1,7 +1,7 @@
 package optional_without_omitzero
 
-import jsonschema "github.com/tylergannon/go-gen-jsonschema"
+import "github.com/tylergannon/polytype"
 
 type Config struct {
-	Value jsonschema.Optional[int] `json:"value"`
+	Value polytype.Optional[int] `json:"value"`
 }

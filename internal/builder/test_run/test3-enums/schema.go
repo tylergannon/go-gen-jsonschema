@@ -5,7 +5,7 @@ package basictypes
 import (
 	"encoding/json"
 
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+	"github.com/tylergannon/polytype"
 )
 
 func (EnumType) Schema() json.RawMessage {
@@ -25,9 +25,9 @@ func (SliceOfPointerToRemoteEnum) Schema() json.RawMessage {
 }
 
 var (
-	_ = jsonschema.NewJSONSchemaMethod(EnumType.Schema)
-	_ = jsonschema.NewJSONSchemaMethod(SliceOfEnumType.Schema)
-	_ = jsonschema.NewJSONSchemaMethod(SliceOfRemoteEnumType.Schema)
-	_ = jsonschema.NewJSONSchemaMethod(SliceOfPointerToRemoteEnum.Schema)
-	_ = jsonschema.NewEnumType[EnumType]()
+	_ = polytype.NewJSONSchemaMethod(EnumType.Schema)
+	_ = polytype.NewJSONSchemaMethod(SliceOfEnumType.Schema)
+	_ = polytype.NewJSONSchemaMethod(SliceOfRemoteEnumType.Schema)
+	_ = polytype.NewJSONSchemaMethod(SliceOfPointerToRemoteEnum.Schema)
+	_ = polytype.NewEnumType[EnumType]()
 )

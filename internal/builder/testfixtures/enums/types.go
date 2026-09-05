@@ -3,7 +3,7 @@ package basictypes
 //go:generate go run ./gen
 
 import (
-	"github.com/tylergannon/go-gen-jsonschema/internal/builder/testfixtures/enums/enumsremote"
+	"github.com/tylergannon/polytype/internal/builder/testfixtures/enums/enumsremote"
 )
 
 // EnumType is an enum type from enumsremote

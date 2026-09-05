@@ -5,7 +5,7 @@ package basictypes
 import (
 	"encoding/json"
 
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+	"github.com/tylergannon/polytype"
 )
 
 // Schema method for SimpleInt.
@@ -44,20 +44,20 @@ func (AnotherNestedType) Schema() json.RawMessage {
 // Each type that needs a schema must be registered here using Declare.
 var (
 	// Register SimpleInt for schema generation
-	_ = jsonschema.Declare(SimpleInt.Schema)
+	_ = polytype.Declare(SimpleInt.Schema)
 
 	// Register SimpleString for schema generation
-	_ = jsonschema.Declare(SimpleString.Schema)
+	_ = polytype.Declare(SimpleString.Schema)
 
 	// Register SimpleFloat for schema generation
-	_ = jsonschema.Declare(SimpleFloat.Schema)
+	_ = polytype.Declare(SimpleFloat.Schema)
 
 	// Register SimpleStruct for schema generation
-	_ = jsonschema.Declare(SimpleStruct.Schema)
+	_ = polytype.Declare(SimpleStruct.Schema)
 
 	// Register TypeInNestedDecl for schema generation
-	_ = jsonschema.Declare(TypeInNestedDecl.Schema)
+	_ = polytype.Declare(TypeInNestedDecl.Schema)
 
 	// Register AnotherNestedType for schema generation
-	_ = jsonschema.Declare(AnotherNestedType.Schema)
+	_ = polytype.Declare(AnotherNestedType.Schema)
 )

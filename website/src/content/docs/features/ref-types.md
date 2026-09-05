@@ -18,8 +18,8 @@ type Container struct {
     Others  []Shared `json:"others"`
 }
 
-var _ = jsonschema.Declare(Shared.Schema).Ref()
-var _ = jsonschema.Declare(Container.Schema)
+var _ = polytype.Declare(Shared.Schema).Ref()
+var _ = polytype.Declare(Container.Schema)
 ```
 
 `Container`'s generated schema gets a `$defs` object with one `Shared` entry,
@@ -32,11 +32,11 @@ A `.Ref()`-registered struct can be the value inside `Nullable[T]`:
 
 ```go
 type NullableConfig struct {
-    Shared jsonschema.Nullable[Shared] `json:"shared"`
+    Shared polytype.Nullable[Shared] `json:"shared"`
 }
 
-var _ = jsonschema.Declare(Shared.Schema).Ref()
-var _ = jsonschema.Declare(NullableConfig.Schema)
+var _ = polytype.Declare(Shared.Schema).Ref()
+var _ = polytype.Declare(NullableConfig.Schema)
 ```
 
 The property remains required and accepts either the shared definition or JSON
@@ -70,5 +70,5 @@ Migration: `NewJSONSchemaMethod(Shared.Schema, AsRef())` is now
 source-compatible; it carries a `Deprecated:` godoc comment naming its
 fluent equivalent.
 
-See [`examples/ref_types`](https://github.com/tylergannon/go-gen-jsonschema/tree/main/examples/ref_types)
+See [`examples/ref_types`](https://github.com/tylergannon/polytype/tree/main/examples/ref_types)
 for the complete package, generated output, and validation tests.

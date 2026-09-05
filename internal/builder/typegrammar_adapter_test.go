@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tylergannon/go-gen-jsonschema/internal/syntax"
-	"github.com/tylergannon/go-gen-jsonschema/internal/typegrammar"
+	"github.com/tylergannon/polytype/internal/syntax"
+	"github.com/tylergannon/polytype/internal/typegrammar"
 )
 
 func TestTypeDefinitionsPreservesRegisteredSourceGrammar(t *testing.T) {
@@ -22,7 +22,7 @@ import (
 	"encoding/json"
 	"time"
 
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+	"github.com/tylergannon/polytype"
 )
 
 type State int16
@@ -88,7 +88,7 @@ type Envelope struct {
 	EmbedA
 	EmbedB
 	Event  Event                       ` + "`json:\"event\"`" + `
-	Maybe  jsonschema.Optional[Event]  ` + "`json:\"maybe,omitzero\"`" + `
+	Maybe  polytype.Optional[Event]  ` + "`json:\"maybe,omitzero\"`" + `
 	Events []Event                     ` + "`json:\"events\"`" + `
 	// State has a field comment that prior field-local schema output omitted.
 	State  State                       ` + "`json:\"state\"`" + `
@@ -97,7 +97,7 @@ type Envelope struct {
 	Labels []Label                     ` + "`json:\"labels\"`" + `
 	Alias  LabelAlias                  ` + "`json:\"alias\"`" + `
 	Huge   Huge                        ` + "`json:\"huge\"`" + `
-	Count  jsonschema.Nullable[int64]  ` + "`json:\"count\"`" + `
+	Count  polytype.Nullable[int64]  ` + "`json:\"count\"`" + `
 	Child  *Meta                       ` + "`json:\"child\"`" + `
 	Matrix [2][]int16                  ` + "`json:\"matrix\"`" + `
 	Shadow int                         ` + "`json:\"shadow\"`" + `
@@ -107,22 +107,22 @@ type Envelope struct {
 func (Envelope) Schema() json.RawMessage { panic("not implemented") }
 
 var (
-	_ = jsonschema.NewEnumType[Label]()
-	_ = jsonschema.NewEnumType[LabelAlias]()
-	_ = jsonschema.NewJSONSchemaMethod(
+	_ = polytype.NewEnumType[Label]()
+	_ = polytype.NewEnumType[LabelAlias]()
+	_ = polytype.NewJSONSchemaMethod(
 		Envelope.Schema,
-		jsonschema.WithInterface(Envelope{}.Event,
-			jsonschema.Discriminator("kind"),
-			jsonschema.Impl("", &Created{}),
-			jsonschema.Impl("gone", Deleted{}),
+		polytype.WithInterface(Envelope{}.Event,
+			polytype.Discriminator("kind"),
+			polytype.Impl("", &Created{}),
+			polytype.Impl("gone", Deleted{}),
 		),
-		jsonschema.WithInterfaceImpls(Envelope{}.Maybe, &Created{}, Deleted{}),
-		jsonschema.WithDiscriminator(Envelope{}.Maybe, "kind"),
-		jsonschema.WithInterfaceImpls(Envelope{}.Events, &Created{}, Deleted{}),
-		jsonschema.WithDiscriminator(Envelope{}.Events, "kind"),
-		jsonschema.WithStringerEnum(Envelope{}.State),
-		jsonschema.WithEnum(Envelope{}.Raw),
-		jsonschema.WithEnum(Envelope{}.Huge),
+		polytype.WithInterfaceImpls(Envelope{}.Maybe, &Created{}, Deleted{}),
+		polytype.WithDiscriminator(Envelope{}.Maybe, "kind"),
+		polytype.WithInterfaceImpls(Envelope{}.Events, &Created{}, Deleted{}),
+		polytype.WithDiscriminator(Envelope{}.Events, "kind"),
+		polytype.WithStringerEnum(Envelope{}.State),
+		polytype.WithEnum(Envelope{}.Raw),
+		polytype.WithEnum(Envelope{}.Huge),
 	)
 )
 `
@@ -266,7 +266,7 @@ func provide(string) json.Marshaler { return json.RawMessage(` + "`\"provided\"`
 		t.Run(test.name, func(t *testing.T) {
 			option := ""
 			if test.name == "provider" {
-				option = ", jsonschema.WithFunction(Root{}.Value, provide)"
+				option = ", polytype.WithFunction(Root{}.Value, provide)"
 			}
 			source := fmt.Sprintf(`//go:build jsonschema
 
@@ -274,13 +274,13 @@ package fixture
 
 import (
 	"encoding/json"
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+	"github.com/tylergannon/polytype"
 )
 
 %s
 
 func (Root) Schema() json.RawMessage { panic("not implemented") }
-var _ = jsonschema.NewJSONSchemaMethod(Root.Schema%s)
+var _ = polytype.NewJSONSchemaMethod(Root.Schema%s)
 `, test.body, option)
 			builder := loadTypeGrammarFixture(t, source)
 			_, err := builder.TypeDefinitions()
@@ -308,7 +308,7 @@ func TestTypeDefinitionsSourceAdmissionRejectsInvalidCompositions(t *testing.T) 
 		},
 		{
 			name: "wrapper in container",
-			body: `type Root struct { Values []jsonschema.Optional[int] ` + "`json:\"values\"`" + ` }`,
+			body: `type Root struct { Values []polytype.Optional[int] ` + "`json:\"values\"`" + ` }`,
 			want: "supported only as the complete type of a direct named struct field",
 		},
 		{
@@ -318,7 +318,7 @@ type Event interface{ event() }
 type Wrong struct{}
 type Root struct { Event Event ` + "`json:\"event\"`" + ` }
 `,
-			options: `, jsonschema.WithInterface(Root{}.Event, jsonschema.Impl("wrong", Wrong{}))`,
+			options: `, polytype.WithInterface(Root{}.Event, polytype.Impl("wrong", Wrong{}))`,
 			want:    "does not implement Event",
 		},
 	}
@@ -330,13 +330,13 @@ package fixture
 
 import (
 	"encoding/json"
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+	"github.com/tylergannon/polytype"
 )
 
 %s
 
 func (Root) Schema() json.RawMessage { panic("not implemented") }
-var _ = jsonschema.NewJSONSchemaMethod(Root.Schema%s)
+var _ = polytype.NewJSONSchemaMethod(Root.Schema%s)
 `, test.body, test.options)
 			dir := writeTypeGrammarFixture(t, source)
 			packages, err := syntax.Load(dir)
@@ -384,7 +384,7 @@ func writeTypeGrammarFixture(t *testing.T, source string) string {
 	root, err := filepath.Abs(filepath.Join("..", ".."))
 	require.NoError(t, err)
 	dir := t.TempDir()
-	module := fmt.Sprintf("module example.com/typegrammarfixture\n\ngo 1.27\n\nrequire github.com/tylergannon/go-gen-jsonschema v0.0.0\nreplace github.com/tylergannon/go-gen-jsonschema => %s\n", root)
+	module := fmt.Sprintf("module example.com/typegrammarfixture\n\ngo 1.27\n\nrequire github.com/tylergannon/polytype v0.0.0\nreplace github.com/tylergannon/polytype => %s\n", root)
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "go.mod"), []byte(module), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "fixture.go"), []byte(source), 0o644))
 	return dir

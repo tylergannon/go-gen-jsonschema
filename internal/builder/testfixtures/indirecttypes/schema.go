@@ -5,7 +5,7 @@ package basictypes
 import (
 	"encoding/json"
 
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+	"github.com/tylergannon/polytype"
 )
 
 func (IntType) Schema() json.RawMessage {
@@ -69,19 +69,19 @@ func (DefinedAsSliceOfRemoteSliceType) Schema() json.RawMessage {
 }
 
 var (
-	_ = jsonschema.NewJSONSchemaMethod(IntType.Schema)
-	_ = jsonschema.NewJSONSchemaMethod(PointerToIntType.Schema)
-	_ = jsonschema.NewJSONSchemaMethod(PointerToNamedType.Schema)
-	_ = jsonschema.NewJSONSchemaMethod(DefinedAsNamedType.Schema)
-	_ = jsonschema.NewJSONSchemaMethod(SliceOfPointerToInt.Schema)
-	_ = jsonschema.NewJSONSchemaMethod(SliceOfPointerToNamedType.Schema)
-	_ = jsonschema.NewJSONSchemaMethod(SliceOfNamedType.Schema)
-	_ = jsonschema.NewJSONSchemaMethod(NamedSliceType.Schema)
-	_ = jsonschema.NewJSONSchemaMethod(NamedNamedSliceType.Schema)
-	_ = jsonschema.NewJSONSchemaMethod(SliceOfNamedNamedSliceType.Schema)
-	_ = jsonschema.NewJSONSchemaMethod(PointerToRemoteType.Schema)
-	_ = jsonschema.NewJSONSchemaMethod(DefinedAsRemoteType.Schema)
-	_ = jsonschema.NewJSONSchemaMethod(DefinedAsRemoteSliceType.Schema)
-	_ = jsonschema.NewJSONSchemaMethod(DefinedAsPointerToRemoteSliceType.Schema)
-	_ = jsonschema.NewJSONSchemaMethod(DefinedAsSliceOfRemoteSliceType.Schema)
+	_ = polytype.NewJSONSchemaMethod(IntType.Schema)
+	_ = polytype.NewJSONSchemaMethod(PointerToIntType.Schema)
+	_ = polytype.NewJSONSchemaMethod(PointerToNamedType.Schema)
+	_ = polytype.NewJSONSchemaMethod(DefinedAsNamedType.Schema)
+	_ = polytype.NewJSONSchemaMethod(SliceOfPointerToInt.Schema)
+	_ = polytype.NewJSONSchemaMethod(SliceOfPointerToNamedType.Schema)
+	_ = polytype.NewJSONSchemaMethod(SliceOfNamedType.Schema)
+	_ = polytype.NewJSONSchemaMethod(NamedSliceType.Schema)
+	_ = polytype.NewJSONSchemaMethod(NamedNamedSliceType.Schema)
+	_ = polytype.NewJSONSchemaMethod(SliceOfNamedNamedSliceType.Schema)
+	_ = polytype.NewJSONSchemaMethod(PointerToRemoteType.Schema)
+	_ = polytype.NewJSONSchemaMethod(DefinedAsRemoteType.Schema)
+	_ = polytype.NewJSONSchemaMethod(DefinedAsRemoteSliceType.Schema)
+	_ = polytype.NewJSONSchemaMethod(DefinedAsPointerToRemoteSliceType.Schema)
+	_ = polytype.NewJSONSchemaMethod(DefinedAsSliceOfRemoteSliceType.Schema)
 )

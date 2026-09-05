@@ -1,6 +1,6 @@
 package nullable_interface
 
-import jsonschema "github.com/tylergannon/go-gen-jsonschema"
+import "github.com/tylergannon/polytype"
 
 type Value interface{ value() }
 
@@ -11,5 +11,5 @@ type Text struct {
 func (Text) value() {}
 
 type Config struct {
-	Value jsonschema.Nullable[Value] `json:"value"`
+	Value polytype.Nullable[Value] `json:"value"`
 }

@@ -4,37 +4,37 @@ package consumer
 
 import (
 	"encoding/json"
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+	"github.com/tylergannon/polytype"
 )
 
 func (Envelope) Schema() json.RawMessage    { panic("not implemented") }
 func (Detail) Schema() json.RawMessage      { panic("not implemented") }
 func (Composition) Schema() json.RawMessage { panic("not implemented") }
 
-var _ = jsonschema.NewJSONSchemaMethod(Detail.Schema, jsonschema.AsRef())
-var _ = jsonschema.NewJSONSchemaMethod(Composition.Schema)
-var _ = jsonschema.NewEnumType[Status]()
-var _ = jsonschema.NewJSONSchemaMethod(Envelope.Schema,
-	jsonschema.WithInterface(Envelope{}.Event,
-		jsonschema.Discriminator("!kind"),
-		jsonschema.Impl("created", Created{}),
-		jsonschema.Impl("deleted", (*Deleted)(nil)),
+var _ = polytype.NewJSONSchemaMethod(Detail.Schema, polytype.AsRef())
+var _ = polytype.NewJSONSchemaMethod(Composition.Schema)
+var _ = polytype.NewEnumType[Status]()
+var _ = polytype.NewJSONSchemaMethod(Envelope.Schema,
+	polytype.WithInterface(Envelope{}.Event,
+		polytype.Discriminator("!kind"),
+		polytype.Impl("created", Created{}),
+		polytype.Impl("deleted", (*Deleted)(nil)),
 		// ADDED_VARIANT
 	),
-	jsonschema.WithInterface(Envelope{}.Other,
-		jsonschema.Discriminator("other-key"),
-		jsonschema.Impl("create\"雪", Created{}),
+	polytype.WithInterface(Envelope{}.Other,
+		polytype.Discriminator("other-key"),
+		polytype.Impl("create\"雪", Created{}),
 	),
-	jsonschema.WithInterface(Envelope{}.Maybe,
-		jsonschema.Discriminator("!kind"),
-		jsonschema.Impl("created", Created{}),
-		jsonschema.Impl("deleted", (*Deleted)(nil)),
+	polytype.WithInterface(Envelope{}.Maybe,
+		polytype.Discriminator("!kind"),
+		polytype.Impl("created", Created{}),
+		polytype.Impl("deleted", (*Deleted)(nil)),
 	),
-	jsonschema.WithInterface(Envelope{}.Events,
-		jsonschema.Discriminator("!kind"),
-		jsonschema.Impl("created", Created{}),
-		jsonschema.Impl("deleted", (*Deleted)(nil)),
+	polytype.WithInterface(Envelope{}.Events,
+		polytype.Discriminator("!kind"),
+		polytype.Impl("created", Created{}),
+		polytype.Impl("deleted", (*Deleted)(nil)),
 	),
-	jsonschema.WithEnum(Envelope{}.Priority),
-	jsonschema.WithStringerEnum(Envelope{}.PriorityName),
+	polytype.WithEnum(Envelope{}.Priority),
+	polytype.WithStringerEnum(Envelope{}.PriorityName),
 )

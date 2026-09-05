@@ -5,7 +5,7 @@ package messages
 import (
 	"encoding/json"
 
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+	"github.com/tylergannon/polytype"
 )
 
 func (Assertion) Schema() json.RawMessage {
@@ -21,9 +21,9 @@ func (GeneratedTestResponse) Schema() json.RawMessage {
 }
 
 var (
-	_ = jsonschema.NewJSONSchemaMethod(ToolFuncGetTypeInfo.Schema)
-	_ = jsonschema.NewJSONSchemaMethod(GeneratedTestResponse.Schema)
-	_ = jsonschema.NewInterfaceImpl[AssertionValue](
+	_ = polytype.NewJSONSchemaMethod(ToolFuncGetTypeInfo.Schema)
+	_ = polytype.NewJSONSchemaMethod(GeneratedTestResponse.Schema)
+	_ = polytype.NewInterfaceImpl[AssertionValue](
 		AssertNumericValue{},
 		AssertStringValue{},
 		AssertBoolValue{},

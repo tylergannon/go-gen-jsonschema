@@ -1,6 +1,6 @@
 package interfaces_options
 
-//go:generate go run ../../gen-jsonschema/
+//go:generate go run ../../polytype/
 
 type IFace interface{ isIface() }
 

@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tylergannon/go-gen-jsonschema/internal/syntax"
+	"github.com/tylergannon/polytype/internal/syntax"
 )
 
 func TestMarshalSchemaHardlines(t *testing.T) {

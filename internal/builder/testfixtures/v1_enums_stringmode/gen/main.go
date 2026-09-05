@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 
-	"github.com/tylergannon/go-gen-jsonschema/internal/builder"
+	"github.com/tylergannon/polytype/internal/builder"
 )
 
 func main() {

@@ -674,9 +674,9 @@ func (f StructField) HasJSONOption(option string) bool {
 func (k WrapperKind) String() string {
 	switch k {
 	case WrapperOptional:
-		return "jsonschema.Optional"
+		return "polytype.Optional"
 	case WrapperNullable:
-		return "jsonschema.Nullable"
+		return "polytype.Nullable"
 	default:
 		return "ordinary field"
 	}

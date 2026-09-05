@@ -5,7 +5,7 @@ import (
 	"errors"
 	"strings"
 
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+	"github.com/tylergannon/polytype"
 )
 
 //go:generate go run ./gen
@@ -164,16 +164,16 @@ type Nested struct {
 }
 
 type Envelope struct {
-	Primary   Event                       `json:"primary"`
-	Events    []Event                     `json:"events"`
-	Optional  jsonschema.Optional[Event]  `json:"optional,omitzero"`
-	Alternate jsonschema.Optional[Event]  `json:"alternate,omitzero"`
-	Single    jsonschema.Optional[Event]  `json:"single,omitzero"`
-	Hook      jsonschema.Optional[Event]  `json:"hook,omitzero"`
-	ValueHook jsonschema.Optional[Event]  `json:"value_hook,omitzero"`
-	Nested    Nested                      `json:"nested"`
-	Ordinary  Ordinary                    `json:"ordinary"`
-	State     State                       `json:"state"`
-	Label     string                      `json:"label"`
-	Omitted   jsonschema.Optional[string] `json:"omitted,omitzero"`
+	Primary   Event                     `json:"primary"`
+	Events    []Event                   `json:"events"`
+	Optional  polytype.Optional[Event]  `json:"optional,omitzero"`
+	Alternate polytype.Optional[Event]  `json:"alternate,omitzero"`
+	Single    polytype.Optional[Event]  `json:"single,omitzero"`
+	Hook      polytype.Optional[Event]  `json:"hook,omitzero"`
+	ValueHook polytype.Optional[Event]  `json:"value_hook,omitzero"`
+	Nested    Nested                    `json:"nested"`
+	Ordinary  Ordinary                  `json:"ordinary"`
+	State     State                     `json:"state"`
+	Label     string                    `json:"label"`
+	Omitted   polytype.Optional[string] `json:"omitted,omitzero"`
 }

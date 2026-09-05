@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/go-gen-jsonschema.iml" filepath="$PROJECT_DIR$/.idea/go-gen-jsonschema.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/polytype.iml" filepath="$PROJECT_DIR$/.idea/polytype.iml" />
     </modules>
   </component>
 </project>

@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/tylergannon/go-gen-jsonschema/internal/syntax"
+	"github.com/tylergannon/polytype/internal/syntax"
 )
 
 const (

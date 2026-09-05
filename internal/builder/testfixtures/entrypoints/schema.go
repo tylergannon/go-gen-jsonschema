@@ -5,7 +5,7 @@ package entrypoints
 import (
 	"encoding/json"
 
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+	"github.com/tylergannon/polytype"
 )
 
 func (MethodType) Schema() json.RawMessage { panic("not implemented") }
@@ -15,7 +15,7 @@ func FuncTypeSchema(FuncType) json.RawMessage { panic("not implemented") }
 func BuilderTypeSchema() json.RawMessage { panic("not implemented") }
 
 var (
-	_ = jsonschema.NewJSONSchemaMethod(MethodType.Schema)
-	_ = jsonschema.NewJSONSchemaFunc[FuncType](FuncTypeSchema)
-	_ = jsonschema.NewJSONSchemaBuilder[BuilderType](BuilderTypeSchema)
+	_ = polytype.NewJSONSchemaMethod(MethodType.Schema)
+	_ = polytype.NewJSONSchemaFunc[FuncType](FuncTypeSchema)
+	_ = polytype.NewJSONSchemaBuilder[BuilderType](BuilderTypeSchema)
 )

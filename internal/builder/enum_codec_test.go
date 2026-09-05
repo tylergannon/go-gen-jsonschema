@@ -47,7 +47,7 @@ const (
 )
 type Owner struct { Color Color ` + "`json:\"color\"`" + ` }
 `,
-			option: `jsonschema.WithEnum(Owner{}.Color),`,
+			option: `polytype.WithEnum(Owner{}.Color),`,
 		},
 		{
 			name: "string backed",
@@ -58,7 +58,7 @@ const (
 )
 type Owner struct { Color Color ` + "`json:\"color\"`" + ` }
 `,
-			option: `jsonschema.WithStringerEnum(Owner{}.Color),`,
+			option: `polytype.WithStringerEnum(Owner{}.Color),`,
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -72,7 +72,7 @@ func TestStringModeEnumRejectsUnsupportedContainerBeforeWriting(t *testing.T) {
 	targetDir := writeEnumCodecFixture(t, `type Color int
 const ColorRed Color = 1
 type Owner struct { Colors []Color `+"`json:\"colors\"`"+` }
-`, `jsonschema.WithStringerEnum(Owner{}.Colors),`)
+`, `polytype.WithStringerEnum(Owner{}.Colors),`)
 	err := Run(BuilderArgs{TargetDir: targetDir})
 	require.ErrorContains(t, err, "supports only a direct named enum, Optional[E], or Nullable[E]")
 	assertOwnerCollisionSentinels(t, targetDir)
@@ -82,7 +82,7 @@ func TestEnumRejectsPointerFieldBeforeWriting(t *testing.T) {
 	targetDir := writeEnumCodecFixture(t, `type Color int
 const ColorRed Color = 1
 type Owner struct { Color *Color `+"`json:\"color,omitempty\"`"+` }
-`, `jsonschema.WithEnum(Owner{}.Color),`)
+`, `polytype.WithEnum(Owner{}.Color),`)
 	err := Run(BuilderArgs{TargetDir: targetDir})
 	require.ErrorContains(t, err, "supports only a direct named enum, Optional[E], or Nullable[E]")
 	assertOwnerCollisionSentinels(t, targetDir)
@@ -94,10 +94,10 @@ func TestRegisteredEnumRejectsJSONStringOptionBeforeWriting(t *testing.T) {
 		option       string
 		registration string
 	}{
-		{name: "method numeric mode", option: `jsonschema.WithEnum(Owner{}.Color),`, registration: "method"},
-		{name: "method string mode", option: `jsonschema.WithStringerEnum(Owner{}.Color),`, registration: "method"},
-		{name: "function numeric mode", option: `jsonschema.WithEnum(Owner{}.Color),`, registration: "function"},
-		{name: "function string mode", option: `jsonschema.WithStringerEnum(Owner{}.Color),`, registration: "function"},
+		{name: "method numeric mode", option: `polytype.WithEnum(Owner{}.Color),`, registration: "method"},
+		{name: "method string mode", option: `polytype.WithStringerEnum(Owner{}.Color),`, registration: "method"},
+		{name: "function numeric mode", option: `polytype.WithEnum(Owner{}.Color),`, registration: "function"},
+		{name: "function string mode", option: `polytype.WithStringerEnum(Owner{}.Color),`, registration: "function"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			targetDir := writeJSONStringEnumFixture(t, test.option, test.registration)
@@ -148,7 +148,7 @@ func writeEnumCodecFixture(t *testing.T, types, option string) string {
 	t.Cleanup(func() { require.NoError(t, os.RemoveAll(targetDir)) })
 	require.NoError(t, os.WriteFile(filepath.Join(targetDir, "types.go"), []byte("package fixture\n\n"+types), 0o644))
 	if option == "" {
-		option = `jsonschema.WithStringerEnum(Owner{}.Color),`
+		option = `polytype.WithStringerEnum(Owner{}.Color),`
 	}
 	require.NoError(t, os.WriteFile(filepath.Join(targetDir, "schema.go"), []byte(`//go:build jsonschema
 
@@ -156,11 +156,11 @@ package fixture
 
 import (
 	"encoding/json"
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+	"github.com/tylergannon/polytype"
 )
 
 func (Owner) Schema() json.RawMessage { panic("not implemented") }
-var _ = jsonschema.NewJSONSchemaMethod(Owner.Schema, `+option+`)
+var _ = polytype.NewJSONSchemaMethod(Owner.Schema, `+option+`)
 `), 0o644))
 	writeOwnerCollisionSentinels(t, targetDir)
 	return targetDir
@@ -184,10 +184,10 @@ type Owner struct { Color Color `+"`json:\"color,string\"`"+` }
 	switch registration {
 	case "method":
 		stub = `func (Owner) Schema() json.RawMessage { panic("not implemented") }`
-		marker = `jsonschema.NewJSONSchemaMethod(Owner.Schema, ` + option + `)`
+		marker = `polytype.NewJSONSchemaMethod(Owner.Schema, ` + option + `)`
 	case "function":
 		stub = `func OwnerSchema(Owner) json.RawMessage { panic("not implemented") }`
-		marker = `jsonschema.NewJSONSchemaFunc[Owner](OwnerSchema, ` + option + `)`
+		marker = `polytype.NewJSONSchemaFunc[Owner](OwnerSchema, ` + option + `)`
 	default:
 		t.Fatalf("unknown registration form %q", registration)
 	}
@@ -197,7 +197,7 @@ package fixture
 
 import (
 	"encoding/json"
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+	"github.com/tylergannon/polytype"
 )
 
 `+stub+`

@@ -5,7 +5,7 @@ package uniontypes
 import (
 	"encoding/json"
 
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+	"github.com/tylergannon/polytype"
 )
 
 // Schema method for Circle.
@@ -53,12 +53,12 @@ func (Payment) Schema() json.RawMessage {
 var (
 	// Register schema methods for the concrete implementations - each is a
 	// plain type with no interface field of its own.
-	_ = jsonschema.Declare(Circle.Schema)
-	_ = jsonschema.Declare(Rectangle.Schema)
-	_ = jsonschema.Declare(Triangle.Schema)
-	_ = jsonschema.Declare(CreditCard.Schema)
-	_ = jsonschema.Declare(BankTransfer.Schema)
-	_ = jsonschema.Declare((*DigitalWallet).Schema) // Note pointer receiver
+	_ = polytype.Declare(Circle.Schema)
+	_ = polytype.Declare(Rectangle.Schema)
+	_ = polytype.Declare(Triangle.Schema)
+	_ = polytype.Declare(CreditCard.Schema)
+	_ = polytype.Declare(BankTransfer.Schema)
+	_ = polytype.Declare((*DigitalWallet).Schema) // Note pointer receiver
 
 	// Register Drawing along with its Shape union field. This is what
 	// creates the union type - it tells the generator that Drawing.Shapes
@@ -66,20 +66,20 @@ var (
 	// is the exact discriminator value ("Circle", "Rectangle", "Triangle" -
 	// the derived Go type names, matching what the split
 	// WithInterface/WithInterfaceImpls form derived automatically).
-	_ = jsonschema.Declare(Drawing.Schema).
+	_ = polytype.Declare(Drawing.Schema).
 		Interface(Drawing{}.Shapes,
-			jsonschema.Impl("Circle", Circle{}),
-			jsonschema.Impl("Rectangle", Rectangle{}),
-			jsonschema.Impl("Triangle", Triangle{}),
+			polytype.Impl("Circle", Circle{}),
+			polytype.Impl("Rectangle", Rectangle{}),
+			polytype.Impl("Triangle", Triangle{}),
 		)
 
 	// Register Payment along with its PaymentMethod union field. This
 	// demonstrates including a pointer receiver implementation - for
 	// pointer receivers, use (*Type)(nil) syntax.
-	_ = jsonschema.Declare(Payment.Schema).
+	_ = polytype.Declare(Payment.Schema).
 		Interface(Payment{}.Method,
-			jsonschema.Impl("CreditCard", CreditCard{}),
-			jsonschema.Impl("BankTransfer", BankTransfer{}),
-			jsonschema.Impl("DigitalWallet", (*DigitalWallet)(nil)),
+			polytype.Impl("CreditCard", CreditCard{}),
+			polytype.Impl("BankTransfer", BankTransfer{}),
+			polytype.Impl("DigitalWallet", (*DigitalWallet)(nil)),
 		)
 )

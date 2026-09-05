@@ -1,6 +1,6 @@
 ---
 title: Getting started
-description: Install go-gen-jsonschema, register a Go type, generate a schema, and validate JSON.
+description: Install polytype, register a Go type, generate a schema, and validate JSON.
 ---
 
 import { Aside } from '@astrojs/starlight/components';
@@ -8,7 +8,7 @@ import { Aside } from '@astrojs/starlight/components';
 ## Optional: teach your coding agent
 
 ```bash
-npx skills add tylergannon/go-gen-jsonschema
+npx skills add tylergannon/polytype
 ```
 
 The skill gives Codex, Claude Code, and other compatible agents the complete
@@ -16,13 +16,13 @@ setup, registration, validation, and CI workflow.
 
 ## 1. Add the pinned generator
 
-go-gen-jsonschema requires Go 1.27 or newer.
+polytype requires Go 1.27 or newer.
 
 The recommended installation uses Go's tool directive. It pins the generator in
 `go.mod`, so developers and CI run the same version:
 
 ```bash
-go get -tool github.com/tylergannon/go-gen-jsonschema/gen-jsonschema@latest
+go get -tool github.com/tylergannon/polytype/polytype@latest
 ```
 
 ## 2. Define the type and generation command
@@ -30,9 +30,9 @@ go get -tool github.com/tylergannon/go-gen-jsonschema/gen-jsonschema@latest
 ```go title="types.go"
 package contacts
 
-import jsonschema "github.com/tylergannon/go-gen-jsonschema"
+import "github.com/tylergannon/polytype"
 
-//go:generate go tool gen-jsonschema --validate
+//go:generate go tool polytype --validate
 
 // Person is a contact extracted from a document.
 type Person struct {
@@ -40,10 +40,10 @@ type Person struct {
     Name string `json:"name"`
 
     // Email address. Omit when the source does not provide one.
-    Email jsonschema.Optional[string] `json:"email,omitzero"`
+    Email polytype.Optional[string] `json:"email,omitzero"`
 
     // Required key; null means no phone number was supplied.
-    Phone jsonschema.Nullable[string] `json:"phone"`
+    Phone polytype.Nullable[string] `json:"phone"`
 }
 ```
 
@@ -55,7 +55,7 @@ produce the JSON.
 The CLI writes the stubs and can run generation immediately:
 
 ```bash
-go tool gen-jsonschema new \
+go tool polytype new \
   -out schema.go \
   -methods 'Person=Schema' \
   --validate \
@@ -74,7 +74,7 @@ capabilities. The tool and imported marker/runtime package come from the same Go
 module release. Add validation and the TypeScript destination to one directive:
 
 ```go
-//go:generate go tool gen-jsonschema --validate --typescript web/src/generated --typescript-barrel
+//go:generate go tool polytype --validate --typescript web/src/generated --typescript-barrel
 ```
 
 `--typescript-barrel` is optional. `.Interface` and `.StringerEnum`
@@ -90,7 +90,7 @@ The TypeScript files are structural declarations. They do not contain runtime
 decoders or validators. TypeScript code can use `JSON.parse` and
 `JSON.stringify`, but must validate untrusted runtime data itself. The broader
 executed Go/JavaScript transport proof remains tracked by
-[#71](https://github.com/tylergannon/go-gen-jsonschema/issues/71).
+[#71](https://github.com/tylergannon/polytype/issues/71).
 
 ## 5. Use the generated schema and Go boundary
 
@@ -119,7 +119,7 @@ including `.json.sum` files, and any requested generated TypeScript files.
 
 <Aside type="caution" title="Optionality comes from the field type">
   `omitempty` affects Go marshaling but does not make a generated schema property
-  optional. Use `jsonschema.Optional[T]` with `json:",omitzero"` when a property
+  optional. Use `polytype.Optional[T]` with `json:",omitzero"` when a property
   may be absent.
 </Aside>
 

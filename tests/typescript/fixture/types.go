@@ -1,7 +1,7 @@
 package consumer
 
 import (
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+	"github.com/tylergannon/polytype"
 	"time"
 )
 
@@ -59,29 +59,29 @@ type Omit struct {
 	Value int `json:"value"`
 }
 type Envelope struct {
-	Event        Event                        `json:"event"`
-	Other        Event                        `json:"other"`
-	Maybe        jsonschema.Optional[Event]   `json:"maybe,omitzero"`
-	Events       []Event                      `json:"events"`
-	Label        jsonschema.Optional[string]  `json:"label,omitzero"`
-	Detail       jsonschema.Nullable[*Detail] `json:"detail"`
-	Shared       Detail                       `json:"shared"`
-	Status       Status                       `json:"status"`
-	Priority     Priority                     `json:"priority"`
-	PriorityName Priority                     `json:"priority_name"`
-	When         time.Time                    `json:"when"`
-	Odd          string                       `json:"strange-key"`
-	Empty        Empty                        `json:"empty"`
+	Event        Event                      `json:"event"`
+	Other        Event                      `json:"other"`
+	Maybe        polytype.Optional[Event]   `json:"maybe,omitzero"`
+	Events       []Event                    `json:"events"`
+	Label        polytype.Optional[string]  `json:"label,omitzero"`
+	Detail       polytype.Nullable[*Detail] `json:"detail"`
+	Shared       Detail                     `json:"shared"`
+	Status       Status                     `json:"status"`
+	Priority     Priority                   `json:"priority"`
+	PriorityName Priority                   `json:"priority_name"`
+	When         time.Time                  `json:"when"`
+	Odd          string                     `json:"strange-key"`
+	Empty        Empty                      `json:"empty"`
 }
 
 type Composition struct {
-	A [][]int                       `json:"a"`
-	B []*Detail                     `json:"b"`
-	C jsonschema.Optional[[]Status] `json:"c,omitzero"`
-	D jsonschema.Nullable[Status]   `json:"d"`
-	E [2]string                     `json:"e"`
-	F *bool                         `json:"f"`
-	G []Envelope                    `json:"g"`
-	H Array                         `json:"h"`
-	I Omit                          `json:"i"`
+	A [][]int                     `json:"a"`
+	B []*Detail                   `json:"b"`
+	C polytype.Optional[[]Status] `json:"c,omitzero"`
+	D polytype.Nullable[Status]   `json:"d"`
+	E [2]string                   `json:"e"`
+	F *bool                       `json:"f"`
+	G []Envelope                  `json:"g"`
+	H Array                       `json:"h"`
+	I Omit                        `json:"i"`
 }

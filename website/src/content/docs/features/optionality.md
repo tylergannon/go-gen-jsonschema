@@ -8,14 +8,14 @@ Use the field type to express the JSON contract:
 | Go field | JSON contract |
 | --- | --- |
 | `T` | Property is required and must be non-null. |
-| `jsonschema.Optional[T]` | Property may be omitted and rejects JSON null. |
-| `jsonschema.Nullable[T]` | Property is required and accepts JSON null. |
+| `polytype.Optional[T]` | Property may be omitted and rejects JSON null. |
+| `polytype.Nullable[T]` | Property is required and accepts JSON null. |
 
 ```go
 type Contact struct {
     Name  string                      `json:"name"`
-    Email jsonschema.Optional[string] `json:"email,omitzero"`
-    Phone jsonschema.Nullable[string] `json:"phone"`
+    Email polytype.Optional[string] `json:"email,omitzero"`
+    Phone polytype.Nullable[string] `json:"phone"`
 }
 ```
 
@@ -68,14 +68,14 @@ const (
 )
 
 type Config struct {
-    Mode   jsonschema.Nullable[Mode]   `json:"mode"`
-    Shared jsonschema.Nullable[Shared] `json:"shared"`
+    Mode   polytype.Nullable[Mode]   `json:"mode"`
+    Shared polytype.Nullable[Shared] `json:"shared"`
 }
 
 var (
-    _ = jsonschema.Declare(Shared.Schema).Ref()
-    _ = jsonschema.Declare(Config.Schema)
-    _ = jsonschema.NewEnumType[Mode]()
+    _ = polytype.Declare(Shared.Schema).Ref()
+    _ = polytype.Declare(Config.Schema)
+    _ = polytype.NewEnumType[Mode]()
 )
 ```
 
@@ -92,7 +92,7 @@ registered with `.Ref()`. Wrappers must be complete, direct named field types.
 Aliases, defined wrappers, embedding, nesting, wrappers inside containers, and
 unsupported Nullable shapes are rejected during generation.
 
-See the compiling [`examples/optionality`](https://github.com/tylergannon/go-gen-jsonschema/tree/main/examples/optionality)
+See the compiling [`examples/optionality`](https://github.com/tylergannon/polytype/tree/main/examples/optionality)
 package for general wrapper coverage and
-[`examples/ref_types`](https://github.com/tylergannon/go-gen-jsonschema/tree/main/examples/ref_types)
+[`examples/ref_types`](https://github.com/tylergannon/polytype/tree/main/examples/ref_types)
 for nullable enum and `.Ref()` validation coverage.

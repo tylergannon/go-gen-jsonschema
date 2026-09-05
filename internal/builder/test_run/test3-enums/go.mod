@@ -1,8 +1,8 @@
-module github.com/tylergannon/go-gen-jsonschema/internal/builder/testfixtures/enums
+module github.com/tylergannon/polytype/internal/builder/testfixtures/enums
 
 go 1.27
 
-require github.com/tylergannon/go-gen-jsonschema v0.2.1
+require github.com/tylergannon/polytype v0.2.1
 
 require (
 	github.com/dave/dst v0.27.3 // indirect
@@ -12,4 +12,4 @@ require (
 	golang.org/x/tools v0.49.0 // indirect
 )
 
-replace github.com/tylergannon/go-gen-jsonschema => ../../../../
+replace github.com/tylergannon/polytype => ../../../../

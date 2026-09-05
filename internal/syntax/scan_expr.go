@@ -29,7 +29,7 @@ type (
 	MarkerFunctionCall struct {
 		CallExpr CallExpr
 		// fluentLinks holds the chained method calls (e.g. .Accessor(...),
-		// .Enum(...)) found on top of a jsonschema.Declare(...) marker call,
+		// .Enum(...)) found on top of a polytype.Declare(...) marker call,
 		// innermost (leftmost in source) first. Empty for every other marker
 		// function and for a bare Declare(fn) call with no chained options.
 		fluentLinks []fluentChainLink
@@ -97,7 +97,7 @@ func ParseValueExprForMarkerFunctionCall(e ValueSpec) []MarkerFunctionCall {
 
 		// callExpr's Fun didn't resolve directly (e.g. Fun.X is itself a
 		// CallExpr). That's exactly the shape of a chained fluent
-		// jsonschema.Declare(...).A(...).B(...) registration; walk it down
+		// polytype.Declare(...).A(...).B(...) registration; walk it down
 		// to see whether it bottoms out at a Declare(...) marker call.
 		if base, links, ok := parseFluentChain(callExpr); ok {
 			results = append(results, MarkerFunctionCall{

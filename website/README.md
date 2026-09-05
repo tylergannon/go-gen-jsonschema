@@ -1,6 +1,6 @@
 # Documentation website
 
-The public Starlight site for `go-gen-jsonschema`.
+The public Starlight site for `polytype`.
 
 ```bash
 npm ci

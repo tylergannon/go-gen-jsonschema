@@ -16,12 +16,12 @@ export default defineConfig({
 	},
 	integrations: [
 		starlight({
-				title: 'go-gen-jsonschema',
+				title: 'polytype',
 				description: 'Generate deterministic, LLM-ready JSON Schema from Go types.',
 				logo: { src: './src/assets/gopher-front.svg', replacesTitle: true },
 				favicon: '/favicon.svg',
 				social: [
-					{ icon: 'github', label: 'GitHub', href: 'https://github.com/tylergannon/go-gen-jsonschema' },
+					{ icon: 'github', label: 'GitHub', href: 'https://github.com/tylergannon/polytype' },
 				],
 				customCss: [
 					'./src/styles/custom.css'

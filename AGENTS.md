@@ -31,7 +31,7 @@ protocol in `/Users/tyler/.agents/skills/session-worklog/SKILL.md`.
 
 ## Project Overview
 
-go-gen-jsonschema is a Go code generator that creates JSON Schema definitions from Go types, optimized for LLM function calling (OpenAI, Anthropic). It uses `//go:build jsonschema` build tags to separate schema registration from production code.
+polytype is a Go code generator that creates JSON Schema definitions from Go types, optimized for LLM function calling (OpenAI, Anthropic). It uses `//go:build jsonschema` build tags to separate schema registration from production code.
 
 ## Commands
 
@@ -46,7 +46,7 @@ go test ./... -run 'TestName'
 just lint
 
 # Build the CLI
-go build ./gen-jsonschema
+go build ./polytype
 
 # Generate schemas for an example
 cd examples/basictypes && go generate ./...
@@ -63,12 +63,13 @@ Task runner is `just` (justfile), not `make`.
 
 ### Package Layout
 
-- **`gen-jsonschema/`** — CLI entry point with `gen` and `new` subcommands
+- **`polytype/`** — CLI entry point with `gen` and `new` subcommands
 - **`internal/syntax/`** — AST parsing, package loading (uses `golang.org/x/tools/go/packages` with `jsonschema` build tag), type scanning, comment extraction
 - **`internal/builder/`** — Schema generation engine. `SchemaBuilder` orchestrates: type scanning → schema node construction → JSON output → Go code generation
 - **`internal/builder/model.go`** — Schema node types: `ObjectNode`, `PropertyNode`, `ArrayNode`, `UnionTypeNode`, `RefNode`, `TemplateHoleNode`
 - **`internal/common/`** — Struct tag parsing, helpers
-- **Root package** — Public types: `JSONSchema`, `ObjectSchema`, `ParentSchema`, and marker registration functions
+- **Root package (`polytype`)** — Declaration/registration API (`Declare`, `.Interface`, `.Enum`, `Discriminator`, `Impl`, ...) and runtime codec types (`Optional[T]`, `Nullable[T]`)
+- **`jsonschema/`** — Hand-rolled JSON Schema construction helpers (`JSONSchema`, `ObjectSchema`, `ParentSchema`, `StringSchema`, `ArraySchema`, `ConstSchema`, `EnumSchema`, ...) for writing provider functions
 
 ### Registration System
 
@@ -87,7 +88,7 @@ Schema types are registered via no-op marker functions in build-tagged `schema.g
 - **Build tags**: `//go:build jsonschema` for registration code, `//go:build !jsonschema` for generated code
 - **Discriminators**: Default `"type"`, overridable per-field with `Discriminator(name)` inside `.Interface(...)`
 - **Comments → descriptions**: Go doc comments automatically become JSON Schema `description` fields
-- **Optional fields**: `jsonschema.Optional[T]` with `json:",omitzero"` (not `omitempty`, which only affects Go marshaling)
+- **Optional fields**: `polytype.Optional[T]` with `json:",omitzero"` (not `omitempty`, which only affects Go marshaling)
 
 ### Validation
 

@@ -1,6 +1,6 @@
-# go-gen-jsonschema Examples
+# polytype Examples
 
-This directory contains comprehensive examples demonstrating all features of go-gen-jsonschema. Each subdirectory showcases different capabilities of the tool.
+This directory contains comprehensive examples demonstrating all features of polytype. Each subdirectory showcases different capabilities of the tool.
 
 ## Quick Start
 
@@ -125,7 +125,7 @@ Various configuration options and edge cases.
 func (MyType) Schema() json.RawMessage { 
     panic("not implemented") 
 }
-var _ = jsonschema.Declare(MyType.Schema)
+var _ = polytype.Declare(MyType.Schema)
 ```
 
 ### Enum Registration
@@ -138,7 +138,7 @@ const (
 type Task struct{ Status Status }
 func (Task) Schema() json.RawMessage { panic("not implemented") }
 
-var _ = jsonschema.Declare(Task.Schema).Enum(Task{}.Status)
+var _ = polytype.Declare(Task.Schema).Enum(Task{}.Status)
 ```
 
 ### Interface/Union Type Registration
@@ -149,13 +149,13 @@ type Rectangle struct{ /* fields */ }
 type Owner struct{ Shape Shape }
 func (Owner) Schema() json.RawMessage { panic("not implemented") }
 
-var _ = jsonschema.Declare(Owner.Schema).
-    Interface(Owner{}.Shape, jsonschema.Impl("circle", Circle{}), jsonschema.Impl("rectangle", Rectangle{}))
+var _ = polytype.Declare(Owner.Schema).
+    Interface(Owner{}.Shape, polytype.Impl("circle", Circle{}), polytype.Impl("rectangle", Rectangle{}))
 ```
 
 ### Provider-Based Schema Generation
 ```go
-var _ = jsonschema.Declare(Example.Schema).
+var _ = polytype.Declare(Example.Schema).
     Accessor(Example{}.A, (Example).ASchema).
     Method(Example{}.B, (Example).BSchema).
     Function(Example{}.C, BoolSchema).

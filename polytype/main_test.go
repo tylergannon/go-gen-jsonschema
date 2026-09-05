@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tylergannon/go-gen-jsonschema/internal/builder"
-	"github.com/tylergannon/go-gen-jsonschema/internal/testutils"
+	"github.com/tylergannon/polytype/internal/builder"
+	"github.com/tylergannon/polytype/internal/testutils"
 )
 
 func TestGenTypeScriptFlags(t *testing.T) {
@@ -82,12 +82,12 @@ func TestNewConfigUsesFluentDeclareForm(t *testing.T) {
 	require.NoError(t, err)
 
 	source := string(formatted)
-	require.Contains(t, source, "jsonschema.Declare(Example.Schema)")
+	require.Contains(t, source, "polytype.Declare(Example.Schema)")
 	require.NotContains(t, source, "NewJSONSchemaMethod")
 }
 
 // TestGenCommandRejectsInvalidFluentFieldAssociationWithSourcePosition runs
-// the actual gen-jsonschema binary (not an in-process builder.Run call)
+// the actual polytype binary (not an in-process builder.Run call)
 // against the checked-in fluent_field_mismatch scanner fixture
 // (internal/syntax/testfixtures/fluent_field_mismatch), whose .Enum(...)
 // chain link names a field on a type other than its Declare(...) root. This
@@ -101,7 +101,7 @@ func TestGenCommandRejectsInvalidFluentFieldAssociationWithSourcePosition(t *tes
 	exitCode, _, stderr, err := testutils.RunCommand("go", cwd, "run", ".", "-target", "../internal/syntax/testfixtures/fluent_field_mismatch")
 	require.NoError(t, err)
 	require.NotEqual(t, 0, exitCode, "stderr:\n%s", stderr)
-	require.Contains(t, stderr, "jsonschema.Declare: .Enum expects a field selector on Owner{}")
+	require.Contains(t, stderr, "polytype.Declare: .Enum expects a field selector on Owner{}")
 	require.Contains(t, stderr, "fluent_field_mismatch/fixture.go")
 }
 

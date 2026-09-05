@@ -12,11 +12,11 @@ Two viable strategies — pick one, don't mix them in the same hook:
   anything, and the author reruns `go generate` themselves. Nothing mutates
   the commit behind the author's back; pairs exactly with the CI check.
 
-The tool supports the strict mode natively: `gen-jsonschema gen -no-changes`
+The tool supports the strict mode natively: `polytype gen -no-changes`
 (or env `JSONSCHEMA_NO_CHANGES=1`) fails — writing nothing — when regeneration
 would change any schema or requested TypeScript artifact. The env var form is
 the one to use in hooks, because
-it flows through `go generate` to every `//go:generate go tool gen-jsonschema`
+it flows through `go generate` to every `//go:generate go tool polytype`
 directive without editing them. Generated Go output can still update when those
 artifacts are unchanged, so pair the command with a clean status check.
 
@@ -31,7 +31,7 @@ Install once: `go get -tool github.com/evilmartians/lefthook@latest && go tool l
 # lefthook.yml
 pre-commit:
   commands:
-    gen-jsonschema:
+    polytype:
       glob: "*.go"          # skip the hook entirely when no Go files are staged
       run: |
         go generate ./...
@@ -57,7 +57,7 @@ Notes:
 # lefthook.yml
 pre-commit:
   commands:
-    gen-jsonschema-check:
+    polytype-check:
       glob: "*.go"
       run: JSONSCHEMA_NO_CHANGES=1 go generate ./... && test -z "$(git status --porcelain)"
 ```

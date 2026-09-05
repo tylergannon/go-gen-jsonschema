@@ -3,9 +3,9 @@
 // registered schema references it, instead of being inlined.
 package ref_types
 
-import jsonschema "github.com/tylergannon/go-gen-jsonschema"
+import "github.com/tylergannon/polytype"
 
-//go:generate go run ../../gen-jsonschema/ --pretty --validate
+//go:generate go run ../../polytype/ --pretty --validate
 
 // Shared is registered with Ref(). Wherever another registered schema
 // references it, it appears as a "$ref" into that schema's "$defs" instead
@@ -32,6 +32,6 @@ const (
 // NullableConfig exercises the two nullable shapes that retain reusable
 // contracts without widening Nullable support to arbitrary schema nodes.
 type NullableConfig struct {
-	Mode   jsonschema.Nullable[Mode]   `json:"mode"`
-	Shared jsonschema.Nullable[Shared] `json:"shared"`
+	Mode   polytype.Nullable[Mode]   `json:"mode"`
+	Shared polytype.Nullable[Shared] `json:"shared"`
 }

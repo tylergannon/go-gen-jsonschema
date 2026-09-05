@@ -5,9 +5,9 @@ package defined_wrapper
 import (
 	"encoding/json"
 
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+	"github.com/tylergannon/polytype"
 )
 
 func (Config) Schema() json.RawMessage { panic("not implemented") }
 
-var _ = jsonschema.NewJSONSchemaMethod(Config.Schema)
+var _ = polytype.NewJSONSchemaMethod(Config.Schema)

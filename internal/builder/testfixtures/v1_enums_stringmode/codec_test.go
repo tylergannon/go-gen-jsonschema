@@ -6,16 +6,16 @@ import (
 	"strings"
 	"testing"
 
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
-	"github.com/tylergannon/go-gen-jsonschema/internal/builder/testfixtures/v1_enums_stringmode/palette"
+	"github.com/tylergannon/polytype"
+	"github.com/tylergannon/polytype/internal/builder/testfixtures/v1_enums_stringmode/palette"
 )
 
 func TestStringModeEnumRoundTripAndFieldModes(t *testing.T) {
 	colorStringCalls = 0
 	want := Paint{
 		C:        ColorGreen,
-		Optional: jsonschema.Optional[Color]{Present: true, Value: ColorBlue},
-		Nullable: jsonschema.Nullable[Color]{Present: true, Value: ColorRed},
+		Optional: polytype.Optional[Color]{Present: true, Value: ColorBlue},
+		Nullable: polytype.Nullable[Color]{Present: true, Value: ColorRed},
 		Numeric:  ColorGreen,
 		Finish:   FinishReady,
 		Remote:   palette.LevelHigh,
@@ -59,7 +59,7 @@ func TestStringModeEnumRoundTripAndFieldModes(t *testing.T) {
 }
 
 func TestStringModeEnumWrappersAndErrors(t *testing.T) {
-	value := Paint{C: ColorRed, Nullable: jsonschema.Nullable[Color]{}, Numeric: ColorBlue, Finish: FinishDone, Remote: palette.LevelLow}
+	value := Paint{C: ColorRed, Nullable: polytype.Nullable[Color]{}, Numeric: ColorBlue, Finish: FinishDone, Remote: palette.LevelLow}
 	data, err := json.Marshal(value)
 	if err != nil {
 		t.Fatal(err)
@@ -104,8 +104,8 @@ func TestStringModeEnumWrappersAndErrors(t *testing.T) {
 
 	declaredZero := Paint{
 		C:        ColorZero,
-		Optional: jsonschema.Optional[Color]{Present: true, Value: ColorZero},
-		Nullable: jsonschema.Nullable[Color]{Present: true, Value: ColorZero},
+		Optional: polytype.Optional[Color]{Present: true, Value: ColorZero},
+		Nullable: polytype.Nullable[Color]{Present: true, Value: ColorZero},
 		Numeric:  ColorZero,
 		Finish:   FinishDone,
 		Remote:   palette.LevelLow,

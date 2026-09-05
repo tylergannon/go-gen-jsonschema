@@ -5,13 +5,13 @@ package nullable_provider
 import (
 	"encoding/json"
 
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+	"github.com/tylergannon/polytype"
 )
 
 func (Config) Schema() json.RawMessage { panic("not implemented") }
 
-var _ = jsonschema.NewJSONSchemaMethod(
+var _ = polytype.NewJSONSchemaMethod(
 	Config.Schema,
-	jsonschema.WithFunction(Config{}.Value, ValueSchema),
-	jsonschema.WithRenderProviders(),
+	polytype.WithFunction(Config{}.Value, ValueSchema),
+	polytype.WithRenderProviders(),
 )

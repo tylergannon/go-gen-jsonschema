@@ -5,7 +5,7 @@ package structs
 import (
 	"encoding/json"
 
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+	"github.com/tylergannon/polytype"
 )
 
 // Schema method for Address.
@@ -41,20 +41,20 @@ func (Department) Schema() json.RawMessage {
 // These marker variables register the types with the jsonschema generator.
 var (
 	// Register Address for schema generation
-	_ = jsonschema.Declare(Address.Schema)
+	_ = polytype.Declare(Address.Schema)
 
 	// Register ContactInfo for schema generation
-	_ = jsonschema.Declare(ContactInfo.Schema)
+	_ = polytype.Declare(ContactInfo.Schema)
 
 	// Register RetryPolicy for schema generation
-	_ = jsonschema.Declare(RetryPolicy.Schema)
+	_ = polytype.Declare(RetryPolicy.Schema)
 
 	// Register Person for schema generation
-	_ = jsonschema.Declare(Person.Schema)
+	_ = polytype.Declare(Person.Schema)
 
 	// Register Organization for schema generation
-	_ = jsonschema.Declare(Organization.Schema)
+	_ = polytype.Declare(Organization.Schema)
 
 	// Register Department for schema generation
-	_ = jsonschema.Declare(Department.Schema)
+	_ = polytype.Declare(Department.Schema)
 )

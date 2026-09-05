@@ -3,7 +3,7 @@ package v1_interfaces_options
 import (
 	"encoding/json"
 
-	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+	"github.com/tylergannon/polytype"
 	yaml "go.yaml.in/yaml/v4"
 )
 
@@ -55,9 +55,9 @@ type Plain struct {
 }
 
 type Owner struct {
-	IF         IFace                       `json:"if" yaml:"yaml_if"`
-	IFaces     []IFace                     `json:"ifs" yaml:"yaml_ifs"`
-	OptionalIF jsonschema.Optional[IFace]  `json:"optional_if,omitzero" yaml:"yaml_optional"`
-	Label      jsonschema.Optional[string] `json:"label,omitzero" yaml:"label"`
-	Timeout    jsonschema.Nullable[int]    `json:"timeout" yaml:"timeout"`
+	IF         IFace                     `json:"if" yaml:"yaml_if"`
+	IFaces     []IFace                   `json:"ifs" yaml:"yaml_ifs"`
+	OptionalIF polytype.Optional[IFace]  `json:"optional_if,omitzero" yaml:"yaml_optional"`
+	Label      polytype.Optional[string] `json:"label,omitzero" yaml:"label"`
+	Timeout    polytype.Nullable[int]    `json:"timeout" yaml:"timeout"`
 }
