@@ -5,7 +5,7 @@ description: Generate JSON Schema enum values from Go constants.
 
 ## String constants
 
-Register the containing schema with `WithEnum` for each enum field. Values are
+Register the containing schema with `.Enum` for each enum field. Values are
 discovered from typed constants in the same package.
 
 ```go
@@ -20,18 +20,16 @@ type Task struct {
     Status Status `json:"status"`
 }
 
-var _ = jsonschema.NewJSONSchemaMethod(
-    Task.Schema,
-    jsonschema.WithEnum(Task{}.Status),
-)
+var _ = jsonschema.Declare(Task.Schema).
+    Enum(Task{}.Status)
 ```
 
 ## Integer and iota constants
 
 Choose the wire representation for an integer-backed enum:
 
-- `WithEnum` emits raw numeric constant values.
-- `WithStringerEnum` emits constant names such as `LogDebug` and `LogInfo` as
+- `.Enum` emits raw numeric constant values.
+- `.StringerEnum` emits constant names such as `LogDebug` and `LogInfo` as
   strings. It does not emit the return values of `String()`.
 
 ```go
@@ -47,14 +45,12 @@ type Config struct {
     LogLevel LogLevel `json:"logLevel"`
 }
 
-var _ = jsonschema.NewJSONSchemaMethod(
-    Config.Schema,
-    jsonschema.WithStringerEnum(Config{}.LogLevel),
-)
+var _ = jsonschema.Declare(Config.Schema).
+    StringerEnum(Config{}.LogLevel)
 ```
 
-Use `jsonschema.WithEnum(Config{}.LogLevel)` instead when the JSON contract
-should contain numeric values.
+Use `.Enum(Config{}.LogLevel)` instead when the JSON contract should contain
+numeric values.
 
 ## Encode and decode string mode
 
@@ -62,7 +58,7 @@ Generation adds one value `MarshalJSON` and pointer `UnmarshalJSON` to the
 containing owner. These methods compose string-mode enum fields with any union
 fields. They use constant identifiers, so `LogInfo` becomes `"LogInfo"` even
 when a `String()` method returns different text. No global codec is added to
-the enum type; another field registered with `WithEnum` remains numeric.
+the enum type; another field registered with `.Enum` remains numeric.
 
 Supported adapted fields are direct integer-backed `E`, `Optional[E]`, and
 `Nullable[E]`. Optional absence is omitted; Nullable null remains null. Present
@@ -82,9 +78,19 @@ In the example below, `ApplicationConfig` uses string mode while `Task`
 intentionally uses numeric mode for the same enum types. Renaming constants
 changes the string-mode wire contract and requires compatibility review.
 
-The older package-level `NewEnumType[T]()` registration remains supported for
-string enums, but field-level options make the containing schema's behavior
-explicit and are preferred for new code.
+Migration: `NewJSONSchemaMethod(Task.Schema, WithEnum(Task{}.Status))` is now
+`Declare(Task.Schema).Enum(Task{}.Status)`. The legacy `NewJSONSchemaMethod`/
+`NewJSONSchemaFunc` with `WithEnum`/`WithStringerEnum`, and the older
+package-level `NewEnumType[T]()`, remain supported and source-compatible;
+each carries a `Deprecated:` godoc comment naming its fluent equivalent.
+
+Field-level `.Enum`/`.StringerEnum` is not a full replacement for
+`NewEnumType[T]()` when the enum type is shared across more than one struct
+field: only a direct named enum, `Optional[E]`, or `Nullable[E]` field is
+supported at the field level, and marking only some occurrences of a shared
+enum type silently degrades the ones left unmarked (they lose their
+constraint and their shared TypeScript type). Keep a shared enum type on the
+package-level `NewEnumType[T]()` form; it has no fluent replacement.
 
 See the compiling [`examples/stringer_enums`](https://github.com/tylergannon/go-gen-jsonschema/tree/main/examples/stringer_enums)
 package for a complete example.

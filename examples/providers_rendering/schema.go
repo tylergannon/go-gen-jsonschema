@@ -10,10 +10,9 @@ import (
 
 func (Example) Schema() json.RawMessage { panic("not implemented") }
 
-var _ = jsonschema.NewJSONSchemaMethod(
-	Example.Schema,
-	jsonschema.WithStructAccessorMethod(Example{}.A, (Example).ASchema),
-	jsonschema.WithStructFunctionMethod(Example{}.B, (Example).BSchema),
-	jsonschema.WithFunction(Example{}.C, BoolSchema),
-	jsonschema.WithRenderProviders(), // v1: generate RenderedSchema() that executes providers
-)
+// v1: RenderProviders() generates RenderedSchema() that executes providers.
+var _ = jsonschema.Declare(Example.Schema).
+	Accessor(Example{}.A, (Example).ASchema).
+	Method(Example{}.B, (Example).BSchema).
+	Function(Example{}.C, BoolSchema).
+	RenderProviders()

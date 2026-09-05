@@ -97,9 +97,9 @@ Template-based schema generation with runtime providers.
 - Field-level schema providers
 - Runtime template rendering
 - Three provider types:
-  - `WithStructAccessorMethod` - No-arg struct method
-  - `WithStructFunctionMethod` - Struct method with field arg  
-  - `WithFunction` - Free function provider
+  - `.Accessor` - No-arg struct method
+  - `.Method` - Struct method with field arg
+  - `.Function` - Free function provider
 
 #### `template_rendering/`
 Basic template rendering example.
@@ -125,7 +125,7 @@ Various configuration options and edge cases.
 func (MyType) Schema() json.RawMessage { 
     panic("not implemented") 
 }
-var _ = jsonschema.NewJSONSchemaMethod(MyType.Schema)
+var _ = jsonschema.Declare(MyType.Schema)
 ```
 
 ### Enum Registration
@@ -135,7 +135,10 @@ const (
     StatusPending Status = "pending"
     StatusActive  Status = "active"
 )
-var _ = jsonschema.NewEnumType[Status]()
+type Task struct{ Status Status }
+func (Task) Schema() json.RawMessage { panic("not implemented") }
+
+var _ = jsonschema.Declare(Task.Schema).Enum(Task{}.Status)
 ```
 
 ### Interface/Union Type Registration
@@ -143,22 +146,20 @@ var _ = jsonschema.NewEnumType[Status]()
 type Shape interface{ /* methods */ }
 type Circle struct{ /* fields */ }
 type Rectangle struct{ /* fields */ }
+type Owner struct{ Shape Shape }
+func (Owner) Schema() json.RawMessage { panic("not implemented") }
 
-var _ = jsonschema.NewInterfaceImpl[Shape](
-    Circle{},
-    Rectangle{},
-)
+var _ = jsonschema.Declare(Owner.Schema).
+    Interface(Owner{}.Shape, jsonschema.Impl("circle", Circle{}), jsonschema.Impl("rectangle", Rectangle{}))
 ```
 
 ### Provider-Based Schema Generation
 ```go
-var _ = jsonschema.NewJSONSchemaMethod(
-    Example.Schema,
-    jsonschema.WithStructAccessorMethod(Example{}.A, (Example).ASchema),
-    jsonschema.WithStructFunctionMethod(Example{}.B, (Example).BSchema),
-    jsonschema.WithFunction(Example{}.C, BoolSchema),
-    jsonschema.WithRenderProviders(),
-)
+var _ = jsonschema.Declare(Example.Schema).
+    Accessor(Example{}.A, (Example).ASchema).
+    Method(Example{}.B, (Example).BSchema).
+    Function(Example{}.C, BoolSchema).
+    RenderProviders()
 ```
 
 ## Running All Examples

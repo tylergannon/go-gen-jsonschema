@@ -1,0 +1,1 @@
+2026/09/05 07:43:49 jsonschema.Declare: .Enum expects a field selector on Owner{} at /Users/tyler/src/.worktrees/go-gen-jsonschema-issue-73/internal/syntax/testfixtures/fluent_field_mismatch/fixture.go:28:9

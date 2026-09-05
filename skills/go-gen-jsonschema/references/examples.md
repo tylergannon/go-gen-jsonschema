@@ -31,12 +31,8 @@ type Config struct {
 Source: [`examples/optionality/schema.go`](../../../examples/optionality/schema.go)
 
 ```go
-var _ = jsonschema.NewJSONSchemaMethod(
-	Config.Schema,
-	jsonschema.WithInterface(Config{}.Pet),
-	jsonschema.WithInterfaceImpls(Config{}.Pet, Dog{}, Cat{}),
-	jsonschema.WithDiscriminator(Config{}.Pet, "!kind"),
-)
+var _ = jsonschema.Declare(Config.Schema).
+	Interface(Config{}.Pet, jsonschema.Discriminator("!kind"), jsonschema.Impl("Dog", Dog{}), jsonschema.Impl("Cat", Cat{}))
 ```
 
 ## Enums
@@ -82,7 +78,7 @@ func (l LogLevel) String() string {
 }
 
 // ApplicationConfig demonstrates using Stringer enums in a struct.
-// WithStringerEnum emits the constant names rather than their integer values.
+// StringerEnum emits the constant names rather than their integer values.
 type ApplicationConfig struct {
 	// AppName is the name of the application
 	AppName string `json:"app_name"`
@@ -101,11 +97,47 @@ type ApplicationConfig struct {
 Source: [`examples/stringer_enums/schema.go`](../../../examples/stringer_enums/schema.go)
 
 ```go
-var _ = jsonschema.NewJSONSchemaMethod(
-	ApplicationConfig.Schema,
-	jsonschema.WithStringerEnum(ApplicationConfig{}.LogLevel),
-	jsonschema.WithStringerEnum(ApplicationConfig{}.DefaultPriority),
-)
+var _ = jsonschema.Declare(ApplicationConfig.Schema).
+	StringerEnum(ApplicationConfig{}.LogLevel).
+	StringerEnum(ApplicationConfig{}.DefaultPriority)
+```
+
+## Provider-rendered fields
+
+Use provider options when a field's schema must be supplied at runtime instead of derived statically.
+
+Source: [`examples/providers_rendering/types.go`](../../../examples/providers_rendering/types.go)
+
+```go
+type Example struct {
+	A string `json:"a"`
+	B int    `json:"b"`
+	C bool   `json:"c"`
+}
+
+// Provider implementations must be available in normal builds for RenderedSchema.
+func (Example) ASchema() json.Marshaler {
+	return json.RawMessage(`{"type":"string"}`)
+}
+
+func (Example) BSchema(_ int) json.Marshaler {
+	return json.RawMessage(`{"type":"integer"}`)
+}
+
+func BoolSchema(_ bool) json.Marshaler {
+	return json.RawMessage(`{"type":"boolean"}`)
+}
+```
+
+Source: [`examples/providers_rendering/schema.go`](../../../examples/providers_rendering/schema.go)
+
+```go
+// v1: RenderProviders() generates RenderedSchema() that executes providers.
+var _ = jsonschema.Declare(Example.Schema).
+	Accessor(Example{}.A, (Example).ASchema).
+	Method(Example{}.B, (Example).BSchema).
+	Function(Example{}.C, BoolSchema).
+	RenderProviders()
 ```
 
 ## Interfaces and discriminators
@@ -138,15 +170,13 @@ Source: [`examples/interfaces_options/schema.go`](../../../examples/interfaces_o
 
 ```go
 // v1 interface options example
-var _ = jsonschema.NewJSONSchemaMethod(
-	Owner.Schema,
-	jsonschema.WithInterface(
+var _ = jsonschema.Declare(Owner.Schema).
+	Interface(
 		Owner{}.IF,
 		jsonschema.Discriminator("!kind"),
 		jsonschema.Impl("impl_one", Impl1{}),
 		jsonschema.Impl("impl_two", Impl2{}),
-	),
-)
+	)
 ```
 
 ## Slices of interface unions
@@ -188,22 +218,23 @@ Source: [`examples/sealed_interface_slices/schema.go`](../../../examples/sealed_
 ```go
 // The field selector still identifies the complete slice field; the generator
 // derives the registered interface from its element type.
-var _ = jsonschema.NewJSONSchemaMethod(
-	Batch.Schema,
-	jsonschema.WithInterface(Batch{}.Events),
-	jsonschema.WithInterfaceImpls(Batch{}.Events, Created{}, (*Deleted)(nil)),
-	jsonschema.WithDiscriminator(Batch{}.Events, "!kind"),
-)
+var _ = jsonschema.Declare(Batch.Schema).
+	Interface(
+		Batch{}.Events,
+		jsonschema.Discriminator("!kind"),
+		jsonschema.Impl("Created", Created{}),
+		jsonschema.Impl("Deleted", (*Deleted)(nil)),
+	)
 ```
 
 ## Shared $defs and nullable references
 
-Use AsRef() on a type's own registration when it should be rendered once into $defs. Nullable can wrap that referenced struct or a registered enum while keeping the containing property required.
+Use Ref() on a type's own registration when it should be rendered once into $defs. Nullable can wrap that referenced struct or a registered enum while keeping the containing property required.
 
 Source: [`examples/ref_types/types.go`](../../../examples/ref_types/types.go)
 
 ```go
-// Shared is registered with AsRef(). Wherever another registered schema
+// Shared is registered with Ref(). Wherever another registered schema
 // references it, it appears as a "$ref" into that schema's "$defs" instead
 // of being inlined.
 type Shared struct {
@@ -236,14 +267,14 @@ type NullableConfig struct {
 Source: [`examples/ref_types/schema.go`](../../../examples/ref_types/schema.go)
 
 ```go
-// Shared is registered as its own top-level schema and, via AsRef(), as a
+// Shared is registered as its own top-level schema and, via Ref(), as a
 // definition referenced from other schemas instead of being inlined there.
-var _ = jsonschema.NewJSONSchemaMethod(Shared.Schema, jsonschema.AsRef())
+var _ = jsonschema.Declare(Shared.Schema).Ref()
 
-var _ = jsonschema.NewJSONSchemaMethod(Container.Schema)
+var _ = jsonschema.Declare(Container.Schema)
 
 var (
-	_ = jsonschema.NewJSONSchemaMethod(NullableConfig.Schema)
+	_ = jsonschema.Declare(NullableConfig.Schema)
 	_ = jsonschema.NewEnumType[Mode]()
 )
 ```

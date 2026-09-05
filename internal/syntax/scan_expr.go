@@ -17,6 +17,7 @@ const (
 	MarkerFuncNewJSONSchemaFunc    = "NewJSONSchemaFunc"    // NewJSONSchemaFunc
 	MarkerFuncNewInterfaceImpl     = "NewInterfaceImpl"     // NewInterfaceImpl
 	MarkerFuncNewEnumType          = "NewEnumType"          // NewEnumType
+	MarkerFuncDeclare              = "Declare"              // Declare (v1 fluent entrypoint)
 )
 
 // TypeID is our structured representation of a type. It can represent named types,
@@ -27,6 +28,11 @@ type (
 	// in the scanned source code.
 	MarkerFunctionCall struct {
 		CallExpr CallExpr
+		// fluentLinks holds the chained method calls (e.g. .Accessor(...),
+		// .Enum(...)) found on top of a jsonschema.Declare(...) marker call,
+		// innermost (leftmost in source) first. Empty for every other marker
+		// function and for a bare Declare(fn) call with no chained options.
+		fluentLinks []fluentChainLink
 	}
 )
 
@@ -63,6 +69,7 @@ var markerFunctions = []string{
 	MarkerFuncNewJSONSchemaFunc,
 	MarkerFuncNewInterfaceImpl,
 	MarkerFuncNewEnumType,
+	MarkerFuncDeclare,
 }
 
 func ParseValueExprForMarkerFunctionCall(e ValueSpec) []MarkerFunctionCall {
@@ -74,15 +81,30 @@ func ParseValueExprForMarkerFunctionCall(e ValueSpec) []MarkerFunctionCall {
 		}
 		callExpr := NewCallExpr(ce, e.pkg, e.file)
 
-		if id, ok := callExpr.IdentifyFunc(); !ok || id.PkgPath != SchemaPackagePath {
-			continue
-		} else if !slices.Contains(markerFunctions, id.TypeName) {
-			fmt.Println("Unsupported MarkerFunction", id.TypeName)
+		if id, ok := callExpr.IdentifyFunc(); ok {
+			if id.PkgPath != SchemaPackagePath {
+				continue
+			}
+			if !slices.Contains(markerFunctions, id.TypeName) {
+				fmt.Println("Unsupported MarkerFunction", id.TypeName)
+				continue
+			}
+			results = append(results, MarkerFunctionCall{
+				CallExpr: callExpr,
+			})
 			continue
 		}
-		results = append(results, MarkerFunctionCall{
-			CallExpr: callExpr,
-		})
+
+		// callExpr's Fun didn't resolve directly (e.g. Fun.X is itself a
+		// CallExpr). That's exactly the shape of a chained fluent
+		// jsonschema.Declare(...).A(...).B(...) registration; walk it down
+		// to see whether it bottoms out at a Declare(...) marker call.
+		if base, links, ok := parseFluentChain(callExpr); ok {
+			results = append(results, MarkerFunctionCall{
+				CallExpr:    base,
+				fluentLinks: links,
+			})
+		}
 	}
 	return results
 }
@@ -348,78 +370,20 @@ func parseSchemaMethodOptions(args []Expr, receiver TypeID, m MarkerFunctionCall
 			continue
 		}
 		// First arg: exampleStruct{}.FieldX
-		fieldSel, ok := ce.Args[0].(*dst.SelectorExpr)
-
+		fieldName, ok := fieldNameForReceiver(ce.Args[0], receiver)
 		if !ok {
 			continue
 		}
-		lit, ok := fieldSel.X.(*dst.CompositeLit)
-		if !ok {
-			continue
-		}
-		recvIdent, ok := lit.Type.(*dst.Ident)
-		if !ok || recvIdent.Name != receiver.TypeName {
-			continue
-		}
-		fieldName := fieldSel.Sel.Name
 		if funID.TypeName == "WithInterface" {
 			out = append(out, SchemaMethodOptionInfo{
 				Kind:      SchemaMethodOptionKind("WithInterface"),
 				FieldName: fieldName,
 			})
-			for _, nestedExpr := range ce.Args[1:] {
-				nested, ok := nestedExpr.(*dst.CallExpr)
-				if !ok {
-					return nil, fmt.Errorf("invalid interface option at %s: expected Discriminator(...) or Impl(...)", a.Position())
-				}
-				nestedID := parseFuncFromExpr(a.NewExpr(nested.Fun))
-				if nestedID.PkgPath != SchemaPackagePath {
-					return nil, fmt.Errorf("invalid interface option %s at %s", nestedID.TypeName, a.Position())
-				}
-				switch nestedID.TypeName {
-				case "Discriminator":
-					if len(nested.Args) != 1 {
-						return nil, fmt.Errorf("discriminator expects one string at %s", a.Position())
-					}
-					valueLit, ok := nested.Args[0].(*dst.BasicLit)
-					if !ok || valueLit.Kind != token.STRING {
-						return nil, fmt.Errorf("discriminator expects a string literal at %s", a.Position())
-					}
-					value, err := strconv.Unquote(valueLit.Value)
-					if err != nil {
-						return nil, fmt.Errorf("invalid discriminator property at %s: %w", a.Position(), err)
-					}
-					out = append(out, SchemaMethodOptionInfo{
-						Kind:          SchemaMethodOptionKind("WithDiscriminator"),
-						FieldName:     fieldName,
-						Discriminator: value,
-					})
-				case "Impl":
-					if len(nested.Args) != 2 {
-						return nil, fmt.Errorf("impl expects a wire value and implementation at %s", a.Position())
-					}
-					valueLit, ok := nested.Args[0].(*dst.BasicLit)
-					if !ok || valueLit.Kind != token.STRING {
-						return nil, fmt.Errorf("impl expects a string literal wire value at %s", a.Position())
-					}
-					value, err := strconv.Unquote(valueLit.Value)
-					if err != nil {
-						return nil, fmt.Errorf("invalid Impl wire value at %s: %w", a.Position(), err)
-					}
-					impl, err := parseLitForType(NewExpr(nested.Args[1], m.CallExpr.pkg, m.CallExpr.file))
-					if err != nil {
-						return nil, fmt.Errorf("invalid Impl implementation at %s: %w", a.Position(), err)
-					}
-					out = append(out, SchemaMethodOptionInfo{
-						Kind:               SchemaMethodOptionKind("Impl"),
-						FieldName:          fieldName,
-						DiscriminatorValue: value,
-						ImplTypes:          []TypeID{impl},
-					})
-				default:
-					return nil, fmt.Errorf("unknown interface option %s at %s", nestedID.TypeName, a.Position())
-				}
+			nested, err := parseInterfaceNestedOptions(ce.Args[1:], fieldName, a)
+			if err != nil {
+				return nil, err
 			}
+			out = append(out, nested...)
 			continue
 		}
 		var providerName string
@@ -444,30 +408,11 @@ func parseSchemaMethodOptions(args []Expr, receiver TypeID, m MarkerFunctionCall
 		}
 		// Only parse provider if applicable
 		if (funName == "WithFunction" || funName == "WithStructAccessorMethod" || funName == "WithStructFunctionMethod") && len(ce.Args) > 1 {
-			provExpr := ce.Args[1]
-			switch p := provExpr.(type) {
-			case *dst.SelectorExpr:
-				// Expect ReceiverType.MethodName or (ReceiverType).MethodName
-				switch x := p.X.(type) {
-				case *dst.Ident:
-					if x.Name != receiver.TypeName {
-						continue
-					}
-					providerIsMethod = true
-					providerName = p.Sel.Name
-				case *dst.ParenExpr:
-					if id, ok := x.X.(*dst.Ident); ok && id.Name == receiver.TypeName {
-						providerIsMethod = true
-						providerName = p.Sel.Name
-					} else {
-						continue
-					}
-				default:
-					continue
-				}
-			case *dst.Ident:
-				providerName = p.Name
+			name, isMethod, matched := providerRef(ce.Args[1], receiver)
+			if !matched {
+				continue
 			}
+			providerName, providerIsMethod = name, isMethod
 		}
 		var impls []TypeID
 		if funID.TypeName == "WithInterfaceImpls" && len(ce.Args) > 1 {

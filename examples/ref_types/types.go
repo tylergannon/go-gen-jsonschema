@@ -1,5 +1,5 @@
-// Package ref_types is the acceptance example for AsRef(): a type registered
-// with AsRef() is rendered as "$ref" into "$defs" wherever another
+// Package ref_types is the acceptance example for Ref(): a type registered
+// with Ref() is rendered as "$ref" into "$defs" wherever another
 // registered schema references it, instead of being inlined.
 package ref_types
 
@@ -7,7 +7,7 @@ import jsonschema "github.com/tylergannon/go-gen-jsonschema"
 
 //go:generate go run ../../gen-jsonschema/ --pretty --validate
 
-// Shared is registered with AsRef(). Wherever another registered schema
+// Shared is registered with Ref(). Wherever another registered schema
 // references it, it appears as a "$ref" into that schema's "$defs" instead
 // of being inlined.
 type Shared struct {

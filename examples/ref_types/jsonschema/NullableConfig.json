@@ -2,7 +2,7 @@
   "$defs": {
     "Shared": {
       "type": "object",
-      "description": "Shared is registered with AsRef(). Wherever another registered schema references it, it appears as a \"$ref\" into that schema's \"$defs\" instead of being inlined.",
+      "description": "Shared is registered with Ref(). Wherever another registered schema references it, it appears as a \"$ref\" into that schema's \"$defs\" instead of being inlined.",
       "properties": {
         "name": {
           "type": "string"

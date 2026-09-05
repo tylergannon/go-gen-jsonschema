@@ -46,15 +46,6 @@ func (Triangle) Schema() json.RawMessage {
 	return data
 }
 
-func (Drawing) Schema() json.RawMessage {
-	const fileName = "jsonschema/Drawing.json"
-	data, err := __gen_jsonschema_fs.ReadFile(fileName)
-	if err != nil {
-		__gen_jsonschema_panic(fileName, err)
-	}
-	return data
-}
-
 func (CreditCard) Schema() json.RawMessage {
 	const fileName = "jsonschema/CreditCard.json"
 	data, err := __gen_jsonschema_fs.ReadFile(fileName)
@@ -75,6 +66,15 @@ func (BankTransfer) Schema() json.RawMessage {
 
 func (*DigitalWallet) Schema() json.RawMessage {
 	const fileName = "jsonschema/DigitalWallet.json"
+	data, err := __gen_jsonschema_fs.ReadFile(fileName)
+	if err != nil {
+		__gen_jsonschema_panic(fileName, err)
+	}
+	return data
+}
+
+func (Drawing) Schema() json.RawMessage {
+	const fileName = "jsonschema/Drawing.json"
 	data, err := __gen_jsonschema_fs.ReadFile(fileName)
 	if err != nil {
 		__gen_jsonschema_panic(fileName, err)

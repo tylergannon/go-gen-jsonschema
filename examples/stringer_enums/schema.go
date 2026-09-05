@@ -11,17 +11,13 @@ import (
 // ApplicationConfig schema with WithStringerEnum (WITHOUT NewEnumType - testing auto-discovery!)
 func (ApplicationConfig) Schema() json.RawMessage { panic("not implemented") }
 
-var _ = jsonschema.NewJSONSchemaMethod(
-	ApplicationConfig.Schema,
-	jsonschema.WithStringerEnum(ApplicationConfig{}.LogLevel),
-	jsonschema.WithStringerEnum(ApplicationConfig{}.DefaultPriority),
-)
+var _ = jsonschema.Declare(ApplicationConfig.Schema).
+	StringerEnum(ApplicationConfig{}.LogLevel).
+	StringerEnum(ApplicationConfig{}.DefaultPriority)
 
-// Task schema with regular WithEnum (also WITHOUT NewEnumType!)
+// Task schema with regular Enum (also WITHOUT NewEnumType!)
 func (Task) Schema() json.RawMessage { panic("not implemented") }
 
-var _ = jsonschema.NewJSONSchemaMethod(
-	Task.Schema,
-	jsonschema.WithEnum(Task{}.Priority), // This will use integer values
-	jsonschema.WithEnum(Task{}.LogLevel), // This will use integer values
-)
+var _ = jsonschema.Declare(Task.Schema).
+	Enum(Task{}.Priority). // This will use integer values
+	Enum(Task{}.LogLevel)  // This will use integer values

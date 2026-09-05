@@ -57,7 +57,7 @@ strict schema because it deliberately removes the property from `required`.
 
 ## Nullable enums and shared reference types
 
-`Nullable` can wrap a registered enum or a struct registered with `AsRef()`:
+`Nullable` can wrap a registered enum or a struct registered with `.Ref()`:
 
 ```go
 type Mode string
@@ -73,8 +73,8 @@ type Config struct {
 }
 
 var (
-    _ = jsonschema.NewJSONSchemaMethod(Shared.Schema, jsonschema.AsRef())
-    _ = jsonschema.NewJSONSchemaMethod(Config.Schema)
+    _ = jsonschema.Declare(Shared.Schema).Ref()
+    _ = jsonschema.Declare(Config.Schema)
     _ = jsonschema.NewEnumType[Mode]()
 )
 ```
@@ -88,11 +88,11 @@ its enum schema and null. The shared struct renders as `anyOf` containing its
 `Optional` supports scalars and named scalars, structs, pointers, arrays and
 slices, explicit supported references, and registered interfaces. `Nullable`
 supports scalars, registered enums, structs, pointers to structs, and structs
-registered with `AsRef()`. Wrappers must be complete, direct named field types.
+registered with `.Ref()`. Wrappers must be complete, direct named field types.
 Aliases, defined wrappers, embedding, nesting, wrappers inside containers, and
 unsupported Nullable shapes are rejected during generation.
 
 See the compiling [`examples/optionality`](https://github.com/tylergannon/go-gen-jsonschema/tree/main/examples/optionality)
 package for general wrapper coverage and
 [`examples/ref_types`](https://github.com/tylergannon/go-gen-jsonschema/tree/main/examples/ref_types)
-for nullable enum and `AsRef` validation coverage.
+for nullable enum and `.Ref()` validation coverage.

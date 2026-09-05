@@ -16,6 +16,16 @@ import "github.com/tylergannon/go-gen-jsonschema"
 ## Index
 
 - [type DataType](<#DataType>)
+- [type Declaration](<#Declaration>)
+  - [func Declare\[T any\]\(fn func\(T\) json.RawMessage\) \*Declaration\[T\]](<#Declare>)
+  - [func \(d \*Declaration\[T\]\) Accessor\(field any, provider func\(T\) json.Marshaler\) \*Declaration\[T\]](<#Declaration[T].Accessor>)
+  - [func \(d \*Declaration\[T\]\) Enum\(field any\) \*Declaration\[T\]](<#Declaration[T].Enum>)
+  - [func \(d \*Declaration\[T\]\) Function\[F any\]\(field F, provider func\(F\) json.Marshaler\) \*Declaration\[T\]](<#Declaration[T].Function>)
+  - [func \(d \*Declaration\[T\]\) Interface\(field any, options ...InterfaceOption\) \*Declaration\[T\]](<#Declaration[T].Interface>)
+  - [func \(d \*Declaration\[T\]\) Method\[F any\]\(field F, provider func\(T, F\) json.Marshaler\) \*Declaration\[T\]](<#Declaration[T].Method>)
+  - [func \(d \*Declaration\[T\]\) Ref\(\) \*Declaration\[T\]](<#Declaration[T].Ref>)
+  - [func \(d \*Declaration\[T\]\) RenderProviders\(\) \*Declaration\[T\]](<#Declaration[T].RenderProviders>)
+  - [func \(d \*Declaration\[T\]\) StringerEnum\(field any\) \*Declaration\[T\]](<#Declaration[T].StringerEnum>)
 - [type EnumType](<#EnumType>)
   - [func NewEnumType\[T \~string\]\(\) EnumType](<#NewEnumType>)
 - [type InterfaceMarker](<#InterfaceMarker>)
@@ -96,6 +106,96 @@ const (
 )
 ```
 
+<a name="Declaration"></a>
+## type Declaration
+
+Declaration is the typed fluent builder for registering a schema entrypoint. Like every other marker type in this package, it exists only inside \`//go:build jsonschema\` files: it performs no work at runtime, is never called, and exists solely to type\-check and to give the scanner a recognizable AST shape.
+
+```go
+type Declaration[T any] struct{}
+```
+
+<a name="Declare"></a>
+### func Declare
+
+```go
+func Declare[T any](fn func(T) json.RawMessage) *Declaration[T]
+```
+
+Declare registers fn as the schema entrypoint for T. fn may be either a method expression \(e.g. Example.Schema\) or a free function taking T as its sole parameter \(e.g. BuildExampleSchema\); both forms infer T from fn's signature. Chain the returned \*Declaration\[T\] with Accessor, Method, Function, Enum, StringerEnum, Ref, RenderProviders, and Interface to add options, matching the equivalent WithXxx options on NewJSONSchemaMethod.
+
+<a name="Declaration[T].Accessor"></a>
+### func \(\*Declaration\[T\]\) Accessor
+
+```go
+func (d *Declaration[T]) Accessor(field any, provider func(T) json.Marshaler) *Declaration[T]
+```
+
+Accessor registers a provider for field that is a struct method taking only the receiver T \(equivalent to WithStructAccessorMethod\).
+
+<a name="Declaration[T].Enum"></a>
+### func \(\*Declaration\[T\]\) Enum
+
+```go
+func (d *Declaration[T]) Enum(field any) *Declaration[T]
+```
+
+Enum marks field as an enum whose values are compared directly \(equivalent to WithEnum\).
+
+<a name="Declaration[T].Function"></a>
+### func \(\*Declaration\[T\]\) Function
+
+```go
+func (d *Declaration[T]) Function[F any](field F, provider func(F) json.Marshaler) *Declaration[T]
+```
+
+Function registers a provider for field that is a free function taking only the field's own value F \(equivalent to WithFunction\). field and provider must agree on F: passing a field of one type alongside a provider expecting another fails to compile.
+
+<a name="Declaration[T].Interface"></a>
+### func \(\*Declaration\[T\]\) Interface
+
+```go
+func (d *Declaration[T]) Interface(field any, options ...InterfaceOption) *Declaration[T]
+```
+
+Interface marks field as a sealed interface, configured via Discriminator and Impl options \(equivalent to WithInterface\).
+
+<a name="Declaration[T].Method"></a>
+### func \(\*Declaration\[T\]\) Method
+
+```go
+func (d *Declaration[T]) Method[F any](field F, provider func(T, F) json.Marshaler) *Declaration[T]
+```
+
+Method registers a provider for field that is a struct method also taking the field's own value F \(equivalent to WithStructFunctionMethod\). field and provider must agree on F: passing a field of one type alongside a provider expecting another fails to compile.
+
+<a name="Declaration[T].Ref"></a>
+### func \(\*Declaration\[T\]\) Ref
+
+```go
+func (d *Declaration[T]) Ref() *Declaration[T]
+```
+
+Ref requests that, wherever T is referenced from another registered schema, it be rendered as a "$ref" into that schema's "$defs" instead of being inlined \(equivalent to AsRef\).
+
+<a name="Declaration[T].RenderProviders"></a>
+### func \(\*Declaration\[T\]\) RenderProviders
+
+```go
+func (d *Declaration[T]) RenderProviders() *Declaration[T]
+```
+
+RenderProviders requests generation of RenderedSchema\(\) and provider execution at runtime \(equivalent to WithRenderProviders\).
+
+<a name="Declaration[T].StringerEnum"></a>
+### func \(\*Declaration\[T\]\) StringerEnum
+
+```go
+func (d *Declaration[T]) StringerEnum(field any) *Declaration[T]
+```
+
+StringerEnum marks field as an enum whose values are compared via fmt.Stringer \(equivalent to WithStringerEnum\).
+
 <a name="EnumType"></a>
 ## type EnumType
 
@@ -115,6 +215,8 @@ func NewEnumType[T ~string]() EnumType
 NewEnumType denotes that the type argument should be an enum. If called in the same package where the type is declared, then it applies globally. In all cases, the const values MUST be declared in the same package as the call to NewEnumType.
 
 For now, only string types are supported.
+
+Deprecated: use Declare\(T.Schema\).Enum\(field\) on the field referencing the enum type for direct field registrations. NewEnumType has no fluent replacement and must be retained when the enum type is shared across more than one struct field.
 
 <a name="InterfaceMarker"></a>
 ## type InterfaceMarker
@@ -136,6 +238,8 @@ NewInterfaceImpl marks the arguments as possible implementations for the interfa
 
 1. If called in the same package as the interface itself, then all global instances can be replaced.
 2. If called somewhere else, only applies to the local package.
+
+Deprecated: use Declare\(T.Schema\).Interface\(field, Impl\(value, impl\), ...\) on the field referencing the interface instead.
 
 <a name="InterfaceOption"></a>
 ## type InterfaceOption
@@ -428,6 +532,8 @@ func NewJSONSchemaFunc[T any](f SchemaMethod[T], _ ...SchemaMethodOption) Schema
 
 NewJSONSchemaFunc registers a free function that takes the receiver as its sole parameter as a schema entrypoint. It is equivalent to NewJSONSchemaMethod.
 
+Deprecated: use Declare\(fn\) with a free function instead.
+
 <a name="NewJSONSchemaMethod"></a>
 ### func NewJSONSchemaMethod
 
@@ -436,6 +542,8 @@ func NewJSONSchemaMethod[T any](SchemaMethod[T], ...SchemaMethodOption) SchemaMa
 ```
 
 NewJSONSchemaMethod registers a struct method as a stub that will be implemented with a proper json schema and, as needed, unmarshaler functionality.
+
+Deprecated: use Declare\(T.Schema\) instead. For example, NewJSONSchemaMethod\(Task.Schema, WithEnum\(Task\{\}.Status\)\) becomes Declare\(Task.Schema\).Enum\(Task\{\}.Status\).
 
 <a name="SchemaMethod"></a>
 ## type SchemaMethod
@@ -466,6 +574,8 @@ func AsRef() SchemaMethodOption
 
 AsRef requests that, wherever this type is referenced from another registered schema, it be rendered as a "$ref" into that schema's "$defs" instead of being inlined.
 
+Deprecated: use Declare\(T.Schema\).Ref\(\) instead.
+
 <a name="WithDiscriminator"></a>
 ### func WithDiscriminator
 
@@ -473,7 +583,7 @@ AsRef requests that, wherever this type is referenced from another registered sc
 func WithDiscriminator[T any](field T, name string) SchemaMethodOption
 ```
 
-
+Deprecated: use Declare\(T.Schema\).Interface\(field, Discriminator\(name\), ...\) instead.
 
 <a name="WithEnum"></a>
 ### func WithEnum
@@ -484,6 +594,8 @@ func WithEnum[T any](field T) SchemaMethodOption
 
 Enum options \(v1\) \- stubs for scanning/type\-checking; parsed by scanner
 
+Deprecated: use Declare\(T.Schema\).Enum\(field\) instead.
+
 <a name="WithFunction"></a>
 ### func WithFunction
 
@@ -491,7 +603,7 @@ Enum options \(v1\) \- stubs for scanning/type\-checking; parsed by scanner
 func WithFunction[T any](val T, f func(T) json.Marshaler) SchemaMethodOption
 ```
 
-
+Deprecated: use Declare\(T.Schema\).Function\(field, fn\) instead.
 
 <a name="WithInterface"></a>
 ### func WithInterface
@@ -502,6 +614,8 @@ func WithInterface[T any](field T, options ...InterfaceOption) SchemaMethodOptio
 
 Interface options \(v1\) \- stubs for scanning/type\-checking; parsed by scanner
 
+Deprecated: use Declare\(T.Schema\).Interface\(field, options...\) instead.
+
 <a name="WithInterfaceImpls"></a>
 ### func WithInterfaceImpls
 
@@ -509,7 +623,7 @@ Interface options \(v1\) \- stubs for scanning/type\-checking; parsed by scanner
 func WithInterfaceImpls[T any](field T, impls ...any) SchemaMethodOption
 ```
 
-
+Deprecated: use Declare\(T.Schema\).Interface\(field, Impl\(value, impl\), ...\) instead.
 
 <a name="WithRenderProviders"></a>
 ### func WithRenderProviders
@@ -520,6 +634,8 @@ func WithRenderProviders() SchemaMethodOption
 
 WithRenderProviders requests generation of RenderedSchema\(\) and provider execution at runtime.
 
+Deprecated: use Declare\(T.Schema\).RenderProviders\(\) instead.
+
 <a name="WithStringerEnum"></a>
 ### func WithStringerEnum
 
@@ -527,7 +643,7 @@ WithRenderProviders requests generation of RenderedSchema\(\) and provider execu
 func WithStringerEnum[T any](field T) SchemaMethodOption
 ```
 
-
+Deprecated: use Declare\(T.Schema\).StringerEnum\(field\) instead.
 
 <a name="WithStructAccessorMethod"></a>
 ### func WithStructAccessorMethod
@@ -536,7 +652,7 @@ func WithStringerEnum[T any](field T) SchemaMethodOption
 func WithStructAccessorMethod[T, U any](val T, f func(U) json.Marshaler) SchemaMethodOption
 ```
 
-
+Deprecated: use Declare\(T.Schema\).Accessor\(field, T.method\) instead.
 
 <a name="WithStructFunctionMethod"></a>
 ### func WithStructFunctionMethod
@@ -545,7 +661,7 @@ func WithStructAccessorMethod[T, U any](val T, f func(U) json.Marshaler) SchemaM
 func WithStructFunctionMethod[T, U any](val U, f func(T, U) json.Marshaler) SchemaMethodOption
 ```
 
-
+Deprecated: use Declare\(T.Schema\).Method\(field, T.method\) instead.
 
 <a name="SchemaMethodOptionObj"></a>
 ## type SchemaMethodOptionObj

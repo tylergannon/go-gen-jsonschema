@@ -5,7 +5,7 @@ custom discriminators, free functions — or when you need exact CLI flags.
 
 ## Enums
 
-### String enums — `WithEnum`
+### String enums — `Enum`
 
 Values are auto-discovered from `const` declarations of the named type (the
 consts must live in the same package as the type). No separate registration of
@@ -29,18 +29,16 @@ type Task struct {
 
 ```go
 // schema.go (//go:build jsonschema)
-var _ = jsonschema.NewJSONSchemaMethod(
-    Task.Schema,
-    jsonschema.WithEnum(Task{}.Status),
-)
+var _ = jsonschema.Declare(Task.Schema).
+    Enum(Task{}.Status)
 ```
 
 Produces `"status": {"type": "string", "enum": ["pending", "in_progress", "completed"]}`.
 
-### Integer (iota) enums — `WithStringerEnum`
+### Integer (iota) enums — `StringerEnum`
 
-`WithStringerEnum` emits the **constant names** as string enum values
-(`["LogDebug", "LogInfo", ...]`); plain `WithEnum` on an int type would emit
+`StringerEnum` emits the **constant names** as string enum values
+(`["LogDebug", "LogInfo", ...]`); plain `Enum` on an int type would emit
 the integers (`[0, 1, ...]`). Prefer the Stringer form for LLMs — names carry
 meaning, integers don't:
 
@@ -54,15 +52,13 @@ const (
     LogError
 )
 
-var _ = jsonschema.NewJSONSchemaMethod(
-    Config.Schema,
-    jsonschema.WithStringerEnum(Config{}.LogLevel),
-)
+var _ = jsonschema.Declare(Config.Schema).
+    StringerEnum(Config{}.LogLevel)
 ```
 
 String mode generates codecs on the containing owner, composing with any
 union fields. Marshal the owner value or pointer and decode into its pointer;
-the same enum can still use numeric `WithEnum` in another field. Do not add a
+the same enum can still use numeric `Enum` in another field. Do not add a
 global enum codec. Supported adapted fields are direct `E`, `Optional[E]`, and
 `Nullable[E]`: absent/null wrappers bypass conversion, and present values use
 constant identifiers. Unknown names/values, undeclared zero, ambiguous aliases,
@@ -70,6 +66,14 @@ custom enum JSON hooks, and other adapted containers are errors. Validate
 external input before decoding for required-field and schema checks.
 Registered enum fields cannot use `json:",string"`; generation rejects that
 option before writing artifacts because its encoding differs from the schema.
+
+`.Enum`/`.StringerEnum` are not a full replacement for the legacy
+package-level `NewEnumType[T]()` when the enum type is shared across more
+than one struct field: they only support a direct named enum, `Optional[E]`,
+or `Nullable[E]` field, and annotating only some occurrences of a shared enum
+type silently degrades the ones left unmarked (lost constraint, lost shared
+TypeScript type). Keep a shared enum type on `NewEnumType[T]()`; it has no
+fluent replacement.
 
 ## Discriminated unions (interface fields)
 
@@ -106,85 +110,82 @@ type Payment struct {
 }
 ```
 
-Preferred per-field registration (v1 options):
+Preferred per-field registration:
 
 ```go
 // schema.go (//go:build jsonschema)
-var _ = jsonschema.NewJSONSchemaMethod(
-    Payment.Schema,
-    jsonschema.WithInterface(
+var _ = jsonschema.Declare(Payment.Schema).
+    Interface(
         Payment{}.Methods,
         jsonschema.Discriminator("!kind"), // optional; default "type"
         jsonschema.Impl("credit_card", CreditCard{}),
         jsonschema.Impl("bank_transfer", BankTransfer{}),
-    ),
-)
+    )
 ```
 
 `Impl` binds each implementation to a stable wire discriminator used by both
-the generated schema and owner encode/decode methods. The earlier split form remains
-supported for compatibility:
-
-```go
-jsonschema.WithInterface(Payment{}.Methods),
-jsonschema.WithInterfaceImpls(Payment{}.Methods, CreditCard{}, BankTransfer{}),
-jsonschema.WithDiscriminator(Payment{}.Methods, "!kind"),
-```
-
-Without explicit `Impl` values, discriminators continue to derive from Go type
-names.
+the generated schema and owner encode/decode methods. Without explicit `Impl`
+values, discriminators derive from Go type names.
 
 The slice must be the direct field type. Fixed arrays, nested slices, named
 slice containers, `Optional[[]I]`, and `Nullable[[]I]` are rejected during
 generation. An `Optional[I]` scalar is supported; `Nullable[I]` is not.
 
-Legacy package-level registration (still works, but you cannot mix it with the
-v1 per-field options in the same package):
-
-```go
-var _ = jsonschema.NewInterfaceImpl[PaymentMethod](CreditCard{}, BankTransfer{})
-```
+Migration: `NewJSONSchemaMethod(Payment.Schema, WithInterface(Payment{}.Methods,
+Impl(...), ...))` is now `Declare(Payment.Schema).Interface(Payment{}.Methods,
+Impl(...), ...)`. `NewJSONSchemaMethod`/`NewJSONSchemaFunc` with `With*`
+options, the split `WithInterface`/`WithInterfaceImpls`/`WithDiscriminator`
+options, and the package-level `NewInterfaceImpl[I](impls...)` remain
+supported and source-compatible; each carries a `Deprecated:` godoc comment
+naming its fluent equivalent.
 
 ## Full registration surface
 
-- `NewJSONSchemaMethod(T.Schema, ...opts)` — primary registration; one call per type.
-- `NewJSONSchemaFunc(fn, ...opts)` — register a free function instead of a method.
-- `NewEnumType[T]()` / `NewInterfaceImpl[I](impls...)` — legacy API; prefer the
-  `With*` options.
-- Options: `WithEnum(field)`, `WithStringerEnum(field)`,
-  `WithInterface(field, Discriminator(name), Impl(value, implementation), ...)`,
-  the compatible split form `WithInterface(field)`,
-  `WithInterfaceImpls(field, impls...)`, `WithDiscriminator(field, name)`,
-  `WithRenderProviders()` (runtime template rendering, advanced; rendered types
-  get no `ValidateJSON` because their schemas depend on runtime values),
-  `AsRef()` (zero-arg; see below).
+`Declare(fn)` is the entry point; `fn` is a method expression (`T.Schema`) or
+a free function taking `T` as its sole parameter. Chain options onto the
+returned `*Declaration[T]`:
+
+- `.Accessor(field, T.method)` / `.Method(field, T.method)` / `.Function(field, fn)`
+  — provider options: supply a field's schema at runtime instead of deriving
+  it statically (see [`examples/providers_rendering`](../../../examples/providers_rendering)).
+- `.Enum(field)` / `.StringerEnum(field)` — enum options.
+- `.Interface(field, Discriminator(name), Impl(value, implementation), ...)` —
+  sealed-interface options.
+- `.Ref()` — render this type as `"$ref"` wherever it's referenced (see below).
+- `.RenderProviders()` — generate `RenderedSchema()` and run providers at
+  runtime (advanced; rendered types get no `ValidateJSON` because their
+  schemas depend on runtime values).
+
+`NewJSONSchemaMethod(T.Schema, ...opts)` / `NewJSONSchemaFunc(fn, ...opts)`
+with their `With*` options, and the legacy `NewEnumType[T]()` /
+`NewInterfaceImpl[I](impls...)`, remain supported for source compatibility.
 
 Nested struct types are **inlined** into the parent schema (no `$ref`) by
 default, so a shared Address struct appears in full wherever it is used —
-unless that type is registered with `AsRef()`.
+unless that type is registered with `.Ref()`.
 
-## Shared definitions (`$ref`/`$defs`) via `AsRef`
+## Shared definitions (`$ref`/`$defs`) via `Ref`
 
-Add `AsRef()` to a type's own registration to have it rendered as `"$ref":
+Add `.Ref()` to a type's own registration to have it rendered as `"$ref":
 "#/$defs/TypeName"` everywhere else it's referenced, instead of being inlined
 at every call site. `$defs` are assembled per generated JSON file, keyed by
 the type's bare name:
 
 ```go
 // schema.go (//go:build jsonschema)
-var _ = jsonschema.NewJSONSchemaMethod(Shared.Schema, jsonschema.AsRef())
+var _ = jsonschema.Declare(Shared.Schema).Ref()
 
-var _ = jsonschema.NewJSONSchemaMethod(Container.Schema) // references Shared
+var _ = jsonschema.Declare(Container.Schema) // references Shared
 ```
 
 Notes:
 
-- `AsRef()` only applies where `Shared` is referenced from *another*
+- `.Ref()` only applies where `Shared` is referenced from *another*
   registered schema; `Shared`'s own top-level schema file is unaffected.
-- Two distinct `AsRef()`'d types reachable in one generation run that share
+- Two distinct `.Ref()`'d types reachable in one generation run that share
   the same bare type name are a hard, generation-time error (`"AsRef
   definition name collision"`).
-- Recursive/self-referencing `AsRef()`'d types are rejected, same as any
+- Recursive/self-referencing `.Ref()`'d types are rejected, same as any
   other circular reference.
 
 ## Validation (`--validate`)
@@ -243,7 +244,7 @@ mypackage/
 
 Generate validation and TypeScript declarations together with
 `--validate --typescript web/src/generated`; add `--typescript-barrel` when an
-`index.ts` type-only export is useful. `WithInterface` and `WithStringerEnum`
+`index.ts` type-only export is useful. `.Interface` and `.StringerEnum`
 select the containing Go struct's JSON codecs automatically. TypeScript output
 does not include a runtime decoder or validator: applications must validate
 untrusted TypeScript-side data, and Go consumers should call generated

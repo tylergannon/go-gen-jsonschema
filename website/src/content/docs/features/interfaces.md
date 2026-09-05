@@ -29,21 +29,22 @@ type Payment struct {
 Register the field, its implementations, and optionally a custom discriminator:
 
 ```go
-var _ = jsonschema.NewJSONSchemaMethod(
-    Payment.Schema,
-    jsonschema.WithInterface(
+var _ = jsonschema.Declare(Payment.Schema).
+    Interface(
         Payment{}.Methods,
         jsonschema.Discriminator("!kind"),
         jsonschema.Impl("card", Card{}),
         jsonschema.Impl("bank_transfer", (*BankTransfer)(nil)),
-    ),
-)
+    )
 ```
 
 `Impl` keeps each implementation next to its stable wire discriminator. The
-default discriminator property is `type`. The compatible split form using
-`WithInterfaceImpls` and `WithDiscriminator` remains supported; without
-explicit `Impl` values, wire discriminators derive from Go type names. Each
+default discriminator property is `type`. Migration: `NewJSONSchemaMethod(
+Payment.Schema, WithInterface(Payment{}.Methods, Impl(...), ...))` is now
+`Declare(Payment.Schema).Interface(Payment{}.Methods, Impl(...), ...)`. The
+legacy split form using `WithInterfaceImpls` and `WithDiscriminator` remains
+supported and source-compatible; without explicit `Impl` values, wire
+discriminators derive from Go type names. Each
 field's generated encoder supplies the discriminator expected by the decoder.
 Slice elements are decoded in order, and an invalid element reports
 its zero-based index without partially assigning the destination slice.

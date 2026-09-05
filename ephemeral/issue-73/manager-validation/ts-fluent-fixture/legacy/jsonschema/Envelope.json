@@ -1,0 +1,225 @@
+{
+  "$defs": {
+    "Detail": {
+      "type": "object",
+      "description": "Detail comments safely contain a terminator: */ and Unicode: 雪.",
+      "properties": {
+        "message": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "message"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "type": "object",
+  "properties": {
+    "event": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "!kind": {
+              "type": "string",
+              "const": "created"
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "!kind",
+            "name"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "!kind": {
+              "type": "string",
+              "const": "deleted"
+            },
+            "id": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "!kind",
+            "id"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "other": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "other-key": {
+              "type": "string",
+              "const": "create\"雪"
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "other-key",
+            "name"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "maybe": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "!kind": {
+              "type": "string",
+              "const": "created"
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "!kind",
+            "name"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "!kind": {
+              "type": "string",
+              "const": "deleted"
+            },
+            "id": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "!kind",
+            "id"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "!kind": {
+                "type": "string",
+                "const": "created"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "!kind",
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "!kind": {
+                "type": "string",
+                "const": "deleted"
+              },
+              "id": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "!kind",
+              "id"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    "label": {
+      "type": "string"
+    },
+    "detail": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Detail"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "shared": {
+      "$ref": "#/$defs/Detail"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "ready",
+        "wait\"ing",
+        "converted"
+      ]
+    },
+    "priority": {
+      "type": "integer",
+      "enum": [
+        0,
+        1,
+        8,
+        4
+      ]
+    },
+    "priority_name": {
+      "type": "string",
+      "enum": [
+        "Low",
+        "High",
+        "Urgent",
+        "Medium"
+      ]
+    },
+    "when": {
+      "type": "string",
+      "description": "RFC3339 formatted date-time string (e.g., \"2006-01-02T15:04:05Z07:00\")"
+    },
+    "strange-key": {
+      "type": "string"
+    },
+    "empty": {
+      "type": "object",
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "event",
+    "other",
+    "events",
+    "detail",
+    "shared",
+    "status",
+    "priority",
+    "priority_name",
+    "when",
+    "strange-key",
+    "empty"
+  ],
+  "additionalProperties": false
+}

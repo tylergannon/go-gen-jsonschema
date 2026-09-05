@@ -10,9 +10,7 @@ import (
 
 func (Paint) Schema() json.RawMessage { panic("not implemented") }
 
-// v1 enum string mode example: Color is a numeric enum, but WithStringerEnum
+// Enum string mode example: Color is a numeric enum, but .StringerEnum
 // renders it as a JSON string enum of its declared constant names.
-var _ = jsonschema.NewJSONSchemaMethod(
-	Paint.Schema,
-	jsonschema.WithStringerEnum(Paint{}.C),
-)
+var _ = jsonschema.Declare(Paint.Schema).
+	StringerEnum(Paint{}.C)

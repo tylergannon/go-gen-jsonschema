@@ -51,32 +51,35 @@ func (Payment) Schema() json.RawMessage {
 
 // These marker variables register the types and interfaces.
 var (
-	// Register schema methods for concrete types
-	_ = jsonschema.NewJSONSchemaMethod(Circle.Schema)
-	_ = jsonschema.NewJSONSchemaMethod(Rectangle.Schema)
-	_ = jsonschema.NewJSONSchemaMethod(Triangle.Schema)
-	_ = jsonschema.NewJSONSchemaMethod(Drawing.Schema)
-	_ = jsonschema.NewJSONSchemaMethod(CreditCard.Schema)
-	_ = jsonschema.NewJSONSchemaMethod(BankTransfer.Schema)
-	_ = jsonschema.NewJSONSchemaMethod((*DigitalWallet).Schema) // Note pointer receiver
-	_ = jsonschema.NewJSONSchemaMethod(Payment.Schema)
+	// Register schema methods for the concrete implementations - each is a
+	// plain type with no interface field of its own.
+	_ = jsonschema.Declare(Circle.Schema)
+	_ = jsonschema.Declare(Rectangle.Schema)
+	_ = jsonschema.Declare(Triangle.Schema)
+	_ = jsonschema.Declare(CreditCard.Schema)
+	_ = jsonschema.Declare(BankTransfer.Schema)
+	_ = jsonschema.Declare((*DigitalWallet).Schema) // Note pointer receiver
 
-	// Register Shape interface implementations
-	// This is what creates the union type - it tells the generator that
-	// any field of type Shape can contain a Circle, Rectangle, or Triangle.
-	// The generated schema will include all three as possible types using anyOf.
-	_ = jsonschema.NewInterfaceImpl[Shape](
-		Circle{},    // Value receiver implementation
-		Rectangle{}, // Value receiver implementation
-		Triangle{},  // Value receiver implementation
-	)
+	// Register Drawing along with its Shape union field. This is what
+	// creates the union type - it tells the generator that Drawing.Shapes
+	// can contain a Circle, Rectangle, or Triangle. Impl's first argument
+	// is the exact discriminator value ("Circle", "Rectangle", "Triangle" -
+	// the derived Go type names, matching what the split
+	// WithInterface/WithInterfaceImpls form derived automatically).
+	_ = jsonschema.Declare(Drawing.Schema).
+		Interface(Drawing{}.Shapes,
+			jsonschema.Impl("Circle", Circle{}),
+			jsonschema.Impl("Rectangle", Rectangle{}),
+			jsonschema.Impl("Triangle", Triangle{}),
+		)
 
-	// Register PaymentMethod interface implementations
-	// This demonstrates including a pointer receiver implementation.
-	// For pointer receivers, use (*Type)(nil) syntax.
-	_ = jsonschema.NewInterfaceImpl[PaymentMethod](
-		CreditCard{},          // Value receiver implementation
-		BankTransfer{},        // Value receiver implementation
-		(*DigitalWallet)(nil), // Pointer receiver implementation
-	)
+	// Register Payment along with its PaymentMethod union field. This
+	// demonstrates including a pointer receiver implementation - for
+	// pointer receivers, use (*Type)(nil) syntax.
+	_ = jsonschema.Declare(Payment.Schema).
+		Interface(Payment{}.Method,
+			jsonschema.Impl("CreditCard", CreditCard{}),
+			jsonschema.Impl("BankTransfer", BankTransfer{}),
+			jsonschema.Impl("DigitalWallet", (*DigitalWallet)(nil)),
+		)
 )

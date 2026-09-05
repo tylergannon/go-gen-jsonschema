@@ -41,20 +41,20 @@ func (Department) Schema() json.RawMessage {
 // These marker variables register the types with the jsonschema generator.
 var (
 	// Register Address for schema generation
-	_ = jsonschema.NewJSONSchemaMethod(Address.Schema)
+	_ = jsonschema.Declare(Address.Schema)
 
 	// Register ContactInfo for schema generation
-	_ = jsonschema.NewJSONSchemaMethod(ContactInfo.Schema)
+	_ = jsonschema.Declare(ContactInfo.Schema)
 
 	// Register RetryPolicy for schema generation
-	_ = jsonschema.NewJSONSchemaMethod(RetryPolicy.Schema)
+	_ = jsonschema.Declare(RetryPolicy.Schema)
 
 	// Register Person for schema generation
-	_ = jsonschema.NewJSONSchemaMethod(Person.Schema)
+	_ = jsonschema.Declare(Person.Schema)
 
 	// Register Organization for schema generation
-	_ = jsonschema.NewJSONSchemaMethod(Organization.Schema)
+	_ = jsonschema.Declare(Organization.Schema)
 
 	// Register Department for schema generation
-	_ = jsonschema.NewJSONSchemaMethod(Department.Schema)
+	_ = jsonschema.Declare(Department.Schema)
 )

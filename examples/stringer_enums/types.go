@@ -66,7 +66,7 @@ func (p Priority) String() string {
 }
 
 // ApplicationConfig demonstrates using Stringer enums in a struct.
-// WithStringerEnum emits the constant names rather than their integer values.
+// StringerEnum emits the constant names rather than their integer values.
 type ApplicationConfig struct {
 	// AppName is the name of the application
 	AppName string `json:"app_name"`

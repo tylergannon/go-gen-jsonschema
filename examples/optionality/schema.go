@@ -11,11 +11,7 @@ import (
 func (Config) Schema() json.RawMessage        { panic("not implemented") }
 func (NumericConfig) Schema() json.RawMessage { panic("not implemented") }
 
-var _ = jsonschema.NewJSONSchemaMethod(
-	Config.Schema,
-	jsonschema.WithInterface(Config{}.Pet),
-	jsonschema.WithInterfaceImpls(Config{}.Pet, Dog{}, Cat{}),
-	jsonschema.WithDiscriminator(Config{}.Pet, "!kind"),
-)
+var _ = jsonschema.Declare(Config.Schema).
+	Interface(Config{}.Pet, jsonschema.Discriminator("!kind"), jsonschema.Impl("Dog", Dog{}), jsonschema.Impl("Cat", Cat{}))
 
-var _ = jsonschema.NewJSONSchemaMethod(NumericConfig.Schema)
+var _ = jsonschema.Declare(NumericConfig.Schema)
