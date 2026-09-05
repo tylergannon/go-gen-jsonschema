@@ -151,10 +151,10 @@ func __jsonMarshal__optionality__Pet__Config__Pet(value Pet) (json.RawMessage, e
 	switch object := value.(type) {
 	case Dog:
 		discriminator = "Dog"
-		data, err = json.Marshal(object)
+		data, err = json.Marshal(&object)
 	case Cat:
 		discriminator = "Cat"
-		data, err = json.Marshal(object)
+		data, err = json.Marshal(&object)
 	default:
 		return nil, fmt.Errorf("unregistered dynamic implementation %T for Pet", value)
 	}

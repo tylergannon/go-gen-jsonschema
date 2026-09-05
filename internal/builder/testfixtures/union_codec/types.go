@@ -48,6 +48,7 @@ func (Unregistered) isEvent() {}
 
 var hookMarshalCalls int
 var ordinaryMarshalCalls int
+var pointerValueHookMarshalCalls int
 
 type Hooked struct {
 	Name             string `json:"name"`
@@ -98,6 +99,35 @@ func (h *Hooked) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+type PointerHookValue struct {
+	Name             string `json:"name"`
+	SawDiscriminator bool   `json:"-"`
+}
+
+func (PointerHookValue) isEvent() {}
+
+func (p *PointerHookValue) MarshalJSON() ([]byte, error) {
+	pointerValueHookMarshalCalls++
+	return json.Marshal(struct {
+		Name string `json:"name"`
+	}{Name: "custom:" + p.Name})
+}
+
+func (p *PointerHookValue) UnmarshalJSON(data []byte) error {
+	var wire struct {
+		Kind string `json:"valueHookKind"`
+		Name string `json:"name"`
+	}
+	if err := json.Unmarshal(data, &wire); err != nil {
+		return err
+	}
+	if wire.Kind != "value-hook" {
+		return errors.New("PointerHookValue.UnmarshalJSON did not receive the registered discriminator")
+	}
+	*p = PointerHookValue{Name: strings.TrimPrefix(wire.Name, "custom:"), SawDiscriminator: true}
+	return nil
+}
+
 type Ordinary struct {
 	Value string `json:"value"`
 }
@@ -131,6 +161,7 @@ type Envelope struct {
 	Alternate jsonschema.Optional[Event]  `json:"alternate,omitzero"`
 	Single    jsonschema.Optional[Event]  `json:"single,omitzero"`
 	Hook      jsonschema.Optional[Event]  `json:"hook,omitzero"`
+	ValueHook jsonschema.Optional[Event]  `json:"value_hook,omitzero"`
 	Nested    Nested                      `json:"nested"`
 	Ordinary  Ordinary                    `json:"ordinary"`
 	Label     string                      `json:"label"`

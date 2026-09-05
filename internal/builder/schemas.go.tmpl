@@ -317,7 +317,7 @@ func {{.MarshalerFunc}}(value {{.TypeNameWithPrefix}}) (json.RawMessage, error) 
 		}
 		{{end -}}
 		discriminator = {{printf "%q" .Discriminator}}
-		data, err = json.Marshal(object)
+		data, err = json.Marshal({{if .Pointer}}object{{else}}&object{{end}})
 	{{end -}}
 	default:
 		return nil, fmt.Errorf("unregistered dynamic implementation %T for {{.TypeName}}", value)

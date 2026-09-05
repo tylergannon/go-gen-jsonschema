@@ -84,6 +84,74 @@ var _ = jsonschema.NewJSONSchemaMethod(Embedded.Schema)
 	assertOwnerCollisionSentinels(t, targetDir)
 }
 
+func TestOwnerCodecRejectsForeignEmbeddedGeneratedOwnerBeforeWriting(t *testing.T) {
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+	targetDir, err := os.MkdirTemp(filepath.Join(cwd, "testfixtures"), "foreign_embedded_owner_")
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, os.RemoveAll(targetDir)) })
+	baseImport := "github.com/tylergannon/go-gen-jsonschema/internal/builder/testfixtures/" + filepath.Base(targetDir)
+	depDir := filepath.Join(targetDir, "dep")
+	require.NoError(t, os.MkdirAll(depDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(depDir, "types.go"), []byte(`package dep
+
+type Value interface{ value() }
+type First struct{}
+func (First) value() {}
+type Embedded struct { Value Value `+"`json:\"value\"`"+` }
+`), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(depDir, "schema.go"), []byte(`//go:build jsonschema
+
+package dep
+
+import (
+	"encoding/json"
+	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+)
+
+func (Embedded) Schema() json.RawMessage { panic("not implemented") }
+var _ = jsonschema.NewJSONSchemaMethod(Embedded.Schema)
+var _ = jsonschema.NewInterfaceImpl[Value](First{})
+`), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(depDir, "jsonschema_gen.go"), []byte(`//go:build !jsonschema
+
+package dep
+
+func (Embedded) MarshalJSON() ([]byte, error) { return []byte("{}"), nil }
+func (*Embedded) UnmarshalJSON([]byte) error { return nil }
+`), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(targetDir, "types.go"), []byte(`package fixture
+
+import dep "`+baseImport+`/dep"
+
+type Value interface{ value() }
+type First struct{}
+func (First) value() {}
+type Owner struct {
+	dep.Embedded
+	Local Value `+"`json:\"local\"`"+`
+}
+`), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(targetDir, "schema.go"), []byte(`//go:build jsonschema
+
+package fixture
+
+import (
+	"encoding/json"
+	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+)
+
+func (Owner) Schema() json.RawMessage { panic("not implemented") }
+var _ = jsonschema.NewJSONSchemaMethod(Owner.Schema)
+var _ = jsonschema.NewInterfaceImpl[Value](First{})
+`), 0o644))
+	writeOwnerCollisionSentinels(t, targetDir)
+
+	err = Run(BuilderArgs{TargetDir: targetDir})
+	require.ErrorContains(t, err, "foreign embedded type dep.Embedded has generated production JSON codecs")
+	assertOwnerCollisionSentinels(t, targetDir)
+}
+
 func TestLegacyDuplicateDerivedDiscriminatorRejectedBeforeWriting(t *testing.T) {
 	cwd, err := os.Getwd()
 	require.NoError(t, err)

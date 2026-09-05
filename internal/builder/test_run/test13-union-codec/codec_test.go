@@ -17,6 +17,7 @@ func validEnvelope() Envelope {
 		Alternate: jsonschema.Optional[Event]{Present: true, Value: Created{Name: "alternate"}},
 		Single:    jsonschema.Optional[Event]{Present: true, Value: Created{Name: "single"}},
 		Hook:      jsonschema.Optional[Event]{Present: true, Value: Hooked{Name: "hook"}},
+		ValueHook: jsonschema.Optional[Event]{Present: true, Value: PointerHookValue{Name: "value-hook"}},
 		Nested:    Nested{Event: &Deleted{ID: "nested"}},
 		Ordinary:  Ordinary{Value: "ordinary"},
 		Label:     "label",
@@ -28,12 +29,13 @@ func TestGeneratedUnionMarshalValidateDecodeRoundTrip(t *testing.T) {
 
 	hookMarshalCalls = 0
 	ordinaryMarshalCalls = 0
+	pointerValueHookMarshalCalls = 0
 	encodedValue, err := json.Marshal(want)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if hookMarshalCalls != 1 || ordinaryMarshalCalls != 1 {
-		t.Fatalf("nested marshal calls = hook %d, ordinary %d; want one each", hookMarshalCalls, ordinaryMarshalCalls)
+	if hookMarshalCalls != 1 || ordinaryMarshalCalls != 1 || pointerValueHookMarshalCalls != 1 {
+		t.Fatalf("nested marshal calls = hook %d, ordinary %d, pointer value %d; want one each", hookMarshalCalls, ordinaryMarshalCalls, pointerValueHookMarshalCalls)
 	}
 	if err := (Envelope{}).ValidateJSON(encodedValue); err != nil {
 		t.Fatalf("generated schema rejected generated JSON: %v\n%s", err, encodedValue)
@@ -41,6 +43,7 @@ func TestGeneratedUnionMarshalValidateDecodeRoundTrip(t *testing.T) {
 
 	hookMarshalCalls = 0
 	ordinaryMarshalCalls = 0
+	pointerValueHookMarshalCalls = 0
 	encodedPointer, err := json.Marshal(&want)
 	if err != nil {
 		t.Fatal(err)
@@ -48,8 +51,8 @@ func TestGeneratedUnionMarshalValidateDecodeRoundTrip(t *testing.T) {
 	if !reflect.DeepEqual(encodedPointer, encodedValue) {
 		t.Fatalf("pointer encoding = %s, value encoding = %s", encodedPointer, encodedValue)
 	}
-	if hookMarshalCalls != 1 || ordinaryMarshalCalls != 1 {
-		t.Fatalf("pointer nested marshal calls = hook %d, ordinary %d; want one each", hookMarshalCalls, ordinaryMarshalCalls)
+	if hookMarshalCalls != 1 || ordinaryMarshalCalls != 1 || pointerValueHookMarshalCalls != 1 {
+		t.Fatalf("pointer nested marshal calls = hook %d, ordinary %d, pointer value %d; want one each", hookMarshalCalls, ordinaryMarshalCalls, pointerValueHookMarshalCalls)
 	}
 
 	assertDiscriminators(t, encodedValue)
@@ -81,6 +84,7 @@ func TestOptionalUnionAbsenceAndEmptySlice(t *testing.T) {
 	value.Alternate = jsonschema.Optional[Event]{}
 	value.Single = jsonschema.Optional[Event]{}
 	value.Hook = jsonschema.Optional[Event]{}
+	value.ValueHook = jsonschema.Optional[Event]{}
 	encoded, err := json.Marshal(value)
 	if err != nil {
 		t.Fatal(err)
@@ -89,7 +93,7 @@ func TestOptionalUnionAbsenceAndEmptySlice(t *testing.T) {
 	if err := json.Unmarshal(encoded, &object); err != nil {
 		t.Fatal(err)
 	}
-	for _, field := range []string{"optional", "alternate", "single", "hook", "omitted"} {
+	for _, field := range []string{"optional", "alternate", "single", "hook", "value_hook", "omitted"} {
 		if _, ok := object[field]; ok {
 			t.Fatalf("absent optional field %q was encoded: %s", field, encoded)
 		}
@@ -113,6 +117,7 @@ func TestUnionMarshalErrors(t *testing.T) {
 		{name: "typed nil slice element", edit: func(v *Envelope) { v.Events[1] = typedNil }, want: "field events[1]: cannot marshal typed nil"},
 		{name: "present nil optional", edit: func(v *Envelope) { v.Optional = jsonschema.Optional[Event]{Present: true} }, want: "field optional: cannot marshal nil registered interface"},
 		{name: "unregistered dynamic type", edit: func(v *Envelope) { v.Primary = Unregistered{Value: "x"} }, want: "unregistered dynamic implementation"},
+		{name: "null empty discriminator", edit: func(v *Envelope) { v.Primary = Empty{Name: "x", NullKind: true} }, want: "discriminator property \"!kind\" must be a string"},
 		{name: "custom conflict", edit: func(v *Envelope) { v.Hook.Value = Hooked{Name: "x", Behavior: "conflict"} }, want: "is \"other\", want registered value \"hooked\""},
 		{name: "custom non-string discriminator", edit: func(v *Envelope) { v.Hook.Value = Hooked{Name: "x", Behavior: "non-string"} }, want: "discriminator property \"hookKind\" must be a string"},
 		{name: "custom null", edit: func(v *Envelope) { v.Hook.Value = Hooked{Name: "x", Behavior: "null"} }, want: "must encode as a JSON object, got null"},
@@ -130,6 +135,35 @@ func TestUnionMarshalErrors(t *testing.T) {
 				t.Fatalf("error = %v, want %q", err, test.want)
 			}
 		})
+	}
+}
+
+func TestEmptyDiscriminatorRequiresAJSONString(t *testing.T) {
+	value := validEnvelope()
+	value.Primary = Empty{Name: "accepted"}
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := (Envelope{}).ValidateJSON(encoded); err != nil {
+		t.Fatalf("empty string discriminator failed schema validation: %v\n%s", err, encoded)
+	}
+	var root map[string]json.RawMessage
+	if err := json.Unmarshal(encoded, &root); err != nil {
+		t.Fatal(err)
+	}
+	assertObjectString(t, root["primary"], "!kind", "")
+	var decoded Envelope
+	if err := json.Unmarshal(encoded, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	if empty, ok := decoded.Primary.(Empty); !ok || empty.Name != "accepted" {
+		t.Fatalf("decoded primary = %#v", decoded.Primary)
+	}
+
+	nullInput := []byte(`{"primary":{"!kind":null,"name":"rejected"}}`)
+	if err := json.Unmarshal(nullInput, &decoded); err == nil || !strings.Contains(err.Error(), "JSON null is not a string") {
+		t.Fatalf("null discriminator error = %v", err)
 	}
 }
 
@@ -167,10 +201,13 @@ func TestGeneratedDecodeErrorIsTransactionalAndSuccessReplaces(t *testing.T) {
 
 	got = original
 	input := []byte(`{"primary":{"!kind":"created","name":"replacement"},"events":[],"nested":{"event":{"nestedKind":"nested-created","name":"nested"}},"ordinary":{"value":"new"},"label":"new"}`)
+	if err := (Envelope{}).ValidateJSON(input); err != nil {
+		t.Fatalf("manual replacement input failed schema validation: %v", err)
+	}
 	if err := json.Unmarshal(input, &got); err != nil {
 		t.Fatal(err)
 	}
-	if got.Optional.Present || got.Alternate.Present || got.Single.Present || got.Hook.Present || got.Omitted.Present {
+	if got.Optional.Present || got.Alternate.Present || got.Single.Present || got.Hook.Present || got.ValueHook.Present || got.Omitted.Present {
 		t.Fatalf("omitted fields retained old values: %#v", got)
 	}
 	if got.Events == nil || len(got.Events) != 0 {
@@ -189,6 +226,9 @@ func assertDiscriminators(t *testing.T, data []byte) {
 	assertObjectString(t, root["alternate"], `kind"quoted`, `new"event`)
 	assertObjectString(t, root["single"], "single", "only")
 	assertObjectString(t, root["hook"], "hookKind", "hooked")
+	assertObjectString(t, root["value_hook"], "valueHookKind", "value-hook")
+	assertObjectString(t, root["value_hook"], "name", "custom:value-hook")
+	assertObjectString(t, root["ordinary"], "value", "custom:ordinary")
 	var nested map[string]json.RawMessage
 	if err := json.Unmarshal(root["nested"], &nested); err != nil {
 		t.Fatal(err)
@@ -242,6 +282,9 @@ func assertEnvelopeMeaning(t *testing.T, got Envelope) {
 	}
 	if value, ok := got.Hook.Value.(Hooked); !got.Hook.Present || !ok || value.Name != "hook" || !value.SawDiscriminator {
 		t.Fatalf("hook = %#v", got.Hook)
+	}
+	if value, ok := got.ValueHook.Value.(PointerHookValue); !got.ValueHook.Present || !ok || value.Name != "value-hook" || !value.SawDiscriminator {
+		t.Fatalf("value hook = %#v", got.ValueHook)
 	}
 	if value, ok := got.Nested.Event.(*Deleted); !ok || value.ID != "nested" {
 		t.Fatalf("nested = %#v", got.Nested)

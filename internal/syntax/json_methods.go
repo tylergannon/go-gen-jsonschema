@@ -45,25 +45,54 @@ func FindProductionJSONMethods(dir string, receivers []string) ([]JSONMethod, er
 		if !matches {
 			continue
 		}
-		file, err := parser.ParseFile(fset, filepath.Join(dir, name), nil, 0)
+		fileMethods, err := findJSONMethodsInFile(fset, filepath.Join(dir, name), wanted)
 		if err != nil {
 			return nil, err
 		}
-		for _, decl := range file.Decls {
-			fn, ok := decl.(*ast.FuncDecl)
-			if !ok || fn.Recv == nil || len(fn.Recv.List) != 1 || !slices.Contains([]string{"MarshalJSON", "UnmarshalJSON"}, fn.Name.Name) {
-				continue
-			}
-			receiver, ok := receiverTypeName(fn.Recv.List[0].Type)
-			if !ok || (len(wanted) > 0 && !wanted[receiver]) {
-				continue
-			}
-			methods = append(methods, JSONMethod{
-				Receiver: receiver,
-				Name:     fn.Name.Name,
-				Position: fset.Position(fn.Pos()),
-			})
+		methods = append(methods, fileMethods...)
+	}
+	return methods, nil
+}
+
+// FindGeneratedJSONMethods finds generated MarshalJSON and UnmarshalJSON
+// declarations for the requested receiver types. The generated file is
+// inspected directly because it is excluded while the package is loaded with
+// the reserved jsonschema build tag.
+func FindGeneratedJSONMethods(dir string, receivers []string) ([]JSONMethod, error) {
+	wanted := make(map[string]bool, len(receivers))
+	for _, receiver := range receivers {
+		wanted[receiver] = true
+	}
+	filename := filepath.Join(dir, "jsonschema_gen.go")
+	if _, err := os.Stat(filename); err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
 		}
+		return nil, err
+	}
+	return findJSONMethodsInFile(token.NewFileSet(), filename, wanted)
+}
+
+func findJSONMethodsInFile(fset *token.FileSet, filename string, wanted map[string]bool) ([]JSONMethod, error) {
+	file, err := parser.ParseFile(fset, filename, nil, 0)
+	if err != nil {
+		return nil, err
+	}
+	var methods []JSONMethod
+	for _, decl := range file.Decls {
+		fn, ok := decl.(*ast.FuncDecl)
+		if !ok || fn.Recv == nil || len(fn.Recv.List) != 1 || !slices.Contains([]string{"MarshalJSON", "UnmarshalJSON"}, fn.Name.Name) {
+			continue
+		}
+		receiver, ok := receiverTypeName(fn.Recv.List[0].Type)
+		if !ok || (len(wanted) > 0 && !wanted[receiver]) {
+			continue
+		}
+		methods = append(methods, JSONMethod{
+			Receiver: receiver,
+			Name:     fn.Name.Name,
+			Position: fset.Position(fn.Pos()),
+		})
 	}
 	return methods, nil
 }

@@ -198,6 +198,27 @@
         }
       ]
     },
+    "value_hook": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "valueHookKind": {
+              "type": "string",
+              "const": "value-hook"
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "valueHookKind",
+            "name"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
     "nested": {
       "type": "object",
       "properties": {

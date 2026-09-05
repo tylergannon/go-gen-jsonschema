@@ -40,6 +40,11 @@ var _ = jsonschema.NewJSONSchemaMethod(
 		jsonschema.Discriminator("hookKind"),
 		jsonschema.Impl("hooked", Hooked{}),
 	),
+	jsonschema.WithInterface(
+		Envelope{}.ValueHook,
+		jsonschema.Discriminator("valueHookKind"),
+		jsonschema.Impl("value-hook", PointerHookValue{}),
+	),
 )
 
 var _ = jsonschema.NewJSONSchemaMethod(

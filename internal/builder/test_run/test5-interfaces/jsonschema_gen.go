@@ -138,10 +138,10 @@ func __jsonMarshal__interfaces__TestInterface(value TestInterface) (json.RawMess
 	switch object := value.(type) {
 	case TestInterface1:
 		discriminator = "TestInterface1"
-		data, err = json.Marshal(object)
+		data, err = json.Marshal(&object)
 	case TestInterface2:
 		discriminator = "TestInterface2"
-		data, err = json.Marshal(object)
+		data, err = json.Marshal(&object)
 	case *PointerToTestInterface:
 		if object == nil {
 			return nil, fmt.Errorf("cannot marshal typed nil registered implementation %T for TestInterface", value)
