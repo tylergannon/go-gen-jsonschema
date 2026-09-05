@@ -8,6 +8,8 @@ decision: Reproducible consumers must pin the generator and imported marker/runt
 
 correction: Avoid time-sensitive claims about what `@latest` resolves to; state the durable minimum release and require an explicit version pin.
 
+friction: A double-quoted shell `rg` pattern containing Markdown backticks triggered command substitution during the wording audit -> use single-quoted shell patterns when searching literal backticks.
+
 doc_bug: The website CLI reference omits `--typescript` and `--typescript-barrel`, and its no-change descriptions mention schemas only -> align it with live CLI help and requested TypeScript artifact behavior.
 
 doc_bug: The shipped hook guide says no-change mode never writes, but generated Go can still update when schema and requested TypeScript outputs are unchanged -> pair strict generation with a Git status check and avoid parallel readers.
