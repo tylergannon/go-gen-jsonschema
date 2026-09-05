@@ -1,0 +1,8 @@
+generator_source_commit=4374753202591d6b508ecb6f4fbe85f818d0f237
+generator_binary_sha256=61405bab19cd6d61f38285074913d95e2b1dbe72c9ffb87edccd48a0fe977740
+consumer_module=github.com/tylergannon/go-gen-jsonschema@v1.0.0-rc.4
+consumer_replace_directive=absent
+go_version=go version go1.27.1 darwin/arm64
+node_version=v26.8.1
+npm_version=11.19.0
+typescript_version=6.0.3

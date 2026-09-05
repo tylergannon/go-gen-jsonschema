@@ -78,6 +78,49 @@ distinction matters. The legacy `jsonschema:"optional"` tag is not honored.
 The compiling runtime and negative-shape proof live in
 [`examples/optionality`](../examples/optionality).
 
+## Generate TypeScript declarations with the Go JSON boundary
+
+Pin one explicit module release for both the generator and the imported
+marker/runtime package. Generate validation and TypeScript declarations in the
+same run:
+
+```bash
+go get -tool github.com/tylergannon/go-gen-jsonschema/gen-jsonschema@v1.0.0-rc.5
+```
+
+This combined surface requires `v1.0.0-rc.5` or newer. `v1.0.0-rc.4` includes
+TypeScript declarations but predates generated owner codecs. Pin the version
+explicitly.
+
+```go
+//go:generate go tool gen-jsonschema --validate --typescript web/src/generated --typescript-barrel
+```
+
+The barrel flag is optional. Registrations such as `WithInterface` and
+`WithStringerEnum` automatically generate the containing struct's JSON codecs;
+there is no separate codec flag. Run `go generate ./...` and `go mod tidy`, then
+commit the schema, Go, and requested TypeScript outputs together.
+
+Use `json.Marshal` on the containing Go struct. Validate incoming JSON before
+decoding it:
+
+```go
+if err := (Envelope{}).ValidateJSON(data); err != nil {
+    return err
+}
+var value Envelope
+if err := json.Unmarshal(data, &value); err != nil {
+    return err
+}
+```
+
+The TypeScript output contains structural declarations only. Consumers use
+`JSON.parse` and `JSON.stringify`, but must supply their own runtime validation
+for untrusted values because TypeScript annotations are erased. Generated
+TypeScript runtime decoders and validators are not provided. The broader
+executed Go/JavaScript transport proof remains tracked by
+[#71](https://github.com/tylergannon/go-gen-jsonschema/issues/71).
+
 ## Enums and interfaces
 
 Register same-package constants with `WithEnum` or use `WithStringerEnum` for

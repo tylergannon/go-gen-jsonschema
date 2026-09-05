@@ -1,7 +1,7 @@
-# Keeping Schemas in Sync: Git Hooks and CI
+# Keeping Generated Output in Sync: Git Hooks and CI
 
 Read this when wiring `go generate` into pre-commit hooks or CI so generated
-schemas (`jsonschema/*.json`, `jsonschema_gen.go`) can never drift from the Go
+schemas, Go code, and requested TypeScript declarations cannot drift from the Go
 types they were generated from.
 
 Two viable strategies — pick one, don't mix them in the same hook:
@@ -14,9 +14,11 @@ Two viable strategies — pick one, don't mix them in the same hook:
 
 The tool supports the strict mode natively: `gen-jsonschema gen -no-changes`
 (or env `JSONSCHEMA_NO_CHANGES=1`) fails — writing nothing — when regeneration
-would change any schema. The env var form is the one to use in hooks, because
+would change any schema or requested TypeScript artifact. The env var form is
+the one to use in hooks, because
 it flows through `go generate` to every `//go:generate go tool gen-jsonschema`
-directive without editing them.
+directive without editing them. Generated Go output can still update when those
+artifacts are unchanged, so pair the command with a clean status check.
 
 ## lefthook
 
@@ -34,6 +36,7 @@ pre-commit:
       run: |
         go generate ./...
         git add '*jsonschema_gen.go' '*jsonschema/*' 2>/dev/null || true
+        git add 'web/src/generated/*' 2>/dev/null || true # use your configured TypeScript directory
 ```
 
 Notes:
@@ -42,6 +45,9 @@ Notes:
 - The explicit `git add` matters. lefthook's `stage_fixed: true` only re-stages
   files that were already staged and matched the glob — freshly generated
   `.json` files wouldn't qualify, so stage them explicitly.
+- Replace `web/src/generated` with the `--typescript` directory from the
+  project's generation directive, or omit that line when TypeScript output is
+  disabled.
 - Keep this command out of any `parallel: true` group that also runs linters
   over the same files, or the linter may see the pre-regeneration state.
 
@@ -53,15 +59,15 @@ pre-commit:
   commands:
     gen-jsonschema-check:
       glob: "*.go"
-      run: JSONSCHEMA_NO_CHANGES=1 go generate ./...
+      run: JSONSCHEMA_NO_CHANGES=1 go generate ./... && test -z "$(git status --porcelain)"
 ```
 
-On failure the tool names the drifted types:
-`schema changes detected for types: Person, Task (and --no-changes or JSONSCHEMA_NO_CHANGES was set)`.
+On failure the tool names changed schema types and/or requested TypeScript paths.
 The fix is always: `go generate ./... && git add -A`, then commit again.
 
-This variant never writes files, so it is safe to run in parallel with other
-hooks and leaves the working tree untouched.
+Schema and requested TypeScript drift are detected without writing those
+destinations. Keep the command sequential with tools that read generated Go
+output because that file can still be refreshed.
 
 Lefthook also has a hook-level `fail_on_changes` option (`never`/`always`/`ci`/
 `non-ci`) that fails when *any* git-tracked file was modified by the hook.
@@ -73,8 +79,8 @@ strict failure in CI from one config.
 ```bash
 #!/bin/sh
 # .git/hooks/pre-commit
-JSONSCHEMA_NO_CHANGES=1 go generate ./... || {
-  echo "Schemas out of date. Run: go generate ./...  then re-stage." >&2
+JSONSCHEMA_NO_CHANGES=1 go generate ./... && test -z "$(git status --porcelain)" || {
+  echo "Generated output is out of date. Run: go generate ./... then re-stage." >&2
   exit 1
 }
 ```
@@ -89,9 +95,9 @@ hooks can be skipped (`--no-verify`), CI can't:
 - uses: actions/setup-go@v5
   with:
     go-version-file: go.mod
-- name: Check generated schemas are current
-  run: JSONSCHEMA_NO_CHANGES=1 go generate ./...
+- name: Check generated output is current
+  run: JSONSCHEMA_NO_CHANGES=1 go generate ./... && test -z "$(git status --porcelain)"
 ```
 
-A generic fallback that also catches non-schema generators:
-`go generate ./... && git diff --exit-code`.
+A generic fallback that also catches non-schema generators and untracked files:
+`go generate ./... && test -z "$(git status --porcelain)"`.

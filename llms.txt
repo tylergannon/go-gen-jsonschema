@@ -128,6 +128,36 @@ unsupported static shapes fail generation rather than widening to `any` or
 `unknown`. Production generation has no Node, npm, or JavaScript-engine
 dependency.
 
+To adopt declarations with the generated Go JSON boundary, pin one explicit
+module release for both the tool and imported marker/runtime package, then use a
+single directive:
+
+```bash
+go get -tool github.com/tylergannon/go-gen-jsonschema/gen-jsonschema@v1.0.0-rc.5
+```
+
+This combined surface requires `v1.0.0-rc.5` or newer. `v1.0.0-rc.4` includes
+TypeScript declarations but predates generated owner codecs. Pin the version
+explicitly.
+
+```go
+//go:generate go tool gen-jsonschema --validate --typescript web/src/generated --typescript-barrel
+```
+
+`--typescript-barrel` is optional. `WithInterface` and `WithStringerEnum`
+registrations automatically cause the containing struct's JSON methods to be
+generated; there is no codec flag. Run `go generate ./...` and `go mod tidy`,
+then commit the schema, Go, and requested TypeScript outputs together. Encode
+the containing Go struct with `json.Marshal`. For incoming bytes, call its
+generated `ValidateJSON` before `json.Unmarshal`.
+
+TypeScript uses the generated declarations with the platform's
+`JSON.parse`/`JSON.stringify`; the generator emits no TypeScript runtime decoder
+or validator. Type annotations do not validate untrusted runtime input, so the
+application must validate that boundary. Issue #71 owns the broader executed
+JavaScript transport proof and does not turn these declarations into runtime
+codecs.
+
 ## Build-tag model
 
 The registration and generated files are mutually exclusive:
