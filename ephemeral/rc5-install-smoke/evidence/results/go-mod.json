@@ -1,0 +1,51 @@
+{
+	"Module": {
+		"Path": "example.com/rc5-install-smoke"
+	},
+	"Go": "1.27.0",
+	"Require": [
+		{
+			"Path": "github.com/santhosh-tekuri/jsonschema/v6",
+			"Version": "v6.0.2"
+		},
+		{
+			"Path": "github.com/tylergannon/go-gen-jsonschema",
+			"Version": "v1.0.0-rc.5"
+		},
+		{
+			"Path": "github.com/dave/dst",
+			"Version": "v0.27.3",
+			"Indirect": true
+		},
+		{
+			"Path": "github.com/tylergannon/structtag",
+			"Version": "v0.1.0",
+			"Indirect": true
+		},
+		{
+			"Path": "golang.org/x/mod",
+			"Version": "v0.39.0",
+			"Indirect": true
+		},
+		{
+			"Path": "golang.org/x/sync",
+			"Version": "v0.22.0",
+			"Indirect": true
+		},
+		{
+			"Path": "golang.org/x/text",
+			"Version": "v0.14.0",
+			"Indirect": true
+		},
+		{
+			"Path": "golang.org/x/tools",
+			"Version": "v0.49.0",
+			"Indirect": true
+		}
+	],
+	"Tool": [
+		{
+			"Path": "github.com/tylergannon/go-gen-jsonschema/gen-jsonschema"
+		}
+	]
+}

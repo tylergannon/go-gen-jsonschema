@@ -1,0 +1,12 @@
+{
+  "id": "shipment-42",
+  "note": "packed",
+  "eta": "2026-09-05T14:00:00Z",
+  "quantity": 3,
+  "event": {
+    "actor": "go-service",
+    "at": "2026-09-04T18:30:00Z",
+    "kind": "created"
+  },
+  "status": "StatusReady"
+}
