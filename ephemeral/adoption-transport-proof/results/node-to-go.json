@@ -1,0 +1,12 @@
+{
+  "id": "shipment-42",
+  "note": "",
+  "eta": null,
+  "quantity": 4,
+  "event": {
+    "kind": "dispatched",
+    "carrier": "Parcel Post",
+    "tracking": "TRACK-42"
+  },
+  "status": "StatusDelivered"
+}

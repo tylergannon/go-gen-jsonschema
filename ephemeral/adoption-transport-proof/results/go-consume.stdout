@@ -1,0 +1,1 @@
+go_consume_ok status=StatusDelivered kind=dispatched optional_empty_observed=true nullable_null_observed=true reencoded_quantity=5

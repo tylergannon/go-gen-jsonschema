@@ -1,0 +1,12 @@
+{
+  "id": "shipment-42",
+  "note": "accepted-by-go",
+  "eta": "2026-09-05T16:30:00Z",
+  "quantity": 5,
+  "event": {
+    "carrier": "Parcel Post",
+    "kind": "dispatched",
+    "tracking": "TRACK-42"
+  },
+  "status": "StatusDelivered"
+}
