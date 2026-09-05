@@ -66,3 +66,14 @@ descendants of `a7607da`; their union fix commits are patch-equivalent but the
 published head is not an ancestor of `8ad91d5`. After the content integration
 commit, record `6207608` as a merge parent without changing the reviewed tree so
 the eventual PR update can fast-forward and does not discard published history.
+
+## Final state
+
+- Content integration merge: `abdbebb` (`b2fd7ee` + reviewed `8ad91d5`).
+- Published PR #74 ancestry merge: `3e91975`; its `ours` strategy changed no
+  files and makes `6207608` an ancestor of the candidate.
+- After both commits, the complete sequence `go generate ./...`, clean
+  `git diff --exit-code`, `JSONSCHEMA_NO_CHANGES=1 go generate ./...`, clean
+  `git diff --exit-code`, and `GOFLAGS='-count=1 -p=2' go test ./...` passed.
+- Branch `codex/v1-codec-integration` is clean. Nothing was pushed or merged
+  externally.
