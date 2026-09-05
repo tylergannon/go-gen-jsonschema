@@ -77,3 +77,22 @@ the eventual PR update can fast-forward and does not discard published history.
   `git diff --exit-code`, and `GOFLAGS='-count=1 -p=2' go test ./...` passed.
 - Branch `codex/v1-codec-integration` is clean. Nothing was pushed or merged
   externally.
+
+## Closeout preparation
+
+- User correction: the root agent remains management-only; lower agents own
+  implementation, validation, proof capture, and operating-artifact updates.
+- Integration adjudication: main's shared `syntax.ResolveEnum`, arbitrary-size
+  numeric enum schema support, native TypeScript lowering, and established
+  description behavior took precedence at the two source conflicts. The
+  reviewed parent wrapper, enum adapters, union switches, fresh render
+  projection, and collision/nil/hook guards were retained around that shared
+  representation.
+- Cherry-picked validator artifact-only commits `2851a3f` and `b8eb52f` as
+  `35b1ba0` and `dbcc9f2`. The non-ephemeral product diff hash against main was
+  unchanged before and after at
+  `22a1e0c3e3c56543bfdf60bef4de21adb87fc4c6b598275ad61232bf34017b33`.
+- Drafted the combined PR #74 title and body under
+  `ephemeral/pr-74-combined-title.txt` and
+  `ephemeral/pr-74-combined-body.md`; permanent evidence links use artifact
+  commit `dbcc9f2` and the exact validated candidate `5e1040a`.
