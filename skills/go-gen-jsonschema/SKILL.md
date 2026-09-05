@@ -93,8 +93,8 @@ run:
 //go:generate go tool gen-jsonschema --validate --typescript web/src/generated --typescript-barrel
 ```
 
-The barrel flag is optional. Field registrations such as `WithInterface` and
-`WithStringerEnum` automatically select JSON codecs on the containing Go struct;
+The barrel flag is optional. Field registrations such as `.Interface` and
+`.StringerEnum` automatically select JSON codecs on the containing Go struct;
 there is no codec flag. Encode that owner with `json.Marshal`. For incoming JSON,
 call its generated `ValidateJSON` before `json.Unmarshal`.
 
@@ -146,7 +146,7 @@ import (
 func (Person) Schema() json.RawMessage     { panic("not implemented") }
 func (Person) ValidateJSON(_ []byte) error { panic("not implemented") }
 
-var _ = jsonschema.NewJSONSchemaMethod(Person.Schema)
+var _ = jsonschema.Declare(Person.Schema)
 ```
 
 Run `go generate ./...`, then use it:
@@ -195,19 +195,19 @@ Wrappers must be complete direct named field types. V1 Optional follows the
 ordinary renderer's scalar and named scalar, struct, pointer, array/slice,
 supported-ref, and registered-interface paths. V1 Nullable supports scalars,
 registered enums, structs, pointers to structs, and structs registered with
-`AsRef()`.
+`.Ref()`.
 
 ## Beyond flat structs
 
 Enums (string consts and iota+Stringer), discriminated unions over interfaces,
 custom discriminators, free-function registration, shared `$ref`/`$defs` via
-`AsRef()`, and the full CLI/flag reference live in
+`.Ref()`, and the full CLI/flag reference live in
 [references/registration-api.md](references/registration-api.md). Read it
 when a type uses enums, interfaces, or you need non-default generation flags.
 For stable interface wire values, prefer the cohesive
-`WithInterface(field, Discriminator(name), Impl(value, implementation), ...)`
-form. The split `WithInterface`/`WithInterfaceImpls`/`WithDiscriminator` form
-remains supported and derives discriminator values from Go type names.
+`.Interface(field, Discriminator(name), Impl(value, implementation), ...)`
+chain. The legacy split `WithInterface`/`WithInterfaceImpls`/`WithDiscriminator`
+form remains supported and derives discriminator values from Go type names.
 The default discriminator property is `type` for both JSON and YAML. Generation
 is JSON-only by default; `--formats=both` adds yaml/v4 entry points that
 translate YAML into the JSON data model and reuse the JSON validator and
@@ -221,7 +221,7 @@ YAML fields do not retain receiver values. Use `yaml.WithV4Defaults()` to match
 `ValidateYAML` resolution.
 
 By default, a struct type referenced from multiple places is inlined at every
-call site; add `AsRef()` to its registration to render it once as a `"$ref"`
+call site; add `.Ref()` to its registration to render it once as a `"$ref"`
 into `"$defs"` instead.
 
 For concise, source-backed examples of optionality, enums, interface

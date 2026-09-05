@@ -195,6 +195,110 @@ func TestFuncCallParser(t *testing.T) {
 	})
 }
 
+func TestFluentDeclareParser(t *testing.T) {
+	specs := LoadDecls("./testfixtures/typescanner", "fluent_calls.go", token.VAR)
+	require.Len(t, specs, 1)
+	require.Len(t, specs[0].specs, 5)
+	valueSpec := func(idx int) ValueSpec {
+		return NewValueSpec(specs[0].genDecl, specs[0].specs[idx].(*dst.ValueSpec), specs[0].pkg, specs[0].file)
+	}
+	localFuncs := loadPkgDecls(specs[0].pkg).funcDecls
+
+	t.Run("full chain", func(t *testing.T) {
+		calls := ParseValueExprForMarkerFunctionCall(valueSpec(0))
+		require.Len(t, calls, 1)
+		call := calls[0]
+		require.Equal(t, MarkerFuncDeclare, call.CallExpr.MustIdentifyFunc().TypeName)
+
+		method, isMethodRoot, err := call.ParseFluentDeclaration(localFuncs)
+		require.NoError(t, err)
+		require.True(t, isMethodRoot)
+		require.Equal(t, "Schema", method.SchemaMethodName)
+		require.Equal(t, pkgPath, method.Receiver.PkgPath)
+		require.Equal(t, "FluentStruct", method.Receiver.TypeName)
+
+		require.Equal(t, []SchemaMethodOptionInfo{
+			{Kind: "WithStructAccessorMethod", FieldName: "A", ProviderName: "ASchema", ProviderIsMethod: true},
+			{Kind: "WithStructFunctionMethod", FieldName: "B", ProviderName: "BSchema", ProviderIsMethod: true},
+			{Kind: "WithFunction", FieldName: "C", ProviderName: "FluentBoolSchema"},
+			{Kind: "WithEnum", FieldName: "E"},
+			{Kind: "WithStringerEnum", FieldName: "F"},
+			{Kind: "WithInterface", FieldName: "G"},
+			{Kind: "WithDiscriminator", FieldName: "G", Discriminator: "kind"},
+			{Kind: "Impl", FieldName: "G", DiscriminatorValue: "one", ImplTypes: []TypeID{{PkgPath: pkgPath, TypeName: "Type001"}}},
+			{Kind: "AsRef"},
+			{Kind: "WithRenderProviders"},
+		}, method.Options)
+	})
+
+	t.Run("pointer-root chain", func(t *testing.T) {
+		calls := ParseValueExprForMarkerFunctionCall(valueSpec(1))
+		require.Len(t, calls, 1)
+		method, isMethodRoot, err := calls[0].ParseFluentDeclaration(localFuncs)
+		require.NoError(t, err)
+		require.True(t, isMethodRoot)
+		require.Equal(t, "PtrSchema", method.SchemaMethodName)
+		require.Equal(t, pkgPath, method.Receiver.PkgPath)
+		require.Equal(t, "FluentStruct", method.Receiver.TypeName)
+
+		require.Equal(t, []SchemaMethodOptionInfo{
+			{Kind: "WithStructAccessorMethod", FieldName: "A", ProviderName: "PtrASchema", ProviderIsMethod: true},
+			{Kind: "WithStructFunctionMethod", FieldName: "B", ProviderName: "PtrBSchema", ProviderIsMethod: true},
+		}, method.Options)
+	})
+
+	t.Run("free function root", func(t *testing.T) {
+		calls := ParseValueExprForMarkerFunctionCall(valueSpec(2))
+		require.Len(t, calls, 1)
+		method, isMethodRoot, err := calls[0].ParseFluentDeclaration(localFuncs)
+		require.NoError(t, err)
+		require.False(t, isMethodRoot)
+		require.Equal(t, "FluentFreeSchema", method.SchemaMethodName)
+		require.Equal(t, pkgPath, method.Receiver.PkgPath)
+		require.Equal(t, "FluentStruct", method.Receiver.TypeName)
+		require.Empty(t, method.Options)
+	})
+
+	t.Run("bare Declare with no chain", func(t *testing.T) {
+		calls := ParseValueExprForMarkerFunctionCall(valueSpec(3))
+		require.Len(t, calls, 1)
+		method, isMethodRoot, err := calls[0].ParseFluentDeclaration(localFuncs)
+		require.NoError(t, err)
+		require.True(t, isMethodRoot)
+		require.Equal(t, "Schema", method.SchemaMethodName)
+		require.Equal(t, "FluentStruct", method.Receiver.TypeName)
+		require.Empty(t, method.Options)
+	})
+
+	t.Run("import alias root", func(t *testing.T) {
+		calls := ParseValueExprForMarkerFunctionCall(valueSpec(4))
+		require.Len(t, calls, 1)
+		method, isMethodRoot, err := calls[0].ParseFluentDeclaration(localFuncs)
+		require.NoError(t, err)
+		require.True(t, isMethodRoot)
+		require.Equal(t, "Schema", method.SchemaMethodName)
+		require.Equal(t, subpkg, method.Receiver.PkgPath)
+		require.Equal(t, "TypeForSchemaMethod", method.Receiver.TypeName)
+		require.Equal(t, []SchemaMethodOptionInfo{{Kind: "AsRef"}}, method.Options)
+	})
+}
+
+// TestFluentChainFieldSelectorMismatchFailsToLoad proves that a fluent chain
+// link whose field selector names a type other than the Declare(...) root
+// (a typo Go's type system can't catch, since Enum's field parameter is
+// `any`) is a hard, source-positioned scanner error rather than the silent
+// skip the legacy variadic-option parser applies to an analogous mismatch.
+func TestFluentChainFieldSelectorMismatchFailsToLoad(t *testing.T) {
+	pkgs, err := Load("./testfixtures/fluent_field_mismatch")
+	require.NoError(t, err)
+	require.Len(t, pkgs, 1)
+
+	_, err = LoadPackage(pkgs[0])
+	require.Error(t, err)
+	require.ErrorContains(t, err, "jsonschema.Declare: .Enum expects a field selector on Owner{}")
+	require.ErrorContains(t, err, "fixture.go")
+}
+
 func printStuff(it any) {
 	fmt.Printf("%T %#v\n", it, it)
 }

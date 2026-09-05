@@ -11,12 +11,10 @@ import (
 func (Owner) Schema() json.RawMessage { panic("not implemented") }
 
 // v1 interface options example
-var _ = jsonschema.NewJSONSchemaMethod(
-	Owner.Schema,
-	jsonschema.WithInterface(
+var _ = jsonschema.Declare(Owner.Schema).
+	Interface(
 		Owner{}.IF,
 		jsonschema.Discriminator("!kind"),
 		jsonschema.Impl("impl_one", Impl1{}),
 		jsonschema.Impl("impl_two", Impl2{}),
-	),
-)
+	)

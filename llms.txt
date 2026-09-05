@@ -80,7 +80,7 @@ func (Person) Schema() json.RawMessage     { panic("not implemented") }
 func (Person) ValidateJSON(_ []byte) error { panic("not implemented") }
 func (Person) ValidateYAML(_ []byte) error { panic("not implemented") }
 
-var _ = jsonschema.NewJSONSchemaMethod(Person.Schema)
+var _ = jsonschema.Declare(Person.Schema)
 ```
 
 Generation writes:
@@ -144,7 +144,7 @@ explicitly.
 //go:generate go tool gen-jsonschema --validate --typescript web/src/generated --typescript-barrel
 ```
 
-`--typescript-barrel` is optional. `WithInterface` and `WithStringerEnum`
+`--typescript-barrel` is optional. `.Interface` and `.StringerEnum`
 registrations automatically cause the containing struct's JSON methods to be
 generated; there is no codec flag. Run `go generate ./...` and `go mod tidy`,
 then commit the schema, Go, and requested TypeScript outputs together. Encode
@@ -175,7 +175,7 @@ build mode.
 - Properties are emitted in Go struct field order.
 - `additionalProperties` is `false` for generated objects.
 - Type and field doc comments become `description` values.
-- Nested structs are inlined by default, unless registered with `AsRef()`
+- Nested structs are inlined by default, unless registered with `.Ref()`
   (see "Shared definitions" below).
 - Ordinary fields and `Nullable[T]` fields are required.
 - Only `Optional[T]` removes a property from `required`.
@@ -210,7 +210,7 @@ Supported wrapper shapes:
 - `Optional`: scalars and named scalars, structs, pointers, arrays and slices,
   supported explicit references, and registered interface fields.
 - `Nullable`: scalars, registered enums, structs, pointers to structs, and
-  structs registered with `AsRef()`.
+  structs registered with `.Ref()`.
 
 Wrappers must be the complete type of a direct named struct field. Aliases,
 defined wrapper types, embedding, nesting, wrappers inside containers, and
@@ -273,7 +273,7 @@ generated schema.
 
 ## Enums
 
-For a named string field, `WithEnum` discovers typed constants declared in the
+For a named string field, `.Enum` discovers typed constants declared in the
 same package:
 
 ```go
@@ -288,20 +288,31 @@ type Task struct {
     Status Status `json:"status"`
 }
 
-var _ = jsonschema.NewJSONSchemaMethod(
-    Task.Schema,
-    jsonschema.WithEnum(Task{}.Status),
-)
+var _ = jsonschema.Declare(Task.Schema).
+    Enum(Task{}.Status)
 ```
 
 For an integer or iota enum, choose the wire representation explicitly:
 
-- `WithEnum` emits the raw numeric constant values.
-- `WithStringerEnum` emits constant names such as `LogDebug` and `LogInfo` as
+- `.Enum` emits the raw numeric constant values.
+- `.StringerEnum` emits constant names such as `LogDebug` and `LogInfo` as
   strings. It does not emit the return values of `String()`.
 
-The package-level `NewEnumType[T]()` form remains supported, but field-level
-options are preferred for new code.
+Migration: `NewJSONSchemaMethod(Task.Schema, WithEnum(Task{}.Status))` is now
+`Declare(Task.Schema).Enum(Task{}.Status)`. The legacy
+`NewJSONSchemaMethod`/`NewJSONSchemaFunc` with `WithEnum`/`WithStringerEnum`
+remain supported and source-compatible; each carries a `Deprecated:` godoc
+comment naming its fluent equivalent.
+
+Field-level `.Enum`/`.StringerEnum` is not a full replacement for the
+package-level `NewEnumType[T]()` form when the enum type is shared across
+more than one struct field: `.Enum`/`.StringerEnum` only support a direct
+named enum, `Optional[E]`, or `Nullable[E]` field (not, for example,
+`Optional[[]E]`), and annotating only some of a shared enum type's
+occurrences degrades the ones left unmarked (they render as plain
+unconstrained types and lose their generated TypeScript type). Keep a shared
+enum type on the package-level `NewEnumType[T]()` form; it remains supported
+and applies wherever the type appears, with no fluent replacement.
 
 String-mode integer fields generate one composed owner codec for encoding and
 decoding, shared with any union adapters. Marshal the containing owner value
@@ -310,7 +321,7 @@ and `Nullable[E]` are supported. Optional absence and Nullable null skip the
 conversion; present values must have a declared name. Unknown names,
 undeclared values/zero, duplicate underlying values with distinct names,
 production enum JSON hooks, and other adapted containers are rejected.
-`WithEnum` fields using the same integer type retain numeric JSON.
+`.Enum` fields using the same integer type retain numeric JSON.
 Registered enum fields cannot use `json:",string"`; generation rejects that
 option before writing artifacts because its encoding differs from the schema.
 
@@ -346,14 +357,12 @@ Preferred registration keeps every implementation beside its stable wire
 discriminator:
 
 ```go
-var _ = jsonschema.NewJSONSchemaMethod(
-    Batch.Schema,
-    jsonschema.WithInterface(
+var _ = jsonschema.Declare(Batch.Schema).
+    Interface(
         Batch{}.Events,
         jsonschema.Impl("created", Created{}),
         jsonschema.Impl("deleted", (*Deleted)(nil)),
-    ),
-)
+    )
 ```
 
 `Impl`'s first argument is the exact discriminator used by both the schema
@@ -394,14 +403,15 @@ events:
 Run `go mod tidy` after YAML-enabled generation so the module records its
 `go.yaml.in/yaml/v4` dependency.
 
-The split form remains supported for compatibility. Without explicit `Impl`
-values, discriminators continue to derive from Go type names:
+Without explicit `Impl` values, discriminators continue to derive from Go type
+names.
 
-```go
-jsonschema.WithInterface(Batch{}.Events),
-jsonschema.WithInterfaceImpls(Batch{}.Events, Created{}, (*Deleted)(nil)),
-jsonschema.WithDiscriminator(Batch{}.Events, "!kind"),
-```
+Migration: `NewJSONSchemaMethod(Batch.Schema, WithInterface(Batch{}.Events,
+Impl(...), ...))` is now `Declare(Batch.Schema).Interface(Batch{}.Events,
+Impl(...), ...)`. The legacy `NewJSONSchemaMethod`/`NewJSONSchemaFunc` with
+`With*` options, and the split `WithInterface`/`WithInterfaceImpls`/
+`WithDiscriminator` options, remain supported and source-compatible; each
+carries a `Deprecated:` godoc comment naming its fluent equivalent.
 
 Marshal the containing value with `json.Marshal(batch)` or
 `json.Marshal(&batch)`. Its generated owner codec injects each field's
@@ -433,10 +443,10 @@ per-field interface options in one package:
 var _ = jsonschema.NewInterfaceImpl[Event](Created{}, (*Deleted)(nil))
 ```
 
-## Shared definitions (`$ref`/`$defs`) via `AsRef`
+## Shared definitions (`$ref`/`$defs`) via `Ref`
 
 By default a type referenced from multiple places is inlined at every call
-site. Add the zero-arg `AsRef()` option to that type's own registration to
+site. Add the zero-arg `.Ref()` option to that type's own registration to
 render it once as `"$ref": "#/$defs/TypeName"` wherever another registered
 schema references it instead:
 
@@ -450,11 +460,11 @@ type Container struct {
     Others  []Shared `json:"others"`
 }
 
-var _ = jsonschema.NewJSONSchemaMethod(Shared.Schema, jsonschema.AsRef())
-var _ = jsonschema.NewJSONSchemaMethod(Container.Schema)
+var _ = jsonschema.Declare(Shared.Schema).Ref()
+var _ = jsonschema.Declare(Container.Schema)
 ```
 
-`Nullable` can wrap an `AsRef()` struct or registered enum. Both properties
+`Nullable` can wrap a `.Ref()` struct or registered enum. Both properties
 remain required; their schemas become `anyOf` unions with JSON null, and the
 referenced struct remains in `$defs`:
 
@@ -472,30 +482,52 @@ type NullableConfig struct {
 }
 
 var (
-    _ = jsonschema.NewJSONSchemaMethod(NullableConfig.Schema)
+    _ = jsonschema.Declare(NullableConfig.Schema)
     _ = jsonschema.NewEnumType[Mode]()
 )
 ```
 
+Migration: `NewJSONSchemaMethod(Shared.Schema, AsRef())` is now
+`Declare(Shared.Schema).Ref()`. The legacy `NewJSONSchemaMethod`/
+`NewJSONSchemaFunc` with `AsRef()`, and the package-level `NewEnumType[T]()`,
+remain supported and source-compatible; each carries a `Deprecated:` godoc
+comment naming its fluent equivalent.
+
 `$defs` are assembled per generated JSON file, keyed by the type's bare name.
-Two distinct `AsRef()`-registered types reachable in one generation run that
+Two distinct `.Ref()`-registered types reachable in one generation run that
 share a bare name are a hard, generation-time error. Recursive or
-self-referencing `AsRef()` types are rejected, the same as any other circular
+self-referencing `.Ref()` types are rejected, the same as any other circular
 reference.
 
 ## Provider-rendered schemas
 
 Provider options replace selected field schemas at runtime:
 
-- `WithFunction(field, fn)` calls a package function;
-- `WithStructAccessorMethod(field, method)` calls a receiver accessor;
-- `WithStructFunctionMethod(field, method)` calls a receiver method with the
-  field value; and
-- `WithRenderProviders()` generates `RenderedSchema()` and enables provider
+- `.Function(field, fn)` calls a free function taking the field's own value;
+- `.Accessor(field, T.method)` calls a receiver method taking only the
+  receiver;
+- `.Method(field, T.method)` calls a receiver method that also takes the
+  field's own value; and
+- `.RenderProviders()` generates `RenderedSchema()` and enables provider
   execution.
+
+```go
+var _ = jsonschema.Declare(Example.Schema).
+    Accessor(Example{}.A, Example.ASchema).
+    Method(Example{}.B, Example.BSchema).
+    Function(Example{}.C, BoolSchemaFunc).
+    RenderProviders()
+```
 
 Provider functions must exist in normal builds. Provider-rendered schemas do
 not receive validation methods because their schema depends on runtime values.
+
+Migration: `NewJSONSchemaMethod(Example.Schema, WithStructAccessorMethod(...),
+WithStructFunctionMethod(...), WithFunction(...), WithRenderProviders())` is
+now `Declare(Example.Schema).Accessor(...).Method(...).Function(...).RenderProviders()`.
+The legacy `NewJSONSchemaMethod`/`NewJSONSchemaFunc` with `With*` options
+remain supported and source-compatible; each carries a `Deprecated:` godoc
+comment naming its fluent equivalent.
 
 ## Manual schema construction
 
@@ -509,28 +541,57 @@ must be preserved.
 
 ## Registration API
 
-| Marker or option | Purpose |
+`Declare(fn)` is the entry point. `fn` is a method expression (`T.Schema`) or a
+free function taking `T` as its sole parameter; both infer `T`. Chain options
+onto the returned `*Declaration[T]`:
+
+| Chain method | Purpose |
 | --- | --- |
-| `NewJSONSchemaMethod(T.Schema, ...opts)` | Primary method registration. |
-| `NewJSONSchemaFunc(fn, ...opts)` | Register a free schema accessor. |
-| `NewJSONSchemaBuilder[T](fn)` | Register a no-argument schema accessor stub; generation emits the accessor and schema bytes. |
-| `NewEnumType[T]()` | Legacy package-level enum registration. |
-| `NewInterfaceImpl[I](impls...)` | Legacy package-level interface registration. |
-| `WithEnum(field)` | Render same-package typed string or numeric constant values. |
-| `WithStringerEnum(field)` | Render integer constant names as strings. |
-| `WithInterface(field, options...)` | Register an interface field, optionally with cohesive `Discriminator` and `Impl` options. |
-| `Discriminator(name)` | Set the discriminator property inside `WithInterface`. |
-| `Impl(value, implementation)` | Bind a stable wire discriminator to an implementation inside `WithInterface`. |
-| `WithInterfaceImpls(field, impls...)` | List its accepted concrete types. |
-| `WithDiscriminator(field, name)` | Override the default `type` property. |
-| `WithFunction(field, fn)` | Render a field schema with a package function. |
-| `WithStructAccessorMethod(field, method)` | Render with a receiver accessor. |
-| `WithStructFunctionMethod(field, method)` | Render with a receiver method that accepts the field value. |
-| `WithRenderProviders()` | Enable runtime provider rendering. |
-| `AsRef()` | Render this type as a `$ref` into `$defs` wherever another registered schema references it, instead of inlining it. |
+| `.Accessor(field, T.method)` | Provider is a struct method taking only the receiver. |
+| `.Method(field, T.method)` | Provider is a struct method also taking the field's own value. |
+| `.Function(field, fn)` | Provider is a free function taking the field's own value. |
+| `.Enum(field)` | Field is an enum compared directly. |
+| `.StringerEnum(field)` | Field is an enum compared via `fmt.Stringer`. |
+| `.Ref()` | Render this type as `"$ref"` wherever it's referenced. |
+| `.RenderProviders()` | Generate `RenderedSchema()` and run providers at runtime. |
+| `.Interface(field, options...)` | Field is a sealed interface (`Discriminator(name)`, `Impl(value, impl)`). |
+
+```go
+var _ = jsonschema.Declare(Person.Schema)
+
+var _ = jsonschema.Declare(Task.Schema).
+    Enum(Task{}.Status).
+    StringerEnum(Task{}.LogLevel)
+```
 
 Registration markers are read from the build-tagged file by the generator and
 are no-ops at runtime.
+
+`NewJSONSchemaMethod`/`NewJSONSchemaFunc` with their legacy `With*` options,
+`NewEnumType[T]()`, and `NewInterfaceImpl[I](impls...)` remain supported for
+source compatibility; each carries a `Deprecated:` godoc comment naming its
+fluent equivalent. `NewJSONSchemaBuilder[T](fn)` (registers a no-argument
+schema accessor stub) has no fluent form yet and is unaffected.
+
+| Legacy marker or option | Fluent equivalent |
+| --- | --- |
+| `NewJSONSchemaMethod(T.Schema, ...opts)` | `Declare(T.Schema)` |
+| `NewJSONSchemaFunc(fn, ...opts)` | `Declare(fn)` |
+| `NewJSONSchemaBuilder[T](fn)` | none (unaffected) |
+| `NewEnumType[T]()` | none for a type shared across fields; keep the legacy form |
+| `NewInterfaceImpl[I](impls...)` | `.Interface(field, Impl(value, impl), ...)` |
+| `WithEnum(field)` | `.Enum(field)` |
+| `WithStringerEnum(field)` | `.StringerEnum(field)` |
+| `WithInterface(field, options...)` | `.Interface(field, options...)` |
+| `Discriminator(name)` | `Discriminator(name)` (unchanged, used inside `.Interface`) |
+| `Impl(value, implementation)` | `Impl(value, implementation)` (unchanged, used inside `.Interface`) |
+| `WithInterfaceImpls(field, impls...)` | `.Interface(field, Impl(value, impl), ...)` |
+| `WithDiscriminator(field, name)` | `.Interface(field, Discriminator(name), ...)` |
+| `WithFunction(field, fn)` | `.Function(field, fn)` |
+| `WithStructAccessorMethod(field, method)` | `.Accessor(field, T.method)` |
+| `WithStructFunctionMethod(field, method)` | `.Method(field, T.method)` |
+| `WithRenderProviders()` | `.RenderProviders()` |
+| `AsRef()` | `.Ref()` |
 
 ## CLI reference
 
@@ -620,4 +681,4 @@ Compiling examples:
 - Sealed interface slices: `examples/sealed_interface_slices`
 - Enums: `examples/enums`, `examples/stringer_enums`
 - Provider rendering: `examples/providers_rendering`
-- Shared `$ref`/`$defs` via `AsRef`: `examples/ref_types`
+- Shared `$ref`/`$defs` via `Ref`: `examples/ref_types`

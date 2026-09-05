@@ -441,6 +441,19 @@ func (r *ScanResult) loadPackageInternal(seen seenPackages, typesToMap map[strin
 			typesToMap[fn.Receiver.TypeName] = true
 			r.SchemaFuncs = append(r.SchemaFuncs, fn)
 
+		case MarkerFuncDeclare:
+			method, isMethodRoot, err := decl.ParseFluentDeclaration(_decls.funcDecls)
+			if err != nil {
+				return err
+			}
+			r.localTypeNames[method.Receiver.TypeName] = true
+			typesToMap[method.Receiver.TypeName] = true
+			if isMethodRoot {
+				r.SchemaMethods = append(r.SchemaMethods, method)
+			} else {
+				r.SchemaFuncs = append(r.SchemaFuncs, SchemaFunction(method))
+			}
+
 		default:
 			return fmt.Errorf("unsupported marker function: %s", decl.CallExpr.MustIdentifyFunc())
 		}

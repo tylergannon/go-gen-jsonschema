@@ -31,6 +31,21 @@
       ]
     },
     {
+      "id": "providers",
+      "title": "Provider-rendered fields",
+      "when": "Use provider options when a field's schema must be supplied at runtime instead of derived statically.",
+      "sections": [
+        {
+          "source": "examples/providers_rendering/types.go",
+          "declarations": ["Example", "Example.ASchema", "Example.BSchema", "BoolSchema"]
+        },
+        {
+          "source": "examples/providers_rendering/schema.go",
+          "registrations": ["Example.Schema"]
+        }
+      ]
+    },
+    {
       "id": "interfaces",
       "title": "Interfaces and discriminators",
       "when": "Use explicit interface options to enumerate implementations and choose the discriminator property for an interface field.",
@@ -63,7 +78,7 @@
     {
       "id": "ref-types",
       "title": "Shared $defs and nullable references",
-      "when": "Use AsRef() on a type's own registration when it should be rendered once into $defs. Nullable can wrap that referenced struct or a registered enum while keeping the containing property required.",
+      "when": "Use Ref() on a type's own registration when it should be rendered once into $defs. Nullable can wrap that referenced struct or a registered enum while keeping the containing property required.",
       "sections": [
         {
           "source": "examples/ref_types/types.go",

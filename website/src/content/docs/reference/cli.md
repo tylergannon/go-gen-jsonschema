@@ -75,7 +75,7 @@ registrations, and TypeScript declarations:
 //go:generate go tool gen-jsonschema --validate --typescript web/src/generated --typescript-barrel
 ```
 
-`WithInterface` and `WithStringerEnum` registrations cause the containing Go
+`.Interface` and `.StringerEnum` registrations cause the containing Go
 struct's JSON methods to be generated automatically; there is no codec flag.
 The TypeScript output provides static declarations only, with no runtime decoder
 or validator. Validate untrusted values in the TypeScript application, and call

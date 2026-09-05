@@ -1,5 +1,7 @@
 package scannersubpkg
 
+import "encoding/json"
+
 type (
 	NiceEnumType    string
 	MarkerInterface interface {
@@ -17,6 +19,8 @@ type (
 	Type003 struct{}
 	Type004 struct{}
 )
+
+func (t TypeForSchemaMethod) Schema() json.RawMessage { panic("not implemented") }
 
 func (t Type001) coolio()  {}
 func (t Type002) coolio()  {}

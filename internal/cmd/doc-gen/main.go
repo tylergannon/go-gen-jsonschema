@@ -238,8 +238,8 @@ func registrationNames(decl ast.Decl) []string {
 			continue
 		}
 		for _, value := range valueSpec.Values {
-			call, ok := value.(*ast.CallExpr)
-			if !ok || !isRegistrationCall(call.Fun) || len(call.Args) == 0 {
+			call := baseRegistrationCall(value)
+			if call == nil || len(call.Args) == 0 {
 				continue
 			}
 			selector, ok := call.Args[0].(*ast.SelectorExpr)
@@ -255,15 +255,28 @@ func registrationNames(decl ast.Decl) []string {
 	return names
 }
 
-func isRegistrationCall(expr ast.Expr) bool {
-	var name string
-	switch e := expr.(type) {
-	case *ast.Ident:
-		name = e.Name
-	case *ast.SelectorExpr:
-		name = e.Sel.Name
+// baseRegistrationCall walks down a fluent Declare(...).Chain(...) call (or a
+// legacy NewJSONSchemaMethod/NewJSONSchemaFunc call) to the base call that
+// carries the registered type's schema method as its first argument.
+func baseRegistrationCall(expr ast.Expr) *ast.CallExpr {
+	call, ok := expr.(*ast.CallExpr)
+	if !ok {
+		return nil
 	}
-	return name == "NewJSONSchemaMethod" || name == "NewJSONSchemaFunc"
+	var name string
+	switch fun := call.Fun.(type) {
+	case *ast.Ident:
+		name = fun.Name
+	case *ast.SelectorExpr:
+		name = fun.Sel.Name
+		if name != "NewJSONSchemaMethod" && name != "NewJSONSchemaFunc" && name != "Declare" {
+			return baseRegistrationCall(fun.X)
+		}
+	}
+	if name == "NewJSONSchemaMethod" || name == "NewJSONSchemaFunc" || name == "Declare" {
+		return call
+	}
+	return nil
 }
 
 func toSet(values []string) map[string]bool {

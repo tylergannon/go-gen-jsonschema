@@ -1,0 +1,108 @@
+Run all Go unit tests before doing anything, to establish a baseline. Your job
+CANNOT be considered complete if you do not run tests after completing the work.
+Therefore it is imperative to verify that tests are working before you begin.
+
+If there is an issue running tests at all (i.e. missing modules that can't be loaded),
+STOP.
+If there are broken tests, begin by fixing those broken tests.
+
+DO NOT consider the job to be complete until unit tests have been updated
+and `go test ./...` completes successfully.
+
+If you have been asked to add new functionality, you must write unit tests
+that verify the new functionality.
+If you have been asked to perform a refactoring, you need only change unit
+tests to the extent needed to ensure all functionality has good tests.
+
+## Session Worklog protocol
+
+All agents doing non-trivial repository work MUST follow the Session Worklog
+protocol in `/Users/tyler/.agents/skills/session-worklog/SKILL.md`.
+
+- Create or continue a task worktree before writing operating artifacts.
+- Keep the tracked session worklog under `ephemeral/worklog/` unless a more
+  specific repository policy supersedes that path.
+- Keep review prompts, review results, scratch notes, source captures, generated
+  packets, and all other temporary or raw session artifacts under `ephemeral/`.
+- NEVER place ephemeral or raw session artifacts in `docs/`. Only polished,
+  durable project documentation belongs there.
+- Update the worklog with commands, decisions, corrections, proof, and final
+  branch or review state before closeout. Do not delete an active worklog.
+
+## Project Overview
+
+go-gen-jsonschema is a Go code generator that creates JSON Schema definitions from Go types, optimized for LLM function calling (OpenAI, Anthropic). It uses `//go:build jsonschema` build tags to separate schema registration from production code.
+
+## Commands
+
+```bash
+# Run all tests
+go test ./...
+
+# Run a specific test
+go test ./... -run 'TestName'
+
+# Lint (requires: modernize, staticcheck, govulncheck, golangci-lint, goimports)
+just lint
+
+# Build the CLI
+go build ./gen-jsonschema
+
+# Generate schemas for an example
+cd examples/basictypes && go generate ./...
+```
+
+Task runner is `just` (justfile), not `make`.
+
+## Architecture
+
+### Two-Phase Generation Pipeline
+
+1. **Phase 1 — JSON schema files**: Scans Go types via AST, generates `.json` files in `jsonschema/` subdirectory
+2. **Phase 2 — Go code**: Generates `jsonschema_gen.go` with `embed.FS` for runtime schema access
+
+### Package Layout
+
+- **`gen-jsonschema/`** — CLI entry point with `gen` and `new` subcommands
+- **`internal/syntax/`** — AST parsing, package loading (uses `golang.org/x/tools/go/packages` with `jsonschema` build tag), type scanning, comment extraction
+- **`internal/builder/`** — Schema generation engine. `SchemaBuilder` orchestrates: type scanning → schema node construction → JSON output → Go code generation
+- **`internal/builder/model.go`** — Schema node types: `ObjectNode`, `PropertyNode`, `ArrayNode`, `UnionTypeNode`, `RefNode`, `TemplateHoleNode`
+- **`internal/common/`** — Struct tag parsing, helpers
+- **Root package** — Public types: `JSONSchema`, `ObjectSchema`, `ParentSchema`, and marker registration functions
+
+### Registration System
+
+Schema types are registered via no-op marker functions in build-tagged `schema.go` files. The scanner reads these as AST call expressions. `Declare(fn)` — a method expression (`T.Schema`) or a free function taking `T` — is the primary entry point; chain options onto the returned `*Declaration[T]`:
+
+- `Declare(T.Schema)` — primary registration
+- `.Enum(T{}.Field)` / `.StringerEnum(T{}.Field)` — enum fields
+- `.Interface(T{}.Field, Discriminator(name), Impl(value, impl), ...)` — union types with discriminators
+- `.Accessor(...)` / `.Method(...)` / `.Function(...)` / `.RenderProviders()` — provider-based template rendering
+- `.Ref()` — render this type as `"$ref"` wherever it's referenced
+
+`NewJSONSchemaMethod`/`NewJSONSchemaFunc` with their `With*` options, the package-level `NewEnumType[T]()`, and `NewInterfaceImpl[I](impls...)` remain supported for source compatibility (each carries a `Deprecated:` godoc comment naming its fluent equivalent), but new registration code should use `Declare(...)`. `NewEnumType[T]()` has no fluent replacement when an enum type is shared across more than one struct field — keep that case on the legacy form.
+
+### Key Patterns
+
+- **Build tags**: `//go:build jsonschema` for registration code, `//go:build !jsonschema` for generated code
+- **Discriminators**: Default `"type"`, overridable per-field with `Discriminator(name)` inside `.Interface(...)`
+- **Comments → descriptions**: Go doc comments automatically become JSON Schema `description` fields
+- **Optional fields**: `jsonschema.Optional[T]` with `json:",omitzero"` (not `omitempty`, which only affects Go marshaling)
+
+### Validation
+
+Pass `--validate` to generation (and to `new`, which then scaffolds a panic stub such as `func (Person) ValidateJSON(_ []byte) error { panic("not implemented") }`) to get a generated `ValidateJSON([]byte) error` method. Schemas are compiled once in `init()` using `github.com/santhosh-tekuri/jsonschema/v6`. Rendered/template types don't receive one because their schemas depend on runtime values.
+
+### Limitations
+
+- No support for maps, channels, functions, or inline interfaces
+- Circular/recursive references are detected and rejected
+- External package types limited to `time.Time` (rendered as string with RFC3339 guidance)
+- Max nesting depth: 100
+
+## Test Structure
+
+- Unit tests alongside source files (`*_test.go`)
+- Integration test fixtures in `internal/builder/testfixtures/` and `internal/builder/test_run/`
+- Golden file comparisons via `internal/testutils/golden_file.go`
+- Example directories each contain types, registration, and generated output

@@ -11,19 +11,25 @@ func BoolSchema(_ bool) json.Marshaler {
     return json.RawMessage(`{"type":"boolean"}`)
 }
 
-var _ = jsonschema.NewJSONSchemaMethod(
-    Config.Schema,
-    jsonschema.WithFunction(Config{}.Enabled, BoolSchema),
-    jsonschema.WithRenderProviders(),
-)
+var _ = jsonschema.Declare(Config.Schema).
+    Function(Config{}.Enabled, BoolSchema).
+    RenderProviders()
 ```
 
-Available provider options are:
+Available provider chain methods are:
 
-- `WithFunction(field, fn)` for a package function;
-- `WithStructAccessorMethod(field, method)` for a receiver method;
-- `WithStructFunctionMethod(field, method)` for a receiver method that accepts the field value;
-- `WithRenderProviders()` to generate `RenderedSchema()` and execute providers at runtime.
+- `.Function(field, fn)` for a package function;
+- `.Accessor(field, method)` for a receiver method taking only the receiver;
+- `.Method(field, method)` for a receiver method that also accepts the field value;
+- `.RenderProviders()` to generate `RenderedSchema()` and execute providers at runtime.
+
+Migration: `NewJSONSchemaMethod(Config.Schema, WithFunction(Config{}.Enabled,
+BoolSchema), WithRenderProviders())` is now `Declare(Config.Schema).Function(
+Config{}.Enabled, BoolSchema).RenderProviders()`. The legacy
+`NewJSONSchemaMethod`/`NewJSONSchemaFunc` with `WithFunction`,
+`WithStructAccessorMethod`, `WithStructFunctionMethod`, and
+`WithRenderProviders` remain supported and source-compatible; each carries a
+`Deprecated:` godoc comment naming its fluent equivalent.
 
 Provider implementations must be available in normal builds because
 `RenderedSchema()` calls them at runtime. A rendered type does not receive

@@ -1,5 +1,5 @@
 {"type":"object",
-"description":"ApplicationConfig demonstrates using Stringer enums in a struct. WithStringerEnum emits the constant names rather than their integer values.","properties":{
+"description":"ApplicationConfig demonstrates using Stringer enums in a struct. StringerEnum emits the constant names rather than their integer values.","properties":{
 "app_name":{"type":"string","description":"AppName is the name of the application"},
 "log_level":{"type":"string","enum":["LogDebug","LogInfo","LogWarning","LogError","LogFatal"]},
 "default_priority":{"type":"string","enum":["PriorityLow","PriorityNormal","PriorityHigh","PriorityUrgent"]},

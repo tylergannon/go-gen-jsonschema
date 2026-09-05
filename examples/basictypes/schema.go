@@ -41,23 +41,23 @@ func (AnotherNestedType) Schema() json.RawMessage {
 }
 
 // These marker variables register the types with the jsonschema generator.
-// Each type that needs a schema must be registered here using NewJSONSchemaMethod.
+// Each type that needs a schema must be registered here using Declare.
 var (
 	// Register SimpleInt for schema generation
-	_ = jsonschema.NewJSONSchemaMethod(SimpleInt.Schema)
+	_ = jsonschema.Declare(SimpleInt.Schema)
 
 	// Register SimpleString for schema generation
-	_ = jsonschema.NewJSONSchemaMethod(SimpleString.Schema)
+	_ = jsonschema.Declare(SimpleString.Schema)
 
 	// Register SimpleFloat for schema generation
-	_ = jsonschema.NewJSONSchemaMethod(SimpleFloat.Schema)
+	_ = jsonschema.Declare(SimpleFloat.Schema)
 
 	// Register SimpleStruct for schema generation
-	_ = jsonschema.NewJSONSchemaMethod(SimpleStruct.Schema)
+	_ = jsonschema.Declare(SimpleStruct.Schema)
 
 	// Register TypeInNestedDecl for schema generation
-	_ = jsonschema.NewJSONSchemaMethod(TypeInNestedDecl.Schema)
+	_ = jsonschema.Declare(TypeInNestedDecl.Schema)
 
 	// Register AnotherNestedType for schema generation
-	_ = jsonschema.NewJSONSchemaMethod(AnotherNestedType.Schema)
+	_ = jsonschema.Declare(AnotherNestedType.Schema)
 )

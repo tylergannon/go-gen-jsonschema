@@ -77,7 +77,7 @@ module release. Add validation and the TypeScript destination to one directive:
 //go:generate go tool gen-jsonschema --validate --typescript web/src/generated --typescript-barrel
 ```
 
-`--typescript-barrel` is optional. `WithInterface` and `WithStringerEnum`
+`--typescript-barrel` is optional. `.Interface` and `.StringerEnum`
 registrations automatically generate the containing struct's JSON codecs; there
 is no separate codec flag. The run writes `types.ts` and, when requested,
 `index.ts` alongside the schema and Go outputs.
