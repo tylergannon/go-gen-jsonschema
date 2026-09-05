@@ -1,0 +1,1 @@
+/adversarial-review Re-review the entire current work against the same authoritative sources. Inspect the current implementation and proof. Write the complete review to ephemeral/reviews/20260904-typescript-round-03.md. Do not edit any other files.

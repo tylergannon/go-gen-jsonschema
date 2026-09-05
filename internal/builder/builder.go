@@ -2,10 +2,12 @@ package builder
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/dave/dst/decorator"
 	"github.com/tylergannon/go-gen-jsonschema/internal/syntax"
+	"github.com/tylergannon/go-gen-jsonschema/internal/typescript"
 )
 
 type BuilderArgs struct {
@@ -14,6 +16,10 @@ type BuilderArgs struct {
 	NoChanges bool // If true, fail if any schema changes are detected
 	Force     bool // If true, force regeneration of schemas even if no changes are detected
 	Validate  bool // If true, generate validation methods and schema compilation
+	// TypeScriptDir selects a directory for structural TypeScript declarations.
+	// Relative paths are resolved against the invocation working directory.
+	TypeScriptDir    string
+	TypeScriptBarrel bool
 	// UnmarshalFormats selects whether generated JSON decoding also accepts YAML.
 	// The zero value preserves the CLI default and generates JSON support only.
 	UnmarshalFormats UnmarshalFormats
@@ -42,6 +48,9 @@ func Run(args BuilderArgs) (err error) {
 	if !args.UnmarshalFormats.valid() {
 		return fmt.Errorf("invalid unmarshal formats %q", args.UnmarshalFormats)
 	}
+	if args.TypeScriptBarrel && args.TypeScriptDir == "" {
+		return fmt.Errorf("--typescript-barrel requires --typescript")
+	}
 	var (
 		pkgs    []*decorator.Package
 		builder SchemaBuilder
@@ -64,6 +73,25 @@ func Run(args BuilderArgs) (err error) {
 		return err
 	}
 
+	// Lower, render, and preflight all TypeScript outputs before any output is
+	// mutated. In particular, an unsupported source shape or an unowned output
+	// collision must leave ordinary generated artifacts untouched.
+	var typeScriptPlan *typescriptOutputPlan
+	if args.TypeScriptDir != "" {
+		definitions, definitionsErr := (&builder).TypeDefinitions()
+		if definitionsErr != nil {
+			return fmt.Errorf("generate TypeScript definitions: %w", definitionsErr)
+		}
+		files, generateErr := typescript.Generate(definitions, typescript.Options{Barrel: args.TypeScriptBarrel})
+		if generateErr != nil {
+			return fmt.Errorf("generate TypeScript output: %w", generateErr)
+		}
+		typeScriptPlan, err = prepareTypeScriptOutput(args.TypeScriptDir, files, args.TypeScriptBarrel)
+		if err != nil {
+			return err
+		}
+	}
+
 	var changedSchemas map[string]bool
 	if changedSchemas, err = builder.RenderSchemas(args.NoChanges, args.Force); err != nil {
 		return err
@@ -78,12 +106,21 @@ func Run(args BuilderArgs) (err error) {
 			}
 		}
 		if len(changedTypes) > 0 {
+			slices.Sort(changedTypes)
 			return fmt.Errorf("schema changes detected for types: %s (and --no-changes or JSONSCHEMA_NO_CHANGES was set)", strings.Join(changedTypes, ", "))
+		}
+		if typeScriptPlan != nil && typeScriptPlan.changed() {
+			return fmt.Errorf("TypeScript output changes detected for paths: %s (and --no-changes or JSONSCHEMA_NO_CHANGES was set)", strings.Join(typeScriptPlan.changedPaths(), ", "))
 		}
 	}
 
 	if err = builder.RenderGoCode(); err != nil {
 		return err
+	}
+	if typeScriptPlan != nil {
+		if err = typeScriptPlan.apply(args.Force); err != nil {
+			return err
+		}
 	}
 	return nil
 }

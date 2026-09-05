@@ -2,6 +2,7 @@ package syntax
 
 import (
 	"fmt"
+	"go/constant"
 	"go/token"
 	"slices"
 	"strings"
@@ -141,7 +142,17 @@ type (
 
 	EnumSet struct {
 		TypeSpec TypeSpec
-		Values   []ValueSpec
+		Values   []EnumValue
+	}
+
+	// EnumValue is one package-level constant whose exact Go type is the
+	// registered enum type. Value is the evaluated constant, not its source
+	// spelling, and therefore handles iota, expressions and conversions.
+	EnumValue struct {
+		Name        string
+		Value       constant.Value
+		Description string
+		Source      token.Position
 	}
 )
 
@@ -441,42 +452,16 @@ func (r *ScanResult) loadPackageInternal(seen seenPackages, typesToMap map[strin
 				iface.TypeSpec = NewTypeSpec(_typeDecl.Decl, spec, _typeDecl.Pkg, _typeDecl.File)
 				r.Interfaces[spec.Name.Name] = iface
 			} else if enum, ok := r.Constants[spec.Name.Name]; ok {
-				enum.TypeSpec = NewTypeSpec(_typeDecl.Decl, spec, _typeDecl.Pkg, _typeDecl.File)
+				resolved, err := ResolveEnum(NewTypeSpec(_typeDecl.Decl, spec, _typeDecl.Pkg, _typeDecl.File))
+				if err != nil {
+					return err
+				}
+				*enum = *resolved
 			} else {
 				r.LocalNamedTypes[spec.Name.Name] = NewTypeSpec(_typeDecl.Decl, spec, _typeDecl.Pkg, _typeDecl.File)
 			}
 		}
 	}
-	// Find all locally defined enum values
-	for _, _constDecl := range _decls.constDecls {
-		var lastTypeName string // Track the last type seen in the const block
-		for _, spec := range _constDecl.Specs() {
-			var typeName string
-
-			if spec.HasType() {
-				// This constant has an explicit type
-				if ident, ok := spec.Type().(*dst.Ident); ok {
-					typeName = ident.Name
-					lastTypeName = typeName // Remember this type for subsequent constants
-				}
-			} else if lastTypeName != "" {
-				// This constant doesn't have an explicit type, use the last seen type
-				// This handles iota constants after the first one
-				typeName = lastTypeName
-			} else {
-				continue // No type information available
-			}
-
-			// Now we have a typeName, either explicit or inherited
-			if typeName != "" {
-				// Only append to the enum set if r.Constants[typeName] is non-nil:
-				if e, exists := r.Constants[typeName]; exists && e != nil {
-					e.Values = append(e.Values, spec)
-				}
-			}
-		}
-	}
-
 	for typeName := range typesToMap {
 		if err := r.requestType(typeName); err != nil {
 			return err

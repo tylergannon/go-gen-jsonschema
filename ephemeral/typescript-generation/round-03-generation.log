@@ -1,0 +1,18 @@
+$ go generate ./...
+exit=0
+
+$ generated-artifact manifest (150 jsonschema_gen.go, jsonschema/*.json, *.json.sum, and *.json.tmpl files; internal/builder/test_run excluded)
+sha256=21893ee8352541cff85cea894a86c9b3bb1831d351e465289496993196a1d51f
+
+$ go generate ./...
+exit=0
+manifest comparison with first generation: byte-identical
+sha256=21893ee8352541cff85cea894a86c9b3bb1831d351e465289496993196a1d51f
+
+$ JSONSCHEMA_NO_CHANGES=1 go generate ./...
+exit=0
+manifest comparison with ordinary generation: byte-identical
+sha256=21893ee8352541cff85cea894a86c9b3bb1831d351e465289496993196a1d51f
+
+No generated example, message, or fixture artifact differs from the pre-verification working tree.
+git diff --check: exit=0

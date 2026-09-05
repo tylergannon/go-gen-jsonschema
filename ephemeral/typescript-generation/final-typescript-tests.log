@@ -1,0 +1,15 @@
+
+> test
+> node check.mjs
+
+PASS Fresh backend projection output passes exact-literal, empty-module, discriminator, Unicode, and escaping compiler obligations
+PASS CLI generates the requested relative directory and barrel with Node absent from PATH
+PASS Absolute paths, deterministic regeneration, and current-output no-change checking work
+PASS Stale TS fails no-change checking without mutation even with unchanged schemas
+PASS Barrel creation, omission, removal, and missing-barrel stale detection work
+PASS An existing user-owned output is preserved with a failing diagnostic
+PASS Actual output passes strict TS positive, negative, narrowing, presence, enum, reference, and composition obligations
+PASS An incomplete discriminated-union switch fails exhaustiveness checking
+PASS Adding a registered variant breaks a previously complete exhaustive handler
+PASS The generated fresh Go consumer still builds and tests
+Proof retained at /Users/tyler/src/.worktrees/go-gen-jsonschema/typescript-generation/ephemeral/typescript-generation/proof/run-XYiyEI

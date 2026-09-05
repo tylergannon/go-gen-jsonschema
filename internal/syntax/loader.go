@@ -1,6 +1,11 @@
 package syntax
 
 import (
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+
 	"github.com/dave/dst/decorator"
 	"golang.org/x/tools/go/packages"
 )
@@ -23,5 +28,23 @@ var DefaultPackageCfg = &packages.Config{
 }
 
 func Load(path string) ([]*decorator.Package, error) {
-	return decorator.Load(DefaultPackageCfg, path)
+	targetDir, err := filepath.Abs(path)
+	if err != nil {
+		return nil, fmt.Errorf("resolve package directory %s: %w", path, err)
+	}
+	config := *DefaultPackageCfg
+	info, statErr := os.Stat(targetDir)
+	switch {
+	case statErr == nil && info.IsDir():
+		config.Dir = targetDir
+		return decorator.Load(&config, ".")
+	case statErr == nil:
+		return nil, fmt.Errorf("package path %s is not a directory", path)
+	case errors.Is(statErr, os.ErrNotExist):
+		// Remote dependencies are recursively loaded by import path rather than
+		// filesystem directory. Keep that established caller contract.
+		return decorator.Load(&config, path)
+	default:
+		return nil, fmt.Errorf("inspect package path %s: %w", path, statErr)
+	}
 }

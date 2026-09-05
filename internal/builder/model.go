@@ -368,6 +368,8 @@ func toJSONValue[T ~int | ~string | ~bool | float64 | float32](v *T) (string, bo
 		// JSON-escape the string
 		b, _ := json.Marshal(any(u).(string))
 		return string(b), true
+	case json.Number:
+		return u.String(), true
 	case bool:
 		return strconv.FormatBool(any(u).(bool)), true
 	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:

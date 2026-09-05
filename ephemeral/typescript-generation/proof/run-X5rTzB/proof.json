@@ -1,0 +1,19 @@
+{
+  "head": "f7cec98186bfbe1a06f38380f6656cc503725ffc",
+  "workingTree": "M README.md\n M gen-jsonschema/main.go\n M gen-jsonschema/main_test.go\n M internal/builder/builder.go\n M internal/builder/gen_schema.go\n M internal/builder/model.go\n M internal/syntax/loader.go\n M internal/syntax/scan_result.go\n M internal/typegrammar/grammar.go\n M llms.txt\n?? .github/workflows/typescript.yml\n?? ephemeral/reviews/20260904-typescript-request-round-02.md\n?? ephemeral/reviews/20260904-typescript-request.md\n?? ephemeral/reviews/20260904-typescript-round-01.md\n?? ephemeral/reviews/20260904-typescript-round-02-session.json\n?? ephemeral/reviews/20260904-typescript-round-02.md\n?? ephemeral/typescript-generation/\n?? ephemeral/worklog/20260904-ts-adapter.md\n?? ephemeral/worklog/20260904-ts-backend.md\n?? ephemeral/worklog/20260904-ts-cli.md\n?? ephemeral/worklog/20260904-typescript-generation.md\n?? internal/builder/typegrammar.go\n?? internal/builder/typegrammar_adapter_test.go\n?? internal/builder/typescript_output.go\n?? internal/builder/typescript_output_test.go\n?? internal/syntax/enums.go\n?? internal/syntax/loader_test.go\n?? internal/typescript/\n?? tests/",
+  "typescript": "6.0.3",
+  "go": "1.27.1",
+  "claims": [
+    "Fresh backend projection output passes exact-literal, empty-module, discriminator, Unicode, and escaping compiler obligations",
+    "CLI generates the requested relative directory and barrel with Node absent from PATH",
+    "JSON Schema and TypeScript share exact typed enum membership and evaluated values",
+    "Absolute paths, deterministic regeneration, and current-output no-change checking work",
+    "Stale TS fails no-change checking without mutation even with unchanged schemas",
+    "Barrel creation, omission, removal, and missing-barrel stale detection work",
+    "An existing user-owned output is preserved with a failing diagnostic",
+    "Actual output passes strict TS positive, negative, narrowing, presence, enum, reference, and composition obligations",
+    "An incomplete discriminated-union switch fails exhaustiveness checking",
+    "Adding a registered variant breaks a previously complete exhaustive handler",
+    "The generated fresh Go consumer still builds and tests"
+  ]
+}
