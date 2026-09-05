@@ -245,6 +245,7 @@ type ScanResult struct {
 	LocalNamedTypes map[string]TypeSpec
 	remoteTypes     typesMap
 	deps            map[string]ScanResult
+	buildContext    *BuildContext
 	// temp variable used during resolution only.
 	resolveQueue            []TypeSpec
 	alreadyTraversedLocally map[string]bool
@@ -279,7 +280,17 @@ func (s seenPackages) add(pkg *decorator.Package) (seenPackages, bool) {
 // Note: we pass a non-nil map to loadPackageInternal(...) so we can safely store references
 // to local types without panicking.
 func LoadPackage(pkg *decorator.Package) (res ScanResult, err error) {
-	res = newScanResult(pkg, map[string]ScanResult{})
+	context, err := ResolveBuildContext()
+	if err != nil {
+		return ScanResult{}, err
+	}
+	return LoadPackageWithBuildContext(pkg, context)
+}
+
+// LoadPackageWithBuildContext scans using a previously resolved operation
+// context, including any remote package loads discovered during traversal.
+func LoadPackageWithBuildContext(pkg *decorator.Package, context BuildContext) (res ScanResult, err error) {
+	res = newScanResultWithBuildContext(pkg, map[string]ScanResult{}, &context)
 	// Pass an empty map so we never do `typesToMap[foo] = true` on a nil map.
 	err = res.loadPackageInternal(seenPackages{}, make(map[string]bool))
 	return
@@ -296,6 +307,10 @@ func loadPackageForTest(pkg *decorator.Package, typesToInclude ...string) (ScanR
 }
 
 func newScanResult(pkg *decorator.Package, deps map[string]ScanResult) ScanResult {
+	return newScanResultWithBuildContext(pkg, deps, nil)
+}
+
+func newScanResultWithBuildContext(pkg *decorator.Package, deps map[string]ScanResult, context *BuildContext) ScanResult {
 	return ScanResult{
 		Pkg:                     pkg,
 		Constants:               make(map[string]*EnumSet),
@@ -307,6 +322,7 @@ func newScanResult(pkg *decorator.Package, deps map[string]ScanResult) ScanResul
 		remoteTypes:             typesMap{},
 		localTypeNames:          make(map[string]bool),
 		deps:                    deps,
+		buildContext:            context,
 		alreadyTraversedLocally: make(map[string]bool),
 	}
 }
@@ -700,10 +716,10 @@ func (r *ScanResult) resolveTypes() error {
 			if err = remote.resolveTypes(); err != nil {
 				return fmt.Errorf("resolving type at %s: %w", pkgPath, err)
 			}
-		} else if pkgs, err := Load(pkgPath); err != nil {
+		} else if pkgs, err := r.loadRemotePackage(pkgPath); err != nil {
 			return err
 		} else {
-			remote = newScanResult(pkgs[0], r.deps)
+			remote = newScanResultWithBuildContext(pkgs[0], r.deps, r.buildContext)
 			if err = remote.loadPackageInternal(seenPackages{}, typeNames); err != nil {
 				return fmt.Errorf("resolving type at %s: %w", pkgPath, err)
 			}
@@ -711,6 +727,13 @@ func (r *ScanResult) resolveTypes() error {
 		}
 	}
 	return nil
+}
+
+func (r *ScanResult) loadRemotePackage(pkgPath string) ([]*decorator.Package, error) {
+	if r.buildContext != nil {
+		return LoadWithBuildContext(pkgPath, *r.buildContext)
+	}
+	return Load(pkgPath)
 }
 
 func (r *ScanResult) requestType(typeName string) error {

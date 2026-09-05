@@ -62,14 +62,24 @@ func (e *InspectionError) Unwrap() error { return e.Cause }
 // Inspect performs the same package scan and schema mapping used by generation,
 // one registered root at a time. It does not render, invoke providers, or write.
 func Inspect(args InspectArgs) (PackageInspection, error) {
-	pkgs, err := syntax.LoadReadonly(args.TargetDir)
+	buildContext, err := syntax.ResolveBuildContext()
+	if err != nil {
+		return PackageInspection{}, &InspectionError{
+			Code:      "build_context_unavailable",
+			Certainty: "unknown",
+			Message:   fmt.Sprintf("could not resolve the effective Go build context: %v", err),
+			Remedy:    "fix GOENV or GOFLAGS and run inspection again",
+			Cause:     err,
+		}
+	}
+	pkgs, err := syntax.LoadReadonlyWithBuildContext(args.TargetDir, buildContext)
 	if err != nil {
 		return PackageInspection{}, fmt.Errorf("load package %s: %w", args.TargetDir, err)
 	}
 	if len(pkgs) == 0 {
 		return PackageInspection{}, fmt.Errorf("no packages found in %s", args.TargetDir)
 	}
-	scan, err := syntax.LoadPackage(pkgs[0])
+	scan, err := syntax.LoadPackageWithBuildContext(pkgs[0], buildContext)
 	if err != nil {
 		return PackageInspection{}, &InspectionError{
 			Code:      "scan_unclassified",
@@ -108,8 +118,8 @@ func Inspect(args InspectArgs) (PackageInspection, error) {
 			TypePath: scan.Pkg.PkgPath + "." + name,
 			Position: position,
 		}
-		root.Findings = inspectStaticShape(scan, name)
-		mapped, mapErr := inspectRoot(pkgs[0], name)
+		root.Findings = inspectStaticShape(scan, name, buildContext)
+		mapped, mapErr := inspectRoot(pkgs[0], name, buildContext)
 		if mapErr != nil {
 			if typed, ok := mapErr.(*InspectionError); ok {
 				root.Err = typed
@@ -141,7 +151,7 @@ func Inspect(args InspectArgs) (PackageInspection, error) {
 	return result, nil
 }
 
-func inspectRoot(pkg *decorator.Package, name string) (mapped SchemaBuilder, err error) {
+func inspectRoot(pkg *decorator.Package, name string, buildContext syntax.BuildContext) (mapped SchemaBuilder, err error) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			err = &InspectionError{
@@ -152,7 +162,7 @@ func inspectRoot(pkg *decorator.Package, name string) (mapped SchemaBuilder, err
 			}
 		}
 	}()
-	return NewForTypes(pkg, []string{name})
+	return NewForTypesWithBuildContext(pkg, []string{name}, buildContext)
 }
 
 type staticInspector struct {
@@ -160,13 +170,15 @@ type staticInspector struct {
 	seen              map[syntax.TypeID]bool
 	productionHooks   map[syntax.TypeID]token.Position
 	productionScanned map[string]bool
+	buildContext      syntax.BuildContext
 }
 
-func inspectStaticShape(scan syntax.ScanResult, rootName string) []InspectionFinding {
+func inspectStaticShape(scan syntax.ScanResult, rootName string, buildContext syntax.BuildContext) []InspectionFinding {
 	inspector := staticInspector{
 		seen:              make(map[syntax.TypeID]bool),
 		productionHooks:   make(map[syntax.TypeID]token.Position),
 		productionScanned: make(map[string]bool),
+		buildContext:      buildContext,
 	}
 	typeSpec, ok := scan.LocalNamedTypes[rootName]
 	if !ok {
@@ -332,7 +344,7 @@ func (i *staticInspector) loadProductionHooks(scan syntax.ScanResult) error {
 		return nil
 	}
 	i.productionScanned[scan.Pkg.PkgPath] = true
-	methods, err := syntax.FindProductionJSONMethods(scan.Pkg.Dir, nil)
+	methods, err := i.buildContext.FindProductionJSONMethods(scan.Pkg.Dir, nil)
 	if err != nil {
 		return err
 	}

@@ -28,14 +28,33 @@ var DefaultPackageCfg = &packages.Config{
 }
 
 func Load(path string) ([]*decorator.Package, error) {
-	config := packageConfig()
+	context, err := ResolveBuildContext()
+	if err != nil {
+		return nil, err
+	}
+	return LoadWithBuildContext(path, context)
+}
+
+// LoadWithBuildContext loads using a previously resolved operation context.
+func LoadWithBuildContext(path string, context BuildContext) ([]*decorator.Package, error) {
+	config := packageConfig(context)
 	return decorator.Load(&config, path)
 }
 
 // LoadReadonly loads a package with the jsonschema build tag while forbidding
 // the Go command from updating go.mod or go.sum.
 func LoadReadonly(path string) ([]*decorator.Package, error) {
-	config := packageConfig()
+	context, err := ResolveBuildContext()
+	if err != nil {
+		return nil, err
+	}
+	return LoadReadonlyWithBuildContext(path, context)
+}
+
+// LoadReadonlyWithBuildContext loads with a previously resolved operation
+// context, avoiding a second Go environment lookup during inspection.
+func LoadReadonlyWithBuildContext(path string, context BuildContext) ([]*decorator.Package, error) {
+	config := packageConfig(context)
 	config.Dir = path
 	config.BuildFlags = append(config.BuildFlags, "-mod=readonly")
 	loaded, err := decorator.Load(&config, ".")
@@ -73,13 +92,10 @@ func LoadReadonly(path string) ([]*decorator.Package, error) {
 	return loaded, nil
 }
 
-func packageConfig() packages.Config {
+func packageConfig(context BuildContext) packages.Config {
 	config := *DefaultPackageCfg
 	config.BuildFlags = slices.Clone(DefaultPackageCfg.BuildFlags)
-	tags := generationBuildTags()
-	if len(tags) > 0 {
-		config.BuildFlags = append(config.BuildFlags, "-tags="+strings.Join(tags, ","))
-	}
+	config.BuildFlags = append(config.BuildFlags, context.generationBuildFlags()...)
 	return config
 }
 

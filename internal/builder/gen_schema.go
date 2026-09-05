@@ -43,6 +43,21 @@ func NewForTypes(pkg *decorator.Package, typeNames []string) (SchemaBuilder, err
 	if err != nil {
 		return SchemaBuilder{}, err
 	}
+	return newForTypes(data, typeNames)
+}
+
+// NewForTypesWithBuildContext constructs a selected-root builder with the
+// build context already resolved by the enclosing operation.
+func NewForTypesWithBuildContext(pkg *decorator.Package, typeNames []string, buildContext syntax.BuildContext) (SchemaBuilder, error) {
+	data, err := syntax.LoadPackageWithBuildContext(pkg, buildContext)
+	if err != nil {
+		return SchemaBuilder{}, err
+	}
+	return newForTypes(data, typeNames)
+}
+
+func newForTypes(data syntax.ScanResult, typeNames []string) (SchemaBuilder, error) {
+	var err error
 	var builder = SchemaBuilder{
 		Scan:              data,
 		schemas:           schemaMap{},

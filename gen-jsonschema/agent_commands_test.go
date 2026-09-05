@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -72,6 +73,55 @@ func TestInspectJSONClassifiesGenericModelWithoutStdoutNoise(t *testing.T) {
 	require.Empty(t, result.Types)
 	require.Equal(t, "unsupported_generic_type", result.Diagnostics[0].Code)
 	require.Equal(t, inspection.ClassificationUnsupported, result.Diagnostics[0].Classification)
+}
+
+func TestInspectJSONReportsUnresolvedBuildContextAsUnknown(t *testing.T) {
+	t.Setenv("GOFLAGS", `-tags='one two'`)
+
+	var stdout, stderr bytes.Buffer
+	exitCode := runAgentCommand([]string{"inspect", "--json", "Root"}, &stdout, &stderr)
+
+	require.Equal(t, 3, exitCode)
+	require.Empty(t, stderr.String())
+	var result inspection.Result
+	require.NoError(t, json.Unmarshal(stdout.Bytes(), &result))
+	require.Equal(t, inspection.StatusUnknown, result.Status)
+	require.Equal(t, "build_context_unavailable", result.Diagnostics[0].Code)
+	require.Equal(t, inspection.ClassificationUnknown, result.Diagnostics[0].Classification)
+}
+
+func TestInspectJSONUsesCustomTagsFromSavedGoEnv(t *testing.T) {
+	repoRoot, err := filepath.Abs(filepath.Join(".."))
+	require.NoError(t, err)
+	target := filepath.Join(repoRoot, "internal", "builder", "testfixtures", "inspection_nested")
+	goenv := filepath.Join(t.TempDir(), "go.env")
+	require.NoError(t, os.WriteFile(goenv, []byte("GOFLAGS=-tags=custom\n"), 0o600))
+	t.Setenv("GOENV", goenv)
+	unsetEnv(t, "GOFLAGS")
+
+	var stdout, stderr bytes.Buffer
+	exitCode := runAgentCommand([]string{"inspect", "--json", "--target", target, "SavedTagHookModel"}, &stdout, &stderr)
+
+	require.Equal(t, 3, exitCode)
+	require.Empty(t, stderr.String())
+	var result inspection.Result
+	require.NoError(t, json.Unmarshal(stdout.Bytes(), &result))
+	require.Equal(t, inspection.StatusUnknown, result.Status)
+	require.Equal(t, "unknown_custom_json_hook", result.Types[0].Diagnostics[0].Code)
+	require.Equal(t, "custom_tag_hook.go", filepath.Base(result.Types[0].Diagnostics[0].Source.File))
+}
+
+func unsetEnv(t *testing.T, name string) {
+	t.Helper()
+	value, present := os.LookupEnv(name)
+	require.NoError(t, os.Unsetenv(name))
+	t.Cleanup(func() {
+		if present {
+			require.NoError(t, os.Setenv(name, value))
+			return
+		}
+		require.NoError(t, os.Unsetenv(name))
+	})
 }
 
 func TestHumanVersionUsesStderr(t *testing.T) {

@@ -80,6 +80,10 @@ type RemoteSameName struct {
 	Value remote.HookValue `json:"value"`
 }
 
+type SavedTagHookModel struct {
+	Value string `json:"value"`
+}
+
 func ProviderSchema(string) json.Marshaler {
 	return json.RawMessage(`{"type":"string"}`)
 }
