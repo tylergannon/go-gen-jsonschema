@@ -241,6 +241,16 @@ For an integer or iota enum, choose the wire representation explicitly:
 The package-level `NewEnumType[T]()` form remains supported, but field-level
 options are preferred for new code.
 
+String-mode integer fields generate one composed owner codec for encoding and
+decoding, shared with any union adapters. Marshal the containing owner value
+or pointer; a global enum method is not installed. Direct `E`, `Optional[E]`,
+and `Nullable[E]` are supported. Optional absence and Nullable null skip the
+conversion; present values must have a declared name. Unknown names,
+undeclared values/zero, duplicate underlying values with distinct names,
+production enum JSON hooks, and other adapted containers are rejected.
+`WithEnum` fields using the same integer type retain numeric JSON.
+
+
 ## Discriminated interfaces and slices
 
 A registered interface field becomes an `anyOf` union. A direct,

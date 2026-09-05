@@ -1,0 +1,57 @@
+
+> go-gen-jsonschema-docs@0.0.1 check
+> npm run build && npm run check-links
+
+
+> go-gen-jsonschema-docs@0.0.1 prebuild
+> cp ../llms.txt ./public/llms.txt && $(go env GOPATH)/bin/gomarkdoc -e -o './src/content/docs/api/index.md' ../
+
+
+> go-gen-jsonschema-docs@0.0.1 build
+> astro build
+
+18:18:52 [content] Syncing content
+18:18:53 [content] Synced content
+18:18:53 [types] Generated 2.62s
+18:18:53 [build] output: "static"
+18:18:53 [build] mode: "static"
+18:18:53 [build] directory: /Users/tyler/src/.worktrees/go-gen-jsonschema/issue-58-enum-codec/website/dist/
+18:18:53 [build] Collecting build info...
+18:18:53 [build] ✓ Completed in 2.76s.
+18:18:53 [build] Building static entrypoints...
+18:18:53 [vite] ✓ built in 587ms
+18:18:53 [vite] ✓ built in 85ms
+18:18:53 [build] Rearranging server assets...
+
+ generating static routes 
+18:18:53   ├─ /404.html (+13ms) 
+18:18:53   ├─ /guides/example/index.html (+17ms) 
+18:18:53   ├─ /implementation/index.html (+1ms) 
+18:18:53   ├─ /reference/example/index.html (+2ms) 
+18:18:53   ├─ /spec/v1/index.html (+24ms) 
+18:18:53   ├─ /api/index.html (+6ms) 
+18:18:53   ├─ /examples/index.html (+6ms) 
+18:18:53   ├─ /features/enums/index.html (+4ms) 
+18:18:53   ├─ /features/interfaces/index.html (+3ms) 
+18:18:53   ├─ /features/optionality/index.html (+7ms) 
+18:18:53   ├─ /features/providers/index.html (+9ms) 
+18:18:53   ├─ /features/ref-types/index.html (+18ms) 
+18:18:53   ├─ /getting-started/index.html (+5ms) 
+18:18:53   ├─ /guides/validation-ci/index.html (+4ms) 
+18:18:53   ├─ /index.html (+3ms) 
+18:18:53   ├─ /reference/cli/index.html (+4ms) 
+18:18:53   ├─ /spec/index.html (+6ms) 
+18:18:53 ✓ Completed in 154ms.
+
+18:18:53 [build] ✓ Completed in 871ms.
+18:18:53 [starlight:pagefind] Building search index with Pagefind...
+18:18:54 [starlight:pagefind] Found 17 HTML files.
+18:18:54 [starlight:pagefind] Finished building search index in 646ms.
+18:18:54 [@astrojs/sitemap] `sitemap-index.xml` created at `dist`
+18:18:54 [build] 13 page(s) built in 4.36s
+18:18:54 [build] Complete!
+
+> go-gen-jsonschema-docs@0.0.1 check-links
+> node ./scripts/check-links.mjs
+
+Checked 17 HTML pages; all internal links resolve.

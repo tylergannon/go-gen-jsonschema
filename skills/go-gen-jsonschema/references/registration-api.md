@@ -60,6 +60,15 @@ var _ = jsonschema.NewJSONSchemaMethod(
 )
 ```
 
+String mode generates codecs on the containing owner, composing with any
+union fields. Marshal the owner value or pointer and decode into its pointer;
+the same enum can still use numeric `WithEnum` in another field. Do not add a
+global enum codec. Supported adapted fields are direct `E`, `Optional[E]`, and
+`Nullable[E]`: absent/null wrappers bypass conversion, and present values use
+constant identifiers. Unknown names/values, undeclared zero, ambiguous aliases,
+custom enum JSON hooks, and other adapted containers are errors. Validate
+external input before decoding for required-field and schema checks.
+
 ## Discriminated unions (interface fields)
 
 An interface-typed field becomes a union (`anyOf`) of its registered

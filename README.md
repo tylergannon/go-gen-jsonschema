@@ -240,6 +240,18 @@ var _ = jsonschema.NewJSONSchemaMethod(
 )
 ```
 
+String-mode fields receive generated codecs on the containing struct. Both
+`json.Marshal(Task{...})` and decoding into `*Task` use the registered constant
+names; the enum itself keeps its ordinary Go JSON behavior in numeric fields.
+One owner codec composes enum and union adapters.
+
+Integer string mode supports direct `E`, `Optional[E]`, and `Nullable[E]`
+fields. Absent Optional and null Nullable values bypass conversion. Unknown
+names, undeclared values (including an undeclared zero), ambiguous aliases,
+custom enum JSON hooks, and unsupported adapted containers are rejected.
+Validate external JSON before decoding to enforce required fields and schema
+membership. See [the enum guide](website/src/content/docs/features/enums.md).
+
 The legacy package-level form `jsonschema.NewEnumType[Status]()` remains
 supported.
 
