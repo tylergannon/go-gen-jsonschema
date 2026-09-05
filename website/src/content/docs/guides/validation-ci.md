@@ -58,12 +58,12 @@ use `ValidateYAML` for schema-backed unknown-property rejection. Decode with
 ## Fail CI on drift
 
 `JSONSCHEMA_NO_CHANGES` flows through every `go generate` directive and makes
-the generator fail without writing schema files when schema JSON would change.
-Generation can still update `jsonschema_gen.go` when schemas are unchanged, so
-pair the command with a Git diff:
+the generator fail without writing schema files or requested TypeScript output
+when either would change. Generation can still update `jsonschema_gen.go` when
+those artifacts are unchanged, so pair the command with a Git status check:
 
 ```yaml
-- name: Check generated schemas
+- name: Check generated schemas and TypeScript declarations
   run: JSONSCHEMA_NO_CHANGES=1 go generate ./... && test -z "$(git status --porcelain)"
 ```
 

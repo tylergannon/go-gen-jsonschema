@@ -205,10 +205,12 @@ gen-jsonschema                 # same as `gen` in the current package
 gen-jsonschema gen [flags]
   -pretty            # indent the .json output
   -target DIR        # package to process (default: cwd)
-  -no-changes        # fail (writing nothing) if regeneration would change any schema
+  -no-changes        # fail (writing nothing) if schemas or requested TypeScript output would change
   -force             # rewrite even when unchanged; incompatible with -no-changes
   --validate         # generate validation methods for the selected formats
   --formats MODE     # decoding and validation: json (default) or both
+  --typescript DIR   # generate structural TypeScript declarations in DIR
+  --typescript-barrel # also generate index.ts type-only exports; requires --typescript
 gen-jsonschema new [flags]
   -out FILE          # stub file path ("" or "--" = stdout)
   -pkg NAME          # package name override (stdout mode)
@@ -219,7 +221,8 @@ gen-jsonschema new [flags]
 ```
 
 Environment: `JSONSCHEMA_NO_CHANGES` (any non-empty value) is equivalent to
-`-no-changes` — useful in hooks/CI without editing `//go:generate` lines.
+`-no-changes` — useful in hooks/CI without editing `//go:generate` lines. It
+checks requested TypeScript artifacts as well as schemas.
 
 When installed via the go.mod tool directive, invoke everything as
 `go tool gen-jsonschema ...`.
@@ -232,8 +235,20 @@ mypackage/
 ├── schema.go           # your stubs + registrations (//go:build jsonschema)
 ├── jsonschema/         # generated schema files, one per registered type
 │   └── Person.json
-└── jsonschema_gen.go   # generated implementations (//go:build !jsonschema)
+├── jsonschema_gen.go   # generated implementations (//go:build !jsonschema)
+└── web/src/generated/  # requested structural TypeScript output
+    ├── types.ts
+    └── index.ts        # only with --typescript-barrel
 ```
+
+Generate validation and TypeScript declarations together with
+`--validate --typescript web/src/generated`; add `--typescript-barrel` when an
+`index.ts` type-only export is useful. `WithInterface` and `WithStringerEnum`
+select the containing Go struct's JSON codecs automatically. TypeScript output
+does not include a runtime decoder or validator: applications must validate
+untrusted TypeScript-side data, and Go consumers should call generated
+`ValidateJSON` before `json.Unmarshal`. Pin the tool and imported package to the
+same explicit module release.
 
 ## Limitations and debugging
 

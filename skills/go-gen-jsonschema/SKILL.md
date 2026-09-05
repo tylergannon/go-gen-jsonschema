@@ -75,6 +75,34 @@ and the whole `jsonschema/` directory (each `T.json` schema comes with a
    [references/hooks-and-ci.md](references/hooks-and-ci.md) for lefthook and
    GitHub Actions recipes (auto-stage vs fail-on-drift).
 
+## TypeScript declarations and the Go JSON boundary
+
+For a Go and TypeScript integration, pin one explicit module release for both
+the tool and imported marker/runtime package. The combined surface starts in
+`v1.0.0-rc.5`:
+
+```bash
+go get -tool github.com/tylergannon/go-gen-jsonschema/gen-jsonschema@v1.0.0-rc.5
+```
+
+Generate the schema, validation, Go output, and TypeScript declarations in one
+run:
+
+```go
+//go:generate go tool gen-jsonschema --validate --typescript web/src/generated --typescript-barrel
+```
+
+The barrel flag is optional. Field registrations such as `WithInterface` and
+`WithStringerEnum` automatically select JSON codecs on the containing Go struct;
+there is no codec flag. Encode that owner with `json.Marshal`. For incoming JSON,
+call its generated `ValidateJSON` before `json.Unmarshal`.
+
+The TypeScript output is structural only. It supplies `types.ts` and an optional
+type-only `index.ts`, with no runtime decoder or validator. TypeScript consumers
+use `JSON.parse`/`JSON.stringify` and must validate untrusted runtime data in the
+application. Do not claim executed cross-language equivalence from TypeScript
+compilation alone; issue #71 owns the broader Go/JavaScript transport proof.
+
 ## Minimal example
 
 ```go
@@ -220,6 +248,7 @@ semantic equality for the shapes used by the consumer.
 
 - `go generate ./...` runs clean and a second run produces no diff.
 - `go build ./...` and `go test ./...` pass.
-- Generated `jsonschema/*.json` and `jsonschema_gen.go` are committed.
+- Generated `jsonschema/*.json`, `jsonschema_gen.go`, and any requested
+  TypeScript declarations are committed.
 - Field doc comments read as LLM-facing descriptions.
 - A pre-commit hook or CI check guards against schema drift.

@@ -401,6 +401,52 @@ static shapes, including runtime schema providers and custom JSON/text codecs,
 fail with a diagnostic. Generation itself has no Node, npm, or JavaScript-engine
 dependency.
 
+### Adopt TypeScript declarations with Go JSON codecs
+
+Pin an explicit module release that contains both capabilities; the generator
+and the imported marker/runtime package must use that same release:
+
+```bash
+go get -tool github.com/tylergannon/go-gen-jsonschema/gen-jsonschema@v1.0.0-rc.5
+```
+
+The combined surface starts in `v1.0.0-rc.5`. Until that release is published,
+`@latest` remains `v1.0.0-rc.4`, which includes TypeScript declarations but
+predates the owner codecs.
+
+Generate validation and TypeScript declarations together. The field
+registrations shown above automatically select the containing struct's enum and
+union JSON codecs; there is no separate codec flag:
+
+```go
+//go:generate go tool gen-jsonschema --validate --typescript web/src/generated --typescript-barrel
+```
+
+Run `go generate ./...`, then `go mod tidy`, and commit `schema.go`,
+`jsonschema_gen.go`, the complete `jsonschema/` directory, and the generated
+`types.ts` plus optional `index.ts`. On the Go boundary, use `json.Marshal` on
+the containing struct. For incoming bytes, validate before decoding:
+
+```go
+if err := (Envelope{}).ValidateJSON(data); err != nil {
+    return err
+}
+var value Envelope
+if err := json.Unmarshal(data, &value); err != nil {
+    return err
+}
+```
+
+TypeScript consumers import the generated declarations and use the platform's
+`JSON.parse`/`JSON.stringify`. Type annotations do not validate runtime data, so
+validate untrusted values with an application-owned validator before treating
+them as a generated type. The generated Go validation method remains the final
+check before Go decoding. A project that requires generated TypeScript runtime
+decoders or validators still needs a separate implementation; this generator
+does not emit them. Issue #71 extends the product's executed cross-language
+transport proof; it does not block adopting the supported shapes when the
+consumer owns TypeScript-side runtime validation.
+
 ## 🛡️ Validation
 
 Pass `--validate` to generation (and to `new`, so stubs match) and every

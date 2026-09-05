@@ -67,21 +67,54 @@ go mod tidy
 `jsonschema_gen.go` is compiled during normal builds, so the files never define
 the same methods together.
 
-## 4. Use the generated schema
+## 4. Generate TypeScript with the Go JSON boundary
+
+For a Go and TypeScript integration, pin an explicit release that contains both
+capabilities. The tool and imported marker/runtime package come from the same Go
+module release. Add validation and the TypeScript destination to one directive:
+
+```go
+//go:generate go tool gen-jsonschema --validate --typescript web/src/generated --typescript-barrel
+```
+
+`--typescript-barrel` is optional. `WithInterface` and `WithStringerEnum`
+registrations automatically generate the containing struct's JSON codecs; there
+is no separate codec flag. The run writes `types.ts` and, when requested,
+`index.ts` alongside the schema and Go outputs.
+
+The combined surface starts in `v1.0.0-rc.5`. Until that release is published,
+`@latest` remains `v1.0.0-rc.4`, which includes TypeScript declarations but
+predates the owner codecs.
+
+The TypeScript files are structural declarations. They do not contain runtime
+decoders or validators. TypeScript code can use `JSON.parse` and
+`JSON.stringify`, but must validate untrusted runtime data itself. The broader
+executed Go/JavaScript transport proof remains tracked by
+[#71](https://github.com/tylergannon/go-gen-jsonschema/issues/71).
+
+## 5. Use the generated schema and Go boundary
 
 ```go
 schema := Person{}.Schema()
 if err := (Person{}).ValidateJSON(llmOutput); err != nil {
     return err
 }
+var person Person
+if err := json.Unmarshal(llmOutput, &person); err != nil {
+    return err
+}
 ```
 
-Commit `schema.go`, `jsonschema_gen.go`, and the entire `jsonschema/` directory,
-including `.json.sum` files.
+Use `json.Marshal` on the containing Go struct for outgoing JSON. Registered
+union and string-mode enum fields use the generated owner codec automatically.
+
+Commit `schema.go`, `jsonschema_gen.go`, the entire `jsonschema/` directory
+including `.json.sum` files, and any requested generated TypeScript files.
 
 <Aside type="tip" title="Keep schemas current">
   Add `JSONSCHEMA_NO_CHANGES=1 go generate ./...` to CI. It fails without writing
-  when committed schemas no longer match their Go types.
+  when committed schemas or requested TypeScript declarations no longer match
+  their Go types.
 </Aside>
 
 <Aside type="caution" title="Optionality comes from the field type">
