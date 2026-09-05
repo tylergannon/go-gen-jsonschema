@@ -3,10 +3,17 @@ set -eu
 
 repo_root=$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)
 fixture_root="$repo_root/ephemeral/issue-60/consumer"
-proof_root=$(mktemp -d "$repo_root/ephemeral/issue-60/run.XXXXXX")
-trap 'rm -rf "$proof_root"' EXIT INT TERM
+build_root=$(mktemp -d "${TMPDIR:-/tmp}/issue-60-build.XXXXXX")
+trap 'rm -rf "$build_root"' EXIT INT TERM
 
-mkdir -p "$proof_root/bin"
+(
+	cd "$repo_root"
+	go build -o "$build_root/gen-jsonschema" ./gen-jsonschema
+)
+
+proof_root=$(mktemp -d "$repo_root/ephemeral/issue-60/run.XXXXXX")
+trap 'rm -rf "$build_root" "$proof_root"' EXIT INT TERM
+
 cp -R "$fixture_root/model" "$fixture_root/broken" "$fixture_root/invalid" "$proof_root/"
 
 (
@@ -15,12 +22,7 @@ cp -R "$fixture_root/model" "$fixture_root/broken" "$fixture_root/invalid" "$pro
 	go mod tidy
 )
 
-(
-	cd "$repo_root"
-	go build -o "$proof_root/bin/gen-jsonschema" ./gen-jsonschema
-)
-
-proof_bin="$proof_root/bin/gen-jsonschema"
+proof_bin="$build_root/gen-jsonschema"
 "$proof_bin" version --json
 
 before=$(find "$proof_root/model" "$proof_root/broken" "$proof_root/invalid" -type f -print0 | sort -z | xargs -0 shasum)
