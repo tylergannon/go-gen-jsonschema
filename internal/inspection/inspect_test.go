@@ -234,6 +234,9 @@ func TestInspectReportsKnownUnsupportedWrapperConfigurations(t *testing.T) {
 			}
 			require.NotNil(t, found)
 			require.Equal(t, ClassificationUnsupported, found.Classification)
+			if test.code == "unsupported_optional_missing_omitzero" {
+				require.Contains(t, found.Message, `requires json:",omitzero"`)
+			}
 			require.Equal(t, "Config.Value", found.FieldPath)
 			require.NotNil(t, found.Source)
 			require.Equal(t, "types.go", filepath.Base(found.Source.File))

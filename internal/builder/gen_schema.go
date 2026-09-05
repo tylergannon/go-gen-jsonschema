@@ -1303,7 +1303,7 @@ func (s SchemaBuilder) renderStructField(owner syntax.StructType, f syntax.Struc
 	if wrapper == syntax.WrapperOptional && !f.HasJSONOption("omitzero") {
 		return nil, unsupportedFieldInspectionError(
 			"unsupported_optional_missing_omitzero",
-			"Optional fields require json:\",omitzero\" so absence is omitted",
+			fmt.Sprintf("Optional field %s requires json:\",omitzero\" so absence is omitted", strings.Join(goFieldNames(f), ",")),
 			"add json:\"<name>,omitzero\" to the Optional field",
 			owner,
 			f,
@@ -1453,7 +1453,7 @@ func (s SchemaBuilder) renderStructField(owner syntax.StructType, f syntax.Struc
 		if _, isArrayOrSlice := renderType.(*dst.ArrayType); isArrayOrSlice {
 			return nil, unsupportedFieldInspectionError(
 				"unsupported_nullable_slice",
-				"Nullable does not support arrays or slices",
+				"Nullable does not support arrays/slices",
 				"use Optional for absence, a supported Nullable scalar/struct shape, or an ordinary non-null slice",
 				owner,
 				f,
