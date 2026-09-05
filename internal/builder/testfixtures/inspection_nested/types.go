@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"net/url"
 
+	leftjson "github.com/tylergannon/go-gen-jsonschema/internal/builder/testfixtures/inspection_nested/leftjson"
 	"github.com/tylergannon/go-gen-jsonschema/internal/builder/testfixtures/inspection_nested/remote"
+	rightjson "github.com/tylergannon/go-gen-jsonschema/internal/builder/testfixtures/inspection_nested/rightjson"
 )
 
 type Event interface {
@@ -82,6 +84,15 @@ type RemoteSameName struct {
 
 type SavedTagHookModel struct {
 	Value string `json:"value"`
+}
+
+type AnyModel struct {
+	Payload any `json:"payload"`
+}
+
+type ForeignUnions struct {
+	Left  leftjson.Event  `json:"left"`
+	Right rightjson.Event `json:"right"`
 }
 
 func ProviderSchema(string) json.Marshaler {

@@ -246,6 +246,8 @@ type ScanResult struct {
 	remoteTypes     typesMap
 	deps            map[string]ScanResult
 	buildContext    *BuildContext
+	loadDir         string
+	loadReadonly    bool
 	// temp variable used during resolution only.
 	resolveQueue            []TypeSpec
 	alreadyTraversedLocally map[string]bool
@@ -296,6 +298,15 @@ func LoadPackageWithBuildContext(pkg *decorator.Package, context BuildContext) (
 	return
 }
 
+// LoadPackageReadonlyWithBuildContext scans without allowing remote package
+// discovery to update the target module's go.mod or go.sum.
+func LoadPackageReadonlyWithBuildContext(pkg *decorator.Package, context BuildContext) (res ScanResult, err error) {
+	res = newScanResultWithBuildContext(pkg, map[string]ScanResult{}, &context)
+	res.loadReadonly = true
+	err = res.loadPackageInternal(seenPackages{}, make(map[string]bool))
+	return
+}
+
 func loadPackageForTest(pkg *decorator.Package, typesToInclude ...string) (ScanResult, error) {
 	var types = make(map[string]bool)
 	for _, typeName := range typesToInclude {
@@ -311,7 +322,7 @@ func newScanResult(pkg *decorator.Package, deps map[string]ScanResult) ScanResul
 }
 
 func newScanResultWithBuildContext(pkg *decorator.Package, deps map[string]ScanResult, context *BuildContext) ScanResult {
-	return ScanResult{
+	result := ScanResult{
 		Pkg:                     pkg,
 		Constants:               make(map[string]*EnumSet),
 		MarkerCalls:             make([]MarkerFunctionCall, 0),
@@ -325,6 +336,10 @@ func newScanResultWithBuildContext(pkg *decorator.Package, deps map[string]ScanR
 		buildContext:            context,
 		alreadyTraversedLocally: make(map[string]bool),
 	}
+	if pkg != nil {
+		result.loadDir = pkg.Dir
+	}
+	return result
 }
 
 type typesMap map[string]map[string]bool
@@ -602,6 +617,11 @@ func (r *ScanResult) resolveTypeExpr(_expr Expr, seen SeenTypes) error {
 	case *dst.Ident:
 		if expr.Path == "" || expr.Path == r.Pkg.PkgPath {
 			// It's either a basic type or a locally-defined named type
+			if expr.Name == "any" {
+				if _, shadowed := r.LocalNamedTypes[expr.Name]; !shadowed {
+					return nil
+				}
+			}
 			if BasicTypes[expr.Name] {
 				return nil // basic type
 			}
@@ -720,6 +740,8 @@ func (r *ScanResult) resolveTypes() error {
 			return err
 		} else {
 			remote = newScanResultWithBuildContext(pkgs[0], r.deps, r.buildContext)
+			remote.loadDir = r.loadDir
+			remote.loadReadonly = r.loadReadonly
 			if err = remote.loadPackageInternal(seenPackages{}, typeNames); err != nil {
 				return fmt.Errorf("resolving type at %s: %w", pkgPath, err)
 			}
@@ -731,7 +753,7 @@ func (r *ScanResult) resolveTypes() error {
 
 func (r *ScanResult) loadRemotePackage(pkgPath string) ([]*decorator.Package, error) {
 	if r.buildContext != nil {
-		return LoadWithBuildContext(pkgPath, *r.buildContext)
+		return loadFromDirWithBuildContext(r.loadDir, pkgPath, *r.buildContext, r.loadReadonly)
 	}
 	return Load(pkgPath)
 }

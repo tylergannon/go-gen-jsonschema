@@ -37,8 +37,7 @@ func Load(path string) ([]*decorator.Package, error) {
 
 // LoadWithBuildContext loads using a previously resolved operation context.
 func LoadWithBuildContext(path string, context BuildContext) ([]*decorator.Package, error) {
-	config := packageConfig(context)
-	return decorator.Load(&config, path)
+	return loadFromDirWithBuildContext("", path, context, false)
 }
 
 // LoadReadonly loads a package with the jsonschema build tag while forbidding
@@ -54,13 +53,37 @@ func LoadReadonly(path string) ([]*decorator.Package, error) {
 // LoadReadonlyWithBuildContext loads with a previously resolved operation
 // context, avoiding a second Go environment lookup during inspection.
 func LoadReadonlyWithBuildContext(path string, context BuildContext) ([]*decorator.Package, error) {
-	config := packageConfig(context)
-	config.Dir = path
-	config.BuildFlags = append(config.BuildFlags, "-mod=readonly")
-	loaded, err := decorator.Load(&config, ".")
+	return LoadTargetWithBuildContext(path, context, true)
+}
+
+// LoadTargetWithBuildContext loads and validates the package in targetDir under
+// the operation's effective build context. readonly prevents module-file
+// updates but does not change which source models are accepted.
+func LoadTargetWithBuildContext(targetDir string, context BuildContext, readonly bool) ([]*decorator.Package, error) {
+	loaded, err := loadFromDirWithBuildContext(targetDir, ".", context, readonly)
 	if err != nil {
 		return nil, err
 	}
+	if err := validateLoadedPackages(loaded); err != nil {
+		return nil, err
+	}
+	return loaded, nil
+}
+
+func loadFromDirWithBuildContext(dir, pattern string, context BuildContext, readonly bool) ([]*decorator.Package, error) {
+	config := packageConfig(context)
+	config.Dir = dir
+	if readonly {
+		config.BuildFlags = append(config.BuildFlags, "-mod=readonly")
+	}
+	loaded, err := decorator.Load(&config, pattern)
+	if err != nil {
+		return nil, err
+	}
+	return loaded, nil
+}
+
+func validateLoadedPackages(loaded []*decorator.Package) error {
 	var loadErrors []packages.Error
 	missingImport := false
 	seen := make(map[string]bool)
@@ -87,9 +110,9 @@ func LoadReadonlyWithBuildContext(path string, context BuildContext) ([]*decorat
 		collectErrors(pkg)
 	}
 	if len(loadErrors) > 0 {
-		return nil, &PackageLoadError{Errors: loadErrors, MissingImport: missingImport}
+		return &PackageLoadError{Errors: loadErrors, MissingImport: missingImport}
 	}
-	return loaded, nil
+	return nil
 }
 
 func packageConfig(context BuildContext) packages.Config {

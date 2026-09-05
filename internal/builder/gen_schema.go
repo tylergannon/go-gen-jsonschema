@@ -56,6 +56,16 @@ func NewForTypesWithBuildContext(pkg *decorator.Package, typeNames []string, bui
 	return newForTypes(data, typeNames)
 }
 
+// NewForTypesReadonlyWithBuildContext constructs a selected-root builder
+// without allowing remote package discovery to update module files.
+func NewForTypesReadonlyWithBuildContext(pkg *decorator.Package, typeNames []string, buildContext syntax.BuildContext) (SchemaBuilder, error) {
+	data, err := syntax.LoadPackageReadonlyWithBuildContext(pkg, buildContext)
+	if err != nil {
+		return SchemaBuilder{}, err
+	}
+	return newForTypes(data, typeNames)
+}
+
 func newForTypes(data syntax.ScanResult, typeNames []string) (SchemaBuilder, error) {
 	var err error
 	var builder = SchemaBuilder{
@@ -1291,11 +1301,28 @@ func (s SchemaBuilder) renderStructField(owner syntax.StructType, f syntax.Struc
 		return nil, err
 	}
 	if wrapper == syntax.WrapperOptional && !f.HasJSONOption("omitzero") {
-		return nil, fmt.Errorf("%s field %s requires json:\",omitzero\" at %s", wrapper, strings.Join(f.PropNames(), ","), f.Position())
+		return nil, unsupportedFieldInspectionError(
+			"unsupported_optional_missing_omitzero",
+			"Optional fields require json:\",omitzero\" so absence is omitted",
+			"add json:\"<name>,omitzero\" to the Optional field",
+			owner,
+			f,
+		)
 	}
 	renderType := f.Type()
 	if wrapper != syntax.WrapperNone {
 		renderType = inner
+	}
+	if ident, ok := renderType.(*dst.Ident); ok && ident.Name == "any" && (ident.Path == "" || ident.Path == s.Scan.Pkg.PkgPath) {
+		if _, shadowed := s.Scan.LocalNamedTypes[ident.Name]; !shadowed {
+			return nil, unsupportedFieldInspectionError(
+				"unsupported_inline_interface",
+				"the predeclared any interface is outside the v1 contract",
+				"declare and register a named interface in a supported field form",
+				owner,
+				f,
+			)
+		}
 	}
 	interfaceField, err := s.resolveRegisteredInterfaceField(owner, f)
 	if err != nil {
@@ -1424,10 +1451,30 @@ func (s SchemaBuilder) renderStructField(owner syntax.StructType, f syntax.Struc
 	}
 	if wrapper == syntax.WrapperNullable {
 		if _, isArrayOrSlice := renderType.(*dst.ArrayType); isArrayOrSlice {
-			return nil, fmt.Errorf("%s does not support arrays/slices at %s", wrapper, f.Position())
+			return nil, unsupportedFieldInspectionError(
+				"unsupported_nullable_slice",
+				"Nullable does not support arrays or slices",
+				"use Optional for absence, a supported Nullable scalar/struct shape, or an ordinary non-null slice",
+				owner,
+				f,
+			)
 		}
 		if specialSource != "" && specialSource != "enums" {
-			return nil, fmt.Errorf("%s does not support %s at %s", wrapper, specialSource, f.Position())
+			code := "unsupported_nullable_shape"
+			message := fmt.Sprintf("Nullable does not support %s", specialSource)
+			remedy := "remove Nullable or use a documented supported Nullable shape"
+			switch specialSource {
+			case "providers":
+				code = "unsupported_nullable_provider"
+				remedy = "remove Nullable or the provider and use a documented supported shape"
+			case "explicit refs":
+				code = "unsupported_nullable_ref"
+				remedy = "remove Nullable or use a supported AsRef struct"
+			case "registered interfaces":
+				code = "unsupported_nullable_interface"
+				remedy = "use Optional[I] or a direct registered interface field"
+			}
+			return nil, unsupportedFieldInspectionError(code, message, remedy, owner, f)
 		}
 		if schema, err = nullableSchema(schema); err != nil {
 			return nil, fmt.Errorf("%s field %s at %s: %w", wrapper, strings.Join(f.PropNames(), ","), f.Position(), err)
@@ -1441,6 +1488,22 @@ func (s SchemaBuilder) renderStructField(owner syntax.StructType, f syntax.Struc
 		})
 	}
 	return props, nil
+}
+
+func unsupportedFieldInspectionError(code, message, remedy string, owner syntax.StructType, field syntax.StructField) error {
+	fieldName := strings.Join(goFieldNames(field), ",")
+	if fieldName == "" {
+		fieldName = strings.Join(field.PropNames(), ",")
+	}
+	return &InspectionError{
+		Code:      code,
+		Certainty: "unsupported",
+		Message:   message,
+		Remedy:    remedy,
+		TypePath:  owner.Pkg().PkgPath + "." + owner.Name(),
+		FieldPath: owner.Name() + "." + fieldName,
+		Position:  field.Position(),
+	}
 }
 
 func nullableSchema(schema JSONSchema) (JSONSchema, error) {
@@ -1618,7 +1681,13 @@ func (s SchemaBuilder) resolveRegisteredInterfaceField(owner syntax.StructType, 
 			return nil, fmt.Errorf("registered interface field %s.%s resolves to non-interface type %s at %s", owner.Name(), v1GoField, ident.Name, prop.Position())
 		}
 		if wrapper == syntax.WrapperNullable {
-			return nil, fmt.Errorf("%s does not support registered interfaces at %s", wrapper, prop.Position())
+			return nil, unsupportedFieldInspectionError(
+				"unsupported_nullable_interface",
+				"Nullable does not support registered interfaces",
+				"use Optional[I] or a direct registered interface field",
+				owner,
+				prop,
+			)
 		}
 		if err := s.validateInterfaceImplementations(typeSpec, v1Cfg.Impls); err != nil {
 			return nil, fmt.Errorf("field %s.%s: %w", owner.Name(), v1GoField, err)
@@ -1641,7 +1710,13 @@ func (s SchemaBuilder) resolveRegisteredInterfaceField(owner syntax.StructType, 
 				return nil, fmt.Errorf("%s at %s", unsupportedRegisteredInterfaceContainer, prop.Position())
 			}
 			if wrapper == syntax.WrapperNullable {
-				return nil, fmt.Errorf("%s does not support registered interfaces at %s", wrapper, prop.Position())
+				return nil, unsupportedFieldInspectionError(
+					"unsupported_nullable_interface",
+					"Nullable does not support registered interfaces",
+					"use Optional[I] or a direct registered interface field",
+					owner,
+					prop,
+				)
 			}
 			return &registeredInterfaceField{
 				Interface: iface,

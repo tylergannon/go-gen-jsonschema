@@ -57,6 +57,60 @@ func TestInspectJSONReportsUnsupportedWithoutStdoutNoise(t *testing.T) {
 	require.Equal(t, "unsupported_required_omission", result.Types[0].Diagnostics[0].Code)
 }
 
+func TestInspectJSONReportsKnownFieldBoundaryWithoutUnclassifiedFallback(t *testing.T) {
+	repoRoot, err := filepath.Abs(filepath.Join(".."))
+	require.NoError(t, err)
+
+	for _, test := range []struct {
+		name       string
+		target     string
+		typeName   string
+		code       string
+		fieldPath  string
+		sourceBase string
+	}{
+		{
+			name:       "optional without omitzero",
+			target:     filepath.Join(repoRoot, "examples", "optionality", "negative", "optional_without_omitzero"),
+			typeName:   "Config",
+			code:       "unsupported_optional_missing_omitzero",
+			fieldPath:  "Config.Value",
+			sourceBase: "types.go",
+		},
+		{
+			name:       "predeclared any",
+			target:     filepath.Join(repoRoot, "internal", "builder", "testfixtures", "inspection_nested"),
+			typeName:   "AnyModel",
+			code:       "unsupported_inline_interface",
+			fieldPath:  "AnyModel.Payload",
+			sourceBase: "types.go",
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			var stdout, stderr bytes.Buffer
+			exitCode := runAgentCommand([]string{"inspect", "--json", "--target", test.target, test.typeName}, &stdout, &stderr)
+
+			require.Equal(t, 3, exitCode)
+			require.Empty(t, stderr.String())
+			var result inspection.Result
+			require.NoError(t, json.Unmarshal(stdout.Bytes(), &result))
+			require.Equal(t, inspection.StatusUnsupported, result.Status)
+			var found *inspection.Diagnostic
+			for index := range result.Types[0].Diagnostics {
+				diagnostic := &result.Types[0].Diagnostics[index]
+				require.NotEqual(t, "mapping_unclassified", diagnostic.Code)
+				if diagnostic.Code == test.code {
+					found = diagnostic
+				}
+			}
+			require.NotNil(t, found)
+			require.Equal(t, test.fieldPath, found.FieldPath)
+			require.NotNil(t, found.Source)
+			require.Equal(t, test.sourceBase, filepath.Base(found.Source.File))
+		})
+	}
+}
+
 func TestInspectJSONClassifiesGenericModelWithoutStdoutNoise(t *testing.T) {
 	repoRoot, err := filepath.Abs(filepath.Join(".."))
 	require.NoError(t, err)

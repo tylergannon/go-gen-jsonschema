@@ -202,6 +202,86 @@ func TestInspectClassifiesUnprovedScanFailureAsUnknown(t *testing.T) {
 	require.Equal(t, ClassificationUnknown, result.Diagnostics[0].Classification)
 }
 
+func TestInspectReportsKnownUnsupportedWrapperConfigurations(t *testing.T) {
+	repoRoot, err := filepath.Abs(filepath.Join("..", ".."))
+	require.NoError(t, err)
+
+	for _, test := range []struct {
+		fixture string
+		code    string
+	}{
+		{fixture: "optional_without_omitzero", code: "unsupported_optional_missing_omitzero"},
+		{fixture: "nullable_slice", code: "unsupported_nullable_slice"},
+		{fixture: "nullable_provider", code: "unsupported_nullable_provider"},
+		{fixture: "nullable_interface", code: "unsupported_nullable_interface"},
+		{fixture: "nullable_ref", code: "unsupported_nullable_ref"},
+	} {
+		t.Run(test.fixture, func(t *testing.T) {
+			target := filepath.Join(repoRoot, "examples", "optionality", "negative", test.fixture)
+			result := Inspect(InspectRequest{TargetDir: target, TypeNames: []string{"Config"}})
+
+			require.Equal(t, StatusUnsupported, result.Status)
+			require.Len(t, result.Types, 1)
+			var found *Diagnostic
+			for index := range result.Types[0].Diagnostics {
+				require.NotEqual(t, "mapping_unclassified", result.Types[0].Diagnostics[index].Code)
+				if test.code == "unsupported_nullable_interface" {
+					require.NotEqual(t, "unsupported_interface_shape", result.Types[0].Diagnostics[index].Code)
+				}
+				if result.Types[0].Diagnostics[index].Code == test.code {
+					found = &result.Types[0].Diagnostics[index]
+				}
+			}
+			require.NotNil(t, found)
+			require.Equal(t, ClassificationUnsupported, found.Classification)
+			require.Equal(t, "Config.Value", found.FieldPath)
+			require.NotNil(t, found.Source)
+			require.Equal(t, "types.go", filepath.Base(found.Source.File))
+		})
+	}
+}
+
+func TestInspectReportsPredeclaredAnyAsInlineInterface(t *testing.T) {
+	repoRoot, err := filepath.Abs(filepath.Join("..", ".."))
+	require.NoError(t, err)
+	target := filepath.Join(repoRoot, "internal", "builder", "testfixtures", "inspection_nested")
+
+	result := Inspect(InspectRequest{TargetDir: target, TypeNames: []string{"AnyModel"}})
+
+	require.Equal(t, StatusUnsupported, result.Status)
+	var diagnostic *Diagnostic
+	for index := range result.Types[0].Diagnostics {
+		require.NotEqual(t, "mapping_unclassified", result.Types[0].Diagnostics[index].Code)
+		if result.Types[0].Diagnostics[index].Code == "unsupported_inline_interface" {
+			diagnostic = &result.Types[0].Diagnostics[index]
+		}
+	}
+	require.NotNil(t, diagnostic)
+	require.Equal(t, "unsupported_inline_interface", diagnostic.Code)
+	require.Equal(t, ClassificationUnsupported, diagnostic.Classification)
+	require.Equal(t, "AnyModel.Payload", diagnostic.FieldPath)
+	require.NotNil(t, diagnostic.Source)
+	require.Equal(t, "types.go", filepath.Base(diagnostic.Source.File))
+}
+
+func TestInspectLoadsForeignLegacyInterfacesFromTargetGraph(t *testing.T) {
+	repoRoot, err := filepath.Abs(filepath.Join("..", ".."))
+	require.NoError(t, err)
+	target := filepath.Join(repoRoot, "internal", "builder", "testfixtures", "inspection_nested")
+
+	result := Inspect(InspectRequest{TargetDir: target, TypeNames: []string{"ForeignUnions"}})
+
+	require.Equal(t, StatusUnsupported, result.Status)
+	require.Empty(t, result.Diagnostics)
+	require.Len(t, result.Types, 1)
+	for _, diagnostic := range result.Types[0].Diagnostics {
+		require.NotEqual(t, "scan_unclassified", diagnostic.Code)
+		require.NotEqual(t, "unsupported_interface_shape", diagnostic.Code)
+		require.NotEqual(t, "unsupported_inline_interface", diagnostic.Code)
+	}
+	require.Equal(t, "union_encode_unavailable", result.Types[0].Diagnostics[0].Code)
+}
+
 func diagnosticFieldPaths(result Result) []string {
 	var paths []string
 	for _, diagnostic := range result.Types[0].Diagnostics {

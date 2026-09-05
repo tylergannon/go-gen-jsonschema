@@ -42,13 +42,15 @@ run_case() {
 		printf '%s: machine mode wrote stderr\n' "$label" >&2
 		exit 1
 	fi
-	parsed=$(printf '%s' "$output" | jq -ce '{kind,status,usage:(.usage // null),types:[.types[]? | {typePath,status,codes:[.diagnostics[]?.code]}],codes:[.diagnostics[]?.code]}')
+	parsed=$(printf '%s' "$output" | jq -ce '{kind,status,usage:(.usage // null),types:[.types[]? | {typePath,status,diagnostics:[.diagnostics[]? | {code,classification,fieldPath:(.fieldPath // null),source:(.source // null)}]}],diagnostics:[.diagnostics[]? | {code,classification,source:(.source // null)}]}')
 	printf '%s exit=%s stderr_bytes=0 %s\n' "$label" "$actual" "$parsed"
 }
 
 run_case supported 0 inspect --json --target "$proof_root/model" Supported
 run_case unsupported 3 inspect --json --target "$proof_root/model" Unsupported
 run_case unknown 3 inspect --json --target "$proof_root/model" Unknown
+run_case optional_missing_omitzero 3 inspect --json --target "$proof_root/model" OptionalMissingOmitzero
+run_case predeclared_any 3 inspect --json --target "$proof_root/model" AnyModel
 run_case unregistered 3 inspect --json --target "$proof_root/model" Missing
 run_case invalid_flag 2 inspect --json --target "$proof_root/model" --bad-flag
 run_case invalid_source 2 inspect --json --target "$proof_root/invalid" Broken

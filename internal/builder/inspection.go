@@ -89,7 +89,7 @@ func Inspect(args InspectArgs) (PackageInspection, error) {
 	if len(pkgs) == 0 {
 		return PackageInspection{}, fmt.Errorf("no packages found in %s", args.TargetDir)
 	}
-	scan, err := syntax.LoadPackageWithBuildContext(pkgs[0], buildContext)
+	scan, err := syntax.LoadPackageReadonlyWithBuildContext(pkgs[0], buildContext)
 	if err != nil {
 		return PackageInspection{}, &InspectionError{
 			Code:      "scan_unclassified",
@@ -131,7 +131,8 @@ func Inspect(args InspectArgs) (PackageInspection, error) {
 		root.Findings = inspectStaticShape(scan, name, buildContext)
 		mapped, mapErr := inspectRoot(pkgs[0], name, buildContext)
 		if mapErr != nil {
-			if typed, ok := mapErr.(*InspectionError); ok {
+			var typed *InspectionError
+			if errors.As(mapErr, &typed) {
 				root.Err = typed
 			} else {
 				root.Err = &InspectionError{
@@ -172,7 +173,7 @@ func inspectRoot(pkg *decorator.Package, name string, buildContext syntax.BuildC
 			}
 		}
 	}()
-	return NewForTypesWithBuildContext(pkg, []string{name}, buildContext)
+	return NewForTypesReadonlyWithBuildContext(pkg, []string{name}, buildContext)
 }
 
 type staticInspector struct {
@@ -241,6 +242,11 @@ func (i *staticInspector) walkNamed(scan syntax.ScanResult, spec syntax.TypeSpec
 					i.add("unsupported_json_string", "unsupported", "json:,string changes the wire shape and is outside the v1 contract", "use the natural JSON scalar representation or a separate supported wire field", typePath, nextPath, field.Position())
 				}
 				if inspectionRegisteredInterfaceField(scan, spec.Name(), name) {
+					if wrapper == syntax.WrapperNullable && isNamedInterface(scan, inner) {
+						// The resolved builder reports the narrower, positioned
+						// unsupported_nullable_interface diagnostic.
+						continue
+					}
 					if !supportedRegisteredInterfaceShape(scan, field.Type(), wrapper, inner) {
 						i.add("unsupported_interface_shape", "unsupported", "registered interfaces support only direct I, Optional[I], and direct []I fields", "move the union to a direct named field, Optional[I], or one-dimensional []I field", typePath, nextPath, field.Position())
 					}
@@ -286,6 +292,9 @@ func (i *staticInspector) walkExpr(scan syntax.ScanResult, expr dst.Expr, typePa
 		}
 		if scan.Pkg.Module == nil || remote.Pkg.Module == nil || scan.Pkg.Module.Path != remote.Pkg.Module.Path {
 			i.add("unknown_external_type", "unknown", fmt.Sprintf("external type %s.%s has no proven schema/codec mapping", pkgPath, node.Name), "use a documented supported type or provide explicit schema and codec evidence", typePath, fieldPath, position)
+			return
+		}
+		if _, registeredUnion := remote.Interfaces[node.Name]; registeredUnion {
 			return
 		}
 		if spec, ok := remote.LocalNamedTypes[node.Name]; ok {
@@ -439,12 +448,18 @@ func embeddedFieldName(expr dst.Expr) string {
 }
 
 func inspectionRegisteredInterfaceField(scan syntax.ScanResult, receiver, field string) bool {
+	return inspectionFieldOption(scan, receiver, field, func(kind syntax.SchemaMethodOptionKind) bool {
+		return kind == "WithInterface"
+	})
+}
+
+func inspectionFieldOption(scan syntax.ScanResult, receiver, field string, matches func(syntax.SchemaMethodOptionKind) bool) bool {
 	check := func(method syntax.SchemaMethod) bool {
 		if method.Receiver.TypeName != receiver {
 			return false
 		}
 		for _, option := range method.Options {
-			if option.Kind == "WithInterface" && option.FieldName == field {
+			if matches(option.Kind) && option.FieldName == field {
 				return true
 			}
 		}
@@ -475,19 +490,42 @@ func supportedRegisteredInterfaceShape(scan syntax.ScanResult, fieldType dst.Exp
 }
 
 func isNamedInterface(scan syntax.ScanResult, expr dst.Expr) bool {
-	ident, ok := expr.(*dst.Ident)
-	if !ok || (ident.Path != "" && ident.Path != scan.Pkg.PkgPath) {
+	ident, ok := namedTypeIdent(expr)
+	if !ok {
 		return false
 	}
-	if _, ok := scan.Interfaces[ident.Name]; ok {
+	target := scan
+	if ident.Path != "" && ident.Path != scan.Pkg.PkgPath {
+		var found bool
+		target, found = scan.GetPackage(ident.Path)
+		if !found {
+			return false
+		}
+	}
+	if _, ok := target.Interfaces[ident.Name]; ok {
 		return true
 	}
-	typeSpec, ok := scan.LocalNamedTypes[ident.Name]
+	typeSpec, ok := target.LocalNamedTypes[ident.Name]
 	if !ok {
 		return false
 	}
 	_, ok = typeSpec.Type().Expr().(*dst.InterfaceType)
 	return ok
+}
+
+func namedTypeIdent(expr dst.Expr) (*dst.Ident, bool) {
+	switch node := expr.(type) {
+	case *dst.Ident:
+		return node, true
+	case *dst.SelectorExpr:
+		path := node.Sel.Path
+		if qualifier, ok := node.X.(*dst.Ident); ok && path == "" {
+			path = qualifier.Path
+		}
+		return &dst.Ident{Name: node.Sel.Name, Path: path}, true
+	default:
+		return nil, false
+	}
 }
 
 func (i *staticInspector) add(code, certainty, message, remedy, typePath, fieldPath string, position token.Position) {

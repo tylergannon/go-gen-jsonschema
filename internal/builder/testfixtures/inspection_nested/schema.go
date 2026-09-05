@@ -20,6 +20,10 @@ func (RemoteSameName) Schema() json.RawMessage { panic("not implemented") }
 func (SavedTagHookModel) Schema() json.RawMessage {
 	panic("not implemented")
 }
+func (AnyModel) Schema() json.RawMessage { panic("not implemented") }
+func (ForeignUnions) Schema() json.RawMessage {
+	panic("not implemented")
+}
 
 func (StubOnly) MarshalJSON() ([]byte, error) { panic("generation stub") }
 
@@ -44,4 +48,6 @@ var (
 	_ = jsonschema.NewJSONSchemaMethod(StubOnly.Schema)
 	_ = jsonschema.NewJSONSchemaMethod(RemoteSameName.Schema)
 	_ = jsonschema.NewJSONSchemaMethod(SavedTagHookModel.Schema)
+	_ = jsonschema.NewJSONSchemaMethod(AnyModel.Schema)
+	_ = jsonschema.NewJSONSchemaMethod(ForeignUnions.Schema)
 )

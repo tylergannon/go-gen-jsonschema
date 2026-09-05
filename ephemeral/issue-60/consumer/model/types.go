@@ -3,6 +3,8 @@ package inspectproof
 import (
 	"encoding/json"
 	"net/url"
+
+	jsonschema "github.com/tylergannon/go-gen-jsonschema"
 )
 
 type Supported struct {
@@ -29,4 +31,12 @@ func (h HookValue) MarshalJSON() ([]byte, error) {
 type Unknown struct {
 	Hook HookValue `json:"hook"`
 	URL  url.URL   `json:"url"`
+}
+
+type OptionalMissingOmitzero struct {
+	Value jsonschema.Optional[int] `json:"value"`
+}
+
+type AnyModel struct {
+	Payload any `json:"payload"`
 }
