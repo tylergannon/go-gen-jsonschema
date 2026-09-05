@@ -78,6 +78,16 @@ type Owner struct { Colors []Color `+"`json:\"colors\"`"+` }
 	assertOwnerCollisionSentinels(t, targetDir)
 }
 
+func TestEnumRejectsPointerFieldBeforeWriting(t *testing.T) {
+	targetDir := writeEnumCodecFixture(t, `type Color int
+const ColorRed Color = 1
+type Owner struct { Color *Color `+"`json:\"color,omitempty\"`"+` }
+`, `jsonschema.WithEnum(Owner{}.Color),`)
+	err := Run(BuilderArgs{TargetDir: targetDir})
+	require.ErrorContains(t, err, "supports only a direct named enum, Optional[E], or Nullable[E]")
+	assertOwnerCollisionSentinels(t, targetDir)
+}
+
 func TestRegisteredEnumRejectsJSONStringOptionBeforeWriting(t *testing.T) {
 	for _, test := range []struct {
 		name         string

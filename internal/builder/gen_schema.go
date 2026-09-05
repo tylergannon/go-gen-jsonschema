@@ -1018,10 +1018,7 @@ func (s SchemaBuilder) resolveEnumFieldPlan(owner, fieldName string, field synta
 	}
 	ident, direct := fieldType.(*dst.Ident)
 	if !direct {
-		if config.UseStringer {
-			return nil, fmt.Errorf("field %s.%s: WithStringerEnum supports only a direct named enum, Optional[E], or Nullable[E] at %s", owner, fieldName, field.Position())
-		}
-		return nil, nil
+		return nil, fmt.Errorf("field %s.%s: WithEnum/WithStringerEnum supports only a direct named enum, Optional[E], or Nullable[E] at %s", owner, fieldName, field.Position())
 	}
 	pkgPath := ident.Path
 	if pkgPath == "" {
