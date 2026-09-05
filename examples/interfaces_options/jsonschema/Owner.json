@@ -1,0 +1,13 @@
+{"type":"object",
+"properties":{
+"if":{"anyOf":[{"type":"object",
+"properties":{
+"!kind":{"type":"string","const":"impl_one"},
+"x":{"type":"string"}
+},"required":["!kind","x"],"additionalProperties":false},
+{"type":"object",
+"properties":{
+"!kind":{"type":"string","const":"impl_two"},
+"y":{"type":"integer"}
+},"required":["!kind","y"],"additionalProperties":false}]}
+},"required":["if"],"additionalProperties":false}
