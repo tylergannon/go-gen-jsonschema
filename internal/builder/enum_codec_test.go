@@ -21,6 +21,17 @@ type Owner struct { Color Color `+"`json:\"color\"`"+` }
 	assertOwnerCollisionSentinels(t, targetDir)
 }
 
+func TestStringModeEnumRejectsDuplicateUnderlyingAliasAcrossDeclarationsBeforeWriting(t *testing.T) {
+	targetDir := writeEnumCodecFixture(t, `type Color int
+const ColorRed Color = 1
+const ColorCrimson = ColorRed
+type Owner struct { Color Color `+"`json:\"color\"`"+` }
+`, "")
+	err := Run(BuilderArgs{TargetDir: targetDir})
+	require.ErrorContains(t, err, "ColorRed and ColorCrimson have duplicate underlying value 1")
+	assertOwnerCollisionSentinels(t, targetDir)
+}
+
 func TestNonAdaptedEnumsAllowAliasValues(t *testing.T) {
 	for _, test := range []struct {
 		name   string
@@ -65,6 +76,26 @@ type Owner struct { Colors []Color `+"`json:\"colors\"`"+` }
 	err := Run(BuilderArgs{TargetDir: targetDir})
 	require.ErrorContains(t, err, "supports only a direct named enum, Optional[E], or Nullable[E]")
 	assertOwnerCollisionSentinels(t, targetDir)
+}
+
+func TestRegisteredEnumRejectsJSONStringOptionBeforeWriting(t *testing.T) {
+	for _, test := range []struct {
+		name         string
+		option       string
+		registration string
+	}{
+		{name: "method numeric mode", option: `jsonschema.WithEnum(Owner{}.Color),`, registration: "method"},
+		{name: "method string mode", option: `jsonschema.WithStringerEnum(Owner{}.Color),`, registration: "method"},
+		{name: "function numeric mode", option: `jsonschema.WithEnum(Owner{}.Color),`, registration: "function"},
+		{name: "function string mode", option: `jsonschema.WithStringerEnum(Owner{}.Color),`, registration: "function"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			targetDir := writeJSONStringEnumFixture(t, test.option, test.registration)
+			err := Run(BuilderArgs{TargetDir: targetDir})
+			require.ErrorContains(t, err, `registered enum fields do not support json:",string"`)
+			assertOwnerCollisionSentinels(t, targetDir)
+		})
+	}
 }
 
 func TestStringModeEnumRejectsProductionJSONHooksBeforeWriting(t *testing.T) {
@@ -120,6 +151,47 @@ import (
 
 func (Owner) Schema() json.RawMessage { panic("not implemented") }
 var _ = jsonschema.NewJSONSchemaMethod(Owner.Schema, `+option+`)
+`), 0o644))
+	writeOwnerCollisionSentinels(t, targetDir)
+	return targetDir
+}
+
+func writeJSONStringEnumFixture(t *testing.T, option, registration string) string {
+	t.Helper()
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+	targetDir, err := os.MkdirTemp(filepath.Join(cwd, "testfixtures"), "enum_json_string_")
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, os.RemoveAll(targetDir)) })
+	require.NoError(t, os.WriteFile(filepath.Join(targetDir, "types.go"), []byte(`package fixture
+
+type Color int
+const ColorRed Color = 1
+type Owner struct { Color Color `+"`json:\"color,string\"`"+` }
+`), 0o644))
+
+	var stub, marker string
+	switch registration {
+	case "method":
+		stub = `func (Owner) Schema() json.RawMessage { panic("not implemented") }`
+		marker = `jsonschema.NewJSONSchemaMethod(Owner.Schema, ` + option + `)`
+	case "function":
+		stub = `func OwnerSchema(Owner) json.RawMessage { panic("not implemented") }`
+		marker = `jsonschema.NewJSONSchemaFunc[Owner](OwnerSchema, ` + option + `)`
+	default:
+		t.Fatalf("unknown registration form %q", registration)
+	}
+	require.NoError(t, os.WriteFile(filepath.Join(targetDir, "schema.go"), []byte(`//go:build jsonschema
+
+package fixture
+
+import (
+	"encoding/json"
+	jsonschema "github.com/tylergannon/go-gen-jsonschema"
+)
+
+`+stub+`
+var _ = `+marker+`
 `), 0o644))
 	writeOwnerCollisionSentinels(t, targetDir)
 	return targetDir

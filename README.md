@@ -245,6 +245,10 @@ String-mode fields receive generated codecs on the containing struct. Both
 names; the enum itself keeps its ordinary Go JSON behavior in numeric fields.
 One owner codec composes enum and union adapters.
 
+Registered enum fields cannot use the `json:",string"` option. The generator
+rejects that option before writing files because it disagrees with both the
+numeric schema representation and the generated string-mode adapter.
+
 Integer string mode supports direct `E`, `Optional[E]`, and `Nullable[E]`
 fields. Absent Optional and null Nullable values bypass conversion. Unknown
 names, undeclared values (including an undeclared zero), ambiguous aliases,

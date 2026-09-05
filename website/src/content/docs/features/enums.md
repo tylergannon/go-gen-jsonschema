@@ -75,6 +75,8 @@ names are ambiguous and rejected before generation writes files. Keep one
 canonical constant name per value for string mode, or retain numeric mode.
 Custom JSON hooks on adapted enum types and adapted pointers/slices or other
 containers are rejected; move conversion to a supported named owner field.
+Registered enum fields cannot use `json:",string"`; generation rejects that
+option before writing artifacts because its encoding differs from the schema.
 
 In the example below, `ApplicationConfig` uses string mode while `Task`
 intentionally uses numeric mode for the same enum types. Renaming constants

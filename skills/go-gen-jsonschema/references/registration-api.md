@@ -68,6 +68,8 @@ global enum codec. Supported adapted fields are direct `E`, `Optional[E]`, and
 constant identifiers. Unknown names/values, undeclared zero, ambiguous aliases,
 custom enum JSON hooks, and other adapted containers are errors. Validate
 external input before decoding for required-field and schema checks.
+Registered enum fields cannot use `json:",string"`; generation rejects that
+option before writing artifacts because its encoding differs from the schema.
 
 ## Discriminated unions (interface fields)
 

@@ -3,6 +3,7 @@ package syntax
 import (
 	"fmt"
 	"go/token"
+	"go/types"
 	"slices"
 	"strings"
 
@@ -217,6 +218,44 @@ type ScanResult struct {
 	// temp variable used during resolution only.
 	resolveQueue            []TypeSpec
 	alreadyTraversedLocally map[string]bool
+}
+
+// EnumValues returns every package constant whose resolved type is typeName in
+// source order. Using go/types here includes aliases whose declarations omit an
+// explicit type, even when they appear in a separate const declaration.
+func (r ScanResult) EnumValues(typeName string) []ValueSpec {
+	typeObject := r.Pkg.Types.Scope().Lookup(typeName)
+	if typeObject == nil {
+		return nil
+	}
+
+	var values []ValueSpec
+	for _, file := range r.Pkg.Syntax {
+		for _, decl := range file.Decls {
+			genDecl, ok := decl.(*dst.GenDecl)
+			if !ok || genDecl.Tok != token.CONST {
+				continue
+			}
+			for _, spec := range genDecl.Specs {
+				valueSpec, ok := spec.(*dst.ValueSpec)
+				if !ok {
+					continue
+				}
+				matches := false
+				for _, name := range valueSpec.Names {
+					constantObject, ok := r.Pkg.Types.Scope().Lookup(name.Name).(*types.Const)
+					if ok && types.Identical(constantObject.Type(), typeObject.Type()) {
+						matches = true
+						break
+					}
+				}
+				if matches {
+					values = append(values, NewValueSpec(genDecl, valueSpec, r.Pkg, file))
+				}
+			}
+		}
+	}
+	return values
 }
 
 func (s ScanResult) GetPackage(pkgPath string) (ScanResult, bool) {
@@ -447,34 +486,9 @@ func (r *ScanResult) loadPackageInternal(seen seenPackages, typesToMap map[strin
 			}
 		}
 	}
-	// Find all locally defined enum values
-	for _, _constDecl := range _decls.constDecls {
-		var lastTypeName string // Track the last type seen in the const block
-		for _, spec := range _constDecl.Specs() {
-			var typeName string
-
-			if spec.HasType() {
-				// This constant has an explicit type
-				if ident, ok := spec.Type().(*dst.Ident); ok {
-					typeName = ident.Name
-					lastTypeName = typeName // Remember this type for subsequent constants
-				}
-			} else if lastTypeName != "" {
-				// This constant doesn't have an explicit type, use the last seen type
-				// This handles iota constants after the first one
-				typeName = lastTypeName
-			} else {
-				continue // No type information available
-			}
-
-			// Now we have a typeName, either explicit or inherited
-			if typeName != "" {
-				// Only append to the enum set if r.Constants[typeName] is non-nil:
-				if e, exists := r.Constants[typeName]; exists && e != nil {
-					e.Values = append(e.Values, spec)
-				}
-			}
-		}
+	// Find all locally defined enum values from their resolved Go types.
+	for typeName, enum := range r.Constants {
+		enum.Values = r.EnumValues(typeName)
 	}
 
 	for typeName := range typesToMap {

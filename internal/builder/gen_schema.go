@@ -679,7 +679,7 @@ func (s SchemaBuilder) HasNonRenderedTypes() bool {
 	return false
 }
 
-// discoverEnum auto-discovers an enum from const declarations in the package
+// discoverEnum auto-discovers an enum from typed constants in the package.
 func (s SchemaBuilder) discoverEnum(typeName string, scanRes syntax.ScanResult) *syntax.EnumSet {
 	// Check if the type exists
 	typeSpec, ok := scanRes.LocalNamedTypes[typeName]
@@ -692,37 +692,7 @@ func (s SchemaBuilder) discoverEnum(typeName string, scanRes syntax.ScanResult) 
 		TypeSpec: typeSpec,
 	}
 
-	// Find all const declarations of this type in the decorated package files
-	for _, file := range scanRes.Pkg.Syntax {
-		for _, decl := range file.Decls {
-			genDecl, ok := decl.(*dst.GenDecl)
-			if !ok || genDecl.Tok != token.CONST {
-				continue
-			}
-
-			var currentType string
-			for _, spec := range genDecl.Specs {
-				valueSpec, ok := spec.(*dst.ValueSpec)
-				if !ok {
-					continue
-				}
-
-				// Check if this const has an explicit type
-				if valueSpec.Type != nil {
-					if ident, ok := valueSpec.Type.(*dst.Ident); ok {
-						currentType = ident.Name
-					}
-				}
-
-				// If this const is of our target type, add it to the enum
-				if currentType == typeName {
-					// Wrap the valueSpec in syntax.ValueSpec
-					wrapped := syntax.NewValueSpec(genDecl, valueSpec, scanRes.Pkg, file)
-					enumSet.Values = append(enumSet.Values, wrapped)
-				}
-			}
-		}
-	}
+	enumSet.Values = scanRes.EnumValues(typeName)
 
 	// Only return if we found values
 	if len(enumSet.Values) > 0 {
@@ -1076,6 +1046,9 @@ func (s SchemaBuilder) resolveLocalEnumFields(owner syntax.StructType) ([]EnumFi
 }
 
 func (s SchemaBuilder) resolveEnumFieldPlan(owner, fieldName string, field syntax.StructField, config enumFieldConfig) (*EnumFieldPlan, error) {
+	if field.HasJSONOption("string") {
+		return nil, fmt.Errorf("field %s.%s: registered enum fields do not support json:\",string\" at %s", owner, fieldName, field.Position())
+	}
 	wrapper, inner, err := field.Wrapper()
 	if err != nil {
 		return nil, err

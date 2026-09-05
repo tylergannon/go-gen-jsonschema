@@ -249,6 +249,8 @@ conversion; present values must have a declared name. Unknown names,
 undeclared values/zero, duplicate underlying values with distinct names,
 production enum JSON hooks, and other adapted containers are rejected.
 `WithEnum` fields using the same integer type retain numeric JSON.
+Registered enum fields cannot use `json:",string"`; generation rejects that
+option before writing artifacts because its encoding differs from the schema.
 
 
 ## Discriminated interfaces and slices
