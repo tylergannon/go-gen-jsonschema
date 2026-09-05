@@ -1,0 +1,13 @@
+release_version=v1.0.0-rc.5
+release_tag_object=db33bee926d6fda42b447a1b28679400dc1c0342
+release_tag_commit=8d83354421e2f37ea42bfaccdcbd1ff9211715a2
+tool_package=github.com/tylergannon/go-gen-jsonschema/gen-jsonschema@v1.0.0-rc.5
+tool_invocation=go tool gen-jsonschema
+tool_binary_sha256=da52df516dd2205b3789e5134b8ee0e48862ef37e05932fc31cc06a5cbf172e7
+consumer_module=github.com/tylergannon/go-gen-jsonschema@v1.0.0-rc.5
+consumer_replace_directive=absent
+go_version=go version go1.27.1 darwin/arm64
+node_version=v26.8.1
+npm_version=11.19.0
+typescript_version=6.0.3
+canonical_fixture_sha256=a07758c2e1782e4dbf10490f6485cdaef27526e59d6dd567b0b7267e0cf358c9

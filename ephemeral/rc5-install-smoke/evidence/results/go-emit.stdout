@@ -1,0 +1,1 @@
+go_emit_ok status=StatusReady kind=created note_present=true eta_present=true quantity=3

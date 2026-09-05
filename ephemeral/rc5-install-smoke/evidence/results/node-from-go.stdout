@@ -1,0 +1,1 @@
+node_from_go_ok status=StatusReady kind=created optional=packed nullable=timestamp authored_status=StatusDelivered authored_kind=dispatched

@@ -1,0 +1,9 @@
+go_emit_ok status=StatusReady kind=created note_present=true eta_present=true quantity=3
+node_from_go_ok status=StatusReady kind=created optional=packed nullable=timestamp authored_status=StatusDelivered authored_kind=dispatched
+go_consume_ok status=StatusDelivered kind=dispatched optional_empty_observed=true nullable_null_observed=true reencoded_quantity=5
+node_verify_back_ok status=StatusDelivered kind=dispatched note=accepted-by-go eta=timestamp quantity=5
+installed_tool_version_matches_runtime=true
+generation_idempotent=true
+typescript_compile=true
+consumer_go_test=true
+canonical_fixture_unchanged=true

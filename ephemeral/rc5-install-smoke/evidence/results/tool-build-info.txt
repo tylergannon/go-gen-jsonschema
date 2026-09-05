@@ -1,0 +1,18 @@
+/Users/tyler/Library/Caches/go-build/da/da52df516dd2205b3789e5134b8ee0e48862ef37e05932fc31cc06a5cbf172e7-d/gen-jsonschema: go1.27.1
+	path	github.com/tylergannon/go-gen-jsonschema/gen-jsonschema
+	mod	github.com/tylergannon/go-gen-jsonschema	v1.0.0-rc.5	h1:+kiqcRb0fnDuHkmmtmW4/Yr02GNEX9aVBAcGxUYom14=
+	dep	github.com/dave/dst	v0.27.3	h1:P1HPoMza3cMEquVf9kKy8yXsFirry4zEnWOdYPOoIzY=
+	dep	github.com/tylergannon/structtag	v0.1.0	h1:Vn4ZEemGUtAfw9ddEtHQILKnIWqSWCSpciFTNPh1gcY=
+	dep	golang.org/x/mod	v0.39.0	h1:UF5zwQdCRRUpHfyPwr7d4UrGiVeldIsogtzWVnczL74=
+	dep	golang.org/x/sync	v0.22.0	h1:SZjpbeLmrCk4xhRSZFNZW5gFUeCeFgjekvI/+gfScek=
+	dep	golang.org/x/tools	v0.49.0	h1:3NI7VXzL9+1WZD52Dx2ttoPwD5DWrFGpl9mFZDlmisI=
+	build	-buildmode=exe
+	build	-compiler=gc
+	build	CGO_ENABLED=1
+	build	CGO_CFLAGS=
+	build	CGO_CPPFLAGS=
+	build	CGO_CXXFLAGS=
+	build	CGO_LDFLAGS=
+	build	GOARCH=arm64
+	build	GOOS=darwin
+	build	GOARM64=v8.0

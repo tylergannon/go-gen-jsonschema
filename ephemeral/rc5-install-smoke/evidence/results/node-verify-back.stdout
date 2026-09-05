@@ -1,0 +1,1 @@
+node_verify_back_ok status=StatusDelivered kind=dispatched note=accepted-by-go eta=timestamp quantity=5
