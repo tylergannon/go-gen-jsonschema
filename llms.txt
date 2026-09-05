@@ -455,6 +455,30 @@ must be preserved.
 Registration markers are read from the build-tagged file by the generator and
 are no-ops at runtime.
 
+## Machine discovery and model inspection
+
+Read an existing installation's `--help` first; only call `version` and
+`inspect` when listed. Older binaries can treat unknown subcommands as
+generation requests. With a discovery-capable pinned tool:
+
+```bash
+go tool gen-jsonschema version --json
+go tool gen-jsonschema inspect --json --target ./models Request Response
+```
+
+Omit names to inspect all registered roots. Machine stdout contains one JSON
+result with `schemaVersion: "1"`, executable identity, status, per-type
+capabilities, and structured diagnostics. Per-type schema, JSON encode/decode,
+validation, and YAML input support are separate. Exit codes: 0 supported/help,
+2 invalid request/source, 3 unsupported/unknown, 1 internal/toolchain failure.
+Use codes/classifications and tolerate additional optional result fields.
+
+Inspection does not write target source/generated/module files or invoke user
+hooks. Missing dependencies remain a toolchain diagnostic until explicitly
+resolved; normal external Go caches may be populated. It does not check whether
+existing generated artifacts are current. See `docs/agent-cli.md` for the
+versioned result contract.
+
 ## CLI reference
 
 Invoke the pinned tool as `go tool gen-jsonschema`:

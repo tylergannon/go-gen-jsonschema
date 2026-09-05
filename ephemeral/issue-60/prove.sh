@@ -3,7 +3,7 @@ set -eu
 
 repo_root=$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)
 fixture_root="$repo_root/ephemeral/issue-60/consumer"
-proof_root=$(mktemp -d "${TMPDIR:-/tmp}/go-gen-jsonschema-issue-60.XXXXXX")
+proof_root=$(mktemp -d "$repo_root/ephemeral/issue-60/run.XXXXXX")
 trap 'rm -rf "$proof_root"' EXIT INT TERM
 
 mkdir -p "$proof_root/bin"
@@ -31,7 +31,7 @@ run_case() {
 	shift 2
 	stderr_file="$proof_root/stderr"
 	set +e
-	output=$($proof_bin "$@" 2>"$stderr_file")
+	output=$("$proof_bin" "$@" 2>"$stderr_file")
 	actual=$?
 	set -e
 	if [ "$actual" -ne "$expected" ]; then

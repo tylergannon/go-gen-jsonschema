@@ -1,7 +1,4 @@
-Proved source head: e424d5640496ff8b9d0e34f7f667faf94fdc3e0c
-Build command: go build -o <temporary>/bin/gen-jsonschema ./gen-jsonschema
-Build identity: version=v1.0.0-rc.3.0.20260904234036-e424d5640496 versionState=pseudo revision=e424d5640496ff8b9d0e34f7f667faf94fdc3e0c revisionState=known modified=false
-
+{"schemaVersion":"1","kind":"version","status":"supported","tool":{"name":"gen-jsonschema","version":"v1.0.0-rc.3.0.20260905000416-ed27f058d719+dirty","versionState":"pseudo","revision":"ed27f058d71962c65290e72155916a72e185a65f","revisionState":"known","modified":true},"contractVersion":"v1","capabilities":[{"name":"inspection","status":"supported"},{"name":"schema.generation","status":"supported","detail":"documented v1 shapes"},{"name":"json.standard_codec","status":"supported","detail":"documented ordinary shapes"},{"name":"json.validation","status":"supported"},{"name":"yaml.input","status":"supported"},{"name":"provider.runtime_schema","status":"supported"},{"name":"provider.generated_codec","status":"unsupported"},{"name":"provider.static_validation","status":"unsupported"},{"name":"union.schema","status":"supported"},{"name":"union.json_encode","status":"unsupported","detail":"pending generated codec support"},{"name":"union.json_decode","status":"supported"},{"name":"enum.string_mode.schema","status":"supported"},{"name":"enum.string_mode.json_encode","status":"unsupported","detail":"pending generated codec support"},{"name":"enum.string_mode.json_decode","status":"unsupported","detail":"pending generated codec support"},{"name":"preview","status":"unsupported"}]}
 supported exit=0 stderr_bytes=0 {"kind":"inspection","status":"supported","usage":null,"types":[{"typePath":"example.com/inspectproof.Supported","status":"supported","codes":[]}],"codes":[]}
 unsupported exit=3 stderr_bytes=0 {"kind":"inspection","status":"unsupported","usage":null,"types":[{"typePath":"example.com/inspectproof.Unsupported","status":"unsupported","codes":["unsupported_json_string","unsupported_base64_bytes"]}],"codes":[]}
 unknown exit=3 stderr_bytes=0 {"kind":"inspection","status":"unknown","usage":null,"types":[{"typePath":"example.com/inspectproof.Unknown","status":"unknown","codes":["unknown_custom_json_hook","unknown_external_type"]}],"codes":[]}
@@ -12,6 +9,3 @@ toolchain exit=1 stderr_bytes=0 {"kind":"inspection","status":"error","usage":nu
 json_help exit=0 stderr_bytes=0 {"kind":"version","status":"supported","usage":"Usage: gen-jsonschema version [--json]\n\nReports the installed executable identity and capability contract.\n\nOptions:\n  --json  Emit one versioned JSON result to stdout.\n","types":[],"codes":[]}
 all_consumer_files_unchanged=true
 broken_go_sum_created=false
-
-Required gate: GOFLAGS=-p=2 go test ./... (pass)
-Pre-commit gate: golangci (0 issues)
