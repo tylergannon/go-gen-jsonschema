@@ -1,0 +1,28 @@
+$ go list -m github.com/tylergannon/go-gen-jsonschema
+exit=0
+github.com/tylergannon/go-gen-jsonschema v1.0.0-rc.4
+
+$ /tmp/gen-jsonschema-codec-integration gen --validate --no-changes
+exit=0
+
+$ /tmp/gen-jsonschema-codec-integration gen --validate --no-changes
+exit=0
+
+consumer_tree_sha256_first=eaab0af4020b31b8132e2b7ddd3159af2bf426f290e64cfd2cd0c3ac2e7bed3b
+consumer_tree_sha256_second=eaab0af4020b31b8132e2b7ddd3159af2bf426f290e64cfd2cd0c3ac2e7bed3b
+byte_stable=True
+
+$ go test -count=1 -v ./...
+exit=0
+=== RUN   TestCandidateBoundary
+    boundary_test.go:41: schema-valid roundtrip: {"note":"","left":{"kind":"born","name":"left"},"right":{"!\"kind":"removed","id":7},"events":[{"name":"list","type":"created"},{"id":9,"type":"deleted"}]}
+    boundary_test.go:41: schema-valid roundtrip: {"note":"","left":{"kind":"born","name":"left"},"right":{"!\"kind":"removed","id":7},"events":[{"name":"list","type":"created"},{"id":9,"type":"deleted"}]}
+--- PASS: TestCandidateBoundary (0.00s)
+=== RUN   TestFieldEnumBoundary
+    enum_test.go:54: schema-valid field-specific roundtrip: {"event":{"left":{"kind":"born","name":"first"},"right":{"!\"kind":"removed","id":2},"events":[]},"numeric":7,"direct":"Quiet","nullable":null}
+    enum_test.go:54: schema-valid field-specific roundtrip: {"event":{"left":{"kind":"born","name":"first"},"right":{"!\"kind":"removed","id":2},"events":[]},"numeric":7,"direct":"Quiet","nullable":null}
+    enum_test.go:54: schema-valid field-specific roundtrip: {"event":{"left":{"kind":"born","name":"first"},"right":{"!\"kind":"removed","id":2},"events":[]},"numeric":7,"direct":"Quiet","nullable":"Quiet","optional":"Loud"}
+    enum_test.go:54: schema-valid field-specific roundtrip: {"event":{"left":{"kind":"born","name":"first"},"right":{"!\"kind":"removed","id":2},"events":[]},"numeric":7,"direct":"Quiet","nullable":"Quiet","optional":"Loud"}
+--- PASS: TestFieldEnumBoundary (0.00s)
+PASS
+ok  	example.com/v1-boundary-proof	0.244s

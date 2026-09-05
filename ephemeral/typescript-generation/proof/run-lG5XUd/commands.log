@@ -1,0 +1,65 @@
+$ /opt/homebrew/Cellar/go/1.27.1/libexec/bin/go run ./tests/typescript/projection/generate /Users/tyler/src/.worktrees/go-gen-jsonschema/v1-codec-integration/ephemeral/typescript-generation/proof/run-lG5XUd/projection/generated
+exit=0
+
+$ /opt/homebrew/Cellar/node/26.8.1/bin/node /Users/tyler/src/.worktrees/go-gen-jsonschema/v1-codec-integration/tests/typescript/node_modules/typescript/bin/tsc --project /Users/tyler/src/.worktrees/go-gen-jsonschema/v1-codec-integration/ephemeral/typescript-generation/proof/run-lG5XUd/projection/tsconfig.json --pretty false
+exit=0
+
+$ /opt/homebrew/Cellar/go/1.27.1/libexec/bin/go build -o /Users/tyler/src/.worktrees/go-gen-jsonschema/v1-codec-integration/ephemeral/typescript-generation/proof/run-lG5XUd/gen-jsonschema ./gen-jsonschema
+exit=0
+
+$ /opt/homebrew/Cellar/go/1.27.1/libexec/bin/go mod tidy
+exit=0
+
+$ /Users/tyler/src/.worktrees/go-gen-jsonschema/v1-codec-integration/ephemeral/typescript-generation/proof/run-lG5XUd/gen-jsonschema gen --target /Users/tyler/src/.worktrees/go-gen-jsonschema/v1-codec-integration/ephemeral/typescript-generation/proof/run-lG5XUd/consumer --typescript consumer/generated --typescript-barrel
+exit=0
+
+$ /Users/tyler/src/.worktrees/go-gen-jsonschema/v1-codec-integration/ephemeral/typescript-generation/proof/run-lG5XUd/gen-jsonschema gen --target /Users/tyler/src/.worktrees/go-gen-jsonschema/v1-codec-integration/ephemeral/typescript-generation/proof/run-lG5XUd/consumer --typescript /Users/tyler/src/.worktrees/go-gen-jsonschema/v1-codec-integration/ephemeral/typescript-generation/proof/run-lG5XUd/consumer/generated --typescript-barrel
+exit=0
+
+$ /Users/tyler/src/.worktrees/go-gen-jsonschema/v1-codec-integration/ephemeral/typescript-generation/proof/run-lG5XUd/gen-jsonschema gen --target /Users/tyler/src/.worktrees/go-gen-jsonschema/v1-codec-integration/ephemeral/typescript-generation/proof/run-lG5XUd/consumer --typescript /Users/tyler/src/.worktrees/go-gen-jsonschema/v1-codec-integration/ephemeral/typescript-generation/proof/run-lG5XUd/consumer/generated --typescript-barrel --no-changes
+exit=0
+
+$ /Users/tyler/src/.worktrees/go-gen-jsonschema/v1-codec-integration/ephemeral/typescript-generation/proof/run-lG5XUd/gen-jsonschema gen --target /Users/tyler/src/.worktrees/go-gen-jsonschema/v1-codec-integration/ephemeral/typescript-generation/proof/run-lG5XUd/consumer --typescript /Users/tyler/src/.worktrees/go-gen-jsonschema/v1-codec-integration/ephemeral/typescript-generation/proof/run-lG5XUd/consumer/generated --typescript-barrel --no-changes
+exit=1
+2026/09/04 20:00:41 TypeScript output changes detected for paths: /Users/tyler/src/.worktrees/go-gen-jsonschema/v1-codec-integration/ephemeral/typescript-generation/proof/run-lG5XUd/consumer/generated/types.ts (and --no-changes or JSONSCHEMA_NO_CHANGES was set)
+
+$ /Users/tyler/src/.worktrees/go-gen-jsonschema/v1-codec-integration/ephemeral/typescript-generation/proof/run-lG5XUd/gen-jsonschema gen --target /Users/tyler/src/.worktrees/go-gen-jsonschema/v1-codec-integration/ephemeral/typescript-generation/proof/run-lG5XUd/consumer --typescript /Users/tyler/src/.worktrees/go-gen-jsonschema/v1-codec-integration/ephemeral/typescript-generation/proof/run-lG5XUd/consumer/generated --typescript-barrel
+exit=0
+
+$ /Users/tyler/src/.worktrees/go-gen-jsonschema/v1-codec-integration/ephemeral/typescript-generation/proof/run-lG5XUd/gen-jsonschema gen --target /Users/tyler/src/.worktrees/go-gen-jsonschema/v1-codec-integration/ephemeral/typescript-generation/proof/run-lG5XUd/consumer --typescript /Users/tyler/src/.worktrees/go-gen-jsonschema/v1-codec-integration/ephemeral/typescript-generation/proof/run-lG5XUd/consumer/generated
+exit=0
+
+$ /Users/tyler/src/.worktrees/go-gen-jsonschema/v1-codec-integration/ephemeral/typescript-generation/proof/run-lG5XUd/gen-jsonschema gen --target /Users/tyler/src/.worktrees/go-gen-jsonschema/v1-codec-integration/ephemeral/typescript-generation/proof/run-lG5XUd/consumer --typescript /Users/tyler/src/.worktrees/go-gen-jsonschema/v1-codec-integration/ephemeral/typescript-generation/proof/run-lG5XUd/consumer/generated --typescript-barrel --no-changes
+exit=1
+2026/09/04 20:00:41 TypeScript output changes detected for paths: /Users/tyler/src/.worktrees/go-gen-jsonschema/v1-codec-integration/ephemeral/typescript-generation/proof/run-lG5XUd/consumer/generated/index.ts (and --no-changes or JSONSCHEMA_NO_CHANGES was set)
+
+$ /Users/tyler/src/.worktrees/go-gen-jsonschema/v1-codec-integration/ephemeral/typescript-generation/proof/run-lG5XUd/gen-jsonschema gen --target /Users/tyler/src/.worktrees/go-gen-jsonschema/v1-codec-integration/ephemeral/typescript-generation/proof/run-lG5XUd/consumer --typescript /Users/tyler/src/.worktrees/go-gen-jsonschema/v1-codec-integration/ephemeral/typescript-generation/proof/run-lG5XUd/consumer/generated --typescript-barrel
+exit=0
+
+$ /Users/tyler/src/.worktrees/go-gen-jsonschema/v1-codec-integration/ephemeral/typescript-generation/proof/run-lG5XUd/gen-jsonschema gen --target /Users/tyler/src/.worktrees/go-gen-jsonschema/v1-codec-integration/ephemeral/typescript-generation/proof/run-lG5XUd/consumer --typescript /Users/tyler/src/.worktrees/go-gen-jsonschema/v1-codec-integration/ephemeral/typescript-generation/proof/run-lG5XUd/consumer/user-owned
+exit=1
+2026/09/04 20:00:42 refusing to overwrite unowned TypeScript output /Users/tyler/src/.worktrees/go-gen-jsonschema/v1-codec-integration/ephemeral/typescript-generation/proof/run-lG5XUd/consumer/user-owned/types.ts
+
+$ /opt/homebrew/Cellar/node/26.8.1/bin/node /Users/tyler/src/.worktrees/go-gen-jsonschema/v1-codec-integration/tests/typescript/node_modules/typescript/bin/tsc --project /Users/tyler/src/.worktrees/go-gen-jsonschema/v1-codec-integration/ephemeral/typescript-generation/proof/run-lG5XUd/consumer/tsconfig.json --pretty false
+exit=0
+
+$ /opt/homebrew/Cellar/node/26.8.1/bin/node /Users/tyler/src/.worktrees/go-gen-jsonschema/v1-codec-integration/tests/typescript/node_modules/typescript/bin/tsc --project /Users/tyler/src/.worktrees/go-gen-jsonschema/v1-codec-integration/ephemeral/typescript-generation/proof/run-lG5XUd/consumer/tsconfig.json --pretty false
+exit=2
+../../ephemeral/typescript-generation/proof/run-lG5XUd/consumer/missing-case.ts(6,33): error TS2345: Argument of type 'Omit<Deleted, "!kind"> & { "!kind": "deleted"; }' is not assignable to parameter of type 'never'.
+
+$ /Users/tyler/src/.worktrees/go-gen-jsonschema/v1-codec-integration/ephemeral/typescript-generation/proof/run-lG5XUd/gen-jsonschema gen --target /Users/tyler/src/.worktrees/go-gen-jsonschema/v1-codec-integration/ephemeral/typescript-generation/proof/run-lG5XUd/consumer --typescript /Users/tyler/src/.worktrees/go-gen-jsonschema/v1-codec-integration/ephemeral/typescript-generation/proof/run-lG5XUd/consumer/generated --typescript-barrel
+exit=0
+
+$ /opt/homebrew/Cellar/node/26.8.1/bin/node /Users/tyler/src/.worktrees/go-gen-jsonschema/v1-codec-integration/tests/typescript/node_modules/typescript/bin/tsc --project /Users/tyler/src/.worktrees/go-gen-jsonschema/v1-codec-integration/ephemeral/typescript-generation/proof/run-lG5XUd/consumer/tsconfig.json --pretty false
+exit=2
+../../ephemeral/typescript-generation/proof/run-lG5XUd/consumer/consumer.ts(43,33): error TS2345: Argument of type 'Omit<Renamed, "!kind"> & { "!kind": "renamed"; }' is not assignable to parameter of type 'never'.
+
+$ /Users/tyler/src/.worktrees/go-gen-jsonschema/v1-codec-integration/ephemeral/typescript-generation/proof/run-lG5XUd/gen-jsonschema gen --target /Users/tyler/src/.worktrees/go-gen-jsonschema/v1-codec-integration/ephemeral/typescript-generation/proof/run-lG5XUd/consumer --typescript /Users/tyler/src/.worktrees/go-gen-jsonschema/v1-codec-integration/ephemeral/typescript-generation/proof/run-lG5XUd/consumer/generated --typescript-barrel
+exit=0
+
+$ /opt/homebrew/Cellar/node/26.8.1/bin/node /Users/tyler/src/.worktrees/go-gen-jsonschema/v1-codec-integration/tests/typescript/node_modules/typescript/bin/tsc --project /Users/tyler/src/.worktrees/go-gen-jsonschema/v1-codec-integration/ephemeral/typescript-generation/proof/run-lG5XUd/consumer/tsconfig.json --pretty false
+exit=0
+
+$ /opt/homebrew/Cellar/go/1.27.1/libexec/bin/go test ./...
+exit=0
+?   	example.com/ts-consumer	[no test files]

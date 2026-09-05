@@ -4,7 +4,7 @@
 designed for LLM tool definitions and structured output: properties follow Go
 field order, unknown properties are rejected, and Go doc comments become schema
 descriptions. The generator can also emit schema accessors, optional runtime
-validation, and selected JSON/YAML decoding methods. Schema generation is
+validation, and selected JSON codecs/YAML input methods. Schema generation is
 separate from codecs; it does not promise general-purpose typed
 encode/decode round trips for every Go type. JSON is the canonical data model
 and the default format.
@@ -87,7 +87,7 @@ Generation writes:
 
 - `jsonschema/Person.json`: the schema;
 - `jsonschema/Person.json.sum`: its change-detection checksum; and
-- `jsonschema_gen.go`: production schema, validation, and selected decoding
+- `jsonschema_gen.go`: production schema, validation, and selected codec
   implementations.
 
 Commit `schema.go`, `jsonschema_gen.go`, and the complete `jsonschema/`
@@ -135,7 +135,7 @@ The registration and generated files are mutually exclusive:
 | File | Build tag | Purpose |
 | --- | --- | --- |
 | `schema.go` | `//go:build jsonschema` | User-written stubs and registrations, compiled only during generation. |
-| `jsonschema_gen.go` | `//go:build !jsonschema` | Generated production accessors, validation, and selected decoding methods. |
+| `jsonschema_gen.go` | `//go:build !jsonschema` | Generated production accessors, validation, and selected codec methods. |
 
 The package therefore has one definition of each generated method in either
 build mode.
@@ -273,11 +273,23 @@ For an integer or iota enum, choose the wire representation explicitly:
 The package-level `NewEnumType[T]()` form remains supported, but field-level
 options are preferred for new code.
 
+String-mode integer fields generate one composed owner codec for encoding and
+decoding, shared with any union adapters. Marshal the containing owner value
+or pointer; a global enum method is not installed. Direct `E`, `Optional[E]`,
+and `Nullable[E]` are supported. Optional absence and Nullable null skip the
+conversion; present values must have a declared name. Unknown names,
+undeclared values/zero, duplicate underlying values with distinct names,
+production enum JSON hooks, and other adapted containers are rejected.
+`WithEnum` fields using the same integer type retain numeric JSON.
+Registered enum fields cannot use `json:",string"`; generation rejects that
+option before writing artifacts because its encoding differs from the schema.
+
+
 ## Discriminated interfaces and slices
 
 A registered interface field becomes an `anyOf` union. A direct,
 one-dimensional `[]I` field becomes an array with that union under
-`items.anyOf`. The generator writes `UnmarshalJSON` dispatch by default. Use
+`items.anyOf`. The generator writes owner `MarshalJSON` and `UnmarshalJSON` methods by default. Use
 `--formats=both` to add `UnmarshalYAML(*yaml.Node)` adapters. yaml/v4 parses
 YAML into a generic value, which is translated to JSON and passed through the
 same decoder for scalar interface fields and every slice element.
@@ -315,7 +327,7 @@ var _ = jsonschema.NewJSONSchemaMethod(
 ```
 
 `Impl`'s first argument is the exact discriminator used by both the schema
-`const` and generated unmarshal dispatch. The default discriminator property is
+`const` and generated encode/decode dispatch. The default discriminator property is
 `type` for both JSON and YAML. Generated decoding preserves value versus pointer
 implementations, reports a failing slice index, and assigns the destination
 only after the entire value decodes successfully. YAML uses the JSON Schema
@@ -361,20 +373,23 @@ jsonschema.WithInterfaceImpls(Batch{}.Events, Created{}, (*Deleted)(nil)),
 jsonschema.WithDiscriminator(Batch{}.Events, "!kind"),
 ```
 
-The generator writes the selected JSON and/or YAML unmarshalers, not
-discriminator-aware marshalers. If a decoded interface value must marshal back
-into schema-valid JSON, each concrete implementation must include the
-discriminator, commonly with `MarshalJSON`:
+Marshal the containing value with `json.Marshal(batch)` or
+`json.Marshal(&batch)`. Its generated owner codec injects each field's
+registered discriminator and preserves pointer/value implementation identity
+through decoding. A concrete implementation marshaled outside its owner uses
+its normal Go encoding; it has no global discriminator configuration.
 
-```go
-func (c Created) MarshalJSON() ([]byte, error) {
-    type plain Created
-    return json.Marshal(struct {
-        Type string `json:"type"`
-        plain
-    }{Type: "created", plain: plain(c)})
-}
-```
+Absent `Optional[I]` fields are omitted; allocated empty `[]I` fields encode
+as `[]`. Nil required interfaces/slices, typed-nil implementations, present
+Optional nil values, and unregistered dynamic types return errors. A concrete
+custom `MarshalJSON` hook must return an object; a missing discriminator is
+added, a matching string is preserved, and conflicting/non-string values are
+rejected. Concrete decode hooks receive the complete discriminated object.
+
+Production owner `MarshalJSON`/`UnmarshalJSON` collisions, including competing
+promoted methods, fail generation before writes. Generated owner decoding
+replaces the destination only after full success; validate first when accepting
+external JSON. See `examples/sealed_interface_slices` for roundtrip proof.
 
 Supported interface containers are scalar `I` fields and direct `[]I` fields.
 Fixed arrays, nested slices, named slice containers, `Optional[[]I]`,

@@ -67,19 +67,26 @@ func TestBatchUnmarshalInterfaceSlice(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if string(remarshaled) != `{"events":[{"name":"first"},{"id":"gone"}]}` {
+		if string(remarshaled) != `{"events":[{"!kind":"Created","name":"first"},{"!kind":"Deleted","id":"gone"}]}` {
 			t.Fatalf("re-marshaled batch = %s", remarshaled)
+		}
+		var roundTrip Batch
+		if err := json.Unmarshal(remarshaled, &roundTrip); err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(roundTrip.Events, want) {
+			t.Fatalf("round-trip events = %#v, want %#v", roundTrip.Events, want)
 		}
 	})
 
-	t.Run("missing preserves and null clears", func(t *testing.T) {
+	t.Run("missing and null replace with nil", func(t *testing.T) {
 		original := Batch{Events: []Event{Created{Name: "original"}}}
 		missing := original
 		if err := json.Unmarshal([]byte(`{}`), &missing); err != nil {
 			t.Fatal(err)
 		}
-		if !reflect.DeepEqual(missing, original) {
-			t.Fatalf("missing events changed destination: got %#v, want %#v", missing, original)
+		if missing.Events != nil {
+			t.Fatalf("missing events = %#v, want replacement nil", missing.Events)
 		}
 
 		null := original

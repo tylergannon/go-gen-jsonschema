@@ -1,0 +1,6 @@
+candidate_sha=5e1040a99ba7f51f126601bd84ad5e6b912847d2
+generator_exit=0
+go_test_exit=0
+typescript_compile_exit=0
+canonical_fixture_unchanged=true
+candidate_tracked_state_unchanged=true

@@ -1,6 +1,7 @@
 package builder
 
 import (
+	"crypto/sha256"
 	_ "embed"
 	"encoding/hex"
 	"encoding/json"
@@ -13,7 +14,6 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
-	"runtime/debug"
 	"strconv"
 	"strings"
 
@@ -35,6 +35,12 @@ const defaultSubdir = "jsonschema"
 const unsupportedRegisteredInterfaceContainer = "arrays/slices of registered interfaces are not yet supported"
 
 func New(pkg *decorator.Package) (SchemaBuilder, error) {
+	return NewForTypes(pkg, nil)
+}
+
+// NewForTypes constructs a builder for the selected registered schema roots.
+// An empty selection preserves New's behavior and maps every registered root.
+func NewForTypes(pkg *decorator.Package, typeNames []string) (SchemaBuilder, error) {
 	data, err := syntax.LoadPackage(pkg)
 	if err != nil {
 		return SchemaBuilder{}, err
@@ -48,13 +54,12 @@ func New(pkg *decorator.Package) (SchemaBuilder, error) {
 		DiscriminatorProp: DefaultDiscriminatorPropName,
 		TypeProvidersMap:  map[string][]FieldProvider{},
 		IfaceV1:           map[string]map[string]interfaceFieldConfig{},
-		EnumV1: make(map[string]map[string]struct {
-			UseStringer bool
-		}),
-		RenderedTypes: []string{},
-		Rendered:      map[string]bool{},
-		RefTypes:      map[syntax.TypeID]bool{},
-		RefDefs:       map[string]refDef{},
+		EnumV1:            make(map[string]map[string]enumFieldConfig),
+		enumFields:        make(map[string][]EnumFieldPlan),
+		RenderedTypes:     []string{},
+		Rendered:          map[string]bool{},
+		RefTypes:          map[syntax.TypeID]bool{},
+		RefDefs:           map[string]refDef{},
 	}
 	// First, collect providers so they're available during mapping
 	var foundNewInterfaceOpts bool
@@ -115,16 +120,16 @@ func New(pkg *decorator.Package) (SchemaBuilder, error) {
 				builder.IfaceV1[recv][opt.FieldName] = curr
 			case "WithEnum", "WithStringerEnum":
 				if builder.EnumV1[recv] == nil {
-					builder.EnumV1[recv] = make(map[string]struct {
-						UseStringer bool
-					})
+					builder.EnumV1[recv] = make(map[string]enumFieldConfig)
 				}
-				if _, ok := builder.EnumV1[recv][opt.FieldName]; !ok {
-					useStringer := opt.Kind == "WithStringerEnum"
-					builder.EnumV1[recv][opt.FieldName] = struct {
-						UseStringer bool
-					}{UseStringer: useStringer}
+				useStringer := opt.Kind == "WithStringerEnum"
+				if previous, ok := builder.EnumV1[recv][opt.FieldName]; ok {
+					if previous.UseStringer != useStringer {
+						return fmt.Errorf("field %s.%s: cannot combine WithEnum and WithStringerEnum", recv, opt.FieldName)
+					}
+					return fmt.Errorf("field %s.%s: duplicate enum registration", recv, opt.FieldName)
 				}
+				builder.EnumV1[recv][opt.FieldName] = enumFieldConfig{UseStringer: useStringer}
 
 			case "WithDiscriminator":
 				if builder.IfaceV1[recv] == nil {
@@ -233,25 +238,86 @@ func New(pkg *decorator.Package) (SchemaBuilder, error) {
 	}
 	// Now map types
 	for _, m := range data.SchemaMethods {
+		if !selectedRoot(typeNames, m.Receiver.TypeName) {
+			continue
+		}
 		if err = builder.mapType(m.Receiver, syntax.SeenTypes{}); err != nil {
 			return builder, err
 		}
 	}
 	for _, f := range data.SchemaFuncs {
+		if !selectedRoot(typeNames, f.Receiver.TypeName) {
+			continue
+		}
 		if err = builder.mapType(f.Receiver, syntax.SeenTypes{}); err != nil {
 			return builder, err
 		}
+	}
+	if err := builder.validateOwnerCodecMethods(); err != nil {
+		return builder, err
 	}
 
 	return builder, nil
 }
 
-type CustomMarshaledType struct {
-	Name           string
-	InterfaceProps []InterfaceProp
-	Star           string
-	Initial        string
+func selectedRoot(typeNames []string, candidate string) bool {
+	return len(typeNames) == 0 || slices.Contains(typeNames, candidate)
 }
+
+// OwnerCodec is the single composition point for all generated field codecs
+// on a containing struct. Union fields are populated by #57; later adapters
+// (such as field-specific enums) extend this owner instead of generating a
+// competing MarshalJSON or UnmarshalJSON method.
+type OwnerCodec struct {
+	Name        string
+	UnionFields []InterfaceProp
+	EnumFields  []EnumFieldPlan
+	Initial     string
+}
+
+type enumFieldConfig struct {
+	UseStringer bool
+}
+
+type enumUnderlying int
+
+const (
+	enumUnderlyingInteger enumUnderlying = iota
+	enumUnderlyingString
+)
+
+type EnumEntry struct {
+	ConstName   string
+	GoValueExpr string
+	WireName    string
+	NumberValue json.Number
+}
+
+// EnumFieldPlan is the resolved source of truth for one registered enum field.
+// Schema rendering and generated field adapters consume the same entries.
+type EnumFieldPlan struct {
+	Field                  syntax.StructField
+	GoName                 string
+	JSONName               string
+	Wrapper                syntax.WrapperKind
+	EnumType               syntax.TypeSpec
+	EnumTypeNameWithPrefix string
+	Entries                []EnumEntry
+	StringMode             bool
+	Adapted                bool
+	MarshalerFunc          string
+	UnmarshalerFunc        string
+}
+
+func (e EnumFieldPlan) FieldNames() string { return e.GoName }
+func (e EnumFieldPlan) StructTag() string {
+	if e.Field.Field.Tag == nil {
+		return ""
+	}
+	return e.Field.Field.Tag.Value
+}
+func (e EnumFieldPlan) Optional() bool { return e.Wrapper == syntax.WrapperOptional }
+func (e EnumFieldPlan) Nullable() bool { return e.Wrapper == syntax.WrapperNullable }
 
 type YAMLType struct {
 	Name    string
@@ -261,8 +327,6 @@ type YAMLType struct {
 type InterfaceOptionInfo struct {
 	TypeNameWithPrefix string
 	Discriminator      string
-	TypeName           string
-	PkgPath            string
 	Pointer            bool
 }
 
@@ -301,46 +365,22 @@ type TypeProviders struct {
 type InterfaceInfo struct {
 	TypeNameWithPrefix    string
 	TypeName              string
-	PkgPath               string
+	MarshalerFunc         string
 	UnmarshalerFunc       string
 	DiscriminatorPropName string
 	Options               []InterfaceOptionInfo
-}
-
-func (c *CustomMarshaledType) UnmarshalJSON(data []byte) (err error) {
-	type Wrapper struct {
-		*CustomMarshaledType
-		Star    json.RawMessage
-		Initial json.RawMessage
-	}
-	wrapper := Wrapper{
-		CustomMarshaledType: c,
-	}
-	if err = json.Unmarshal(data, &wrapper); err != nil {
-		return err
-	}
-	if err = json.Unmarshal(wrapper.Initial, &c.Initial); err != nil {
-		return err
-	}
-	if err = json.Unmarshal(wrapper.Star, &c.Star); err != nil {
-		return err
-	}
-	return nil
 }
 
 type SchemaBuilder struct {
 	Scan              syntax.ScanResult
 	schemas           schemaMap
 	customTypes       map[string][]InterfaceProp
+	enumFields        map[string][]EnumFieldPlan
 	Subdir            string
 	Pretty            bool
 	Validate          bool
 	BuildTag          string
 	UnmarshalFormats  UnmarshalFormats
-	Imports           []string
-	SpecialTypes      []CustomMarshaledType
-	YAMLTypes         []YAMLType
-	Interfaces        []InterfaceInfo
 	DiscriminatorProp string
 
 	// Field provider options per type (by receiver type name)
@@ -351,9 +391,7 @@ type SchemaBuilder struct {
 	IfaceV1 map[string]map[string]interfaceFieldConfig
 
 	// Enum options: receiver -> field -> config
-	EnumV1 map[string]map[string]struct {
-		UseStringer bool // WithStringerEnum was used
-	}
+	EnumV1 map[string]map[string]enumFieldConfig
 
 	// Types requesting rendered provider execution
 	RenderedTypes []string
@@ -435,18 +473,189 @@ func (s SchemaBuilder) collectRefDefs(schema JSONSchema, defs map[string]JSONSch
 	}
 }
 
-func (s SchemaBuilder) HaveInterfaces() bool {
+type schemaTemplateData struct {
+	SchemaBuilder
+	Imports     []string
+	OwnerCodecs []OwnerCodec
+	YAMLTypes   []YAMLType
+	Interfaces  []InterfaceInfo
+}
+
+func (s schemaTemplateData) HaveInterfaces() bool {
 	return len(s.Interfaces) > 0
 }
 
-// IsSpecialType returns true if the type has a custom UnmarshalJSON for union/interface fields.
-func (s SchemaBuilder) IsSpecialType(typeName string) bool {
-	for _, st := range s.SpecialTypes {
-		if st.Name == typeName {
-			return true
+func (s schemaTemplateData) HaveEnumCodecs() bool {
+	return slices.ContainsFunc(s.OwnerCodecs, func(owner OwnerCodec) bool { return len(owner.EnumFields) > 0 })
+}
+
+func (s SchemaBuilder) validateOwnerCodecMethods() error {
+	owners := s.sortedOwnerCodecNames()
+	for _, owner := range owners {
+		foreignEmbedded, err := s.findForeignEmbeddedGeneratedCodec(owner)
+		if err != nil {
+			return err
+		}
+		if foreignEmbedded != "" {
+			return fmt.Errorf(
+				"cannot generate owner codec for %s: foreign embedded type %s has generated production JSON codecs and would promote a competing MarshalJSON",
+				owner,
+				foreignEmbedded,
+			)
+		}
+		embeddedOwner, err := s.findEmbeddedOwnerCodec(owner, map[string]bool{})
+		if err != nil {
+			return err
+		}
+		if embeddedOwner != "" {
+			return fmt.Errorf(
+				"cannot generate owner codec for %s: embedded type %s also requires generated owner codecs and would promote a competing MarshalJSON",
+				owner,
+				embeddedOwner,
+			)
 		}
 	}
-	return false
+	methods, err := syntax.FindProductionJSONMethods(s.Scan.Pkg.Dir, nil)
+	if err != nil {
+		return fmt.Errorf("discovering production JSON methods: %w", err)
+	}
+	for _, owner := range owners {
+		embedded, err := s.embeddedTypeNames(owner, map[string]bool{})
+		if err != nil {
+			return err
+		}
+		for _, method := range methods {
+			if method.Receiver == owner || embedded[method.Receiver] {
+				return ownerCodecCollision(owner, method.Name, method.Position)
+			}
+		}
+	}
+	for _, owner := range owners {
+		object := s.Scan.Pkg.Types.Scope().Lookup(owner)
+		if object == nil {
+			return fmt.Errorf("cannot resolve owner codec type %s", owner)
+		}
+		methodSet := types.NewMethodSet(types.NewPointer(object.Type()))
+		for _, methodName := range []string{"MarshalJSON", "UnmarshalJSON"} {
+			selection := methodSet.Lookup(nil, methodName)
+			if selection == nil {
+				continue
+			}
+			position := s.Scan.Pkg.Fset.Position(selection.Obj().Pos())
+			active, err := syntax.IsProductionGoFile(position.Filename)
+			if err != nil {
+				return fmt.Errorf("checking production build constraint for %s: %w", position, err)
+			}
+			if active {
+				return ownerCodecCollision(owner, methodName, position)
+			}
+		}
+	}
+	return nil
+}
+
+func (s SchemaBuilder) findForeignEmbeddedGeneratedCodec(owner string) (string, error) {
+	typeSpec, ok := s.Scan.LocalNamedTypes[owner]
+	if !ok {
+		return "", nil
+	}
+	structExpr, ok := typeSpec.Type().Expr().(*dst.StructType)
+	if !ok {
+		return "", nil
+	}
+	return s.findForeignEmbeddedGeneratedCodecIn(
+		syntax.NewStructType(structExpr, typeSpec),
+		map[syntax.TypeID]bool{},
+	)
+}
+
+func (s SchemaBuilder) findForeignEmbeddedGeneratedCodecIn(current syntax.StructType, seen map[syntax.TypeID]bool) (string, error) {
+	if seen[current.ID()] {
+		return "", nil
+	}
+	seen[current.ID()] = true
+	for _, field := range current.Fields() {
+		if !field.Embedded() {
+			continue
+		}
+		embedded, err := s.resolveEmbeddedType(field.TypeExpr, nil)
+		if err != nil {
+			return "", err
+		}
+		if embedded.Pkg().PkgPath != s.Scan.Pkg.PkgPath {
+			methods, err := syntax.FindGeneratedJSONMethods(embedded.Pkg().Dir, []string{embedded.Name()})
+			if err != nil {
+				return "", fmt.Errorf("discovering generated JSON methods for embedded type %s.%s: %w", embedded.Pkg().Name, embedded.Name(), err)
+			}
+			if len(methods) > 0 {
+				return embedded.Pkg().Name + "." + embedded.Name(), nil
+			}
+		}
+		found, err := s.findForeignEmbeddedGeneratedCodecIn(embedded, seen)
+		if err != nil || found != "" {
+			return found, err
+		}
+	}
+	return "", nil
+}
+
+func (s SchemaBuilder) findEmbeddedOwnerCodec(owner string, seen map[string]bool) (string, error) {
+	embedded, err := s.embeddedTypeNames(owner, seen)
+	if err != nil {
+		return "", err
+	}
+	for _, candidate := range s.sortedOwnerCodecNames() {
+		if embedded[candidate] {
+			return candidate, nil
+		}
+	}
+	return "", nil
+}
+
+func (s SchemaBuilder) embeddedTypeNames(owner string, seen map[string]bool) (map[string]bool, error) {
+	result := map[string]bool{}
+	if seen[owner] {
+		return result, nil
+	}
+	seen[owner] = true
+	typeSpec, ok := s.Scan.LocalNamedTypes[owner]
+	if !ok {
+		return result, nil
+	}
+	structExpr, ok := typeSpec.Type().Expr().(*dst.StructType)
+	if !ok {
+		return result, nil
+	}
+	for _, field := range syntax.NewStructType(structExpr, typeSpec).Fields() {
+		if !field.Embedded() {
+			continue
+		}
+		embedded, err := s.resolveEmbeddedType(field.TypeExpr, nil)
+		if err != nil {
+			return nil, err
+		}
+		if embedded.Pkg().PkgPath != s.Scan.Pkg.PkgPath {
+			continue
+		}
+		result[embedded.Name()] = true
+		nested, err := s.embeddedTypeNames(embedded.Name(), seen)
+		if err != nil {
+			return nil, err
+		}
+		for name := range nested {
+			result[name] = true
+		}
+	}
+	return result, nil
+}
+
+func ownerCodecCollision(owner, method string, position token.Position) error {
+	return fmt.Errorf(
+		"cannot generate owner codec for %s: handwritten production %s already declared or promoted at %s",
+		owner,
+		method,
+		position,
+	)
 }
 
 // HasNonRenderedTypes returns true if at least one schema method is for a non-rendered type.
@@ -489,6 +698,13 @@ func (s SchemaBuilder) imports() *ImportMap {
 				} else {
 					importMap.AddPackage(scan.Pkg)
 				}
+			}
+		}
+	}
+	for _, enumFields := range s.enumFields {
+		for _, field := range enumFields {
+			if field.Adapted {
+				importMap.AddPackage(field.EnumType.Pkg())
 			}
 		}
 	}
@@ -729,7 +945,16 @@ func (s SchemaBuilder) mapNamedType(t syntax.TypeID, seen syntax.SeenTypes) erro
 		return fmt.Errorf("circular dependency found for type %s at %s", t.TypeName, typeSpec.Position())
 	}
 	if structType, ok := typeSpec.Type().Expr().(*dst.StructType); ok {
-		if props, err := s.resolveLocalInterfaceProps(syntax.NewStructType(structType, typeSpec), nil); err != nil {
+		enumFields, enumErr := s.resolveLocalEnumFields(syntax.NewStructType(structType, typeSpec))
+		if enumErr != nil {
+			return enumErr
+		}
+		if len(enumFields) > 0 {
+			s.enumFields[t.TypeName] = enumFields
+		}
+		if props, err := s.resolveLocalInterfaceProps(syntax.NewStructType(structType, typeSpec), nil, nil); err != nil {
+			return err
+		} else if err := validateOwnerCodecInterfaceFields(t.TypeName, props); err != nil {
 			return err
 		} else if len(props) > 0 {
 			s.customTypes[t.TypeName] = props
@@ -741,6 +966,171 @@ func (s SchemaBuilder) mapNamedType(t syntax.TypeID, seen syntax.SeenTypes) erro
 		s.AddSchema(t, schema)
 	}
 	return nil
+}
+
+func (s SchemaBuilder) resolveLocalEnumFields(owner syntax.StructType) ([]EnumFieldPlan, error) {
+	configs := s.EnumV1[owner.Name()]
+	if len(configs) == 0 {
+		return nil, nil
+	}
+	fields := make(map[string]syntax.StructField)
+	for _, field := range owner.Fields() {
+		for _, name := range field.Field.Names {
+			fields[name.Name] = field
+		}
+	}
+	fieldNames := make([]string, 0, len(configs))
+	for fieldName := range configs {
+		fieldNames = append(fieldNames, fieldName)
+	}
+	slices.Sort(fieldNames)
+	plans := make([]EnumFieldPlan, 0, len(fieldNames))
+	for _, fieldName := range fieldNames {
+		field, ok := fields[fieldName]
+		if !ok {
+			return nil, fmt.Errorf("field %s.%s: registered enum field was not found", owner.Name(), fieldName)
+		}
+		if len(field.Field.Names) != 1 || field.Skip() {
+			return nil, fmt.Errorf("field %s.%s: registered enum must be a single JSON field", owner.Name(), fieldName)
+		}
+		plan, err := s.resolveEnumFieldPlan(owner.Name(), fieldName, field, configs[fieldName])
+		if err != nil {
+			return nil, err
+		}
+		if plan != nil {
+			plans = append(plans, *plan)
+		}
+	}
+	return plans, nil
+}
+
+func (s SchemaBuilder) resolveEnumFieldPlan(owner, fieldName string, field syntax.StructField, config enumFieldConfig) (*EnumFieldPlan, error) {
+	if field.HasJSONOption("string") {
+		return nil, fmt.Errorf("field %s.%s: registered enum fields do not support json:\",string\" at %s", owner, fieldName, field.Position())
+	}
+	wrapper, inner, err := field.Wrapper()
+	if err != nil {
+		return nil, err
+	}
+	fieldType := field.Type()
+	if wrapper != syntax.WrapperNone {
+		fieldType = inner
+	}
+	ident, direct := fieldType.(*dst.Ident)
+	if !direct {
+		if config.UseStringer {
+			return nil, fmt.Errorf("field %s.%s: WithStringerEnum supports only a direct named enum, Optional[E], or Nullable[E] at %s", owner, fieldName, field.Position())
+		}
+		return nil, nil
+	}
+	pkgPath := ident.Path
+	if pkgPath == "" {
+		pkgPath = s.Scan.Pkg.PkgPath
+	}
+	scanResult, ok := s.Scan.GetPackage(pkgPath)
+	if !ok {
+		return nil, fmt.Errorf("field %s.%s: could not resolve enum package %s", owner, fieldName, pkgPath)
+	}
+	enumSet, ok := scanResult.Constants[ident.Name]
+	if !ok {
+		enumSet, err = s.discoverEnum(ident.Name, scanResult)
+		if err != nil {
+			return nil, fmt.Errorf("field %s.%s: resolving enum type %s: %w", owner, fieldName, ident.Name, err)
+		}
+	}
+	if enumSet == nil {
+		return nil, fmt.Errorf("field %s.%s: no constants declared for enum type %s", owner, fieldName, ident.Name)
+	}
+	object := scanResult.Pkg.Types.Scope().Lookup(ident.Name)
+	if object == nil {
+		return nil, fmt.Errorf("field %s.%s: could not resolve enum type %s", owner, fieldName, ident.Name)
+	}
+	named, ok := object.Type().(*types.Named)
+	if !ok {
+		return nil, fmt.Errorf("field %s.%s: enum type %s is not a defined type", owner, fieldName, ident.Name)
+	}
+	basic, ok := named.Underlying().(*types.Basic)
+	if !ok {
+		return nil, fmt.Errorf("field %s.%s: enum type %s must have an integer or string underlying type", owner, fieldName, ident.Name)
+	}
+	underlying := enumUnderlyingInteger
+	switch {
+	case basic.Info()&types.IsInteger != 0:
+	case basic.Info()&types.IsString != 0:
+		underlying = enumUnderlyingString
+	default:
+		return nil, fmt.Errorf("field %s.%s: enum type %s must have an integer or string underlying type", owner, fieldName, ident.Name)
+	}
+
+	entries, err := enumEntries(enumSet, underlying, config.UseStringer, scanResult.Pkg.PkgPath != s.Scan.Pkg.PkgPath)
+	if err != nil {
+		return nil, fmt.Errorf("field %s.%s: %w", owner, fieldName, err)
+	}
+	jsonNames := field.PropNames()
+	if len(jsonNames) != 1 {
+		return nil, fmt.Errorf("field %s.%s: registered enum must resolve to one JSON property", owner, fieldName)
+	}
+	adapted := config.UseStringer && underlying == enumUnderlyingInteger
+	if adapted {
+		methods, err := syntax.FindProductionJSONMethods(scanResult.Pkg.Dir, []string{ident.Name})
+		if err != nil {
+			return nil, fmt.Errorf("field %s.%s: discovering enum JSON methods: %w", owner, fieldName, err)
+		}
+		if len(methods) > 0 {
+			return nil, fmt.Errorf("field %s.%s: cannot adapt string-mode enum %s because production %s is declared at %s", owner, fieldName, ident.Name, methods[0].Name, methods[0].Position)
+		}
+	}
+	return &EnumFieldPlan{
+		Field:           field,
+		GoName:          fieldName,
+		JSONName:        jsonNames[0],
+		Wrapper:         wrapper,
+		EnumType:        enumSet.TypeSpec,
+		Entries:         entries,
+		StringMode:      config.UseStringer || underlying == enumUnderlyingString,
+		Adapted:         adapted,
+		MarshalerFunc:   "__jsonMarshalEnum__" + owner + "__" + fieldName,
+		UnmarshalerFunc: "__jsonUnmarshalEnum__" + owner + "__" + fieldName,
+	}, nil
+}
+
+func enumEntries(enumSet *syntax.EnumSet, underlying enumUnderlying, stringMode, remote bool) ([]EnumEntry, error) {
+	seenValues := map[string]string{}
+	var entries []EnumEntry
+	for _, member := range enumSet.Values {
+		if remote && !token.IsExported(member.Name) && stringMode && underlying == enumUnderlyingInteger {
+			return nil, fmt.Errorf("string-mode enum constant %s is not exported", member.Name)
+		}
+		exact := member.Value.ExactString()
+		if previous, exists := seenValues[exact]; exists && previous != member.Name {
+			if stringMode && underlying == enumUnderlyingInteger {
+				return nil, fmt.Errorf("enum constants %s and %s have duplicate underlying value %s", previous, member.Name, exact)
+			}
+			continue
+		}
+		seenValues[exact] = member.Name
+		entry := EnumEntry{ConstName: member.Name}
+		switch underlying {
+		case enumUnderlyingString:
+			if member.Value.Kind() != constant.String {
+				return nil, fmt.Errorf("enum constant %s at %s is not an exact string", member.Name, member.Source)
+			}
+			entry.WireName = constant.StringVal(member.Value)
+		case enumUnderlyingInteger:
+			if member.Value.Kind() != constant.Int {
+				return nil, fmt.Errorf("enum constant %s at %s is not an exact integer", member.Name, member.Source)
+			}
+			entry.WireName = member.Name
+			if !stringMode {
+				entry.NumberValue = json.Number(exact)
+			}
+		}
+		entries = append(entries, entry)
+	}
+	if len(entries) == 0 {
+		return nil, fmt.Errorf("enum %s has no declared constants", enumSet.TypeSpec.Name())
+	}
+	return entries, nil
 }
 
 func (s SchemaBuilder) renderSchema(t syntax.TypeExpr, description string, seen syntax.SeenTypes) (JSONSchema, error) {
@@ -832,8 +1222,7 @@ func (s SchemaBuilder) renderSchema(t syntax.TypeExpr, description string, seen 
 	case *dst.InterfaceType:
 		return nil, fmt.Errorf("interface types are not supported. Found on %s at %s", t.ID(), t.Position())
 	default:
-		fmt.Printf("Node mapper found unrecognized node type %s at %s\n", t.ToExpr().Details(), t.ToExpr().Position())
-		return nil, errors.New("unhandled node type")
+		return nil, fmt.Errorf("unhandled schema node %s at %s", t.ToExpr().Details(), t.ToExpr().Position())
 	}
 }
 
@@ -958,9 +1347,18 @@ func (s SchemaBuilder) writeSchema(t syntax.TypeID, targetDir string, noChanges 
 	return wroteNew, nil
 }
 
-func sortedCustomTypeNames(customTypes map[string][]InterfaceProp) []string {
-	names := make([]string, 0, len(customTypes))
-	for name := range customTypes {
+func (s SchemaBuilder) sortedOwnerCodecNames() []string {
+	owners := map[string]bool{}
+	for name := range s.customTypes {
+		owners[name] = true
+	}
+	for name, fields := range s.enumFields {
+		if slices.ContainsFunc(fields, func(field EnumFieldPlan) bool { return field.Adapted }) {
+			owners[name] = true
+		}
+	}
+	names := make([]string, 0, len(owners))
+	for name := range owners {
 		names = append(names, name)
 	}
 	slices.Sort(names)
@@ -969,57 +1367,39 @@ func sortedCustomTypeNames(customTypes map[string][]InterfaceProp) []string {
 
 func (s *SchemaBuilder) RenderGoCode() (err error) {
 	importMap := s.imports()
-	s.Imports = importMap.ImportStatements()
+	templateData := schemaTemplateData{
+		SchemaBuilder: *s,
+		Imports:       importMap.ImportStatements(),
+	}
 	generatedInterfaceHelpers := make(map[string]bool)
 
-	// for _, poop := range s.SchemaMethods() {
-	// 	t := s.Scan.LocalNamedTypes[poop.Receiver.TypeName]
-	// 	if st, ok := t.Type().Expr().(*dst.StructType); ok {
-	// 		_st := syntax.NewStructType(st, t.Derive())
-	// 		foo, err := _st.Flatten(
-	// 			func(ident syntax.IdentExpr) (syntax.Expr, error) {
-	// 				var (
-	// 					newType syntax.TypeSpec
-	// 					ok      bool
-	// 				)
-	// 				if ident.Concrete.Path == "" {
-	// 					if newType, ok = s.Scan.LocalNamedTypes[ident.Concrete.Name]; !ok {
-	// 						panic(fmt.Sprintf("unknown type %s", ident.Concrete.Name))
-	// 					}
-	// 				} else {
-	// 					if scan, ok := s.Scan.GetPackage(ident.Concrete.Path); !ok {
-	// 						panic(fmt.Sprintf("unknown type %s", ident.Concrete.Name))
-	// 					}
-
-	// 				}
-
-	// 			},
-	// 			nil,
-	// 		)
-
-	// 	}
-	// }
-
-	for _, n := range sortedCustomTypeNames(s.customTypes) {
+	for _, n := range s.sortedOwnerCodecNames() {
 		itsProps := slices.Clone(s.customTypes[n])
 		for i := range itsProps {
 			ifacePkg := itsProps[i].Interface.TypeSpec.Pkg()
 			itsProps[i].InterfaceTypeNameWithPrefix = importMap.PrefixExpr(itsProps[i].Interface.TypeSpec.Name(), ifacePkg)
 		}
-		s.SpecialTypes = append(s.SpecialTypes, CustomMarshaledType{
-			Name:           n,
-			InterfaceProps: itsProps,
-			Initial:        strings.ToLower(n[0:1]),
+		enumFields := slices.Clone(s.enumFields[n])
+		enumFields = slices.DeleteFunc(enumFields, func(field EnumFieldPlan) bool { return !field.Adapted })
+		for i := range enumFields {
+			enumPkg := enumFields[i].EnumType.Pkg()
+			enumFields[i].EnumTypeNameWithPrefix = importMap.PrefixExpr(enumFields[i].EnumType.Name(), enumPkg)
+			for j := range enumFields[i].Entries {
+				enumFields[i].Entries[j].GoValueExpr = importMap.PrefixExpr(enumFields[i].Entries[j].ConstName, enumPkg)
+			}
+		}
+		templateData.OwnerCodecs = append(templateData.OwnerCodecs, OwnerCodec{
+			Name:        n,
+			UnionFields: itsProps,
+			EnumFields:  enumFields,
+			Initial:     strings.ToLower(n[0:1]),
 		})
 		for _, ifaceProp := range itsProps {
-			if generatedInterfaceHelpers[ifaceProp.UnmarshalerFunc()] {
+			if generatedInterfaceHelpers[ifaceProp.helperIdentity()] {
 				continue
 			}
-			generatedInterfaceHelpers[ifaceProp.UnmarshalerFunc()] = true
-			var (
-				discriminators = map[string]bool{}
-				ifacePkg       = ifaceProp.Interface.TypeSpec.Pkg()
-			)
+			generatedInterfaceHelpers[ifaceProp.helperIdentity()] = true
+			ifacePkg := ifaceProp.Interface.TypeSpec.Pkg()
 			var opts []InterfaceOptionInfo
 			for _, option := range ifaceProp.Interface.Impls {
 				pkg, ok := s.Scan.GetPackage(option.PkgPath)
@@ -1031,27 +1411,20 @@ func (s *SchemaBuilder) RenderGoCode() (err error) {
 					disc = explicit
 				} else {
 					disc = option.TypeName
-					for i := 1; discriminators[disc]; i++ {
-						disc = strings.TrimSuffix(disc, strconv.Itoa(i-1))
-						disc = fmt.Sprintf("%s%d", disc, i)
-					}
 				}
-				discriminators[disc] = true
 				opts = append(opts, InterfaceOptionInfo{
 					TypeNameWithPrefix: importMap.PrefixExpr(option.TypeName, pkg.Pkg),
 					Discriminator:      disc,
-					TypeName:           option.TypeName,
-					PkgPath:            option.PkgPath,
 					Pointer:            option.Indirection == syntax.Pointer,
 				})
 			}
 			// Determine discriminator property name for this field-specific unmarshaler (only if overridden)
 			discProp := ifaceProp.DiscPropName
-			s.Interfaces = append(s.Interfaces, InterfaceInfo{
+			templateData.Interfaces = append(templateData.Interfaces, InterfaceInfo{
 
 				TypeNameWithPrefix:    importMap.PrefixExpr(ifaceProp.Interface.TypeSpec.Name(), ifacePkg),
 				TypeName:              ifaceProp.Interface.TypeSpec.Name(),
-				PkgPath:               ifacePkg.PkgPath,
+				MarshalerFunc:         ifaceProp.MarshalerFunc(),
 				UnmarshalerFunc:       ifaceProp.UnmarshalerFunc(),
 				DiscriminatorPropName: discProp,
 				Options:               opts,
@@ -1063,7 +1436,7 @@ func (s *SchemaBuilder) RenderGoCode() (err error) {
 		for _, method := range s.SchemaMethods() {
 			yamlTypes[method.Receiver.TypeName] = true
 		}
-		for _, special := range s.SpecialTypes {
+		for _, special := range templateData.OwnerCodecs {
 			yamlTypes[special.Name] = true
 		}
 		names := make([]string, 0, len(yamlTypes))
@@ -1072,13 +1445,13 @@ func (s *SchemaBuilder) RenderGoCode() (err error) {
 		}
 		slices.Sort(names)
 		for _, name := range names {
-			s.YAMLTypes = append(s.YAMLTypes, YAMLType{
+			templateData.YAMLTypes = append(templateData.YAMLTypes, YAMLType{
 				Name:    name,
 				Initial: strings.ToLower(name[0:1]),
 			})
 		}
 	}
-	data, err := RenderTemplate(schemasTemplate, s)
+	data, err := RenderTemplate(schemasTemplate, templateData)
 	if err != nil {
 		return err
 	}
@@ -1147,7 +1520,6 @@ func (s SchemaBuilder) resolveEmbeddedType(t syntax.TypeExpr, seen syntax.SeenTy
 	case *dst.ParenExpr:
 		return s.resolveEmbeddedType(t.Derive(expr.X), seen)
 	default:
-		fmt.Println(string(debug.Stack()))
 		return syntax.NoStructType, fmt.Errorf("unsupported embedded field %T at %s", expr, t.Position())
 	}
 }
@@ -1220,43 +1592,9 @@ func (s SchemaBuilder) renderStructField(owner syntax.StructType, f syntax.Struc
 		}
 	}
 	if schema == nil {
-		// Enums v1
-		if cfgs, okEnum := s.EnumV1[owner.Name()]; okEnum {
-			for _, goField := range f.Field.Names {
-				cfg, ok2 := cfgs[goField.Name]
-				if !ok2 {
-					continue
-				}
-				ident, ok := renderType.(*dst.Ident)
-				if !ok {
-					continue
-				}
-				pkgPath := ident.Path
-				if pkgPath == "" {
-					pkgPath = s.Scan.Pkg.PkgPath
-				}
-				scanRes, okp := s.Scan.GetPackage(pkgPath)
-				if !okp {
-					continue
-				}
-				enumSet, okE := scanRes.Constants[ident.Name]
-				if !okE {
-					// Auto-discover enum from const declarations
-					enumSet, err = s.discoverEnum(ident.Name, scanRes)
-					if err != nil {
-						return nil, err
-					}
-					if enumSet == nil {
-						continue
-					}
-				}
-				schema, err = renderEnum(enumSet, cfg.UseStringer, "", false, f.ID())
-				if err != nil {
-					return nil, fmt.Errorf("field %s.%s enum: %w", owner.Name(), goField.Name, err)
-				}
-				specialSource = "enums"
-				break
-			}
+		if plan, ok := s.resolvedEnumField(owner.Name(), f); ok {
+			schema = plan.schema(f.ID())
+			specialSource = "enums"
 		}
 		// Registered interfaces, including the one supported container shape:
 		// a direct one-dimensional slice of the registered interface.
@@ -1316,6 +1654,32 @@ func (s SchemaBuilder) renderStructField(owner syntax.StructType, f syntax.Struc
 	return props, nil
 }
 
+func (s SchemaBuilder) resolvedEnumField(owner string, field syntax.StructField) (EnumFieldPlan, bool) {
+	for _, plan := range s.enumFields[owner] {
+		for _, name := range field.Field.Names {
+			if plan.GoName == name.Name {
+				return plan, true
+			}
+		}
+	}
+	return EnumFieldPlan{}, false
+}
+
+func (e EnumFieldPlan) schema(typeID syntax.TypeID) JSONSchema {
+	if e.StringMode {
+		values := make([]string, 0, len(e.Entries))
+		for _, entry := range e.Entries {
+			values = append(values, entry.WireName)
+		}
+		return PropertyNode[string]{Typ: "string", Enum: values, TypeID_: typeID}
+	}
+	values := make([]json.Number, 0, len(e.Entries))
+	for _, entry := range e.Entries {
+		values = append(values, entry.NumberValue)
+	}
+	return PropertyNode[json.Number]{Typ: "integer", Enum: values, TypeID_: typeID}
+}
+
 func nullableSchema(schema JSONSchema) (JSONSchema, error) {
 	switch value := schema.(type) {
 	case PropertyNode[int]:
@@ -1352,7 +1716,6 @@ type registeredInterfaceField struct {
 	Interface           syntax.IfaceImplementations
 	DiscPropName        string
 	DiscriminatorValues map[syntax.TypeID]string
-	FuncNameAlias       string
 	Optional            bool
 	Repeated            bool
 	V1                  bool
@@ -1498,12 +1861,10 @@ func (s SchemaBuilder) resolveRegisteredInterfaceField(owner syntax.StructType, 
 		if err := s.validateInterfaceImplementations(typeSpec, v1Cfg.Impls); err != nil {
 			return nil, fmt.Errorf("field %s.%s: %w", owner.Name(), v1GoField, err)
 		}
-		funcAlias := fmt.Sprintf("__jsonUnmarshal__%s__%s__%s__%s", typeSpec.Pkg().Name, typeSpec.Name(), owner.Name(), v1GoField)
 		return &registeredInterfaceField{
 			Interface:           syntax.IfaceImplementations{TypeSpec: typeSpec, Impls: v1Cfg.Impls},
 			DiscPropName:        v1Cfg.Disc,
 			DiscriminatorValues: cloneDiscriminatorValues(v1Cfg.DiscriminatorValues),
-			FuncNameAlias:       funcAlias,
 			Optional:            wrapper == syntax.WrapperOptional,
 			Repeated:            repeated,
 			V1:                  true,
@@ -1587,17 +1948,54 @@ type InterfaceProp struct {
 	Interface                   syntax.IfaceImplementations
 	DiscPropName                string
 	DiscriminatorValues         map[syntax.TypeID]string
-	FuncNameAlias               string
 	InterfaceTypeNameWithPrefix string
 	Optional                    bool
 	Repeated                    bool
+	EmbeddedPath                []EmbeddedField
+}
+
+type EmbeddedField struct {
+	Name     string
+	TypeName string
+	Pointer  bool
 }
 
 func (s InterfaceProp) UnmarshalerFunc() string {
-	if s.FuncNameAlias != "" {
-		return s.FuncNameAlias
+	identityHash := sha256.Sum256([]byte(s.helperIdentity()))
+	return fmt.Sprintf(
+		"__jsonUnmarshal__%s__%s__%s",
+		s.Interface.TypeSpec.Pkg().Name,
+		s.Interface.TypeSpec.Name(),
+		hex.EncodeToString(identityHash[:]),
+	)
+}
+
+func (s InterfaceProp) MarshalerFunc() string {
+	return strings.Replace(s.UnmarshalerFunc(), "__jsonUnmarshal__", "__jsonMarshal__", 1)
+}
+
+// helperIdentity names the exact resolved interface registration consumed by a
+// generated helper. Length-prefixed parts keep distinct package paths and
+// configurations unambiguous even when package and type names match.
+func (s InterfaceProp) helperIdentity() string {
+	var identity strings.Builder
+	writePart := func(value string) {
+		fmt.Fprintf(&identity, "%d:%s;", len(value), value)
 	}
-	return fmt.Sprintf("__jsonUnmarshal__%s__%s", s.Interface.TypeSpec.Pkg().Name, s.Interface.TypeSpec.Name())
+	writePart(s.Interface.TypeSpec.Pkg().PkgPath)
+	writePart(s.Interface.TypeSpec.Name())
+	writePart(s.DiscPropName)
+	for _, impl := range s.Interface.Impls {
+		writePart(impl.PkgPath)
+		writePart(impl.TypeName)
+		writePart(strconv.Itoa(int(impl.Indirection)))
+		discriminator, ok := s.DiscriminatorValues[impl]
+		if !ok {
+			discriminator = impl.TypeName
+		}
+		writePart(discriminator)
+	}
+	return identity.String()
 }
 
 func (i InterfaceProp) FieldNames() string {
@@ -1621,6 +2019,46 @@ func (i InterfaceProp) JSONName() string {
 		return i.FieldNames()
 	}
 	return names[0]
+}
+
+func (i InterfaceProp) Accessor(receiver string) string {
+	parts := []string{receiver}
+	for _, embedded := range i.EmbeddedPath {
+		parts = append(parts, embedded.Name)
+	}
+	parts = append(parts, i.FieldNames())
+	return strings.Join(parts, ".")
+}
+
+func (i InterfaceProp) Accessible(receiver string) string {
+	var checks []string
+	parts := []string{receiver}
+	for _, embedded := range i.EmbeddedPath {
+		parts = append(parts, embedded.Name)
+		if embedded.Pointer {
+			checks = append(checks, strings.Join(parts, ".")+" != nil")
+		}
+	}
+	if len(checks) == 0 {
+		return "true"
+	}
+	return strings.Join(checks, " && ")
+}
+
+func (i InterfaceProp) HasPointerPath() bool {
+	return slices.ContainsFunc(i.EmbeddedPath, func(field EmbeddedField) bool { return field.Pointer })
+}
+
+func (i InterfaceProp) PointerInitializers(receiver string) []string {
+	var initializers []string
+	parts := []string{receiver}
+	for _, embedded := range i.EmbeddedPath {
+		parts = append(parts, embedded.Name)
+		if embedded.Pointer {
+			initializers = append(initializers, fmt.Sprintf("if %s == nil { %s = new(%s) }", strings.Join(parts, "."), strings.Join(parts, "."), embedded.TypeName))
+		}
+	}
+	return initializers
 }
 
 // resolveLocalInterfaceProps finds supported registered-interface properties on
@@ -1651,7 +2089,7 @@ func (i InterfaceProp) JSONName() string {
 //
 // )
 // ```
-func (s SchemaBuilder) resolveLocalInterfaceProps(t syntax.StructType, seenProps syntax.SeenProps) (props []InterfaceProp, err error) {
+func (s SchemaBuilder) resolveLocalInterfaceProps(t syntax.StructType, seenProps syntax.SeenProps, embeddedPath []EmbeddedField) (props []InterfaceProp, err error) {
 	if t.Pkg().PkgPath != s.Scan.Pkg.PkgPath {
 		return nil, nil
 	}
@@ -1679,14 +2117,17 @@ func (s SchemaBuilder) resolveLocalInterfaceProps(t syntax.StructType, seenProps
 		if len(prop.Field.Names) != 1 {
 			return nil, fmt.Errorf("interface prop %s has more than one field name at %s", strings.Join(prop.PropNames(), ","), prop.Position())
 		}
+		if err := validateInterfaceDiscriminators(t.Name(), prop.Field.Names[0].Name, *field); err != nil {
+			return nil, err
+		}
 		props = append(props, InterfaceProp{
 			Field:               prop,
 			Interface:           field.Interface,
 			DiscPropName:        field.DiscPropName,
 			DiscriminatorValues: cloneDiscriminatorValues(field.DiscriminatorValues),
-			FuncNameAlias:       field.FuncNameAlias,
 			Optional:            field.Optional,
 			Repeated:            field.Repeated,
+			EmbeddedPath:        slices.Clone(embeddedPath),
 		})
 	}
 	for _, prop := range t.Fields() {
@@ -1695,13 +2136,90 @@ func (s SchemaBuilder) resolveLocalInterfaceProps(t syntax.StructType, seenProps
 		}
 		if _t, err := s.resolveEmbeddedType(prop.TypeExpr, nil); err != nil {
 			return nil, fmt.Errorf("resolving embedded type: %w", err)
-		} else if propsTemp, err := s.resolveLocalInterfaceProps(_t, seenProps); err != nil {
+		} else if selector, ok := embeddedField(prop.Field.Type, _t.Name()); !ok {
+			return nil, fmt.Errorf("unsupported embedded field type %T at %s", prop.Field.Type, prop.Position())
+		} else if propsTemp, err := s.resolveLocalInterfaceProps(_t, seenProps, append(slices.Clone(embeddedPath), selector)); err != nil {
 			return nil, fmt.Errorf("resolving embedded local interface properties: %w", err)
 		} else {
 			props = append(props, propsTemp...)
 		}
 	}
 	return props, nil
+}
+
+func validateOwnerCodecInterfaceFields(owner string, props []InterfaceProp) error {
+	goFields := make(map[string]string, len(props))
+	jsonFields := make(map[string]string, len(props))
+	for _, prop := range props {
+		path := prop.Accessor(owner)
+		goName := prop.FieldNames()
+		if previous, exists := goFields[goName]; exists {
+			return fmt.Errorf(
+				"cannot generate owner codec for %s: promoted registered interface fields %s and %s are ambiguous because they share Go field name %q",
+				owner,
+				previous,
+				path,
+				goName,
+			)
+		}
+		goFields[goName] = path
+
+		jsonName := prop.JSONName()
+		if previous, exists := jsonFields[jsonName]; exists {
+			return fmt.Errorf(
+				"cannot generate owner codec for %s: promoted registered interface fields %s and %s are ambiguous because they share JSON property %q",
+				owner,
+				previous,
+				path,
+				jsonName,
+			)
+		}
+		jsonFields[jsonName] = path
+	}
+	return nil
+}
+
+func validateInterfaceDiscriminators(owner, fieldName string, field registeredInterfaceField) error {
+	seen := make(map[string]syntax.TypeID, len(field.Interface.Impls))
+	for _, impl := range field.Interface.Impls {
+		value, explicit := field.DiscriminatorValues[impl]
+		if !explicit {
+			value = impl.TypeName
+		}
+		if previous, exists := seen[value]; exists {
+			return fmt.Errorf(
+				"field %s.%s: duplicate discriminator value %q for %s and %s; legacy-derived names must be unique",
+				owner,
+				fieldName,
+				value,
+				previous,
+				impl,
+			)
+		}
+		seen[value] = impl
+	}
+	return nil
+}
+
+func embeddedField(expr dst.Expr, typeName string) (EmbeddedField, bool) {
+	field := EmbeddedField{TypeName: typeName}
+	for {
+		switch value := expr.(type) {
+		case *dst.StarExpr:
+			field.Pointer = true
+			expr = value.X
+		case *dst.ParenExpr:
+			expr = value.X
+		case *dst.Ident:
+			field.Name = value.Name
+			return field, true
+		case *dst.SelectorExpr:
+			field.Name = value.Sel.Name
+			return field, true
+		default:
+			return EmbeddedField{}, false
+		}
+	}
 }
 
 func (s SchemaBuilder) findInterfaceImpl(ident *dst.Ident, localPkg *decorator.Package) (iface syntax.IfaceImplementations, ok bool) {

@@ -4,6 +4,7 @@
 package stringer_enums
 
 import (
+	"bytes"
 	"embed"
 	"encoding/json"
 	"errors"
@@ -35,4 +36,140 @@ func (Task) Schema() json.RawMessage {
 		__gen_jsonschema_panic(fileName, err)
 	}
 	return data
+}
+
+// MarshalJSON is a generated custom json.Marshaler implementation for
+// ApplicationConfig.
+func (a ApplicationConfig) MarshalJSON() ([]byte, error) {
+	type Alias ApplicationConfig
+	type Wrapper struct {
+		Alias
+		DefaultPriority json.RawMessage `json:"default_priority"`
+		LogLevel        json.RawMessage `json:"log_level"`
+	}
+	wrapper := Wrapper{Alias: Alias(a)}
+	var err error
+
+	if wrapper.DefaultPriority, err = __jsonMarshalEnum__ApplicationConfig__DefaultPriority(a.DefaultPriority); err != nil {
+		return nil, fmt.Errorf("field default_priority: %w", err)
+	}
+
+	if wrapper.LogLevel, err = __jsonMarshalEnum__ApplicationConfig__LogLevel(a.LogLevel); err != nil {
+		return nil, fmt.Errorf("field log_level: %w", err)
+	}
+
+	return json.Marshal(&wrapper)
+}
+
+// UnmarshalJSON is a generated custom json.Unmarshaler implementation for
+// ApplicationConfig.
+func (a *ApplicationConfig) UnmarshalJSON(data []byte) (err error) {
+	type Alias ApplicationConfig
+	type Wrapper struct {
+		Alias
+		DefaultPriority json.RawMessage `json:"default_priority"`
+		LogLevel        json.RawMessage `json:"log_level"`
+	}
+	var wrapper Wrapper
+	if err = json.Unmarshal(data, &wrapper); err != nil {
+		return err
+	}
+	__next := ApplicationConfig(wrapper.Alias)
+
+	var __enumDecoded0 Priority
+	if __enumDecoded0, err = __jsonUnmarshalEnum__ApplicationConfig__DefaultPriority(wrapper.DefaultPriority); err != nil {
+		return fmt.Errorf("field default_priority: %w", err)
+	}
+	__next.DefaultPriority = __enumDecoded0
+
+	var __enumDecoded1 LogLevel
+	if __enumDecoded1, err = __jsonUnmarshalEnum__ApplicationConfig__LogLevel(wrapper.LogLevel); err != nil {
+		return fmt.Errorf("field log_level: %w", err)
+	}
+	__next.LogLevel = __enumDecoded1
+
+	*a = __next
+	return nil
+}
+
+func __jsonMarshalEnum__ApplicationConfig__DefaultPriority(value Priority) (json.RawMessage, error) {
+	switch value {
+	case PriorityLow:
+		return json.Marshal("PriorityLow")
+	case PriorityNormal:
+		return json.Marshal("PriorityNormal")
+	case PriorityHigh:
+		return json.Marshal("PriorityHigh")
+	case PriorityUrgent:
+		return json.Marshal("PriorityUrgent")
+	default:
+		return nil, errors.New("undeclared value for string-mode enum Priority")
+	}
+}
+
+func __jsonUnmarshalEnum__ApplicationConfig__DefaultPriority(data []byte) (Priority, error) {
+	var zero Priority
+	if __jsonschema__isJSONNull(data) {
+		return zero, errors.New("string-mode enum Priority cannot be JSON null")
+	}
+	var wire string
+	if err := json.Unmarshal(data, &wire); err != nil {
+		return zero, fmt.Errorf("string-mode enum Priority requires a JSON string: %w", err)
+	}
+	switch wire {
+	case "PriorityLow":
+		return PriorityLow, nil
+	case "PriorityNormal":
+		return PriorityNormal, nil
+	case "PriorityHigh":
+		return PriorityHigh, nil
+	case "PriorityUrgent":
+		return PriorityUrgent, nil
+	default:
+		return zero, fmt.Errorf("unknown string-mode enum Priority name %q", wire)
+	}
+}
+func __jsonMarshalEnum__ApplicationConfig__LogLevel(value LogLevel) (json.RawMessage, error) {
+	switch value {
+	case LogDebug:
+		return json.Marshal("LogDebug")
+	case LogInfo:
+		return json.Marshal("LogInfo")
+	case LogWarning:
+		return json.Marshal("LogWarning")
+	case LogError:
+		return json.Marshal("LogError")
+	case LogFatal:
+		return json.Marshal("LogFatal")
+	default:
+		return nil, errors.New("undeclared value for string-mode enum LogLevel")
+	}
+}
+
+func __jsonUnmarshalEnum__ApplicationConfig__LogLevel(data []byte) (LogLevel, error) {
+	var zero LogLevel
+	if __jsonschema__isJSONNull(data) {
+		return zero, errors.New("string-mode enum LogLevel cannot be JSON null")
+	}
+	var wire string
+	if err := json.Unmarshal(data, &wire); err != nil {
+		return zero, fmt.Errorf("string-mode enum LogLevel requires a JSON string: %w", err)
+	}
+	switch wire {
+	case "LogDebug":
+		return LogDebug, nil
+	case "LogInfo":
+		return LogInfo, nil
+	case "LogWarning":
+		return LogWarning, nil
+	case "LogError":
+		return LogError, nil
+	case "LogFatal":
+		return LogFatal, nil
+	default:
+		return zero, fmt.Errorf("unknown string-mode enum LogLevel name %q", wire)
+	}
+}
+func __jsonschema__isJSONNull(data []byte) bool {
+	return bytes.Equal(bytes.TrimSpace(data), []byte("null"))
 }

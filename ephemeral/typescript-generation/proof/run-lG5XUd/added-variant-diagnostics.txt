@@ -1,0 +1,1 @@
+../../ephemeral/typescript-generation/proof/run-lG5XUd/consumer/consumer.ts(43,33): error TS2345: Argument of type 'Omit<Renamed, "!kind"> & { "!kind": "renamed"; }' is not assignable to parameter of type 'never'.

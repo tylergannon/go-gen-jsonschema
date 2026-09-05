@@ -1,7 +1,7 @@
 ---
 name: go-gen-jsonschema
 description: >
-  Use when adding or maintaining JSON Schemas and JSON/YAML decoding for Go
+  Use when adding or maintaining JSON Schemas, typed-union JSON codecs, and YAML input for Go
   structs.
 ---
 
@@ -9,7 +9,7 @@ description: >
 
 Code generator that turns Go structs into JSON Schema files plus Go accessors,
 optional validation, and selectable JSON/YAML input. Schema generation is
-separate from codecs: generated decoding is limited to the documented shapes,
+separate from codecs: generated encoding/decoding is limited to the documented shapes,
 and no general-purpose typed encode/decode round-trip is implied.
 Built for LLM function calling:
 properties are emitted in struct field order (deterministic, prompt-controllable),
@@ -25,7 +25,7 @@ Import path: `github.com/tylergannon/go-gen-jsonschema` (library markers) and
 - `schema.go` — `//go:build jsonschema`. You write this. Panic stubs + marker
   registrations. Compiled only during generation, never in production.
 - `jsonschema_gen.go` — `//go:build !jsonschema`. Generated. Real schema,
-  validation, and selected decoding methods over an `embed.FS` of
+  validation, and selected codec methods over an `embed.FS` of
   `jsonschema/*.json`. JSON is the default; YAML is opt-in.
 
 The build tags make them mutually exclusive, so the package always compiles —
@@ -207,10 +207,14 @@ one-dimensional `[]I` fields, but not `Nullable[I]`, fixed arrays, nested
 slices, named slice containers, or Optional/Nullable interface slices; external
 package types are unsupported except `time.Time`.
 
-Generated interface support owns decoding and validation. It does not add a
-discriminator when concrete implementations are marshaled; implementations
-that must round-trip through the generated union schema need an explicit
-discriminator-aware encoder of their own.
+For unions, marshal the containing struct value or pointer. Its generated
+codec applies each field's discriminator to `I`, `Optional[I]`, and `[]I`.
+Do not add a global discriminator marshaler to an implementation: the same Go
+type can have different wire identities in different fields. Nil required
+unions/slices, typed-nil implementations, and conflicting custom object
+payloads are encoding errors. Production owner JSON method collisions are
+rejected before generation writes output. Verify encode/validate/decode with
+semantic equality for the shapes used by the consumer.
 
 ## Closeout checklist
 

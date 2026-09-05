@@ -1,0 +1,47 @@
+{
+  "type": "object",
+  "properties": {
+    "event": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "nestedKind": {
+              "type": "string",
+              "const": "nested-created"
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "nestedKind",
+            "name"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "nestedKind": {
+              "type": "string",
+              "const": "nested-deleted"
+            },
+            "id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "nestedKind",
+            "id"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "required": [
+    "event"
+  ],
+  "additionalProperties": false
+}
