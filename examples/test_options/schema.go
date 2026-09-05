@@ -17,12 +17,8 @@ func (WorkItem) Schema() json.RawMessage { panic("not implemented") }
 // Test using Options pattern with a simple type
 var _ = polytype.NewJSONSchemaMethod(Person.Schema)
 
-// Test using Options pattern with more complex options
-var _ = polytype.NewJSONSchemaMethod(
-	Team.Schema,
-	// Add a custom description for the Team type
-	polytype.WithDescription("A team of people working together"),
-)
+// Team's Go doc comment supplies its schema description.
+var _ = polytype.NewJSONSchemaMethod(Team.Schema)
 
 // Register Task with its enums (Note: Severity and WeekDay will fail as global enums)
 // var _ = polytype.NewJSONSchemaMethod(Task.Schema)
