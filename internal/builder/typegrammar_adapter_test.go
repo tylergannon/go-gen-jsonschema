@@ -367,6 +367,34 @@ var broken int = "not an int"
 	require.ErrorContains(t, err, "has type-check errors")
 }
 
+// TestTypeDefinitionsIncludesFreeFunctionPointerRoot proves that a
+// free-function schema root whose type's underlying type is a pointer (so
+// it can't have a Schema method) still gets lowered into the TypeScript type
+// grammar. TypeDefinitions used to walk SchemaMethods() only, silently
+// dropping such roots from generated TypeScript even though they have a
+// working JSON schema and Go accessor.
+func TestTypeDefinitionsIncludesFreeFunctionPointerRoot(t *testing.T) {
+	builder := loadTypeGrammarFixture(t, `//go:build jsonschema
+
+package fixture
+
+import (
+	"encoding/json"
+
+	"github.com/tylergannon/polytype"
+)
+
+type PointerRoot *int
+
+func PointerRootSchema(PointerRoot) json.RawMessage { panic("not implemented") }
+
+var _ = polytype.Declare(PointerRootSchema)
+`)
+	defs, err := builder.TypeDefinitions()
+	require.NoError(t, err)
+	requireDefinition(t, defs, "PointerRoot")
+}
+
 func loadTypeGrammarFixture(t *testing.T, source string) SchemaBuilder {
 	t.Helper()
 	dir := writeTypeGrammarFixture(t, source)

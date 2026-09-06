@@ -246,6 +246,38 @@ Filed two follow-up issues (not fixed here, milestone 1.0):
 Round 2 review launched against the fixed state; see round-02 artifact for
 outcome.
 
+## Round 3: TypeScript omission fixed, --validate gap filed as follow-up
+
+Round 2 (`ephemeral/reviews/202609051900-jsonschema-tag-build-fix-round-02.md`)
+found `SchemaFreeFuncs()` roots were wired into the schema-accessor template
+block only: `TypeDefinitions()` (`internal/builder/typegrammar.go`) walks
+`SchemaMethods()` alone, so `--typescript` output silently omits a
+free-function pointer/interface root; `--validate` has the same gap plus a
+claimed (code-shape-plausible, not independently isolated) unused-import
+compile break when such a root is a package's only registration.
+
+correction (self, prompted by user pushback on scope/pace): distinguished
+what's actually broken for anything shipping in this PR from a
+plausible-but-unexercised gap. Verified the TypeScript claim directly against
+the real CLI (`go run ./polytype gen -typescript ... -force` against a
+disposable copy of the extended `entrypoints` fixture): confirmed
+`PointerFuncType` was missing from `types.ts` before, present after. Fixed
+with a 4-line addition to `TypeDefinitions()` (also range over
+`SchemaFreeFuncs()`) — cheap, safe, no new API design, since TS lowering only
+needs a type name, not a Go accessor shape. Added
+`TestTypeDefinitionsIncludesFreeFunctionPointerRoot` in
+`internal/builder/typegrammar_adapter_test.go` (in-process, no CLI
+round-trip needed) as permanent regression coverage.
+
+For `--validate`: verified `PointerFuncType` gets no generated `ValidateJSON`
+in a real `-validate` run (confirmed), but did not independently reproduce
+the unused-import compile break, and did not implement a fix — this needs a
+real design decision (generate a free-function `ValidateJSON` equivalent, or
+reject the combination outright per the project's #80 precedent) that
+nothing in the actual repo currently depends on (no example combines a
+free-function pointer/interface root with `-validate`). Filed as
+tylergannon/polytype#92 rather than expanding this PR further.
+
 ## Verification
 
 - `go generate ./...` per touched example dir; diffed `jsonschema/*.json` and
