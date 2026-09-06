@@ -6,16 +6,16 @@
         {
           "type": "object",
           "properties": {
-            "!kind": {
+            "type": {
               "type": "string",
-              "const": "impl_one"
+              "const": "Impl1"
             },
             "x": {
               "type": "string"
             }
           },
           "required": [
-            "!kind",
+            "type",
             "x"
           ],
           "additionalProperties": false
@@ -23,16 +23,16 @@
         {
           "type": "object",
           "properties": {
-            "!kind": {
+            "type": {
               "type": "string",
-              "const": "impl \"two\""
+              "const": "Impl2"
             },
             "y": {
               "type": "integer"
             }
           },
           "required": [
-            "!kind",
+            "type",
             "y"
           ],
           "additionalProperties": false
@@ -46,7 +46,7 @@
           {
             "type": "object",
             "properties": {
-              "!kind": {
+              "type": {
                 "type": "string",
                 "const": "Impl1"
               },
@@ -55,7 +55,7 @@
               }
             },
             "required": [
-              "!kind",
+              "type",
               "x"
             ],
             "additionalProperties": false
@@ -63,7 +63,7 @@
           {
             "type": "object",
             "properties": {
-              "!kind": {
+              "type": {
                 "type": "string",
                 "const": "Impl2"
               },
@@ -72,7 +72,7 @@
               }
             },
             "required": [
-              "!kind",
+              "type",
               "y"
             ],
             "additionalProperties": false
@@ -85,7 +85,7 @@
         {
           "type": "object",
           "properties": {
-            "!kind": {
+            "type": {
               "type": "string",
               "const": "Impl1"
             },
@@ -94,7 +94,7 @@
             }
           },
           "required": [
-            "!kind",
+            "type",
             "x"
           ],
           "additionalProperties": false
@@ -102,7 +102,7 @@
         {
           "type": "object",
           "properties": {
-            "!kind": {
+            "type": {
               "type": "string",
               "const": "Impl2"
             },
@@ -111,7 +111,7 @@
             }
           },
           "required": [
-            "!kind",
+            "type",
             "y"
           ],
           "additionalProperties": false

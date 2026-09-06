@@ -31,8 +31,8 @@ type Config struct {
 Source: [`examples/optionality/schema.go`](../../../examples/optionality/schema.go)
 
 ```go
-var _ = polytype.Declare(Config.Schema).
-	Interface(Config{}.Pet, polytype.Discriminator("!kind"), polytype.Impl("Dog", Dog{}), polytype.Impl("Cat", Cat{}))
+// Pet is sealed by its unexported pet method; Dog and Cat are inferred.
+var _ = polytype.Declare(Config.Schema)
 ```
 
 ## Enums
@@ -169,14 +169,9 @@ type Owner struct {
 Source: [`examples/interfaces_options/schema.go`](../../../examples/interfaces_options/schema.go)
 
 ```go
-// v1 interface options example
-var _ = polytype.Declare(Owner.Schema).
-	Interface(
-		Owner{}.IF,
-		polytype.Discriminator("!kind"),
-		polytype.Impl("impl_one", Impl1{}),
-		polytype.Impl("impl_two", Impl2{}),
-	)
+// IFace is sealed by its unexported isIface method, so its variants (Impl1
+// and Impl2) are inferred; nothing is declared at the field.
+var _ = polytype.Declare(Owner.Schema)
 ```
 
 ## Slices of interface unions
@@ -186,8 +181,9 @@ Use a direct []I field when each array element is one implementation of a regist
 Source: [`examples/sealed_interface_slices/types.go`](../../../examples/sealed_interface_slices/types.go)
 
 ```go
-// Event is a sealed union for the purposes of schema generation: the schema
-// registration lists every concrete implementation accepted on the wire.
+// Event is a sealed union: its unexported isEvent method closes membership
+// to the same-package struct types that declare it, and the generator infers
+// exactly those types as the wire variants.
 type Event interface {
 	isEvent()
 }
@@ -216,15 +212,10 @@ type Batch struct {
 Source: [`examples/sealed_interface_slices/schema.go`](../../../examples/sealed_interface_slices/schema.go)
 
 ```go
-// The field selector still identifies the complete slice field; the generator
-// derives the registered interface from its element type.
-var _ = polytype.Declare(Batch.Schema).
-	Interface(
-		Batch{}.Events,
-		polytype.Discriminator("!kind"),
-		polytype.Impl("Created", Created{}),
-		polytype.Impl("Deleted", (*Deleted)(nil)),
-	)
+// Event is sealed by its unexported isEvent method, so the slice element
+// union (Created as a value variant, Deleted as a pointer variant) is
+// inferred; nothing is declared at the field.
+var _ = polytype.Declare(Batch.Schema)
 ```
 
 ## Shared $defs and nullable references

@@ -17,8 +17,7 @@ var (
 	// the `Schema()` struct method as the one that should be wired to provide
 	// the generated JSON schema.
 	_ = polytype.NewJSONSchemaMethod(FancyStruct.Schema)
-	// Identifies TestInterface as a marked interface having known
-	// implementations.  In this case there are three implementations of the
-	// TestInterface interface, which will go in to the union type.
-	_ = polytype.NewInterfaceImpl[TestInterface](TestInterface1{}, TestInterface2{}, (*PointerToTestInterface)(nil))
+	// TestInterface is sealed by its unexported marker method, so its three
+	// implementations (two value variants and one pointer variant) are
+	// inferred and go into the union type without any declaration here.
 )

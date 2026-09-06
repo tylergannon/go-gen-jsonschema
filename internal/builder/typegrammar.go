@@ -423,15 +423,11 @@ func (l *typeGrammarLowerer) union(field registeredInterfaceField) (typegrammar.
 		if err := l.named(name); err != nil {
 			return typegrammar.Union{}, fmt.Errorf("union implementation %s: %w", name, err)
 		}
-		tag := impl.TypeName
-		if value, ok := field.DiscriminatorValues[impl]; ok {
-			tag = value
-		}
 		position, _ := l.builder.find(syntax.TypeID{PkgPath: impl.PkgPath, TypeName: impl.TypeName})
 		union.Variants = append(union.Variants, typegrammar.Variant{
 			Implementation: name,
 			Pointer:        impl.Indirection == syntax.Pointer,
-			Tag:            tag,
+			Tag:            impl.TypeName,
 			Source:         position,
 		})
 	}

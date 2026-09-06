@@ -9,9 +9,10 @@ import "time"
 // we can create a union type in the JSON Schema.
 type Shape interface {
 	// Area calculates the area of the shape.
-	// This is just a method to make this a proper interface
-	// that all implementations must provide.
 	Area() float64
+	// isShape seals the interface: only same-package struct types that
+	// declare it directly are union variants.
+	isShape()
 }
 
 // Circle implements the Shape interface.
@@ -27,6 +28,8 @@ type Circle struct {
 func (c Circle) Area() float64 {
 	return 3.14159 * c.Radius * c.Radius
 }
+
+func (Circle) isShape() {}
 
 // Rectangle implements the Shape interface.
 type Rectangle struct {
@@ -45,6 +48,8 @@ func (r Rectangle) Area() float64 {
 	return r.Width * r.Height
 }
 
+func (Rectangle) isShape() {}
+
 // Triangle implements the Shape interface.
 type Triangle struct {
 	// Base is the length of the base.
@@ -61,6 +66,8 @@ type Triangle struct {
 func (t Triangle) Area() float64 {
 	return 0.5 * t.Base * t.Height
 }
+
+func (Triangle) isShape() {}
 
 // Drawing demonstrates how to use a union type (Shape) in a struct.
 // The Shapes field will accept any type that implements the Shape interface
@@ -83,8 +90,10 @@ type Drawing struct {
 // This demonstrates how to use interfaces for domain modeling.
 type PaymentMethod interface {
 	// Process handles payment processing.
-	// This is just a method to make this a proper interface.
 	Process() error
+	// isPaymentMethod seals the interface: only same-package struct types
+	// that declare it directly are union variants.
+	isPaymentMethod()
 }
 
 // CreditCard implements PaymentMethod for credit card payments.
@@ -107,6 +116,8 @@ func (c CreditCard) Process() error {
 	return nil
 }
 
+func (CreditCard) isPaymentMethod() {}
+
 // BankTransfer implements PaymentMethod for bank transfers.
 type BankTransfer struct {
 	// AccountNumber is the bank account number.
@@ -123,6 +134,8 @@ type BankTransfer struct {
 func (b BankTransfer) Process() error {
 	return nil
 }
+
+func (BankTransfer) isPaymentMethod() {}
 
 // DigitalWallet implements PaymentMethod for digital wallet payments.
 // This demonstrates using pointer receivers with interfaces.
@@ -142,6 +155,8 @@ type DigitalWallet struct {
 func (d *DigitalWallet) Process() error {
 	return nil
 }
+
+func (*DigitalWallet) isPaymentMethod() {}
 
 // Payment demonstrates using the PaymentMethod union type.
 type Payment struct {

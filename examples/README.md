@@ -72,17 +72,15 @@ Integer iota enum example.
 ### Interface & Union Types
 
 #### `uniontypes/`
-Discriminated union types using Go interfaces.
-- Interface-based type unions
-- Multiple implementations
-- Discriminator properties
+Discriminated union types using sealed Go interfaces.
+- Inferred membership from the sealing method
+- Value and pointer variants
 - Direct scalar and slice fields
 
 #### `interfaces_options/`
-Advanced interface configuration with V1 API.
-- Custom interface implementations
-- Discriminator configuration
-- Implementation registration
+Minimal sealed interface with a single declaration.
+- Inferred union membership
+- Default `type` discriminator
 
 #### `sealed_interface_slices/`
 Direct slices of registered interface unions.
@@ -142,16 +140,17 @@ func (Task) Schema() json.RawMessage { panic("not implemented") }
 var _ = polytype.Declare(Task.Schema)
 ```
 
-### Interface/Union Type Registration
+### Sealed Interface/Union Types
 ```go
-type Shape interface{ /* methods */ }
+type Shape interface{ isShape() }        // sealed by the unexported method
 type Circle struct{ /* fields */ }
+func (Circle) isShape() {}               // value variant, wire value "Circle"
 type Rectangle struct{ /* fields */ }
+func (*Rectangle) isShape() {}           // pointer variant, wire value "Rectangle"
 type Owner struct{ Shape Shape }
 func (Owner) Schema() json.RawMessage { panic("not implemented") }
 
-var _ = polytype.Declare(Owner.Schema).
-    Interface(Owner{}.Shape, polytype.Impl("circle", Circle{}), polytype.Impl("rectangle", Rectangle{}))
+var _ = polytype.Declare(Owner.Schema)   // membership is inferred
 ```
 
 ### Provider-Based Schema Generation

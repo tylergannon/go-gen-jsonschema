@@ -2,8 +2,6 @@ package syntax
 
 import (
 	"fmt"
-	"go/token"
-	"strconv"
 
 	"github.com/dave/dst"
 	"github.com/dave/dst/decorator"
@@ -211,64 +209,6 @@ func providerRef(provExpr dst.Expr, receiver TypeID) (name string, isMethod bool
 // parseInterfaceNestedOptions parses the Discriminator(...)/Impl(...)
 // options nested inside a WithInterface(field, ...)/.Interface(field, ...)
 // call, shared verbatim between the legacy and fluent registration forms.
-func parseInterfaceNestedOptions(nestedArgs []dst.Expr, fieldName string, pos Expr) ([]SchemaMethodOptionInfo, error) {
-	var out []SchemaMethodOptionInfo
-	for _, nestedExpr := range nestedArgs {
-		nested, ok := nestedExpr.(*dst.CallExpr)
-		if !ok {
-			return nil, fmt.Errorf("invalid interface option at %s: expected Discriminator(...) or Impl(...)", pos.Position())
-		}
-		nestedID := parseFuncFromExpr(pos.NewExpr(nested.Fun))
-		if nestedID.PkgPath != SchemaPackagePath {
-			return nil, fmt.Errorf("invalid interface option %s at %s", nestedID.TypeName, pos.Position())
-		}
-		switch nestedID.TypeName {
-		case "Discriminator":
-			if len(nested.Args) != 1 {
-				return nil, fmt.Errorf("discriminator expects one string at %s", pos.Position())
-			}
-			valueLit, ok := nested.Args[0].(*dst.BasicLit)
-			if !ok || valueLit.Kind != token.STRING {
-				return nil, fmt.Errorf("discriminator expects a string literal at %s", pos.Position())
-			}
-			value, err := strconv.Unquote(valueLit.Value)
-			if err != nil {
-				return nil, fmt.Errorf("invalid discriminator property at %s: %w", pos.Position(), err)
-			}
-			out = append(out, SchemaMethodOptionInfo{
-				Kind:          SchemaMethodOptionKind("WithDiscriminator"),
-				FieldName:     fieldName,
-				Discriminator: value,
-			})
-		case "Impl":
-			if len(nested.Args) != 2 {
-				return nil, fmt.Errorf("impl expects a wire value and implementation at %s", pos.Position())
-			}
-			valueLit, ok := nested.Args[0].(*dst.BasicLit)
-			if !ok || valueLit.Kind != token.STRING {
-				return nil, fmt.Errorf("impl expects a string literal wire value at %s", pos.Position())
-			}
-			value, err := strconv.Unquote(valueLit.Value)
-			if err != nil {
-				return nil, fmt.Errorf("invalid Impl wire value at %s: %w", pos.Position(), err)
-			}
-			impl, err := parseLitForType(pos.NewExpr(nested.Args[1]))
-			if err != nil {
-				return nil, fmt.Errorf("invalid Impl implementation at %s: %w", pos.Position(), err)
-			}
-			out = append(out, SchemaMethodOptionInfo{
-				Kind:               SchemaMethodOptionKind("Impl"),
-				FieldName:          fieldName,
-				DiscriminatorValue: value,
-				ImplTypes:          []TypeID{impl},
-			})
-		default:
-			return nil, fmt.Errorf("unknown interface option %s at %s", nestedID.TypeName, pos.Position())
-		}
-	}
-	return out, nil
-}
-
 // parseFluentChainOptions converts the chained method calls following a
 // polytype.Declare(...) base call into the same []SchemaMethodOptionInfo
 // shape the legacy WithXxx(...) option list produces. Every method name not
@@ -337,20 +277,6 @@ func parseFluentChainOptions(links []fluentChainLink, receiver TypeID, m MarkerF
 				ProviderName:     providerName,
 				ProviderIsMethod: providerIsMethod,
 			})
-		case "Interface":
-			if len(ceArgs) < 1 {
-				return nil, fmt.Errorf("polytype.Declare: .Interface expects a field argument at %s", pos.Position())
-			}
-			fieldName, ok := fieldNameForReceiver(ceArgs[0], receiver)
-			if !ok {
-				return nil, fmt.Errorf("polytype.Declare: .Interface expects a field selector on %s{} at %s", receiver.TypeName, pos.Position())
-			}
-			out = append(out, SchemaMethodOptionInfo{Kind: SchemaMethodOptionKind("WithInterface"), FieldName: fieldName})
-			nested, err := parseInterfaceNestedOptions(ceArgs[1:], fieldName, pos)
-			if err != nil {
-				return nil, err
-			}
-			out = append(out, nested...)
 		default:
 			return nil, fmt.Errorf("polytype.Declare: unsupported chain method %q at %s", link.methodName, pos.Position())
 		}

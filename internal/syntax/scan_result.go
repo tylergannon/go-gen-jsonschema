@@ -101,10 +101,6 @@ type (
 		FieldName        string
 		ProviderName     string
 		ProviderIsMethod bool
-		// v1 interface options support
-		Discriminator      string
-		DiscriminatorValue string
-		ImplTypes          []TypeID
 	}
 
 	TypeDecls struct {
@@ -130,14 +126,15 @@ type (
 	}
 	SchemaFunction SchemaMethod
 
-	// IfaceImplementations represents an interface type and its allowed types.
-	// Error in the event that the loader encounters TypeName referenced on any
-	// types declared outside of this package.
-	// That is to say, in order for an interface implementations to work,
-	// all supported references to it must be in the local package.
+	// IfaceImplementations is a sealed interface and its inferred wire
+	// membership: every named struct type in the interface's own package that
+	// declares the sealing method directly (see inferSealedUnion). Impls
+	// carry Pointer indirection for pointer-receiver variants. Discriminator
+	// is the union's declared discriminator property, empty for the default.
 	IfaceImplementations struct {
-		TypeSpec TypeSpec
-		Impls    []TypeID
+		TypeSpec      TypeSpec
+		Impls         []TypeID
+		Discriminator string
 	}
 
 	EnumSet struct {
@@ -215,16 +212,20 @@ type decls struct {
 }
 
 type ScanResult struct {
-	Pkg             *decorator.Package
-	Constants       map[string]*EnumSet
-	MarkerCalls     []MarkerFunctionCall
-	Interfaces      map[string]IfaceImplementations
-	localTypeNames  map[string]bool
-	SchemaMethods   []SchemaMethod
-	SchemaFuncs     []SchemaFunction
-	LocalNamedTypes map[string]TypeSpec
-	remoteTypes     typesMap
-	deps            map[string]ScanResult
+	Pkg         *decorator.Package
+	Constants   map[string]*EnumSet
+	MarkerCalls []MarkerFunctionCall
+	Interfaces  map[string]IfaceImplementations
+	// InterfaceDiagnostics records, per named interface type that is not a
+	// usable sealed union, why it was rejected. The builder reports the
+	// diagnostic when a generated schema reaches the interface.
+	InterfaceDiagnostics map[string]error
+	localTypeNames       map[string]bool
+	SchemaMethods        []SchemaMethod
+	SchemaFuncs          []SchemaFunction
+	LocalNamedTypes      map[string]TypeSpec
+	remoteTypes          typesMap
+	deps                 map[string]ScanResult
 	// temp variable used during resolution only.
 	resolveQueue            []TypeSpec
 	alreadyTraversedLocally map[string]bool
@@ -281,6 +282,7 @@ func newScanResult(pkg *decorator.Package, deps map[string]ScanResult) ScanResul
 		Constants:               make(map[string]*EnumSet),
 		MarkerCalls:             make([]MarkerFunctionCall, 0),
 		Interfaces:              make(map[string]IfaceImplementations),
+		InterfaceDiagnostics:    make(map[string]error),
 		SchemaMethods:           make([]SchemaMethod, 0),
 		SchemaFuncs:             make([]SchemaFunction, 0),
 		LocalNamedTypes:         make(map[string]TypeSpec),
@@ -292,10 +294,6 @@ func newScanResult(pkg *decorator.Package, deps map[string]ScanResult) ScanResul
 }
 
 type typesMap map[string]map[string]bool
-
-func (t typesMap) addTypeByID(typ TypeID) {
-	t.addType(typ.PkgPath, typ.TypeName)
-}
 
 func (t typesMap) addType(pkgPath, typeName string) {
 	if t[pkgPath] == nil {
@@ -397,23 +395,6 @@ func (r *ScanResult) loadPackageInternal(seen seenPackages, typesToMap map[strin
 	r.MarkerCalls = _decls.varDecls.MarkerFuncs()
 	for _, decl := range r.MarkerCalls {
 		switch decl.CallExpr.MustIdentifyFunc().TypeName {
-		case MarkerFuncNewInterfaceImpl:
-			var (
-				err   error
-				iface = IfaceImplementations{}
-			)
-			if iface.Impls, err = decl.ParseTypesFromArgs(); err != nil {
-				return err
-			}
-			r.Interfaces[decl.MustTypeArgument().TypeName] = iface
-			for _, impl := range iface.Impls {
-				if impl.PkgPath == r.Pkg.PkgPath {
-					r.localTypeNames[impl.TypeName] = true
-					typesToMap[impl.TypeName] = true
-				} else {
-					r.remoteTypes.addTypeByID(impl)
-				}
-			}
 		case MarkerFuncNewJSONSchemaMethod:
 			method, err := decl.ParseSchemaMethod()
 			if err != nil {
@@ -460,9 +441,18 @@ func (r *ScanResult) loadPackageInternal(seen seenPackages, typesToMap map[strin
 	for _, _typeDecl := range _decls.typeDecls {
 		for _, spec := range _typeDecl.Specs {
 			typeSpec := NewTypeSpec(_typeDecl.Decl, spec, _typeDecl.Pkg, _typeDecl.File)
-			if iface, ok := r.Interfaces[spec.Name.Name]; ok {
-				iface.TypeSpec = typeSpec
-				r.Interfaces[spec.Name.Name] = iface
+			if _, isInterface := spec.Type.(*dst.InterfaceType); isInterface {
+				// Sealed unions are inferred from the interface's own
+				// unexported method(s). Anything that disqualifies the
+				// interface is recorded, not raised: the diagnostic surfaces
+				// only when a generated schema actually reaches the type.
+				variants, err := inferSealedUnion(r.Pkg.Types, spec.Name.Name, typeSpec.Position())
+				if err != nil {
+					r.InterfaceDiagnostics[spec.Name.Name] = err
+					r.LocalNamedTypes[spec.Name.Name] = typeSpec
+					continue
+				}
+				r.Interfaces[spec.Name.Name] = IfaceImplementations{TypeSpec: typeSpec, Impls: variants}
 				continue
 			}
 			marked, err := hasEnumMarker(r.Pkg.Types, spec.Name.Name, typeSpec.Position())
@@ -481,6 +471,12 @@ func (r *ScanResult) loadPackageInternal(seen seenPackages, typesToMap map[strin
 				continue
 			}
 			r.LocalNamedTypes[spec.Name.Name] = typeSpec
+		}
+	}
+	for _, iface := range r.Interfaces {
+		for _, impl := range iface.Impls {
+			r.localTypeNames[impl.TypeName] = true
+			typesToMap[impl.TypeName] = true
 		}
 	}
 	for typeName := range typesToMap {
@@ -685,7 +681,12 @@ func (r *ScanResult) requestType(typeName string) error {
 	if r.Constants[typeName] != nil {
 		return nil
 	}
-	if _, ok := r.Interfaces[typeName]; ok {
+	if iface, ok := r.Interfaces[typeName]; ok {
+		for _, impl := range iface.Impls {
+			if err := r.requestType(impl.TypeName); err != nil {
+				return err
+			}
+		}
 		return nil
 	}
 	return fmt.Errorf("undeclared local type found: %s", typeName)

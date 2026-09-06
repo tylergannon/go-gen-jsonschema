@@ -138,7 +138,6 @@ import (
 
 func (Embedded) Schema() json.RawMessage { panic("not implemented") }
 var _ = polytype.NewJSONSchemaMethod(Embedded.Schema)
-var _ = polytype.NewInterfaceImpl[Value](First{})
 `), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(depDir, "jsonschema_gen.go"), []byte(`//go:build !jsonschema
 
@@ -170,54 +169,11 @@ import (
 
 func (Owner) Schema() json.RawMessage { panic("not implemented") }
 var _ = polytype.NewJSONSchemaMethod(Owner.Schema)
-var _ = polytype.NewInterfaceImpl[Value](First{})
 `), 0o644))
 	writeOwnerCollisionSentinels(t, targetDir)
 
 	err = Run(BuilderArgs{TargetDir: targetDir})
 	require.ErrorContains(t, err, "foreign embedded type dep.Embedded has generated production JSON codecs")
-	assertOwnerCollisionSentinels(t, targetDir)
-}
-
-func TestLegacyDuplicateDerivedDiscriminatorRejectedBeforeWriting(t *testing.T) {
-	cwd, err := os.Getwd()
-	require.NoError(t, err)
-	targetDir, err := os.MkdirTemp(filepath.Join(cwd, "testfixtures"), "duplicate_legacy_discriminator_")
-	require.NoError(t, err)
-	t.Cleanup(func() { require.NoError(t, os.RemoveAll(targetDir)) })
-
-	for _, pkg := range []string{"left", "right"} {
-		require.NoError(t, os.MkdirAll(filepath.Join(targetDir, pkg), 0o755))
-		require.NoError(t, os.WriteFile(filepath.Join(targetDir, pkg, "same.go"), []byte(`package `+pkg+`
-
-type Same struct{}
-func (Same) Marker() {}
-`), 0o644))
-	}
-	require.NoError(t, os.WriteFile(filepath.Join(targetDir, "types.go"), []byte(`package fixture
-
-type Value interface{ Marker() }
-type Owner struct { Value Value `+"`json:\"value\"`"+` }
-`), 0o644))
-	require.NoError(t, os.WriteFile(filepath.Join(targetDir, "schema.go"), []byte(`//go:build jsonschema
-
-package fixture
-
-import (
-	"encoding/json"
-	"github.com/tylergannon/polytype"
-	"github.com/tylergannon/polytype/internal/builder/testfixtures/`+filepath.Base(targetDir)+`/left"
-	"github.com/tylergannon/polytype/internal/builder/testfixtures/`+filepath.Base(targetDir)+`/right"
-)
-
-func (Owner) Schema() json.RawMessage { panic("not implemented") }
-var _ = polytype.NewJSONSchemaMethod(Owner.Schema)
-var _ = polytype.NewInterfaceImpl[Value](left.Same{}, right.Same{})
-`), 0o644))
-	writeOwnerCollisionSentinels(t, targetDir)
-
-	err = Run(BuilderArgs{TargetDir: targetDir})
-	require.ErrorContains(t, err, `duplicate discriminator value "Same"`)
 	assertOwnerCollisionSentinels(t, targetDir)
 }
 
@@ -246,14 +202,6 @@ func TestLegacyHelpersUseResolvedPackageIdentity(t *testing.T) {
 type Event interface{ isEvent() }
 type Created struct { Name string `+"`json:\"name\"`"+` }
 func (Created) isEvent() {}
-`), 0o644))
-		require.NoError(t, os.WriteFile(filepath.Join(dir, "schema.go"), []byte(`//go:build jsonschema
-
-package `+pkg.name+`
-
-import "github.com/tylergannon/polytype"
-
-var _ = polytype.NewInterfaceImpl[Event](Created{})
 `), 0o644))
 	}
 
@@ -355,7 +303,6 @@ import (
 func (Owner) Schema() json.RawMessage { panic("not implemented") }
 `+stub+`
 var _ = polytype.NewJSONSchemaMethod(Owner.Schema)
-var _ = polytype.NewInterfaceImpl[Value](First{})
 `), 0o644))
 	writeOwnerCollisionSentinels(t, targetDir)
 	return targetDir

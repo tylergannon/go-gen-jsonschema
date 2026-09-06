@@ -105,7 +105,7 @@ func (c Config) MarshalJSON() ([]byte, error) {
 	var err error
 
 	if c.Pet.Present {
-		if wrapper.Pet, err = __jsonMarshal__optionality__Pet__df7c5c187cbc58478665aaec00ffd654cb54f3721121d037b38f99050067b6e4(c.Pet.Value); err != nil {
+		if wrapper.Pet, err = __jsonMarshal__optionality__Pet__432bb5b47f9f1453b754714099a475d118085cd08d14ff700b8431c395f59387(c.Pet.Value); err != nil {
 			return nil, fmt.Errorf("field pet: %w", err)
 		}
 	}
@@ -129,7 +129,7 @@ func (c *Config) UnmarshalJSON(data []byte) (err error) {
 
 	if len(wrapper.Pet) > 0 {
 		var __decoded0 Pet
-		if __decoded0, err = __jsonUnmarshal__optionality__Pet__df7c5c187cbc58478665aaec00ffd654cb54f3721121d037b38f99050067b6e4(wrapper.Pet); err != nil {
+		if __decoded0, err = __jsonUnmarshal__optionality__Pet__432bb5b47f9f1453b754714099a475d118085cd08d14ff700b8431c395f59387(wrapper.Pet); err != nil {
 			return err
 		}
 		__next.Pet.Value = __decoded0
@@ -140,7 +140,7 @@ func (c *Config) UnmarshalJSON(data []byte) (err error) {
 	return nil
 }
 
-func __jsonMarshal__optionality__Pet__df7c5c187cbc58478665aaec00ffd654cb54f3721121d037b38f99050067b6e4(value Pet) (json.RawMessage, error) {
+func __jsonMarshal__optionality__Pet__432bb5b47f9f1453b754714099a475d118085cd08d14ff700b8431c395f59387(value Pet) (json.RawMessage, error) {
 	if value == nil {
 		return nil, fmt.Errorf("cannot marshal nil registered interface Pet")
 	}
@@ -150,11 +150,11 @@ func __jsonMarshal__optionality__Pet__df7c5c187cbc58478665aaec00ffd654cb54f37211
 		discriminator string
 	)
 	switch object := value.(type) {
-	case Dog:
-		discriminator = "Dog"
-		data, err = json.Marshal(&object)
 	case Cat:
 		discriminator = "Cat"
+		data, err = json.Marshal(&object)
+	case Dog:
+		discriminator = "Dog"
 		data, err = json.Marshal(&object)
 	default:
 		return nil, fmt.Errorf("unregistered dynamic implementation %T for Pet", value)
@@ -163,12 +163,12 @@ func __jsonMarshal__optionality__Pet__df7c5c187cbc58478665aaec00ffd654cb54f37211
 		return nil, fmt.Errorf("marshal registered implementation %T for Pet: %w", value, err)
 	}
 	return __jsonschema__marshalUnionObject(data,
-		"!kind",
+		"type",
 		discriminator,
 	)
 }
 
-func __jsonUnmarshal__optionality__Pet__df7c5c187cbc58478665aaec00ffd654cb54f3721121d037b38f99050067b6e4(data []byte) (Pet, error) {
+func __jsonUnmarshal__optionality__Pet__432bb5b47f9f1453b754714099a475d118085cd08d14ff700b8431c395f59387(data []byte) (Pet, error) {
 	var (
 		temp          map[string]json.RawMessage
 		discriminator string
@@ -177,21 +177,20 @@ func __jsonUnmarshal__optionality__Pet__df7c5c187cbc58478665aaec00ffd654cb54f372
 
 	if err != nil {
 		return nil, err
-	} else if _tempDiscriminator, ok := temp["!kind"]; !ok {
-		// per-field discriminator property
-		return nil, fmt.Errorf("no discriminator property '%s' found", "!kind")
+	} else if _tempDiscriminator, ok := temp["type"]; !ok {
+		return nil, errNoDiscriminator
 	} else if discriminator, err = __jsonschema__decodeDiscriminator(_tempDiscriminator); err != nil {
 		return nil, __jsonschema__unmarshalDiscriminatorError(_tempDiscriminator, err)
 	}
 	switch discriminator {
-	case "Dog":
-		var obj Dog
+	case "Cat":
+		var obj Cat
 		if err = json.Unmarshal(data, &obj); err != nil {
 			return nil, err
 		}
 		return obj, nil
-	case "Cat":
-		var obj Cat
+	case "Dog":
+		var obj Dog
 		if err = json.Unmarshal(data, &obj); err != nil {
 			return nil, err
 		}

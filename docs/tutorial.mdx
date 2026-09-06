@@ -128,22 +128,28 @@ in ordinary Go; its same-package typed constants become the enum values
 wherever the type is used. Use `.StringerEnum(field)` on a field of an integer
 enum to emit constant names instead of integer values.
 
-For a discriminated interface, list its concrete implementations at the field
-where the union is used:
+For a discriminated union, seal the interface with an unexported method and
+declare that method directly on every variant. Membership is inferred; the
+discriminator property is `type` and each value is the concrete type name:
 
 ```go
-var _ = polytype.NewJSONSchemaMethod(
-    Batch.Schema,
-    polytype.WithInterface(
-        Batch{}.Events,
-        polytype.Impl("created", Created{}),
-        polytype.Impl("deleted", (*Deleted)(nil)),
-    ),
-)
+type Event interface{ isEvent() }
+
+type Created struct{ Name string `json:"name"` }
+func (Created) isEvent() {}  // value variant
+
+type Deleted struct{ ID string `json:"id"` }
+func (*Deleted) isEvent() {} // pointer variant
+
+type Batch struct{ Events []Event `json:"events"` }
+
+// schema.go (//go:build jsonschema)
+var _ = polytype.Declare(Batch.Schema)
 ```
 
-A direct `[]I` field becomes an array whose `items` contain the union. The
-generated owner `MarshalJSON` emits the registered discriminator when called
+A reachable field of a non-sealed interface fails generation. A direct `[]I`
+field becomes an array whose `items` contain the union. The generated owner
+`MarshalJSON` emits the discriminator when called
 through `json.Marshal(batch)` or `json.Marshal(&batch)`. Its decoder preserves
 value versus pointer implementations and replaces the destination only after
 successful decoding. An absent `Optional[I]` is omitted; nil required unions or

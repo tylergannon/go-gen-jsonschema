@@ -62,24 +62,7 @@
         {
           "type": "object",
           "properties": {
-            "!kind": {
-              "type": "string",
-              "const": "Dog"
-            },
-            "name": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "!kind",
-            "name"
-          ],
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "properties": {
-            "!kind": {
+            "type": {
               "type": "string",
               "const": "Cat"
             },
@@ -88,8 +71,25 @@
             }
           },
           "required": [
-            "!kind",
+            "type",
             "lives"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "Dog"
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "name"
           ],
           "additionalProperties": false
         }
@@ -241,7 +241,7 @@
     },
     {
       "name": "optional interface",
-      "input": "{\"name\":\"pet\",\"pet\":{\"!kind\":\"Dog\",\"name\":\"Rex\"},\"timeout\":null,\"detail\":null}",
+      "input": "{\"name\":\"pet\",\"pet\":{\"type\":\"Dog\",\"name\":\"Rex\"},\"timeout\":null,\"detail\":null}",
       "valid": true,
       "decode_ok": true,
       "state": {
@@ -278,11 +278,11 @@
           "value": 0
         }
       },
-      "remarshaled": "{\"name\":\"pet\",\"timeout\":null,\"detail\":null,\"pet\":{\"!kind\":\"Dog\",\"name\":\"Rex\"}}"
+      "remarshaled": "{\"name\":\"pet\",\"timeout\":null,\"detail\":null,\"pet\":{\"name\":\"Rex\",\"type\":\"Dog\"}}"
     },
     {
       "name": "unknown interface",
-      "input": "{\"name\":\"bad\",\"pet\":{\"!kind\":\"Bird\"},\"timeout\":null,\"detail\":null}",
+      "input": "{\"name\":\"bad\",\"pet\":{\"type\":\"Bird\"},\"timeout\":null,\"detail\":null}",
       "valid": false,
       "decode_ok": false,
       "unchanged_after_error": true
@@ -323,7 +323,7 @@
     },
     {
       "name": "nullable interface",
-      "reason": "does not support registered interfaces"
+      "reason": "does not support sealed interfaces"
     },
     {
       "name": "nullable ref",

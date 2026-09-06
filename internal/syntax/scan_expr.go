@@ -1,11 +1,8 @@
 package syntax
 
 import (
-	"errors"
 	"fmt"
-	"go/token"
 	"slices"
-	"strconv"
 	"strings"
 
 	"github.com/dave/dst"
@@ -15,7 +12,6 @@ const (
 	MarkerFuncNewJSONSchemaBuilder = "NewJSONSchemaBuilder" // NewJSONSchemaBuilder
 	MarkerFuncNewJSONSchemaMethod  = "NewJSONSchemaMethod"  // NewJSONSchemaMethod
 	MarkerFuncNewJSONSchemaFunc    = "NewJSONSchemaFunc"    // NewJSONSchemaFunc
-	MarkerFuncNewInterfaceImpl     = "NewInterfaceImpl"     // NewInterfaceImpl
 	MarkerFuncDeclare              = "Declare"              // Declare (v1 fluent entrypoint)
 )
 
@@ -66,7 +62,6 @@ var markerFunctions = []string{
 	MarkerFuncNewJSONSchemaBuilder,
 	MarkerFuncNewJSONSchemaMethod,
 	MarkerFuncNewJSONSchemaFunc,
-	MarkerFuncNewInterfaceImpl,
 	MarkerFuncDeclare,
 }
 
@@ -151,19 +146,6 @@ func parseFuncFromExpr(e Expr) TypeID {
 //
 //	return &typeID
 //}
-
-func (m MarkerFunctionCall) ParseTypesFromArgs() ([]TypeID, error) {
-	var results []TypeID
-	for _, arg := range m.CallExpr.Args() {
-		if typeID, err := parseLitForType(arg); err != nil {
-			return nil, fmt.Errorf("unsupported arg at %s: %w", arg.Position(), err)
-		} else {
-			results = append(results, typeID)
-		}
-	}
-
-	return results, nil
-}
 
 func unwrapSchemaMethodReceiver(expr Expr) (TypeID, error) {
 	switch t := expr.Expr().(type) {
@@ -341,47 +323,12 @@ func parseSchemaMethodOptions(args []Expr, receiver TypeID, m MarkerFunctionCall
 			out = append(out, SchemaMethodOptionInfo{Kind: SchemaMethodOptionKind("AsRef")})
 			continue
 		}
-		// WithDiscriminator(field, "name") has 2 args, second is string literal
-		if funID.TypeName == "WithDiscriminator" && len(ce.Args) == 2 {
-			fieldSel, ok := ce.Args[0].(*dst.SelectorExpr)
-			if !ok {
-				continue
-			}
-			lit, ok := fieldSel.X.(*dst.CompositeLit)
-			if !ok {
-				continue
-			}
-			recvIdent, ok := lit.Type.(*dst.Ident)
-			if !ok || recvIdent.Name != receiver.TypeName {
-				continue
-			}
-			if str, ok := ce.Args[1].(*dst.BasicLit); ok && str.Kind == token.STRING {
-				name, err := strconv.Unquote(str.Value)
-				if err != nil {
-					return nil, fmt.Errorf("invalid discriminator property name at %s: %w", a.Position(), err)
-				}
-				out = append(out, SchemaMethodOptionInfo{Kind: SchemaMethodOptionKind("WithDiscriminator"), FieldName: fieldSel.Sel.Name, Discriminator: name})
-			}
-			continue
-		}
 		if len(ce.Args) < 1 {
 			continue
 		}
 		// First arg: exampleStruct{}.FieldX
 		fieldName, ok := fieldNameForReceiver(ce.Args[0], receiver)
 		if !ok {
-			continue
-		}
-		if funID.TypeName == "WithInterface" {
-			out = append(out, SchemaMethodOptionInfo{
-				Kind:      SchemaMethodOptionKind("WithInterface"),
-				FieldName: fieldName,
-			})
-			nested, err := parseInterfaceNestedOptions(ce.Args[1:], fieldName, a)
-			if err != nil {
-				return nil, err
-			}
-			out = append(out, nested...)
 			continue
 		}
 		var providerName string
@@ -395,8 +342,6 @@ func parseSchemaMethodOptions(args []Expr, receiver TypeID, m MarkerFunctionCall
 			kind = SchemaMethodOptionKind("WithStructAccessorMethod")
 		case "WithStructFunctionMethod":
 			kind = SchemaMethodOptionKind("WithStructFunctionMethod")
-		case "WithInterfaceImpls":
-			kind = SchemaMethodOptionKind("WithInterfaceImpls")
 		case "WithStringerEnum":
 			kind = SchemaMethodOptionKind("WithStringerEnum")
 		default:
@@ -410,20 +355,11 @@ func parseSchemaMethodOptions(args []Expr, receiver TypeID, m MarkerFunctionCall
 			}
 			providerName, providerIsMethod = name, isMethod
 		}
-		var impls []TypeID
-		if funID.TypeName == "WithInterfaceImpls" && len(ce.Args) > 1 {
-			for _, a2 := range ce.Args[1:] {
-				if tid, err := parseLitForType(NewExpr(a2, m.CallExpr.pkg, m.CallExpr.file)); err == nil {
-					impls = append(impls, tid)
-				}
-			}
-		}
 		out = append(out, SchemaMethodOptionInfo{
 			Kind:             kind,
 			FieldName:        fieldName,
 			ProviderName:     providerName,
 			ProviderIsMethod: providerIsMethod,
-			ImplTypes:        impls,
 		})
 	}
 	return out, nil
@@ -461,32 +397,4 @@ func (m MarkerFunctionCall) ParseSchemaMethod() (SchemaMethod, error) {
 		fmt.Printf("ArgBoo --> %T %#v", expr, expr)
 	}
 	return SchemaMethod{}, nil
-}
-
-func parseLitForType(expr Expr) (TypeID, error) {
-	switch t := expr.Expr().(type) {
-	case *dst.CompositeLit:
-		return parseFuncFromExpr(expr.NewExpr(t.Type)), nil
-	case *dst.UnaryExpr:
-		if t.Op != token.AND {
-			return TypeID{}, errors.New("unary expression op must be &")
-		}
-		lit, ok := t.X.(*dst.CompositeLit)
-		if !ok {
-			return TypeID{}, fmt.Errorf("unary expression type expects composite literal but was %T", t.X)
-		}
-		answer := parseFuncFromExpr(expr.NewExpr(lit.Type))
-		answer.Indirection = Pointer
-
-		return answer, nil
-	case *dst.CallExpr:
-		p, ok := t.Fun.(*dst.ParenExpr)
-		if !ok {
-			return TypeID{}, fmt.Errorf("CallExpr fun must be ParenExpr, got %T", t.Fun)
-		}
-		return parseFuncFromExpr(expr.NewExpr(p.X)), nil
-	default:
-		fmt.Printf("Unrecognized -- %T %#v\n", expr, expr)
-		return TypeID{}, fmt.Errorf("unrecognized -- %T %#v", expr, expr)
-	}
 }

@@ -119,16 +119,16 @@ try {
   writeFileSync(join(run, "missing-case-diagnostics.txt"), incomplete);
   claim("An incomplete discriminated-union switch fails exhaustiveness checking");
 
-  const schemaPath = join(consumer, "schema.go");
-  const schema = readFileSync(schemaPath, "utf8");
-  writeFileSync(schemaPath, schema.replace("// ADDED_VARIANT", 'polytype.Impl("renamed", Renamed{}),'));
+  const typesGoPath = join(consumer, "types.go");
+  const typesGo = readFileSync(typesGoPath, "utf8");
+  writeFileSync(typesGoPath, typesGo.replace("// ADDED_VARIANT", "func (Renamed) event() {}"));
   generate(["--typescript", generated, "--typescript-barrel"]);
   const added = compiler(["consumer.ts"], "failure");
   assert.match(added, /TS2345/);
   assert.match(added, /renamed|Renamed/);
   writeFileSync(join(run, "added-variant-diagnostics.txt"), added);
-  claim("Adding a registered variant breaks a previously complete exhaustive handler");
-  writeFileSync(schemaPath, schema);
+  claim("Adding a qualifying implementation of the sealed interface breaks a previously complete exhaustive handler");
+  writeFileSync(typesGoPath, typesGo);
   generate(["--typescript", generated, "--typescript-barrel"]);
   assert.deepEqual(snapshot(generated), original);
   compiler(["consumer.ts"]);

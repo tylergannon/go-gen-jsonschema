@@ -28,7 +28,6 @@ func hasEnumMarker(pkg *types.Package, typeName string, position token.Position)
 		return false, nil
 	}
 	for method := range named.Methods() {
-		method := method
 		if method.Name() != EnumMarkerMethod {
 			continue
 		}

@@ -1,0 +1,65 @@
+$ /opt/homebrew/Cellar/go/1.27.1/libexec/bin/go run ./tests/typescript/projection/generate /Users/tyler/src/go-gen-jsonschema/.claude/worktrees/issues-86-87-88-plan-20be51/ephemeral/typescript-generation/proof/run-43N0nr/projection/generated
+exit=0
+
+$ /Users/tyler/.vite-plus/js_runtime/node/24.20.0/bin/node /Users/tyler/src/go-gen-jsonschema/.claude/worktrees/issues-86-87-88-plan-20be51/tests/typescript/node_modules/typescript/bin/tsc --project /Users/tyler/src/go-gen-jsonschema/.claude/worktrees/issues-86-87-88-plan-20be51/ephemeral/typescript-generation/proof/run-43N0nr/projection/tsconfig.json --pretty false
+exit=0
+
+$ /opt/homebrew/Cellar/go/1.27.1/libexec/bin/go build -o /Users/tyler/src/go-gen-jsonschema/.claude/worktrees/issues-86-87-88-plan-20be51/ephemeral/typescript-generation/proof/run-43N0nr/polytype ./polytype
+exit=0
+
+$ /opt/homebrew/Cellar/go/1.27.1/libexec/bin/go mod tidy
+exit=0
+
+$ /Users/tyler/src/go-gen-jsonschema/.claude/worktrees/issues-86-87-88-plan-20be51/ephemeral/typescript-generation/proof/run-43N0nr/polytype gen --target /Users/tyler/src/go-gen-jsonschema/.claude/worktrees/issues-86-87-88-plan-20be51/ephemeral/typescript-generation/proof/run-43N0nr/consumer --typescript consumer/generated --typescript-barrel
+exit=0
+
+$ /Users/tyler/src/go-gen-jsonschema/.claude/worktrees/issues-86-87-88-plan-20be51/ephemeral/typescript-generation/proof/run-43N0nr/polytype gen --target /Users/tyler/src/go-gen-jsonschema/.claude/worktrees/issues-86-87-88-plan-20be51/ephemeral/typescript-generation/proof/run-43N0nr/consumer --typescript /Users/tyler/src/go-gen-jsonschema/.claude/worktrees/issues-86-87-88-plan-20be51/ephemeral/typescript-generation/proof/run-43N0nr/consumer/generated --typescript-barrel
+exit=0
+
+$ /Users/tyler/src/go-gen-jsonschema/.claude/worktrees/issues-86-87-88-plan-20be51/ephemeral/typescript-generation/proof/run-43N0nr/polytype gen --target /Users/tyler/src/go-gen-jsonschema/.claude/worktrees/issues-86-87-88-plan-20be51/ephemeral/typescript-generation/proof/run-43N0nr/consumer --typescript /Users/tyler/src/go-gen-jsonschema/.claude/worktrees/issues-86-87-88-plan-20be51/ephemeral/typescript-generation/proof/run-43N0nr/consumer/generated --typescript-barrel --no-changes
+exit=0
+
+$ /Users/tyler/src/go-gen-jsonschema/.claude/worktrees/issues-86-87-88-plan-20be51/ephemeral/typescript-generation/proof/run-43N0nr/polytype gen --target /Users/tyler/src/go-gen-jsonschema/.claude/worktrees/issues-86-87-88-plan-20be51/ephemeral/typescript-generation/proof/run-43N0nr/consumer --typescript /Users/tyler/src/go-gen-jsonschema/.claude/worktrees/issues-86-87-88-plan-20be51/ephemeral/typescript-generation/proof/run-43N0nr/consumer/generated --typescript-barrel --no-changes
+exit=1
+2026/09/05 19:25:01 TypeScript output changes detected for paths: /Users/tyler/src/go-gen-jsonschema/.claude/worktrees/issues-86-87-88-plan-20be51/ephemeral/typescript-generation/proof/run-43N0nr/consumer/generated/types.ts (and --no-changes or JSONSCHEMA_NO_CHANGES was set)
+
+$ /Users/tyler/src/go-gen-jsonschema/.claude/worktrees/issues-86-87-88-plan-20be51/ephemeral/typescript-generation/proof/run-43N0nr/polytype gen --target /Users/tyler/src/go-gen-jsonschema/.claude/worktrees/issues-86-87-88-plan-20be51/ephemeral/typescript-generation/proof/run-43N0nr/consumer --typescript /Users/tyler/src/go-gen-jsonschema/.claude/worktrees/issues-86-87-88-plan-20be51/ephemeral/typescript-generation/proof/run-43N0nr/consumer/generated --typescript-barrel
+exit=0
+
+$ /Users/tyler/src/go-gen-jsonschema/.claude/worktrees/issues-86-87-88-plan-20be51/ephemeral/typescript-generation/proof/run-43N0nr/polytype gen --target /Users/tyler/src/go-gen-jsonschema/.claude/worktrees/issues-86-87-88-plan-20be51/ephemeral/typescript-generation/proof/run-43N0nr/consumer --typescript /Users/tyler/src/go-gen-jsonschema/.claude/worktrees/issues-86-87-88-plan-20be51/ephemeral/typescript-generation/proof/run-43N0nr/consumer/generated
+exit=0
+
+$ /Users/tyler/src/go-gen-jsonschema/.claude/worktrees/issues-86-87-88-plan-20be51/ephemeral/typescript-generation/proof/run-43N0nr/polytype gen --target /Users/tyler/src/go-gen-jsonschema/.claude/worktrees/issues-86-87-88-plan-20be51/ephemeral/typescript-generation/proof/run-43N0nr/consumer --typescript /Users/tyler/src/go-gen-jsonschema/.claude/worktrees/issues-86-87-88-plan-20be51/ephemeral/typescript-generation/proof/run-43N0nr/consumer/generated --typescript-barrel --no-changes
+exit=1
+2026/09/05 19:25:02 TypeScript output changes detected for paths: /Users/tyler/src/go-gen-jsonschema/.claude/worktrees/issues-86-87-88-plan-20be51/ephemeral/typescript-generation/proof/run-43N0nr/consumer/generated/index.ts (and --no-changes or JSONSCHEMA_NO_CHANGES was set)
+
+$ /Users/tyler/src/go-gen-jsonschema/.claude/worktrees/issues-86-87-88-plan-20be51/ephemeral/typescript-generation/proof/run-43N0nr/polytype gen --target /Users/tyler/src/go-gen-jsonschema/.claude/worktrees/issues-86-87-88-plan-20be51/ephemeral/typescript-generation/proof/run-43N0nr/consumer --typescript /Users/tyler/src/go-gen-jsonschema/.claude/worktrees/issues-86-87-88-plan-20be51/ephemeral/typescript-generation/proof/run-43N0nr/consumer/generated --typescript-barrel
+exit=0
+
+$ /Users/tyler/src/go-gen-jsonschema/.claude/worktrees/issues-86-87-88-plan-20be51/ephemeral/typescript-generation/proof/run-43N0nr/polytype gen --target /Users/tyler/src/go-gen-jsonschema/.claude/worktrees/issues-86-87-88-plan-20be51/ephemeral/typescript-generation/proof/run-43N0nr/consumer --typescript /Users/tyler/src/go-gen-jsonschema/.claude/worktrees/issues-86-87-88-plan-20be51/ephemeral/typescript-generation/proof/run-43N0nr/consumer/user-owned
+exit=1
+2026/09/05 19:25:02 refusing to overwrite unowned TypeScript output /Users/tyler/src/go-gen-jsonschema/.claude/worktrees/issues-86-87-88-plan-20be51/ephemeral/typescript-generation/proof/run-43N0nr/consumer/user-owned/types.ts
+
+$ /Users/tyler/.vite-plus/js_runtime/node/24.20.0/bin/node /Users/tyler/src/go-gen-jsonschema/.claude/worktrees/issues-86-87-88-plan-20be51/tests/typescript/node_modules/typescript/bin/tsc --project /Users/tyler/src/go-gen-jsonschema/.claude/worktrees/issues-86-87-88-plan-20be51/ephemeral/typescript-generation/proof/run-43N0nr/consumer/tsconfig.json --pretty false
+exit=0
+
+$ /Users/tyler/.vite-plus/js_runtime/node/24.20.0/bin/node /Users/tyler/src/go-gen-jsonschema/.claude/worktrees/issues-86-87-88-plan-20be51/tests/typescript/node_modules/typescript/bin/tsc --project /Users/tyler/src/go-gen-jsonschema/.claude/worktrees/issues-86-87-88-plan-20be51/ephemeral/typescript-generation/proof/run-43N0nr/consumer/tsconfig.json --pretty false
+exit=2
+../../ephemeral/typescript-generation/proof/run-43N0nr/consumer/missing-case.ts(6,33): error TS2345: Argument of type 'Omit<Deleted, "type"> & { type: "Deleted"; }' is not assignable to parameter of type 'never'.
+
+$ /Users/tyler/src/go-gen-jsonschema/.claude/worktrees/issues-86-87-88-plan-20be51/ephemeral/typescript-generation/proof/run-43N0nr/polytype gen --target /Users/tyler/src/go-gen-jsonschema/.claude/worktrees/issues-86-87-88-plan-20be51/ephemeral/typescript-generation/proof/run-43N0nr/consumer --typescript /Users/tyler/src/go-gen-jsonschema/.claude/worktrees/issues-86-87-88-plan-20be51/ephemeral/typescript-generation/proof/run-43N0nr/consumer/generated --typescript-barrel
+exit=0
+
+$ /Users/tyler/.vite-plus/js_runtime/node/24.20.0/bin/node /Users/tyler/src/go-gen-jsonschema/.claude/worktrees/issues-86-87-88-plan-20be51/tests/typescript/node_modules/typescript/bin/tsc --project /Users/tyler/src/go-gen-jsonschema/.claude/worktrees/issues-86-87-88-plan-20be51/ephemeral/typescript-generation/proof/run-43N0nr/consumer/tsconfig.json --pretty false
+exit=2
+../../ephemeral/typescript-generation/proof/run-43N0nr/consumer/consumer.ts(43,33): error TS2345: Argument of type 'Omit<Renamed, "type"> & { type: "Renamed"; }' is not assignable to parameter of type 'never'.
+
+$ /Users/tyler/src/go-gen-jsonschema/.claude/worktrees/issues-86-87-88-plan-20be51/ephemeral/typescript-generation/proof/run-43N0nr/polytype gen --target /Users/tyler/src/go-gen-jsonschema/.claude/worktrees/issues-86-87-88-plan-20be51/ephemeral/typescript-generation/proof/run-43N0nr/consumer --typescript /Users/tyler/src/go-gen-jsonschema/.claude/worktrees/issues-86-87-88-plan-20be51/ephemeral/typescript-generation/proof/run-43N0nr/consumer/generated --typescript-barrel
+exit=0
+
+$ /Users/tyler/.vite-plus/js_runtime/node/24.20.0/bin/node /Users/tyler/src/go-gen-jsonschema/.claude/worktrees/issues-86-87-88-plan-20be51/tests/typescript/node_modules/typescript/bin/tsc --project /Users/tyler/src/go-gen-jsonschema/.claude/worktrees/issues-86-87-88-plan-20be51/ephemeral/typescript-generation/proof/run-43N0nr/consumer/tsconfig.json --pretty false
+exit=0
+
+$ /opt/homebrew/Cellar/go/1.27.1/libexec/bin/go test ./...
+exit=0
+?   	example.com/ts-consumer	[no test files]

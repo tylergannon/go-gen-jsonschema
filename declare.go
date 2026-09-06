@@ -13,11 +13,14 @@ type Declaration[T any] struct{}
 // method expression (e.g. Example.Schema) or a free function taking T as its
 // sole parameter (e.g. BuildExampleSchema); both forms infer T from fn's
 // signature. Chain the returned *Declaration[T] with Accessor, Method,
-// Function, StringerEnum, Ref, RenderProviders, and Interface to add
-// options, matching the equivalent WithXxx options on NewJSONSchemaMethod.
+// Function, StringerEnum, Ref, and RenderProviders to add options, matching
+// the equivalent WithXxx options on NewJSONSchemaMethod.
 //
-// Enum types need no declaration: a named type that declares the marker
-// method `func (T) enum()` is emitted as an enum wherever it is used.
+// Enum types and sealed unions need no declaration. A named type that
+// declares the marker method `func (T) enum()` is emitted as an enum
+// wherever it is used. An interface that declares an unexported method is a
+// sealed union whose variants are the same-package struct types declaring
+// that method directly; see SealedUnion for its discriminator property.
 func Declare[T any](fn func(T) json.RawMessage) *Declaration[T] {
 	_ = fn
 	return &Declaration[T]{}
@@ -61,11 +64,5 @@ func (d *Declaration[T]) Ref() *Declaration[T] {
 // RenderProviders requests generation of RenderedSchema() and provider
 // execution at runtime (equivalent to WithRenderProviders).
 func (d *Declaration[T]) RenderProviders() *Declaration[T] {
-	return d
-}
-
-// Interface marks field as a sealed interface, configured via Discriminator
-// and Impl options (equivalent to WithInterface).
-func (d *Declaration[T]) Interface(field any, options ...InterfaceOption) *Declaration[T] {
 	return d
 }

@@ -19,17 +19,10 @@ import "github.com/tylergannon/polytype"
   - [func Declare\[T any\]\(fn func\(T\) json.RawMessage\) \*Declaration\[T\]](<#Declare>)
   - [func \(d \*Declaration\[T\]\) Accessor\(field any, provider func\(T\) json.Marshaler\) \*Declaration\[T\]](<#Declaration[T].Accessor>)
   - [func \(d \*Declaration\[T\]\) Function\[F any\]\(field F, provider func\(F\) json.Marshaler\) \*Declaration\[T\]](<#Declaration[T].Function>)
-  - [func \(d \*Declaration\[T\]\) Interface\(field any, options ...InterfaceOption\) \*Declaration\[T\]](<#Declaration[T].Interface>)
   - [func \(d \*Declaration\[T\]\) Method\[F any\]\(field F, provider func\(T, F\) json.Marshaler\) \*Declaration\[T\]](<#Declaration[T].Method>)
   - [func \(d \*Declaration\[T\]\) Ref\(\) \*Declaration\[T\]](<#Declaration[T].Ref>)
   - [func \(d \*Declaration\[T\]\) RenderProviders\(\) \*Declaration\[T\]](<#Declaration[T].RenderProviders>)
   - [func \(d \*Declaration\[T\]\) StringerEnum\(field any\) \*Declaration\[T\]](<#Declaration[T].StringerEnum>)
-- [type InterfaceMarker](<#InterfaceMarker>)
-  - [func NewInterfaceImpl\[T any\]\(...T\) InterfaceMarker](<#NewInterfaceImpl>)
-- [type InterfaceOption](<#InterfaceOption>)
-  - [func Discriminator\(name string\) InterfaceOption](<#Discriminator>)
-  - [func Impl\[T any\]\(value string, impl T\) InterfaceOption](<#Impl>)
-- [type InterfaceOptionObj](<#InterfaceOptionObj>)
 - [type Nullable](<#Nullable>)
   - [func \(Nullable\[T\]\) IsZero\(\) bool](<#Nullable[T].IsZero>)
   - [func \(n Nullable\[T\]\) MarshalJSON\(\) \(\[\]byte, error\)](<#Nullable[T].MarshalJSON>)
@@ -46,10 +39,7 @@ import "github.com/tylergannon/polytype"
 - [type SchemaMethod](<#SchemaMethod>)
 - [type SchemaMethodOption](<#SchemaMethodOption>)
   - [func AsRef\(\) SchemaMethodOption](<#AsRef>)
-  - [func WithDiscriminator\[T any\]\(field T, name string\) SchemaMethodOption](<#WithDiscriminator>)
   - [func WithFunction\[T any\]\(val T, f func\(T\) json.Marshaler\) SchemaMethodOption](<#WithFunction>)
-  - [func WithInterface\[T any\]\(field T, options ...InterfaceOption\) SchemaMethodOption](<#WithInterface>)
-  - [func WithInterfaceImpls\[T any\]\(field T, impls ...any\) SchemaMethodOption](<#WithInterfaceImpls>)
   - [func WithRenderProviders\(\) SchemaMethodOption](<#WithRenderProviders>)
   - [func WithStringerEnum\[T any\]\(field T\) SchemaMethodOption](<#WithStringerEnum>)
   - [func WithStructAccessorMethod\[T, U any\]\(val T, f func\(U\) json.Marshaler\) SchemaMethodOption](<#WithStructAccessorMethod>)
@@ -73,9 +63,9 @@ type Declaration[T any] struct{}
 func Declare[T any](fn func(T) json.RawMessage) *Declaration[T]
 ```
 
-Declare registers fn as the schema entrypoint for T. fn may be either a method expression \(e.g. Example.Schema\) or a free function taking T as its sole parameter \(e.g. BuildExampleSchema\); both forms infer T from fn's signature. Chain the returned \*Declaration\[T\] with Accessor, Method, Function, StringerEnum, Ref, RenderProviders, and Interface to add options, matching the equivalent WithXxx options on NewJSONSchemaMethod.
+Declare registers fn as the schema entrypoint for T. fn may be either a method expression \(e.g. Example.Schema\) or a free function taking T as its sole parameter \(e.g. BuildExampleSchema\); both forms infer T from fn's signature. Chain the returned \*Declaration\[T\] with Accessor, Method, Function, StringerEnum, Ref, and RenderProviders to add options, matching the equivalent WithXxx options on NewJSONSchemaMethod.
 
-Enum types need no declaration: a named type that declares the marker method \`func \(T\) enum\(\)\` is emitted as an enum wherever it is used.
+Enum types and sealed unions need no declaration. A named type that declares the marker method \`func \(T\) enum\(\)\` is emitted as an enum wherever it is used. An interface that declares an unexported method is a sealed union whose variants are the same\-package struct types declaring that method directly; see SealedUnion for its discriminator property.
 
 <a name="Declaration[T].Accessor"></a>
 ### func \(\*Declaration\[T\]\) Accessor
@@ -94,15 +84,6 @@ func (d *Declaration[T]) Function[F any](field F, provider func(F) json.Marshale
 ```
 
 Function registers a provider for field that is a free function taking only the field's own value F \(equivalent to WithFunction\). field and provider must agree on F: passing a field of one type alongside a provider expecting another fails to compile.
-
-<a name="Declaration[T].Interface"></a>
-### func \(\*Declaration\[T\]\) Interface
-
-```go
-func (d *Declaration[T]) Interface(field any, options ...InterfaceOption) *Declaration[T]
-```
-
-Interface marks field as a sealed interface, configured via Discriminator and Impl options \(equivalent to WithInterface\).
 
 <a name="Declaration[T].Method"></a>
 ### func \(\*Declaration\[T\]\) Method
@@ -139,67 +120,6 @@ func (d *Declaration[T]) StringerEnum(field any) *Declaration[T]
 ```
 
 StringerEnum marks field as an enum whose values are compared via fmt.Stringer \(equivalent to WithStringerEnum\).
-
-<a name="InterfaceMarker"></a>
-## type InterfaceMarker
-
-
-
-```go
-type InterfaceMarker struct{}
-```
-
-<a name="NewInterfaceImpl"></a>
-### func NewInterfaceImpl
-
-```go
-func NewInterfaceImpl[T any](...T) InterfaceMarker
-```
-
-NewInterfaceImpl marks the arguments as possible implementations for the interface type given in the type argument.
-
-1. If called in the same package as the interface itself, then all global instances can be replaced.
-2. If called somewhere else, only applies to the local package.
-
-Deprecated: use Declare\(T.Schema\).Interface\(field, Impl\(value, impl\), ...\) on the field referencing the interface instead.
-
-<a name="InterfaceOption"></a>
-## type InterfaceOption
-
-InterfaceOption configures a registered interface field.
-
-```go
-type InterfaceOption interface {
-    // contains filtered or unexported methods
-}
-```
-
-<a name="Discriminator"></a>
-### func Discriminator
-
-```go
-func Discriminator(name string) InterfaceOption
-```
-
-Discriminator sets the JSON property used to distinguish interface cases.
-
-<a name="Impl"></a>
-### func Impl
-
-```go
-func Impl[T any](value string, impl T) InterfaceOption
-```
-
-Impl registers an interface implementation with its stable wire value.
-
-<a name="InterfaceOptionObj"></a>
-## type InterfaceOptionObj
-
-
-
-```go
-type InterfaceOptionObj struct{}
-```
 
 <a name="Nullable"></a>
 ## type Nullable
@@ -359,15 +279,6 @@ AsRef requests that, wherever this type is referenced from another registered sc
 
 Deprecated: use Declare\(T.Schema\).Ref\(\) instead.
 
-<a name="WithDiscriminator"></a>
-### func WithDiscriminator
-
-```go
-func WithDiscriminator[T any](field T, name string) SchemaMethodOption
-```
-
-Deprecated: use Declare\(T.Schema\).Interface\(field, Discriminator\(name\), ...\) instead.
-
 <a name="WithFunction"></a>
 ### func WithFunction
 
@@ -376,26 +287,6 @@ func WithFunction[T any](val T, f func(T) json.Marshaler) SchemaMethodOption
 ```
 
 Deprecated: use Declare\(T.Schema\).Function\(field, fn\) instead.
-
-<a name="WithInterface"></a>
-### func WithInterface
-
-```go
-func WithInterface[T any](field T, options ...InterfaceOption) SchemaMethodOption
-```
-
-Interface options \(v1\) \- stubs for scanning/type\-checking; parsed by scanner
-
-Deprecated: use Declare\(T.Schema\).Interface\(field, options...\) instead.
-
-<a name="WithInterfaceImpls"></a>
-### func WithInterfaceImpls
-
-```go
-func WithInterfaceImpls[T any](field T, impls ...any) SchemaMethodOption
-```
-
-Deprecated: use Declare\(T.Schema\).Interface\(field, Impl\(value, impl\), ...\) instead.
 
 <a name="WithRenderProviders"></a>
 ### func WithRenderProviders

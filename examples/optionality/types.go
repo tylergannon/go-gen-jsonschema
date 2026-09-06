@@ -22,7 +22,7 @@ func (Dog) pet() {}
 
 func (d Dog) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
-		Kind string `json:"!kind"`
+		Kind string `json:"type"`
 		Name string `json:"name"`
 	}{Kind: "Dog", Name: d.Name})
 }
@@ -35,7 +35,7 @@ func (Cat) pet() {}
 
 func (c Cat) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
-		Kind  string `json:"!kind"`
+		Kind  string `json:"type"`
 		Lives int    `json:"lives"`
 	}{Kind: "Cat", Lives: c.Lives})
 }

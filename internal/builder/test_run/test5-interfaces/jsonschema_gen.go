@@ -50,7 +50,7 @@ func (f FancyStruct) MarshalJSON() ([]byte, error) {
 	wrapper := Wrapper{Alias: Alias(f)}
 	var err error
 
-	if wrapper.IFace, err = __jsonMarshal__interfaces__TestInterface__cd55a04f0cf3c60352e9c5752d1bf8e25905d09aca5e4b6e1efd161b4e693d81(f.IFace); err != nil {
+	if wrapper.IFace, err = __jsonMarshal__interfaces__TestInterface__b99650f5b4c7f2fe7b18a3b48f4a76abba1f4c6308b5160be95058ce4ca0acad(f.IFace); err != nil {
 		return nil, fmt.Errorf("field iface: %w", err)
 	}
 
@@ -59,7 +59,7 @@ func (f FancyStruct) MarshalJSON() ([]byte, error) {
 	}
 	__raw1 := make([]json.RawMessage, len(f.IFaces))
 	for __index, __value := range f.IFaces {
-		if __raw1[__index], err = __jsonMarshal__interfaces__TestInterface__cd55a04f0cf3c60352e9c5752d1bf8e25905d09aca5e4b6e1efd161b4e693d81(__value); err != nil {
+		if __raw1[__index], err = __jsonMarshal__interfaces__TestInterface__b99650f5b4c7f2fe7b18a3b48f4a76abba1f4c6308b5160be95058ce4ca0acad(__value); err != nil {
 			return nil, fmt.Errorf("field ifaces[%d]: %w", __index, err)
 		}
 	}
@@ -86,7 +86,7 @@ func (f *FancyStruct) UnmarshalJSON(data []byte) (err error) {
 	__next := FancyStruct(wrapper.Alias)
 
 	var __decoded0 TestInterface
-	if __decoded0, err = __jsonUnmarshal__interfaces__TestInterface__cd55a04f0cf3c60352e9c5752d1bf8e25905d09aca5e4b6e1efd161b4e693d81(wrapper.IFace); err != nil {
+	if __decoded0, err = __jsonUnmarshal__interfaces__TestInterface__b99650f5b4c7f2fe7b18a3b48f4a76abba1f4c6308b5160be95058ce4ca0acad(wrapper.IFace); err != nil {
 		return err
 	}
 	__next.IFace = __decoded0
@@ -101,7 +101,7 @@ func (f *FancyStruct) UnmarshalJSON(data []byte) (err error) {
 			__decoded1 = make([]TestInterface, len(__raw1))
 		}
 		for __index, __raw := range __raw1 {
-			if __decoded1[__index], err = __jsonUnmarshal__interfaces__TestInterface__cd55a04f0cf3c60352e9c5752d1bf8e25905d09aca5e4b6e1efd161b4e693d81(__raw); err != nil {
+			if __decoded1[__index], err = __jsonUnmarshal__interfaces__TestInterface__b99650f5b4c7f2fe7b18a3b48f4a76abba1f4c6308b5160be95058ce4ca0acad(__raw); err != nil {
 				return fmt.Errorf("field ifaces[%d]: %w", __index, err)
 			}
 		}
@@ -126,7 +126,7 @@ func (f *FancyStruct) UnmarshalYAML(node *yaml.Node) error {
 	*f = next
 	return nil
 }
-func __jsonMarshal__interfaces__TestInterface__cd55a04f0cf3c60352e9c5752d1bf8e25905d09aca5e4b6e1efd161b4e693d81(value TestInterface) (json.RawMessage, error) {
+func __jsonMarshal__interfaces__TestInterface__b99650f5b4c7f2fe7b18a3b48f4a76abba1f4c6308b5160be95058ce4ca0acad(value TestInterface) (json.RawMessage, error) {
 	if value == nil {
 		return nil, fmt.Errorf("cannot marshal nil registered interface TestInterface")
 	}
@@ -136,18 +136,18 @@ func __jsonMarshal__interfaces__TestInterface__cd55a04f0cf3c60352e9c5752d1bf8e25
 		discriminator string
 	)
 	switch object := value.(type) {
-	case TestInterface1:
-		discriminator = "TestInterface1"
-		data, err = json.Marshal(&object)
-	case TestInterface2:
-		discriminator = "TestInterface2"
-		data, err = json.Marshal(&object)
 	case *PointerToTestInterface:
 		if object == nil {
 			return nil, fmt.Errorf("cannot marshal typed nil registered implementation %T for TestInterface", value)
 		}
 		discriminator = "PointerToTestInterface"
 		data, err = json.Marshal(object)
+	case TestInterface1:
+		discriminator = "TestInterface1"
+		data, err = json.Marshal(&object)
+	case TestInterface2:
+		discriminator = "TestInterface2"
+		data, err = json.Marshal(&object)
 	default:
 		return nil, fmt.Errorf("unregistered dynamic implementation %T for TestInterface", value)
 	}
@@ -160,7 +160,7 @@ func __jsonMarshal__interfaces__TestInterface__cd55a04f0cf3c60352e9c5752d1bf8e25
 	)
 }
 
-func __jsonUnmarshal__interfaces__TestInterface__cd55a04f0cf3c60352e9c5752d1bf8e25905d09aca5e4b6e1efd161b4e693d81(data []byte) (TestInterface, error) {
+func __jsonUnmarshal__interfaces__TestInterface__b99650f5b4c7f2fe7b18a3b48f4a76abba1f4c6308b5160be95058ce4ca0acad(data []byte) (TestInterface, error) {
 	var (
 		temp          map[string]json.RawMessage
 		discriminator string
@@ -175,6 +175,12 @@ func __jsonUnmarshal__interfaces__TestInterface__cd55a04f0cf3c60352e9c5752d1bf8e
 		return nil, __jsonschema__unmarshalDiscriminatorError(_tempDiscriminator, err)
 	}
 	switch discriminator {
+	case "PointerToTestInterface":
+		var obj PointerToTestInterface
+		if err = json.Unmarshal(data, &obj); err != nil {
+			return nil, err
+		}
+		return &obj, nil
 	case "TestInterface1":
 		var obj TestInterface1
 		if err = json.Unmarshal(data, &obj); err != nil {
@@ -187,12 +193,6 @@ func __jsonUnmarshal__interfaces__TestInterface__cd55a04f0cf3c60352e9c5752d1bf8e
 			return nil, err
 		}
 		return obj, nil
-	case "PointerToTestInterface":
-		var obj PointerToTestInterface
-		if err = json.Unmarshal(data, &obj); err != nil {
-			return nil, err
-		}
-		return &obj, nil
 	default:
 		return nil, fmt.Errorf("unknown discriminator: %s", discriminator)
 	}

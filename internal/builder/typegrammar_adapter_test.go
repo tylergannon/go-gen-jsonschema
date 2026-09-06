@@ -66,7 +66,7 @@ type Created struct {
 	Name string ` + "`json:\"name\"`" + `
 }
 
-func (Created) event() {}
+func (*Created) event() {}
 
 type Deleted struct {
 	At *time.Time ` + "`json:\"at\"`" + `
@@ -115,15 +115,6 @@ func (Envelope) Schema() json.RawMessage { panic("not implemented") }
 var (
 	_ = polytype.NewJSONSchemaMethod(
 		Envelope.Schema,
-		polytype.WithInterface(Envelope{}.Event,
-			polytype.Discriminator("kind"),
-			polytype.Impl("", &Created{}),
-			polytype.Impl("gone", Deleted{}),
-		),
-		polytype.WithInterfaceImpls(Envelope{}.Maybe, &Created{}, Deleted{}),
-		polytype.WithDiscriminator(Envelope{}.Maybe, "kind"),
-		polytype.WithInterfaceImpls(Envelope{}.Events, &Created{}, Deleted{}),
-		polytype.WithDiscriminator(Envelope{}.Events, "kind"),
 		polytype.WithStringerEnum(Envelope{}.State),
 	)
 )
@@ -144,11 +135,11 @@ var (
 	event := requireField(t, object.Fields, "event")
 	direct, ok := event.Value.(*typegrammar.Union)
 	require.True(t, ok)
-	require.Equal(t, "kind", direct.Discriminator)
+	require.Equal(t, "type", direct.Discriminator)
 	require.Len(t, direct.Variants, 2)
-	require.Equal(t, "", direct.Variants[0].Tag)
+	require.Equal(t, "Created", direct.Variants[0].Tag)
 	require.True(t, direct.Variants[0].Pointer)
-	require.Equal(t, "gone", direct.Variants[1].Tag)
+	require.Equal(t, "Deleted", direct.Variants[1].Tag)
 	require.False(t, direct.Variants[1].Pointer)
 
 	_, ok = requireField(t, object.Fields, "maybe").Value.(*typegrammar.OptionalUnion)
@@ -324,12 +315,12 @@ func TestTypeDefinitionsSourceAdmissionRejectsInvalidCompositions(t *testing.T) 
 		{
 			name: "interface implementation mismatch",
 			body: `
-type Event interface{ event() }
+type Event interface{ event(); Other() }
 type Wrong struct{}
+func (Wrong) event() {}
 type Root struct { Event Event ` + "`json:\"event\"`" + ` }
 `,
-			options: `, polytype.WithInterface(Root{}.Event, polytype.Impl("wrong", Wrong{}))`,
-			want:    "does not implement Event",
+			want: "does not implement the complete interface",
 		},
 	}
 	for _, test := range tests {

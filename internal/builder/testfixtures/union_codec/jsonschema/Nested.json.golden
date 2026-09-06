@@ -6,16 +6,16 @@
         {
           "type": "object",
           "properties": {
-            "nestedKind": {
+            "type": {
               "type": "string",
-              "const": "nested-created"
+              "const": "Created"
             },
             "name": {
               "type": "string"
             }
           },
           "required": [
-            "nestedKind",
+            "type",
             "name"
           ],
           "additionalProperties": false
@@ -23,17 +23,51 @@
         {
           "type": "object",
           "properties": {
-            "nestedKind": {
+            "type": {
               "type": "string",
-              "const": "nested-deleted"
+              "const": "Deleted"
             },
             "id": {
               "type": "string"
             }
           },
           "required": [
-            "nestedKind",
+            "type",
             "id"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "Hooked"
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "name"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "PointerHookValue"
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "name"
           ],
           "additionalProperties": false
         }

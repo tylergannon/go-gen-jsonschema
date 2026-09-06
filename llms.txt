@@ -144,7 +144,7 @@ explicitly.
 //go:generate go tool polytype --validate --typescript web/src/generated --typescript-barrel
 ```
 
-`--typescript-barrel` is optional. `.Interface` and `.StringerEnum`
+`--typescript-barrel` is optional. Sealed interface fields and `.StringerEnum`
 registrations automatically cause the containing struct's JSON methods to be
 generated; there is no codec flag. Run `go generate ./...` and `go mod tidy`,
 then commit the schema, Go, and requested TypeScript outputs together. Encode
@@ -320,9 +320,15 @@ option before writing artifacts because its encoding differs from the schema.
 
 ## Discriminated interfaces and slices
 
-A registered interface field becomes an `anyOf` union. A direct,
-one-dimensional `[]I` field becomes an array with that union under
-`items.anyOf`. The generator writes owner `MarshalJSON` and `UnmarshalJSON` methods by default. Use
+A field whose type is a **sealed interface** becomes an `anyOf` union of the
+interface's variants, discriminated by a `"type"` property whose value is the
+concrete type name. An interface is sealed when its own body declares an
+unexported method; its variants are inferred: every named struct type in the
+same package that declares that method directly. The receiver of the sealing
+method decides the variant kind: a value receiver is a value variant, a
+pointer receiver is a pointer variant, and decoding constructs the variant
+accordingly. Nothing is declared at the field. A direct one-dimensional slice
+of the interface becomes an array with the union under `items.anyOf`. The generator writes owner `MarshalJSON` and `UnmarshalJSON` methods by default. Use
 `--formats=both` to add `UnmarshalYAML(*yaml.Node)` adapters. yaml/v4 parses
 YAML into a generic value, which is translated to JSON and passed through the
 same decoder for scalar interface fields and every slice element.
@@ -345,21 +351,21 @@ type Batch struct {
 }
 ```
 
-Preferred registration keeps every implementation beside its stable wire
-discriminator:
+Nothing is declared at the field:
 
 ```go
-var _ = polytype.Declare(Batch.Schema).
-    Interface(
-        Batch{}.Events,
-        polytype.Impl("created", Created{}),
-        polytype.Impl("deleted", (*Deleted)(nil)),
-    )
+var _ = polytype.Declare(Batch.Schema)
 ```
 
-`Impl`'s first argument is the exact discriminator used by both the schema
-`const` and generated encode/decode dispatch. The default discriminator property is
-`type` for both JSON and YAML. Generated decoding preserves value versus pointer
+The discriminator value is the concrete type name (`"Created"`, `"Deleted"`)
+and the default discriminator property is `type` for both JSON and YAML.
+Rejected with a diagnostic naming the type or field: a reachable field of a
+non-sealed interface (no fallback), a sealing method obtained by embedding, a
+type satisfying the interface only through an embedded field (excluded), a
+direct candidate that does not implement the complete interface, zero
+variants, an embedded interface payload, and a payload property colliding
+with the discriminator. Renaming a variant type changes its wire value;
+adding a qualifying implementation changes membership. Generated decoding preserves value versus pointer
 implementations, reports a failing slice index, and assigns the destination
 only after the entire value decodes successfully. YAML uses the JSON Schema
 property names. Go `yaml` struct tags are ignored and nested custom
@@ -385,9 +391,9 @@ import yaml "go.yaml.in/yaml/v4"
 var batch Batch
 err := yaml.Load([]byte(`
 events:
-  - type: created
+  - type: Created
     name: first
-  - type: deleted
+  - type: Deleted
     id: old-id
 `), &batch, yaml.WithV4Defaults())
 ```
@@ -395,15 +401,9 @@ events:
 Run `go mod tidy` after YAML-enabled generation so the module records its
 `go.yaml.in/yaml/v4` dependency.
 
-Without explicit `Impl` values, discriminators continue to derive from Go type
-names.
-
-Migration: `NewJSONSchemaMethod(Batch.Schema, WithInterface(Batch{}.Events,
-Impl(...), ...))` is now `Declare(Batch.Schema).Interface(Batch{}.Events,
-Impl(...), ...)`. The legacy `NewJSONSchemaMethod`/`NewJSONSchemaFunc` with
-`With*` options, and the split `WithInterface`/`WithInterfaceImpls`/
-`WithDiscriminator` options, remain supported and source-compatible; each
-carries a `Deprecated:` godoc comment naming its fluent equivalent.
+Migration: `.Interface(...)`, `WithInterface`, `WithInterfaceImpls`,
+`WithDiscriminator`, `Impl`, `Discriminator`, and `NewInterfaceImpl[I]` are
+removed; seal the interface and delete the field-level declaration.
 
 Marshal the containing value with `json.Marshal(batch)` or
 `json.Marshal(&batch)`. Its generated owner codec injects each field's
@@ -413,7 +413,7 @@ its normal Go encoding; it has no global discriminator configuration.
 
 Absent `Optional[I]` fields are omitted; allocated empty `[]I` fields encode
 as `[]`. Nil required interfaces/slices, typed-nil implementations, present
-Optional nil values, and unregistered dynamic types return errors. A concrete
+Optional nil values return errors. A concrete
 custom `MarshalJSON` hook must return an object; a missing discriminator is
 added, a matching string is preserved, and conflicting/non-string values are
 rejected. Concrete decode hooks receive the complete discriminated object.
@@ -427,13 +427,6 @@ Supported interface containers are scalar `I` fields and direct `[]I` fields.
 Fixed arrays, nested slices, named slice containers, `Optional[[]I]`,
 `Nullable[[]I]`, and inline interface declarations are rejected. An
 `Optional[I]` scalar field is supported; a `Nullable[I]` field is not.
-
-Legacy package-level registration remains available but cannot be mixed with
-per-field interface options in one package:
-
-```go
-var _ = polytype.NewInterfaceImpl[Event](Created{}, (*Deleted)(nil))
-```
 
 ## Shared definitions (`$ref`/`$defs`) via `Ref`
 
@@ -542,7 +535,6 @@ onto the returned `*Declaration[T]`:
 | `.StringerEnum(field)` | Field is an enum compared via `fmt.Stringer`. |
 | `.Ref()` | Render this type as `"$ref"` wherever it's referenced. |
 | `.RenderProviders()` | Generate `RenderedSchema()` and run providers at runtime. |
-| `.Interface(field, options...)` | Field is a sealed interface (`Discriminator(name)`, `Impl(value, impl)`). |
 
 ```go
 var _ = polytype.Declare(Person.Schema)
@@ -551,15 +543,15 @@ var _ = polytype.Declare(Task.Schema).
     StringerEnum(Task{}.LogLevel)
 ```
 
-Enum types are declared on the type itself with `func (T) enum()`, never in
-the registration chain.
+Enum types are declared on the type itself with `func (T) enum()`, and
+sealed unions are inferred from an interface's unexported method; neither
+appears in the registration chain.
 
 Registration markers are read from the build-tagged file by the generator and
 are no-ops at runtime.
 
-`NewJSONSchemaMethod`/`NewJSONSchemaFunc` with their legacy `With*` options
-and `NewInterfaceImpl[I](impls...)` remain supported for
-source compatibility; each carries a `Deprecated:` godoc comment naming its
+`NewJSONSchemaMethod`/`NewJSONSchemaFunc` with their remaining legacy
+`With*` options remain supported for source compatibility; each carries a `Deprecated:` godoc comment naming its
 fluent equivalent. `NewJSONSchemaBuilder[T](fn)` (registers a no-argument
 schema accessor stub) has no fluent form yet and is unaffected.
 
@@ -569,14 +561,13 @@ schema accessor stub) has no fluent form yet and is unaffected.
 | `NewJSONSchemaFunc(fn, ...opts)` | `Declare(fn)` |
 | `NewJSONSchemaBuilder[T](fn)` | none (unaffected) |
 | `NewEnumType[T]()` | removed; declare `func (T) enum() {}` on the type |
-| `NewInterfaceImpl[I](impls...)` | `.Interface(field, Impl(value, impl), ...)` |
+| `NewInterfaceImpl[I](impls...)` | removed; seal the interface with an unexported method |
 | `WithEnum(field)` | removed; declare `func (T) enum() {}` on the field's type |
 | `WithStringerEnum(field)` | `.StringerEnum(field)` |
-| `WithInterface(field, options...)` | `.Interface(field, options...)` |
-| `Discriminator(name)` | `Discriminator(name)` (unchanged, used inside `.Interface`) |
-| `Impl(value, implementation)` | `Impl(value, implementation)` (unchanged, used inside `.Interface`) |
-| `WithInterfaceImpls(field, impls...)` | `.Interface(field, Impl(value, impl), ...)` |
-| `WithDiscriminator(field, name)` | `.Interface(field, Discriminator(name), ...)` |
+| `WithInterface(field, options...)` | removed; membership is inferred from the sealing method |
+| `Impl(value, implementation)` | removed; the wire value is the concrete type name |
+| `WithInterfaceImpls(field, impls...)` | removed; membership is inferred from the sealing method |
+| `WithDiscriminator(field, name)` / `Discriminator(name)` | removed; see `SealedUnion` |
 | `WithFunction(field, fn)` | `.Function(field, fn)` |
 | `WithStructAccessorMethod(field, method)` | `.Accessor(field, T.method)` |
 | `WithStructFunctionMethod(field, method)` | `.Method(field, T.method)` |

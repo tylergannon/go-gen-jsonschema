@@ -10,7 +10,7 @@
             "type": "object",
             "description": "Created is a value implementation of Event.",
             "properties": {
-              "!kind": {
+              "type": {
                 "type": "string",
                 "const": "Created"
               },
@@ -19,7 +19,7 @@
               }
             },
             "required": [
-              "!kind",
+              "type",
               "name"
             ],
             "additionalProperties": false
@@ -28,7 +28,7 @@
             "type": "object",
             "description": "Deleted is a pointer implementation of Event.",
             "properties": {
-              "!kind": {
+              "type": {
                 "type": "string",
                 "const": "Deleted"
               },
@@ -37,7 +37,7 @@
               }
             },
             "required": [
-              "!kind",
+              "type",
               "id"
             ],
             "additionalProperties": false

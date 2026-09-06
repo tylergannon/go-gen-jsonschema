@@ -7,8 +7,6 @@ import (
 type (
 	SchemaMarker struct{}
 
-	InterfaceMarker struct{}
-
 	SchemaFunction func() json.RawMessage
 
 	SchemaMethod[T any] func(T) json.RawMessage
@@ -34,11 +32,6 @@ func NewJSONSchemaBuilder[T any](SchemaFunction) SchemaMarker {
 
 type SchemaMethodOption interface {
 	implementsSchemaMethodOption()
-}
-
-// InterfaceOption configures a registered interface field.
-type InterfaceOption interface {
-	implementsInterfaceOption()
 }
 
 type exampleStruct struct {
@@ -82,33 +75,6 @@ type SchemaMethodOptionObj struct{}
 
 func (SchemaMethodOptionObj) implementsSchemaMethodOption() {}
 
-type InterfaceOptionObj struct{}
-
-func (InterfaceOptionObj) implementsInterfaceOption() {}
-
-// Interface options (v1) - stubs for scanning/type-checking; parsed by scanner
-//
-// Deprecated: use Declare(T.Schema).Interface(field, options...) instead.
-func WithInterface[T any](field T, options ...InterfaceOption) SchemaMethodOption {
-	return SchemaMethodOptionObj{}
-}
-
-// Discriminator sets the JSON property used to distinguish interface cases.
-func Discriminator(name string) InterfaceOption { return InterfaceOptionObj{} }
-
-// Impl registers an interface implementation with its stable wire value.
-func Impl[T any](value string, impl T) InterfaceOption { return InterfaceOptionObj{} }
-
-// Deprecated: use Declare(T.Schema).Interface(field, Impl(value, impl), ...) instead.
-func WithInterfaceImpls[T any](field T, impls ...any) SchemaMethodOption {
-	return SchemaMethodOptionObj{}
-}
-
-// Deprecated: use Declare(T.Schema).Interface(field, Discriminator(name), ...) instead.
-func WithDiscriminator[T any](field T, name string) SchemaMethodOption {
-	return SchemaMethodOptionObj{}
-}
-
 // Enum options (v1) - stubs for scanning/type-checking; parsed by scanner
 //
 // Deprecated: use Declare(T.Schema).StringerEnum(field) instead.
@@ -139,15 +105,3 @@ var _ SchemaMarker = NewJSONSchemaMethod(
 	WithStructFunctionMethod(exampleStruct{}.Field2, exampleStruct.field2Schema),
 	WithFunction(exampleStruct{}.Field3, buildBoolSchema),
 )
-
-// NewInterfaceImpl marks the arguments as possible implementations for the
-// interface type given in the type argument.
-//  1. If called in the same package as the interface itself, then all global
-//     instances can be replaced.
-//  2. If called somewhere else, only applies to the local package.
-//
-// Deprecated: use Declare(T.Schema).Interface(field, Impl(value, impl), ...)
-// on the field referencing the interface instead.
-func NewInterfaceImpl[T any](...T) InterfaceMarker {
-	return InterfaceMarker{}
-}

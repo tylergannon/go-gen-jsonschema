@@ -4,8 +4,9 @@ package sealed_interface_slices
 
 //go:generate go run ../../polytype/ --pretty
 
-// Event is a sealed union for the purposes of schema generation: the schema
-// registration lists every concrete implementation accepted on the wire.
+// Event is a sealed union: its unexported isEvent method closes membership
+// to the same-package struct types that declare it, and the generator infers
+// exactly those types as the wire variants.
 type Event interface {
 	isEvent()
 }

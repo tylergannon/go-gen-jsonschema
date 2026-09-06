@@ -10,12 +10,7 @@ import (
 
 func (Batch) Schema() json.RawMessage { panic("not implemented") }
 
-// The field selector still identifies the complete slice field; the generator
-// derives the registered interface from its element type.
-var _ = polytype.Declare(Batch.Schema).
-	Interface(
-		Batch{}.Events,
-		polytype.Discriminator("!kind"),
-		polytype.Impl("Created", Created{}),
-		polytype.Impl("Deleted", (*Deleted)(nil)),
-	)
+// Event is sealed by its unexported isEvent method, so the slice element
+// union (Created as a value variant, Deleted as a pointer variant) is
+// inferred; nothing is declared at the field.
+var _ = polytype.Declare(Batch.Schema)

@@ -139,3 +139,20 @@ func TestGenCommandRejectsEnumMarkerWithPointerReceiver(t *testing.T) {
 	require.Contains(t, stderr, "must use a value receiver: func (Status) enum()")
 	require.Contains(t, stderr, "enum_marker_pointer_receiver/fixture.go")
 }
+
+// TestGenCommandRejectsUnsealedInterfaceField runs the actual polytype
+// binary against the checked-in unsealed_interface fixture, proving the
+// command itself fails with a non-zero exit and a source-positioned
+// diagnostic naming both the field and the non-sealed interface.
+func TestGenCommandRejectsUnsealedInterfaceField(t *testing.T) {
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+
+	exitCode, _, stderr, err := testutils.RunCommand("go", cwd, "run", ".", "-target", "../internal/syntax/testfixtures/unsealed_interface")
+	require.NoError(t, err)
+	require.NotEqual(t, 0, exitCode, "stderr:\n%s", stderr)
+	require.Contains(t, stderr, "field Drawing.Shape at ")
+	require.Contains(t, stderr, "interface Shape at ")
+	require.Contains(t, stderr, "is not sealed")
+	require.Contains(t, stderr, "unsealed_interface/fixture.go")
+}

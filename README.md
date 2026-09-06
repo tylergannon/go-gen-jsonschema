@@ -276,30 +276,36 @@ the package-level `NewEnumType[Status]()` are removed. Add
 package-level declarations; `.StringerEnum` / `WithStringerEnum` are
 unchanged.
 
-## 🔄 Union types (interfaces)
+## 🔄 Union types (sealed interfaces)
 
-An interface-typed field becomes an `anyOf` union of its registered
-implementations, discriminated by a `"type"` property (configurable). A direct
-one-dimensional slice of that interface becomes an array with the union under
-`items.anyOf`. Generation defaults to JSON-only. Pass `--formats=both` to add
+A field whose type is a **sealed interface** becomes an `anyOf` union of the
+interface's variants, discriminated by a `"type"` property whose value is the
+concrete type name. An interface is sealed when its own body declares an
+unexported method; its variants are inferred: every named struct type in the
+same package that declares that method directly. The receiver of the sealing
+method decides the variant kind: a value receiver is a value variant, a
+pointer receiver is a pointer variant, and decoding constructs the variant
+accordingly. Nothing is declared at the field. A direct one-dimensional slice
+of the interface becomes an array with the union under `items.anyOf`. Generation defaults to JSON-only. Pass `--formats=both` to add
 `UnmarshalYAML(*yaml.Node)` adapters. yaml/v4 parses the document, the adapter
 translates it into JSON, and the existing JSON decoder performs union dispatch
 for scalar values (including `Optional[I]`) and every slice element.
 
 ```go
-type PaymentMethod interface{ IsPaymentMethod() }
+// PaymentMethod is sealed by its unexported method.
+type PaymentMethod interface{ isPaymentMethod() }
 
 type CreditCard struct {
     CardNumber string `json:"cardNumber"`
     Expiry     string `json:"expiry"`
 }
-func (CreditCard) IsPaymentMethod() {}
+func (CreditCard) isPaymentMethod() {}   // value variant, wire value "CreditCard"
 
 type BankTransfer struct {
     AccountNumber string `json:"accountNumber"`
     RoutingNumber string `json:"routingNumber"`
 }
-func (BankTransfer) IsPaymentMethod() {}
+func (*BankTransfer) isPaymentMethod() {} // pointer variant, wire value "BankTransfer"
 
 type Payment struct {
     Amount  float64         `json:"amount"`
@@ -309,13 +315,25 @@ type Payment struct {
 
 ```go
 // schema.go (//go:build jsonschema)
-var _ = polytype.Declare(Payment.Schema).
-    Interface(
-        Payment{}.Methods,
-        polytype.Impl("credit_card", CreditCard{}),
-        polytype.Impl("bank_transfer", BankTransfer{}),
-    )
+var _ = polytype.Declare(Payment.Schema)
 ```
+
+**Unsupported forms fail generation with a diagnostic naming the type or
+field**: a reachable interface field whose interface is not sealed (there is
+no explicit fallback and no support for non-sealed unions); an interface that
+gets its unexported method only by embedding another interface; a type that
+satisfies the interface only through an embedded field (it inherits the
+sealing method and is excluded); a type that declares the sealing method but
+does not implement the complete interface; a sealed interface with zero
+variants; an embedded interface payload; and a variant with a payload
+property that collides with the discriminator property. Variants behind
+other build tags are not discovered: the scanner loads with the `jsonschema`
+tag.
+
+**Wire-contract hazard:** the discriminator value is the concrete type name,
+so renaming a variant type changes its wire value, and adding a qualifying
+implementation changes membership. Review generated schema diffs
+accordingly.
 
 Opt into YAML alongside the default JSON unmarshaler in the generation
 directive:
@@ -333,7 +351,7 @@ var payment Payment
 err := yaml.Load([]byte(`
 amount: 42
 methods:
-  - type: credit_card
+  - type: CreditCard
     cardNumber: "4111111111111111"
     expiry: "12/30"
 `), &payment, yaml.WithV4Defaults())
@@ -351,16 +369,12 @@ unknown-property rejection. Decoding is transactional replacement: omitted YAML
 fields do not retain values already present in the receiver. Decode with
 `yaml.WithV4Defaults()` to use the same scalar resolution as `ValidateYAML`.
 
-When no explicit `Impl` wire values are supplied, discriminator values still
-derive from Go type names.
-
-Migration: `NewJSONSchemaMethod(Payment.Schema, WithInterface(Payment{}.Methods,
-Impl(...), ...))` is now `Declare(Payment.Schema).Interface(Payment{}.Methods,
-Impl(...), ...)`. The legacy forms (`NewJSONSchemaMethod`/`NewJSONSchemaFunc`
-with `With*` options, the split `WithInterface`/`WithInterfaceImpls`/
-`WithDiscriminator` options, and the package-level
-`polytype.NewInterfaceImpl[I](...)`) remain supported and source-compatible;
-see their `Deprecated:` godoc for the fluent equivalent of each.
+Migration: `Declare(T.Schema).Interface(field, Discriminator(...), Impl(...))`,
+`WithInterface`, `WithInterfaceImpls`, `WithDiscriminator`, `Impl`,
+`Discriminator`, and the package-level `NewInterfaceImpl[I](...)` are removed.
+Give the interface an unexported method, declare it directly on every
+variant, and delete the field-level declaration. Wire values are now always
+the concrete type names.
 
 The generator emits a value-receiver `MarshalJSON` and pointer-receiver
 `UnmarshalJSON` on the containing struct. Encoding the owner adds each union
@@ -369,7 +383,7 @@ pointer implementation. This works for `I`, `Optional[I]`, and direct `[]I`
 fields. Marshaling a concrete implementation by itself uses its normal Go
 encoding because discriminator configuration belongs to the field.
 
-Generated owner codecs reject unregistered dynamic types, nil required unions,
+Generated owner codecs reject nil required unions,
 typed-nil implementations, and nil required union slices. An allocated empty
 slice encodes as `[]`; an absent Optional is omitted. Custom concrete
 `MarshalJSON` hooks must return an object with a missing or matching string
@@ -377,12 +391,6 @@ discriminator. Conflicting payloads are errors. Production owner JSON methods,
 including promoted methods that would interfere with generated codecs, are
 rejected before output is written. Validate external input before decoding.
 
-The legacy package-level form is still supported, but cannot be mixed with the
-per-field options above in the same package:
-
-```go
-var _ = polytype.NewInterfaceImpl[PaymentMethod](CreditCard{}, BankTransfer{})
-```
 
 Only direct one-dimensional slices are supported. Fixed arrays, nested slices,
 named slice containers, `Optional[[]I]`, and `Nullable[[]I]` fail generation.
@@ -534,7 +542,6 @@ onto the returned `*Declaration[T]`:
 | `.StringerEnum(field)` | Field is an enum compared via `fmt.Stringer` |
 | `.Ref()` | Render this type as `"$ref"` wherever it's referenced |
 | `.RenderProviders()` | Generate `RenderedSchema()` and run providers at runtime |
-| `.Interface(field, options...)` | Field is a sealed interface (`Discriminator(name)`, `Impl(value, impl)`) |
 
 ```go
 var _ = polytype.Declare(Person.Schema)
@@ -543,15 +550,15 @@ var _ = polytype.Declare(Task.Schema).
     StringerEnum(Task{}.LogLevel)
 ```
 
-Enum types are not declared here at all: a type with `func (T) enum()` is an
-enum everywhere it appears.
+Enum types and sealed unions are not declared here at all: a type with
+`func (T) enum()` is an enum everywhere it appears, and an interface with an
+unexported method is a union of the same-package structs that declare it.
 
 These markers are no-ops at runtime — the generator reads them from the AST of
 your build-tagged `schema.go`.
 
-`NewJSONSchemaMethod`/`NewJSONSchemaFunc` with their `With*` options and
-`NewInterfaceImpl[I](impls...)` remain supported for
-source compatibility; each carries a `Deprecated:` godoc comment naming its
+`NewJSONSchemaMethod`/`NewJSONSchemaFunc` with their remaining `With*`
+options remain supported for source compatibility; each carries a `Deprecated:` godoc comment naming its
 fluent equivalent. `NewJSONSchemaBuilder[T](fn)` (registers a no-argument
 schema accessor stub) has no fluent form yet and is unaffected.
 

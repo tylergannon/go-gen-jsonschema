@@ -79,8 +79,8 @@ func run() (transcript, error) {
 		{"present zero and empty", `{"name":"zero","max_retries":0,"nickname":"","metadata":{"message":""},"backup":{"message":"saved"},"tags":[],"timeout":0,"detail":{"message":"now"}}`},
 		{"null optional", `{"name":"bad","max_retries":null,"timeout":null,"detail":null}`},
 		{"missing nullable", `{"name":"bad"}`},
-		{"optional interface", `{"name":"pet","pet":{"!kind":"Dog","name":"Rex"},"timeout":null,"detail":null}`},
-		{"unknown interface", `{"name":"bad","pet":{"!kind":"Bird"},"timeout":null,"detail":null}`},
+		{"optional interface", `{"name":"pet","pet":{"type":"Dog","name":"Rex"},"timeout":null,"detail":null}`},
+		{"unknown interface", `{"name":"bad","pet":{"type":"Bird"},"timeout":null,"detail":null}`},
 	}
 
 	result := transcript{Required: schema.Required, Properties: schema.Properties}
@@ -119,7 +119,7 @@ func run() (transcript, error) {
 		{"defined wrapper", "defined_wrapper", "supported only as the complete type of a direct named struct field"},
 		{"embedded wrapper", "embedded_wrapper", "embedded polytype.Optional is unsupported"},
 		{"wrapper root", "wrapper_root", "supported only as the complete type of a direct named struct field"},
-		{"nullable interface", "nullable_interface", "does not support registered interfaces"},
+		{"nullable interface", "nullable_interface", "does not support sealed interfaces"},
 		{"nullable ref", "nullable_ref", "does not support explicit refs"},
 		{"nullable provider", "nullable_provider", "does not support providers"},
 	}

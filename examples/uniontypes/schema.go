@@ -60,26 +60,13 @@ var (
 	_ = polytype.Declare(BankTransfer.Schema)
 	_ = polytype.Declare((*DigitalWallet).Schema) // Note pointer receiver
 
-	// Register Drawing along with its Shape union field. This is what
-	// creates the union type - it tells the generator that Drawing.Shapes
-	// can contain a Circle, Rectangle, or Triangle. Impl's first argument
-	// is the exact discriminator value ("Circle", "Rectangle", "Triangle" -
-	// the derived Go type names, matching what the split
-	// WithInterface/WithInterfaceImpls form derived automatically).
-	_ = polytype.Declare(Drawing.Schema).
-		Interface(Drawing{}.Shapes,
-			polytype.Impl("Circle", Circle{}),
-			polytype.Impl("Rectangle", Rectangle{}),
-			polytype.Impl("Triangle", Triangle{}),
-		)
-
-	// Register Payment along with its PaymentMethod union field. This
-	// demonstrates including a pointer receiver implementation - for
-	// pointer receivers, use (*Type)(nil) syntax.
-	_ = polytype.Declare(Payment.Schema).
-		Interface(Payment{}.Method,
-			polytype.Impl("CreditCard", CreditCard{}),
-			polytype.Impl("BankTransfer", BankTransfer{}),
-			polytype.Impl("DigitalWallet", (*DigitalWallet)(nil)),
-		)
+	// Drawing's Shapes field and Payment's Method field are unions of the
+	// sealed Shape and PaymentMethod interfaces. Membership is inferred from
+	// the unexported sealing method each interface declares: Circle,
+	// Rectangle, and Triangle declare isShape; CreditCard, BankTransfer, and
+	// DigitalWallet (on a pointer receiver, so it decodes as *DigitalWallet)
+	// declare isPaymentMethod. The discriminator property is "type" and each
+	// value is the concrete type name.
+	_ = polytype.Declare(Drawing.Schema)
+	_ = polytype.Declare(Payment.Schema)
 )

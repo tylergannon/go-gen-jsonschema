@@ -85,12 +85,17 @@ Migration: `.Enum(field)`, `WithEnum(field)`, and the package-level
 `NewEnumType[T]()` are removed. Add `func (T) enum() {}` next to the type and
 delete those declarations; `.StringerEnum`/`WithStringerEnum` are unchanged.
 
-## Discriminated unions (interface fields)
+## Discriminated unions (sealed interface fields)
 
-An interface-typed field becomes a union (`anyOf`) of its registered
-implementations, discriminated by a `"type"` property. A direct
-one-dimensional slice field (`[]PaymentMethod`) becomes an array whose `items`
-contains that union. The generator emits owner `MarshalJSON` and `UnmarshalJSON` by default. Pass
+A field whose type is a **sealed interface** becomes an `anyOf` union of the
+interface's variants, discriminated by a `"type"` property whose value is the
+concrete type name. An interface is sealed when its own body declares an
+unexported method; its variants are inferred: every named struct type in the
+same package that declares that method directly. The receiver of the sealing
+method decides the variant kind: a value receiver is a value variant, a
+pointer receiver is a pointer variant, and decoding constructs the variant
+accordingly. Nothing is declared at the field. A direct one-dimensional slice
+of the interface becomes an array with the union under `items.anyOf`. The generator emits owner `MarshalJSON` and `UnmarshalJSON` by default. Pass
 `--formats=both` to add `go.yaml.in/yaml/v4` entry points for scalar values and
 every slice element. YAML is translated into the JSON data model and decoded
 through the same implementation. Both syntaxes use `type` as the default
@@ -100,19 +105,19 @@ custom `UnmarshalJSON` hooks remain authoritative.
 
 ```go
 // types.go
-type PaymentMethod interface{ IsPaymentMethod() }
+type PaymentMethod interface{ isPaymentMethod() } // sealed by the unexported method
 
 type CreditCard struct {
     Number string `json:"number"`
     Expiry string `json:"expiry"`
 }
-func (CreditCard) IsPaymentMethod() {}
+func (CreditCard) isPaymentMethod() {}   // value variant, wire value "CreditCard"
 
 type BankTransfer struct {
     AccountNumber string `json:"accountNumber"`
     RoutingNumber string `json:"routingNumber"`
 }
-func (BankTransfer) IsPaymentMethod() {}
+func (*BankTransfer) isPaymentMethod() {} // pointer variant, wire value "BankTransfer"
 
 type Payment struct {
     ID      string          `json:"id"`
@@ -120,34 +125,30 @@ type Payment struct {
 }
 ```
 
-Preferred per-field registration:
-
 ```go
 // schema.go (//go:build jsonschema)
-var _ = polytype.Declare(Payment.Schema).
-    Interface(
-        Payment{}.Methods,
-        polytype.Discriminator("!kind"), // optional; default "type"
-        polytype.Impl("credit_card", CreditCard{}),
-        polytype.Impl("bank_transfer", BankTransfer{}),
-    )
+var _ = polytype.Declare(Payment.Schema)
 ```
 
-`Impl` binds each implementation to a stable wire discriminator used by both
-the generated schema and owner encode/decode methods. Without explicit `Impl`
-values, discriminators derive from Go type names.
+Rejected with a diagnostic naming the type or field: a reachable interface
+field whose interface is not sealed (non-sealed unions are unsupported; there
+is no fallback), a sealing method obtained only by embedding another
+interface, a type that satisfies the interface only through an embedded field
+(excluded, distinct diagnostic), a direct candidate that does not implement
+the complete interface, a sealed interface with zero variants, an embedded
+interface payload, and a variant payload property that collides with the
+discriminator property. Variants behind other build tags are not discovered.
+Renaming a variant type changes its wire value and adding a qualifying
+implementation changes membership: review schema diffs.
+
+Migration: `.Interface(...)`, `WithInterface`, `WithInterfaceImpls`,
+`WithDiscriminator`, `Impl`, `Discriminator`, and `NewInterfaceImpl[I]` are
+removed. Seal the interface with an unexported method declared directly on
+every variant and delete the field-level declaration.
 
 The slice must be the direct field type. Fixed arrays, nested slices, named
 slice containers, `Optional[[]I]`, and `Nullable[[]I]` are rejected during
 generation. An `Optional[I]` scalar is supported; `Nullable[I]` is not.
-
-Migration: `NewJSONSchemaMethod(Payment.Schema, WithInterface(Payment{}.Methods,
-Impl(...), ...))` is now `Declare(Payment.Schema).Interface(Payment{}.Methods,
-Impl(...), ...)`. `NewJSONSchemaMethod`/`NewJSONSchemaFunc` with `With*`
-options, the split `WithInterface`/`WithInterfaceImpls`/`WithDiscriminator`
-options, and the package-level `NewInterfaceImpl[I](impls...)` remain
-supported and source-compatible; each carries a `Deprecated:` godoc comment
-naming its fluent equivalent.
 
 ## Full registration surface
 
@@ -160,16 +161,14 @@ returned `*Declaration[T]`:
   it statically (see [`examples/providers_rendering`](../../../examples/providers_rendering)).
 - `.StringerEnum(field)` — emit an integer enum field's constant names.
   (Enum types themselves are declared with `func (T) enum()`, not here.)
-- `.Interface(field, Discriminator(name), Impl(value, implementation), ...)` —
-  sealed-interface options.
 - `.Ref()` — render this type as `"$ref"` wherever it's referenced (see below).
 - `.RenderProviders()` — generate `RenderedSchema()` and run providers at
   runtime (advanced; rendered types get no `ValidateJSON` because their
   schemas depend on runtime values).
 
 `NewJSONSchemaMethod(T.Schema, ...opts)` / `NewJSONSchemaFunc(fn, ...opts)`
-with their `With*` options, and the legacy
-`NewInterfaceImpl[I](impls...)`, remain supported for source compatibility.
+with their remaining `With*` options remain supported for source
+compatibility.
 
 Nested struct types are **inlined** into the parent schema (no `$ref`) by
 default, so a shared Address struct appears in full wherever it is used —
@@ -255,8 +254,8 @@ mypackage/
 
 Generate validation and TypeScript declarations together with
 `--validate --typescript web/src/generated`; add `--typescript-barrel` when an
-`index.ts` type-only export is useful. `.Interface` and `.StringerEnum`
-select the containing Go struct's JSON codecs automatically. TypeScript output
+`index.ts` type-only export is useful. Sealed interface fields and
+`.StringerEnum` select the containing Go struct's JSON codecs automatically. TypeScript output
 does not include a runtime decoder or validator: applications must validate
 untrusted TypeScript-side data, and Go consumers should call generated
 `ValidateJSON` before `json.Unmarshal`. Pin the tool and imported package to the

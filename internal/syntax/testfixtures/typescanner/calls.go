@@ -30,12 +30,9 @@ var (
 	_ = polytype.NewJSONSchemaMethod((*PointerTypeForSchemaMethod).Schema)
 	_ = polytype.NewJSONSchemaBuilder[TypeForSchemaFunction](TypeSchema)
 	_ = polytype.NewJSONSchemaBuilder[*PointerTypeForSchemaFunction](TypeSchema2)
-	_ = polytype.NewInterfaceImpl[MarkerInterface](Type001{}, Type002{}, &Type003{}, (*Type004)(nil))
 )
 
 var (
 	_ = polytype.NewJSONSchemaBuilder[scannersubpkg.TypeForSchemaFunction](TypeSchema)
 	_ = polytype.NewJSONSchemaBuilder[*scannersubpkg.PointerTypeForSchemaFunction](TypeSchema2)
-
-	_ = polytype.NewInterfaceImpl[scannersubpkg.MarkerInterface](scannersubpkg.Type001{}, scannersubpkg.Type002{}, &scannersubpkg.Type003{}, (*scannersubpkg.Type004)(nil))
 )
