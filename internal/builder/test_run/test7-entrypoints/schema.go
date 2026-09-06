@@ -14,8 +14,11 @@ func FuncTypeSchema(FuncType) json.RawMessage { panic("not implemented") }
 
 func BuilderTypeSchema() json.RawMessage { panic("not implemented") }
 
+func PointerFuncTypeSchema(PointerFuncType) json.RawMessage { panic("not implemented") }
+
 var (
 	_ = polytype.NewJSONSchemaMethod(MethodType.Schema)
 	_ = polytype.NewJSONSchemaFunc[FuncType](FuncTypeSchema)
 	_ = polytype.NewJSONSchemaBuilder[BuilderType](BuilderTypeSchema)
+	_ = polytype.Declare(PointerFuncTypeSchema)
 )

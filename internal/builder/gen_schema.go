@@ -711,23 +711,51 @@ func (s SchemaBuilder) imports() *ImportMap {
 	return importMap
 }
 
-func (s SchemaBuilder) SchemaMethods() []syntax.SchemaMethod {
-	// Merge methods and funcs, then filter out invalid receiver base types (underlying pointer/interface)
-	var out []syntax.SchemaMethod
-	appendIfValid := func(m syntax.SchemaMethod) {
-		if ts, ok := s.Scan.LocalNamedTypes[m.Receiver.TypeName]; ok {
-			switch ts.Type().Expr().(type) {
-			case *dst.StarExpr, *dst.InterfaceType:
-				return
-			}
+// hasInvalidMethodReceiverBase reports whether typeName's underlying type is
+// itself a pointer or interface, meaning Go forbids declaring any method
+// (value or pointer receiver) on it.
+func (s SchemaBuilder) hasInvalidMethodReceiverBase(typeName string) bool {
+	if ts, ok := s.Scan.LocalNamedTypes[typeName]; ok {
+		switch ts.Type().Expr().(type) {
+		case *dst.StarExpr, *dst.InterfaceType:
+			return true
 		}
-		out = append(out, m)
 	}
+	return false
+}
+
+// SchemaMethods returns registered schema entrypoints that can be generated
+// as a Go method on their receiver type: true method-root registrations,
+// plus free-function-root registrations (SchemaFuncs) whose receiver type
+// can legally have a method declared on it. Entries with an invalid
+// receiver base type are dropped here regardless of source, matching prior
+// behavior for method-root registrations (which should never have an
+// invalid base in a package that actually compiles).
+func (s SchemaBuilder) SchemaMethods() []syntax.SchemaMethod {
+	var out []syntax.SchemaMethod
 	for _, m := range s.Scan.SchemaMethods {
-		appendIfValid(m)
+		if !s.hasInvalidMethodReceiverBase(m.Receiver.TypeName) {
+			out = append(out, m)
+		}
 	}
 	for _, f := range s.Scan.SchemaFuncs {
-		appendIfValid(syntax.SchemaMethod(f))
+		if !s.hasInvalidMethodReceiverBase(f.Receiver.TypeName) {
+			out = append(out, syntax.SchemaMethod(f))
+		}
+	}
+	return out
+}
+
+// SchemaFreeFuncs returns free-function-root registrations whose receiver
+// type's underlying type is a pointer or interface, so they must be
+// generated as a free function (matching the original registration's
+// signature) rather than a method.
+func (s SchemaBuilder) SchemaFreeFuncs() []syntax.SchemaMethod {
+	var out []syntax.SchemaMethod
+	for _, f := range s.Scan.SchemaFuncs {
+		if s.hasInvalidMethodReceiverBase(f.Receiver.TypeName) {
+			out = append(out, syntax.SchemaMethod(f))
+		}
 	}
 	return out
 }

@@ -8,6 +8,14 @@ package indirecttypes
 // SimpleInt is a basic integer type.
 type SimpleInt int
 
+// PointerToInt demonstrates a pointer to a basic type.
+// In the schema, this will be the same as the base type but nullable.
+type PointerToInt *int
+
+// PointerToSimpleInt demonstrates a pointer to a custom type.
+// In the schema, this will be the same as SimpleInt but nullable.
+type PointerToSimpleInt *SimpleInt
+
 // SliceOfInt demonstrates a slice of a basic type.
 // In the schema, this will be an array of integers.
 type SliceOfInt []int
@@ -37,6 +45,10 @@ type Person struct {
 	// Age is the person's age.
 	Age int `json:"age"`
 }
+
+// PointerToPerson is a pointer to a Person.
+// In the schema, this will be the same as Person but nullable.
+type PointerToPerson *Person
 
 // SliceOfPerson is a slice of Person objects.
 // In the schema, this will be an array of Person objects.

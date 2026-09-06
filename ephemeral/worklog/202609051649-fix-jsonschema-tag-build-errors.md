@@ -131,6 +131,121 @@ registration after a generate run.
   `jsonschema/PointerTo*.json(.sum)` artifacts by hand since `go generate`
   doesn't prune them.
 
+## Round 2: adversarial review findings and their fix
+
+Launched an independent agent via `/adversarial-review` (round 1:
+`ephemeral/reviews/202609051826-jsonschema-tag-build-fix-round-01.md`) against
+the two commits above. Outcome: material findings remain.
+
+decision: finding 1 was correct and I acted on it — deleting the pointer-root
+types was wrong. The reviewer cited `internal/builder/testfixtures/entrypoints`
+(free-function roots, tested) and `internal/builder/basic_test.go:114-133`
+(asserts standalone JSON for named-pointer-type roots in
+`testfixtures/indirecttypes`) as proof this is current, exercised
+functionality, not dead scaffolding. Verified both citations directly before
+acting. Restored `PointerToInt`/`PointerToSimpleInt`/`PointerToPerson` and
+registered them via free functions (`func PointerToIntSchema(PointerToInt)
+json.RawMessage` + `polytype.Declare(PointerToIntSchema)`), matching the
+pattern `Declare`'s own doc comment describes.
+
+friction/discovery: registering via free functions compiled fine under
+`-tags jsonschema` and produced correct JSON, but `jsonschema_gen.go` (the
+runtime, non-tagged output) emitted **no accessor at all** for these three
+types — not a method, not a free function, nothing. Traced this to
+`SchemaBuilder.SchemaMethods()` (`internal/builder/gen_schema.go`): it merges
+method-root and free-function-root (`SchemaFuncs`) registrations into one
+list for the `schemas.go.tmpl` Go-code template, but silently drops any entry
+whose receiver's underlying type is a pointer or interface (comment: "filter
+out invalid receiver base types"). That's correct for genuine method-root
+entries (a real compile could never have produced one), but wrong for
+free-function-root entries — the entire point of free-function registration
+is to support exactly this case, and `schemas.go.tmpl` had no code path to
+emit a free function instead of a method. Confirmed empirically: the
+`test7-entrypoints` fixture's existing `FuncType`/`BuilderType` free-function
+registrations get silently converted into *methods* in the generated output
+(`func (FuncType) FuncTypeSchema()`), which only works because those types
+aren't pointer-underlying — the moment the receiver type isn't
+method-capable, generation for that entry just vanishes, with no error,
+warning, or lint signal.
+
+Fixed at the source: added `SchemaBuilder.SchemaFreeFuncs()` (free-function
+roots that specifically *can't* be a method) alongside the now-correctly-named
+`SchemaMethods()`, and a new `{{ range .SchemaFreeFuncs }}` block in
+`schemas.go.tmpl` that emits a real free function matching the original
+registration's name/signature. First attempt regressed
+`test2-indirecttypes` (a fixture with the *same* invalid-pointer-receiver bug,
+but registered as a genuine method-root, not free-function-root) — I'd
+stopped filtering `SchemaMethods` entries entirely instead of only changing
+where free-function entries with invalid receivers go. Root cause: I assumed
+a method-root entry could never have an invalid receiver base, since the
+source stub would have to compile first — false, because the *scanner*
+(`internal/syntax`) only does AST-level parsing, not real type-checking, so
+it happily records `func (PointerToIntType) Schema()` as a valid
+`SchemaMethod` even though it would never survive a real `go build`.
+Restored the original drop-on-invalid-receiver behavior for genuine
+`SchemaMethods` entries (unchanged from before my edit); only
+`SchemaFuncs`-sourced entries with an invalid receiver now get routed to the
+new free-function emission path instead of being silently dropped.
+
+discovery: `test2-indirecttypes` (`internal/builder/testfixtures/indirecttypes`)
+*is* wired into `TestBasic`'s `cases` list (I misread this earlier and said
+it wasn't — it's `testName: "test2-indirecttypes"` at basic_test.go:115) and
+its `go build ./...` step (a **real** compile, inside a nested temp module)
+should have been failing on `PointerToIntType`'s invalid-receiver-method bug
+this whole time. It wasn't, because the *old* filter silently dropped that
+entry from codegen too (same bug class, opposite symptom: instead of a
+compile error, a silently-missing generated accessor). My fix only repairs
+the free-function-root variant of this; the method-root variant in this
+fixture is still silently broken exactly as before — untouched, out of
+scope, filed as follow-up (see below). Correcting the record: my earlier
+claim that this fixture "doesn't do a full type-check, so it doesn't hit this
+bug" was wrong on the *reason* (right conclusion, wrong mechanism) — the real
+reason it doesn't fail is the silent-drop filter, not an absence of
+type-checking in the harness (the harness's `go build ./...` step is a real
+compile).
+
+Proof the fix actually works (not just "compiles"): extended
+`internal/builder/testfixtures/entrypoints` (already wired into `TestBasic`
+as `test7-entrypoints`, which does a real `go mod tidy` / `go generate` /
+golden-diff / `go build ./...` / `go test ./...` round-trip in a nested
+module) with `PointerFuncType *int` registered via
+`polytype.Declare(PointerFuncTypeSchema)`, plus a new
+`entrypoints_test.go::TestPointerFuncTypeSchemaCallable` that actually calls
+`PointerFuncTypeSchema(nil)` and asserts real JSON content back. This is the
+only test in the repo that would have caught the original gap (existing
+fluent-declaration tests only do AST-level scanning + JSON string comparison,
+never a real `go build`+`go test` of the generated output).
+
+Also fixed finding 2 (no CI/local check builds `-tags jsonschema` source):
+added a `just build-tagged` recipe and a matching CI step
+(`.github/workflows/go.yml`) that build exactly the `examples/` packages
+containing a `//go:build jsonschema` file, as explicit package arguments
+(not `./...`) — this is what avoids the `examples/optionality/cmd/proof`
+false positive: since that consumer program isn't itself jsonschema-tagged
+and nothing in the explicit target list imports it, `go build` never visits
+it. Deliberately scoped to `examples/` only, not the whole module: several
+`internal/syntax/testfixtures/*` files (e.g. `fluent_field_mismatch`) are
+*deliberately* invalid Go used to test scanner error paths, and a handful of
+`internal/builder/testfixtures/*`/`test_run/*` dirs are separate nested Go
+modules (own `go.mod`) already covered by `TestBasic`'s real
+`go build`+`go test` harness — sweeping either into this new check would
+either false-positive on intentionally-broken fixtures or duplicate existing
+coverage.
+
+Filed two follow-up issues (not fixed here, milestone 1.0):
+- tylergannon/polytype#90 — `test2-indirecttypes` has the method-root variant
+  of the same invalid-receiver bug and is unexercised in the sense that
+  nobody ever looks at its actual generated output; needs the same
+  free-function conversion (or the fixture should be deleted as superseded
+  by `entrypoints`' pointer-root coverage).
+- tylergannon/polytype#91 — `go generate` never deletes orphaned
+  `jsonschema/*.json(.sum)` files for removed registrations (hit this
+  directly: had to `rm` `examples/indirecttypes/jsonschema/PointerTo*.json`
+  by hand after the delete-then-restore cycle above).
+
+Round 2 review launched against the fixed state; see round-02 artifact for
+outcome.
+
 ## Verification
 
 - `go generate ./...` per touched example dir; diffed `jsonschema/*.json` and

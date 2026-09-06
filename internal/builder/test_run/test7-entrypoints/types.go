@@ -13,3 +13,8 @@ type FuncType struct {
 type BuilderType struct {
 	Name string `json:"name"`
 }
+
+// PointerFuncType is a named pointer type. Go forbids declaring a method on
+// it (invalid receiver base type), so its schema entrypoint must be
+// registered as a free function.
+type PointerFuncType *int

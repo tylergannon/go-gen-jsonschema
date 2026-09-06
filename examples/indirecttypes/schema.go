@@ -15,6 +15,17 @@ func (SimpleInt) Schema() json.RawMessage {
 	panic("not implemented")
 }
 
+// PointerToInt and PointerToSimpleInt are named pointer types, and Go
+// forbids methods on pointer-type receivers, so they register via free
+// functions instead of a Schema method.
+func PointerToIntSchema(PointerToInt) json.RawMessage {
+	panic("not implemented")
+}
+
+func PointerToSimpleIntSchema(PointerToSimpleInt) json.RawMessage {
+	panic("not implemented")
+}
+
 func (SliceOfInt) Schema() json.RawMessage {
 	panic("not implemented")
 }
@@ -36,6 +47,11 @@ func (NamedSliceType) Schema() json.RawMessage {
 }
 
 func (Person) Schema() json.RawMessage {
+	panic("not implemented")
+}
+
+// PointerToPerson is a named pointer type; see PointerToIntSchema above.
+func PointerToPersonSchema(PointerToPerson) json.RawMessage {
 	panic("not implemented")
 }
 
@@ -64,12 +80,15 @@ func (ComplexStruct) Schema() json.RawMessage {
 // Each type that needs a schema must be registered here.
 var (
 	_ = polytype.Declare(SimpleInt.Schema)
+	_ = polytype.Declare(PointerToIntSchema)
+	_ = polytype.Declare(PointerToSimpleIntSchema)
 	_ = polytype.Declare(SliceOfInt.Schema)
 	_ = polytype.Declare(SliceOfSimpleInt.Schema)
 	_ = polytype.Declare(SliceOfPointerToInt.Schema)
 	_ = polytype.Declare(SliceOfPointerToSimpleInt.Schema)
 	_ = polytype.Declare(NamedSliceType.Schema)
 	_ = polytype.Declare(Person.Schema)
+	_ = polytype.Declare(PointerToPersonSchema)
 	_ = polytype.Declare(SliceOfPerson.Schema)
 	_ = polytype.Declare(SliceOfPointerToPerson.Schema)
 	// COMMENTED OUT: Map types are not yet supported
