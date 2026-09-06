@@ -75,8 +75,9 @@ registrations, and TypeScript declarations:
 //go:generate go tool polytype --validate --typescript web/src/generated --typescript-barrel
 ```
 
-`.Interface` and `.StringerEnum` registrations cause the containing Go
-struct's JSON methods to be generated automatically; there is no codec flag.
+Sealed-interface union fields and `.StringerEnum` registrations cause the
+containing Go struct's JSON methods to be generated automatically; there is no
+codec flag.
 The TypeScript output provides static declarations only, with no runtime decoder
 or validator. Validate untrusted values in the TypeScript application, and call
 the generated Go `ValidateJSON` method before `json.Unmarshal`. Issue

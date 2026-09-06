@@ -85,20 +85,21 @@ marker/runtime package. Generate validation and TypeScript declarations in the
 same run:
 
 ```bash
-go get -tool github.com/tylergannon/polytype/polytype@v1.0.0-rc.5
+go get -tool github.com/tylergannon/polytype/polytype@v1.0.0-rc.8
 ```
 
-This combined surface requires `v1.0.0-rc.5` or newer. `v1.0.0-rc.4` includes
-TypeScript declarations but predates generated owner codecs. Pin the version
-explicitly.
+This combined surface requires `v1.0.0-rc.8` or newer: `v1.0.0-rc.4` includes
+TypeScript declarations but predates generated owner codecs, and releases before
+`v1.0.0-rc.7` predate the marker-based enum and sealed-union registration. Pin
+the version explicitly.
 
 ```go
 //go:generate go tool polytype --validate --typescript web/src/generated --typescript-barrel
 ```
 
-The barrel flag is optional. Registrations such as `.Interface` and
-`.StringerEnum` automatically generate the containing struct's JSON codecs;
-there is no separate codec flag. Run `go generate ./...` and `go mod tidy`, then
+The barrel flag is optional. Sealed-interface union fields and `.StringerEnum`
+registrations automatically generate the containing struct's JSON codecs; there
+is no separate codec flag. Run `go generate ./...` and `go mod tidy`, then
 commit the schema, Go, and requested TypeScript outputs together.
 
 Use `json.Marshal` on the containing Go struct. Validate incoming JSON before

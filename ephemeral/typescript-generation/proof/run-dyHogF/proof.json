@@ -1,0 +1,19 @@
+{
+  "head": "12359fdf47d088c1643eec512bc13f5bfcba2c8c",
+  "workingTree": "M README.md\n M docs/tutorial.mdx\n M examples/enums/jsonschema_gen.go\n M examples/iota_global/jsonschema_gen.go\n M examples/ref_types/jsonschema_gen.go\n M examples/self_contained/jsonschema_gen.go\n M examples/stringer_enums/jsonschema_gen.go\n M examples/template_rendering/jsonschema_gen.go\n M examples/test_options/jsonschema_gen.go\n M internal/builder/enum_marker_test.go\n M internal/builder/gen_schema.go\n M internal/builder/schemas.go.tmpl\n M internal/builder/test_run/test10-v1-enums-stringmode/jsonschema_gen.go\n M internal/builder/test_run/test10-v1-enums-stringmode/jsonschema_gen.go.golden\n M internal/builder/test_run/test11-traversal/remoteenum/types.go\n M internal/builder/test_run/test3-enums/enumsremote/enums.go\n M internal/builder/test_run/test3-enums/jsonschema_gen.go\n M internal/builder/test_run/test4-structs/jsonschema_gen.go\n M internal/builder/test_run/test5-interfaces/jsonschema_gen.go\n M internal/builder/test_run/test5-interfaces/jsonschema_gen.go.golden\n M internal/builder/testfixtures/enums/enumsremote/enums.go\n M internal/builder/testfixtures/interfaces/jsonschema_gen.go.golden\n M internal/builder/testfixtures/traversal/remoteenum/types.go\n M internal/builder/testfixtures/v1_enums_stringmode/jsonschema_gen.go.golden\n M internal/syntax/testfixtures/comments/types.go\n M internal/syntax/testfixtures/typescanner/local_func_defs.go\n M internal/syntax/testfixtures/typescanner/scannersubpkg/remote_func_defs.go\n M llms.txt\n M skills/polytype/SKILL.md\n M skills/polytype/references/registration-api.md\n M tests/typescript/fixture/types.go\n M website/src/content/docs/features/enums.md\n M website/src/content/docs/getting-started.mdx\n?? ephemeral/typescript-generation/proof/run-dyHogF/",
+  "typescript": "6.0.3",
+  "go": "1.27.1",
+  "claims": [
+    "Fresh backend projection output passes exact-literal, empty-module, discriminator, Unicode, and escaping compiler obligations",
+    "CLI generates the requested relative directory and barrel with Node absent from PATH",
+    "JSON Schema and TypeScript share exact typed enum membership and evaluated values",
+    "Absolute paths, deterministic regeneration, and current-output no-change checking work",
+    "Stale TS fails no-change checking without mutation even with unchanged schemas",
+    "Barrel creation, omission, removal, and missing-barrel stale detection work",
+    "An existing user-owned output is preserved with a failing diagnostic",
+    "Actual output passes strict TS positive, negative, narrowing, presence, enum, reference, and composition obligations",
+    "An incomplete discriminated-union switch fails exhaustiveness checking",
+    "Adding a qualifying implementation of the sealed interface breaks a previously complete exhaustive handler",
+    "The generated fresh Go consumer still builds and tests"
+  ]
+}

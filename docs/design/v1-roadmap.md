@@ -10,8 +10,10 @@
 - `NewJSONSchemaFunc` and `NewJSONSchemaBuilder` are implemented generation
   markers, with entrypoint fixture coverage under
   `internal/builder/testfixtures/entrypoints`.
-- `WithEnum`, integer string mode, interface options, and provider rendering
-  are implemented and covered by the current examples and builder tests.
+- Integer string mode and provider rendering are implemented and covered by
+  the current examples and builder tests. The field-level `WithEnum` and
+  interface options listed below were implemented and later removed in
+  v1.0.0-rc.7 in favor of the `func (T) enum()` marker and sealed interfaces.
 - `RenderedSchema()` is runtime schema rendering. Provider-rendered schemas do
   not imply generated static validation or a general-purpose codec.
 - Current release requirements and deliberately unsupported combinations live
