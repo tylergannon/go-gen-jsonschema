@@ -27,3 +27,9 @@ type Issue struct {
 	Priority    Priority `json:"priority"`
 	Severity    Severity `json:"severity"`
 }
+
+// Priority declares itself as an enum; the generator emits its typed constants.
+func (Priority) enum() {}
+
+// Severity declares itself as an enum; the generator emits its typed constants.
+func (Severity) enum() {}

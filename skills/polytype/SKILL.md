@@ -93,8 +93,8 @@ run:
 //go:generate go tool polytype --validate --typescript web/src/generated --typescript-barrel
 ```
 
-The barrel flag is optional. Field registrations such as `.Interface` and
-`.StringerEnum` automatically select JSON codecs on the containing Go struct;
+The barrel flag is optional. Sealed interface fields and `.StringerEnum`
+registrations automatically select JSON codecs on the containing Go struct;
 there is no codec flag. Encode that owner with `json.Marshal`. For incoming JSON,
 call its generated `ValidateJSON` before `json.Unmarshal`.
 
@@ -204,11 +204,13 @@ custom discriminators, free-function registration, shared `$ref`/`$defs` via
 `.Ref()`, and the full CLI/flag reference live in
 [references/registration-api.md](references/registration-api.md). Read it
 when a type uses enums, interfaces, or you need non-default generation flags.
-For stable interface wire values, prefer the cohesive
-`.Interface(field, Discriminator(name), Impl(value, implementation), ...)`
-chain. The legacy split `WithInterface`/`WithInterfaceImpls`/`WithDiscriminator`
-form remains supported and derives discriminator values from Go type names.
-The default discriminator property is `type` for both JSON and YAML. Generation
+Unions are inferred, never declared: an interface with an unexported method is
+sealed, and its variants are the same-package struct types declaring that
+method directly (value receiver = value variant, pointer receiver = pointer
+variant). Non-sealed interface fields fail generation. Discriminator values
+are the concrete type names. The default discriminator property is `type` for
+both JSON and YAML; declare another once per union with
+`polytype.SealedUnion[I](name)` in the package that declares `I`. Generation
 is JSON-only by default; `--formats=both` adds yaml/v4 entry points that
 translate YAML into the JSON data model and reuse the JSON validator and
 decoder. JSON Schema property names and `json` tags are canonical. Go `yaml`

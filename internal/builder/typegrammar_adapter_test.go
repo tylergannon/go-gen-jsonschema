@@ -35,6 +35,8 @@ const (
 	StateMedium State = 4
 )
 
+func (State) enum() {}
+
 // Label is the globally registered label enum.
 type Label string
 
@@ -49,18 +51,22 @@ const LabelLast = Label("la" + "st")
 
 type LabelAlias = Label
 
+func (Label) enum() {}
+
 type Huge uint64
 
 const HugeMax Huge = 18446744073709551615
 
+func (Huge) enum() {}
+
 type Event interface{ event() }
 
 type Created struct {
-	Kind string ` + "`json:\"kind\"`" + `
+	Kind string ` + "`json:\"label\"`" + `
 	Name string ` + "`json:\"name\"`" + `
 }
 
-func (Created) event() {}
+func (*Created) event() {}
 
 type Deleted struct {
 	At *time.Time ` + "`json:\"at\"`" + `
@@ -107,23 +113,11 @@ type Envelope struct {
 func (Envelope) Schema() json.RawMessage { panic("not implemented") }
 
 var (
-	_ = polytype.NewEnumType[Label]()
-	_ = polytype.NewEnumType[LabelAlias]()
 	_ = polytype.NewJSONSchemaMethod(
 		Envelope.Schema,
-		polytype.WithInterface(Envelope{}.Event,
-			polytype.Discriminator("kind"),
-			polytype.Impl("", &Created{}),
-			polytype.Impl("gone", Deleted{}),
-		),
-		polytype.WithInterfaceImpls(Envelope{}.Maybe, &Created{}, Deleted{}),
-		polytype.WithDiscriminator(Envelope{}.Maybe, "kind"),
-		polytype.WithInterfaceImpls(Envelope{}.Events, &Created{}, Deleted{}),
-		polytype.WithDiscriminator(Envelope{}.Events, "kind"),
 		polytype.WithStringerEnum(Envelope{}.State),
-		polytype.WithEnum(Envelope{}.Raw),
-		polytype.WithEnum(Envelope{}.Huge),
 	)
+	_ = polytype.SealedUnion[Event]("kind")
 )
 `
 
@@ -144,9 +138,9 @@ var (
 	require.True(t, ok)
 	require.Equal(t, "kind", direct.Discriminator)
 	require.Len(t, direct.Variants, 2)
-	require.Equal(t, "", direct.Variants[0].Tag)
+	require.Equal(t, "Created", direct.Variants[0].Tag)
 	require.True(t, direct.Variants[0].Pointer)
-	require.Equal(t, "gone", direct.Variants[1].Tag)
+	require.Equal(t, "Deleted", direct.Variants[1].Tag)
 	require.False(t, direct.Variants[1].Pointer)
 
 	_, ok = requireField(t, object.Fields, "maybe").Value.(*typegrammar.OptionalUnion)
@@ -160,10 +154,18 @@ var (
 	require.Equal(t, []string{"StateLow", "StateHigh", "StateUrgent", "StateMedium"}, enumMemberNames(state.Members))
 	require.Equal(t, []string{"0", "1", "8", "4"}, enumMemberValues(state.Members))
 
-	raw := fieldType[*typegrammar.Enum](t, requireField(t, object.Fields, "raw").Value)
+	// Fields of a marked enum type with no field-level declaration refer to
+	// the type's own definition, which is an enum in value mode.
+	rawRef := fieldType[*typegrammar.Ref](t, requireField(t, object.Fields, "raw").Value)
+	require.Equal(t, "State", rawRef.Target.Name)
+	raw, ok := requireDefinition(t, defs, "State").Type.(*typegrammar.Enum)
+	require.True(t, ok)
 	require.Equal(t, typegrammar.EnumValues, raw.Mode)
 	require.Equal(t, []string{"0", "1", "8", "4"}, enumMemberValues(raw.Members))
-	huge := fieldType[*typegrammar.Enum](t, requireField(t, object.Fields, "huge").Value)
+	hugeRef := fieldType[*typegrammar.Ref](t, requireField(t, object.Fields, "huge").Value)
+	require.Equal(t, "Huge", hugeRef.Target.Name)
+	huge, ok := requireDefinition(t, defs, "Huge").Type.(*typegrammar.Enum)
+	require.True(t, ok)
 	require.Equal(t, []string{"18446744073709551615"}, enumMemberValues(huge.Members))
 
 	labels := fieldType[*typegrammar.Slice](t, requireField(t, object.Fields, "labels").Value)
@@ -201,7 +203,7 @@ var (
 	require.Equal(t, []any{"StateLow", "StateHigh", "StateUrgent", "StateMedium"}, rendered.Properties["state"].Enum)
 	require.Equal(t, []any{float64(0), float64(1), float64(8), float64(4)}, rendered.Properties["raw"].Enum)
 	require.Empty(t, rendered.Properties["state"].Description)
-	require.Empty(t, rendered.Properties["raw"].Description)
+	require.Contains(t, rendered.Properties["raw"].Description, "Raw also keeps")
 	require.Equal(t, []any{"first", "last"}, rendered.Properties["labels"].Items.Enum)
 	require.Contains(t, rendered.Properties["labels"].Items.Description, "Label is the globally registered label enum")
 	require.Contains(t, rendered.Properties["labels"].Items.Description, "LabelFirst is the first label")
@@ -314,12 +316,12 @@ func TestTypeDefinitionsSourceAdmissionRejectsInvalidCompositions(t *testing.T) 
 		{
 			name: "interface implementation mismatch",
 			body: `
-type Event interface{ event() }
+type Event interface{ event(); Other() }
 type Wrong struct{}
+func (Wrong) event() {}
 type Root struct { Event Event ` + "`json:\"event\"`" + ` }
 `,
-			options: `, polytype.WithInterface(Root{}.Event, polytype.Impl("wrong", Wrong{}))`,
-			want:    "does not implement Event",
+			want: "does not implement the complete interface",
 		},
 	}
 	for _, test := range tests {

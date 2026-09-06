@@ -107,7 +107,7 @@ func (d Drawing) MarshalJSON() ([]byte, error) {
 	}
 	__raw0 := make([]json.RawMessage, len(d.Shapes))
 	for __index, __value := range d.Shapes {
-		if __raw0[__index], err = __jsonMarshal__uniontypes__Shape__ea82d5632a41bc10399aaab44844c8ddd1c039e0ee3e59f8a59e536b0f8edf71(__value); err != nil {
+		if __raw0[__index], err = __jsonMarshal__uniontypes__Shape__47932c2de6ab4b045f3b027a0ed0585382b4cc8915a3b120f0ce46caa37aa6fd(__value); err != nil {
 			return nil, fmt.Errorf("field shapes[%d]: %w", __index, err)
 		}
 	}
@@ -142,7 +142,7 @@ func (d *Drawing) UnmarshalJSON(data []byte) (err error) {
 			__decoded0 = make([]Shape, len(__raw0))
 		}
 		for __index, __raw := range __raw0 {
-			if __decoded0[__index], err = __jsonUnmarshal__uniontypes__Shape__ea82d5632a41bc10399aaab44844c8ddd1c039e0ee3e59f8a59e536b0f8edf71(__raw); err != nil {
+			if __decoded0[__index], err = __jsonUnmarshal__uniontypes__Shape__47932c2de6ab4b045f3b027a0ed0585382b4cc8915a3b120f0ce46caa37aa6fd(__raw); err != nil {
 				return fmt.Errorf("field shapes[%d]: %w", __index, err)
 			}
 		}
@@ -164,7 +164,7 @@ func (p Payment) MarshalJSON() ([]byte, error) {
 	wrapper := Wrapper{Alias: Alias(p)}
 	var err error
 
-	if wrapper.Method, err = __jsonMarshal__uniontypes__PaymentMethod__35f0beac526a026e44fc812094114ae409174e3c8a1ed356104f07f92e405018(p.Method); err != nil {
+	if wrapper.Method, err = __jsonMarshal__uniontypes__PaymentMethod__3518dd514c46878508abbe640e74edf1421839b778e4ebbe556f02ece6e011e2(p.Method); err != nil {
 		return nil, fmt.Errorf("field method: %w", err)
 	}
 
@@ -186,7 +186,7 @@ func (p *Payment) UnmarshalJSON(data []byte) (err error) {
 	__next := Payment(wrapper.Alias)
 
 	var __decoded0 PaymentMethod
-	if __decoded0, err = __jsonUnmarshal__uniontypes__PaymentMethod__35f0beac526a026e44fc812094114ae409174e3c8a1ed356104f07f92e405018(wrapper.Method); err != nil {
+	if __decoded0, err = __jsonUnmarshal__uniontypes__PaymentMethod__3518dd514c46878508abbe640e74edf1421839b778e4ebbe556f02ece6e011e2(wrapper.Method); err != nil {
 		return err
 	}
 	__next.Method = __decoded0
@@ -195,7 +195,7 @@ func (p *Payment) UnmarshalJSON(data []byte) (err error) {
 	return nil
 }
 
-func __jsonMarshal__uniontypes__Shape__ea82d5632a41bc10399aaab44844c8ddd1c039e0ee3e59f8a59e536b0f8edf71(value Shape) (json.RawMessage, error) {
+func __jsonMarshal__uniontypes__Shape__47932c2de6ab4b045f3b027a0ed0585382b4cc8915a3b120f0ce46caa37aa6fd(value Shape) (json.RawMessage, error) {
 	if value == nil {
 		return nil, fmt.Errorf("cannot marshal nil registered interface Shape")
 	}
@@ -226,7 +226,7 @@ func __jsonMarshal__uniontypes__Shape__ea82d5632a41bc10399aaab44844c8ddd1c039e0e
 	)
 }
 
-func __jsonUnmarshal__uniontypes__Shape__ea82d5632a41bc10399aaab44844c8ddd1c039e0ee3e59f8a59e536b0f8edf71(data []byte) (Shape, error) {
+func __jsonUnmarshal__uniontypes__Shape__47932c2de6ab4b045f3b027a0ed0585382b4cc8915a3b120f0ce46caa37aa6fd(data []byte) (Shape, error) {
 	var (
 		temp          map[string]json.RawMessage
 		discriminator string
@@ -263,7 +263,7 @@ func __jsonUnmarshal__uniontypes__Shape__ea82d5632a41bc10399aaab44844c8ddd1c039e
 		return nil, fmt.Errorf("unknown discriminator: %s", discriminator)
 	}
 }
-func __jsonMarshal__uniontypes__PaymentMethod__35f0beac526a026e44fc812094114ae409174e3c8a1ed356104f07f92e405018(value PaymentMethod) (json.RawMessage, error) {
+func __jsonMarshal__uniontypes__PaymentMethod__3518dd514c46878508abbe640e74edf1421839b778e4ebbe556f02ece6e011e2(value PaymentMethod) (json.RawMessage, error) {
 	if value == nil {
 		return nil, fmt.Errorf("cannot marshal nil registered interface PaymentMethod")
 	}
@@ -273,11 +273,11 @@ func __jsonMarshal__uniontypes__PaymentMethod__35f0beac526a026e44fc812094114ae40
 		discriminator string
 	)
 	switch object := value.(type) {
-	case CreditCard:
-		discriminator = "CreditCard"
-		data, err = json.Marshal(&object)
 	case BankTransfer:
 		discriminator = "BankTransfer"
+		data, err = json.Marshal(&object)
+	case CreditCard:
+		discriminator = "CreditCard"
 		data, err = json.Marshal(&object)
 	case *DigitalWallet:
 		if object == nil {
@@ -297,7 +297,7 @@ func __jsonMarshal__uniontypes__PaymentMethod__35f0beac526a026e44fc812094114ae40
 	)
 }
 
-func __jsonUnmarshal__uniontypes__PaymentMethod__35f0beac526a026e44fc812094114ae409174e3c8a1ed356104f07f92e405018(data []byte) (PaymentMethod, error) {
+func __jsonUnmarshal__uniontypes__PaymentMethod__3518dd514c46878508abbe640e74edf1421839b778e4ebbe556f02ece6e011e2(data []byte) (PaymentMethod, error) {
 	var (
 		temp          map[string]json.RawMessage
 		discriminator string
@@ -312,14 +312,14 @@ func __jsonUnmarshal__uniontypes__PaymentMethod__35f0beac526a026e44fc812094114ae
 		return nil, __jsonschema__unmarshalDiscriminatorError(_tempDiscriminator, err)
 	}
 	switch discriminator {
-	case "CreditCard":
-		var obj CreditCard
+	case "BankTransfer":
+		var obj BankTransfer
 		if err = json.Unmarshal(data, &obj); err != nil {
 			return nil, err
 		}
 		return obj, nil
-	case "BankTransfer":
-		var obj BankTransfer
+	case "CreditCard":
+		var obj CreditCard
 		if err = json.Unmarshal(data, &obj); err != nil {
 			return nil, err
 		}

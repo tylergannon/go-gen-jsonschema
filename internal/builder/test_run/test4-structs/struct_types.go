@@ -60,3 +60,6 @@ type JSONTagNames struct {
 	Untagged        int
 	Ignored         int `json:"-"`
 }
+
+// EnumType123 declares itself as an enum; the generator emits its typed constants.
+func (EnumType123) enum() {}

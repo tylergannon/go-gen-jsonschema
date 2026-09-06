@@ -119,7 +119,7 @@ func run() (transcript, error) {
 		{"defined wrapper", "defined_wrapper", "supported only as the complete type of a direct named struct field"},
 		{"embedded wrapper", "embedded_wrapper", "embedded polytype.Optional is unsupported"},
 		{"wrapper root", "wrapper_root", "supported only as the complete type of a direct named struct field"},
-		{"nullable interface", "nullable_interface", "does not support registered interfaces"},
+		{"nullable interface", "nullable_interface", "does not support sealed interfaces"},
 		{"nullable ref", "nullable_ref", "does not support explicit refs"},
 		{"nullable provider", "nullable_provider", "does not support providers"},
 	}

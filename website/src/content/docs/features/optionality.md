@@ -62,6 +62,8 @@ strict schema because it deliberately removes the property from `required`.
 ```go
 type Mode string
 
+func (Mode) enum() {}
+
 const (
     ModeFast Mode = "fast"
     ModeSafe Mode = "safe"
@@ -75,7 +77,6 @@ type Config struct {
 var (
     _ = polytype.Declare(Shared.Schema).Ref()
     _ = polytype.Declare(Config.Schema)
-    _ = polytype.NewEnumType[Mode]()
 )
 ```
 

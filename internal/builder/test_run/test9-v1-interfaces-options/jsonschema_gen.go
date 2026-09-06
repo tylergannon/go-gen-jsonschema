@@ -152,7 +152,7 @@ func (o Owner) MarshalJSON() ([]byte, error) {
 	wrapper := Wrapper{Alias: Alias(o)}
 	var err error
 
-	if wrapper.IF, err = __jsonMarshal__v1_interfaces_options__IFace__218733b0d0695363e3ce194c56cdb43634691f925eea0b25d90bb64ede5acea4(o.IF); err != nil {
+	if wrapper.IF, err = __jsonMarshal__v1_interfaces_options__IFace__6af605dbb1d39d3a8bf61c632fa0f85e2b2d752230aeb3822843f2fa9b62d5b5(o.IF); err != nil {
 		return nil, fmt.Errorf("field if: %w", err)
 	}
 
@@ -161,7 +161,7 @@ func (o Owner) MarshalJSON() ([]byte, error) {
 	}
 	__raw1 := make([]json.RawMessage, len(o.IFaces))
 	for __index, __value := range o.IFaces {
-		if __raw1[__index], err = __jsonMarshal__v1_interfaces_options__IFace__4742a807f290a221c5481f5139538746db2a56ef05677d116ea24da4abb1edf1(__value); err != nil {
+		if __raw1[__index], err = __jsonMarshal__v1_interfaces_options__IFace__6af605dbb1d39d3a8bf61c632fa0f85e2b2d752230aeb3822843f2fa9b62d5b5(__value); err != nil {
 			return nil, fmt.Errorf("field ifs[%d]: %w", __index, err)
 		}
 	}
@@ -170,7 +170,7 @@ func (o Owner) MarshalJSON() ([]byte, error) {
 	}
 
 	if o.OptionalIF.Present {
-		if wrapper.OptionalIF, err = __jsonMarshal__v1_interfaces_options__IFace__4742a807f290a221c5481f5139538746db2a56ef05677d116ea24da4abb1edf1(o.OptionalIF.Value); err != nil {
+		if wrapper.OptionalIF, err = __jsonMarshal__v1_interfaces_options__IFace__6af605dbb1d39d3a8bf61c632fa0f85e2b2d752230aeb3822843f2fa9b62d5b5(o.OptionalIF.Value); err != nil {
 			return nil, fmt.Errorf("field optional_if: %w", err)
 		}
 	}
@@ -195,7 +195,7 @@ func (o *Owner) UnmarshalJSON(data []byte) (err error) {
 	__next := Owner(wrapper.Alias)
 
 	var __decoded0 IFace
-	if __decoded0, err = __jsonUnmarshal__v1_interfaces_options__IFace__218733b0d0695363e3ce194c56cdb43634691f925eea0b25d90bb64ede5acea4(wrapper.IF); err != nil {
+	if __decoded0, err = __jsonUnmarshal__v1_interfaces_options__IFace__6af605dbb1d39d3a8bf61c632fa0f85e2b2d752230aeb3822843f2fa9b62d5b5(wrapper.IF); err != nil {
 		return err
 	}
 	__next.IF = __decoded0
@@ -210,7 +210,7 @@ func (o *Owner) UnmarshalJSON(data []byte) (err error) {
 			__decoded1 = make([]IFace, len(__raw1))
 		}
 		for __index, __raw := range __raw1 {
-			if __decoded1[__index], err = __jsonUnmarshal__v1_interfaces_options__IFace__4742a807f290a221c5481f5139538746db2a56ef05677d116ea24da4abb1edf1(__raw); err != nil {
+			if __decoded1[__index], err = __jsonUnmarshal__v1_interfaces_options__IFace__6af605dbb1d39d3a8bf61c632fa0f85e2b2d752230aeb3822843f2fa9b62d5b5(__raw); err != nil {
 				return fmt.Errorf("field ifs[%d]: %w", __index, err)
 			}
 		}
@@ -219,7 +219,7 @@ func (o *Owner) UnmarshalJSON(data []byte) (err error) {
 
 	if len(wrapper.OptionalIF) > 0 {
 		var __decoded2 IFace
-		if __decoded2, err = __jsonUnmarshal__v1_interfaces_options__IFace__4742a807f290a221c5481f5139538746db2a56ef05677d116ea24da4abb1edf1(wrapper.OptionalIF); err != nil {
+		if __decoded2, err = __jsonUnmarshal__v1_interfaces_options__IFace__6af605dbb1d39d3a8bf61c632fa0f85e2b2d752230aeb3822843f2fa9b62d5b5(wrapper.OptionalIF); err != nil {
 			return err
 		}
 		__next.OptionalIF.Value = __decoded2
@@ -259,67 +259,7 @@ func (p *Plain) UnmarshalYAML(node *yaml.Node) error {
 	*p = next
 	return nil
 }
-func __jsonMarshal__v1_interfaces_options__IFace__218733b0d0695363e3ce194c56cdb43634691f925eea0b25d90bb64ede5acea4(value IFace) (json.RawMessage, error) {
-	if value == nil {
-		return nil, fmt.Errorf("cannot marshal nil registered interface IFace")
-	}
-	var (
-		data          []byte
-		err           error
-		discriminator string
-	)
-	switch object := value.(type) {
-	case Impl1:
-		discriminator = "impl_one"
-		data, err = json.Marshal(&object)
-	case Impl2:
-		discriminator = "impl \"two\""
-		data, err = json.Marshal(&object)
-	default:
-		return nil, fmt.Errorf("unregistered dynamic implementation %T for IFace", value)
-	}
-	if err != nil {
-		return nil, fmt.Errorf("marshal registered implementation %T for IFace: %w", value, err)
-	}
-	return __jsonschema__marshalUnionObject(data,
-		"!kind",
-		discriminator,
-	)
-}
-
-func __jsonUnmarshal__v1_interfaces_options__IFace__218733b0d0695363e3ce194c56cdb43634691f925eea0b25d90bb64ede5acea4(data []byte) (IFace, error) {
-	var (
-		temp          map[string]json.RawMessage
-		discriminator string
-		err           = json.Unmarshal(data, &temp)
-	)
-
-	if err != nil {
-		return nil, err
-	} else if _tempDiscriminator, ok := temp["!kind"]; !ok {
-		// per-field discriminator property
-		return nil, fmt.Errorf("no discriminator property '%s' found", "!kind")
-	} else if discriminator, err = __jsonschema__decodeDiscriminator(_tempDiscriminator); err != nil {
-		return nil, __jsonschema__unmarshalDiscriminatorError(_tempDiscriminator, err)
-	}
-	switch discriminator {
-	case "impl_one":
-		var obj Impl1
-		if err = json.Unmarshal(data, &obj); err != nil {
-			return nil, err
-		}
-		return obj, nil
-	case "impl \"two\"":
-		var obj Impl2
-		if err = json.Unmarshal(data, &obj); err != nil {
-			return nil, err
-		}
-		return obj, nil
-	default:
-		return nil, fmt.Errorf("unknown discriminator: %s", discriminator)
-	}
-}
-func __jsonMarshal__v1_interfaces_options__IFace__4742a807f290a221c5481f5139538746db2a56ef05677d116ea24da4abb1edf1(value IFace) (json.RawMessage, error) {
+func __jsonMarshal__v1_interfaces_options__IFace__6af605dbb1d39d3a8bf61c632fa0f85e2b2d752230aeb3822843f2fa9b62d5b5(value IFace) (json.RawMessage, error) {
 	if value == nil {
 		return nil, fmt.Errorf("cannot marshal nil registered interface IFace")
 	}
@@ -347,7 +287,7 @@ func __jsonMarshal__v1_interfaces_options__IFace__4742a807f290a221c5481f51395387
 	)
 }
 
-func __jsonUnmarshal__v1_interfaces_options__IFace__4742a807f290a221c5481f5139538746db2a56ef05677d116ea24da4abb1edf1(data []byte) (IFace, error) {
+func __jsonUnmarshal__v1_interfaces_options__IFace__6af605dbb1d39d3a8bf61c632fa0f85e2b2d752230aeb3822843f2fa9b62d5b5(data []byte) (IFace, error) {
 	var (
 		temp          map[string]json.RawMessage
 		discriminator string

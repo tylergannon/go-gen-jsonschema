@@ -1,0 +1,220 @@
+package builder
+
+import (
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+)
+
+// writeSealedUnionFixture writes a package whose only registration is a bare
+// Declare(Zoo.Schema), so every union in it must be inferred from the
+// interface's sealing method alone.
+func writeSealedUnionFixture(t *testing.T, types string) string {
+	t.Helper()
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+	targetDir, err := os.MkdirTemp(filepath.Join(cwd, "testfixtures"), "sealed_union_")
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, os.RemoveAll(targetDir)) })
+	require.NoError(t, os.WriteFile(filepath.Join(targetDir, "types.go"), []byte("package fixture\n\n"+types), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(targetDir, "schema.go"), []byte(`//go:build jsonschema
+
+package fixture
+
+import (
+	"encoding/json"
+	"github.com/tylergannon/polytype"
+)
+
+func (Zoo) Schema() json.RawMessage { panic("not implemented") }
+var _ = polytype.Declare(Zoo.Schema)
+`), 0o644))
+	return targetDir
+}
+
+const sealedZooTypes = `type Animal interface {
+	isAnimal()
+}
+
+type Dog struct {
+	Name string ` + "`json:\"name\"`" + `
+}
+
+func (Dog) isAnimal() {}
+
+type Cat struct {
+	Name string ` + "`json:\"name\"`" + `
+}
+
+func (*Cat) isAnimal() {}
+
+type Zoo struct {
+	Resident Animal ` + "`json:\"resident\"`" + `
+}
+`
+
+// TestSealedUnionInferredFromSealingMethod is the issue #87 acceptance
+// example: a single Declare(Zoo.Schema) yields a union of Dog (value
+// variant) and Cat (pointer variant) discriminated by "type" with the
+// concrete type names as values, with no field-level declaration.
+func TestSealedUnionInferredFromSealingMethod(t *testing.T) {
+	targetDir := writeSealedUnionFixture(t, sealedZooTypes)
+	require.NoError(t, Run(BuilderArgs{TargetDir: targetDir}))
+	require.Equal(t, []string{"Cat", "Dog"}, unionDiscriminators(t, targetDir, "Zoo", "resident", "type"))
+
+	generated, err := os.ReadFile(filepath.Join(targetDir, "jsonschema_gen.go"))
+	require.NoError(t, err)
+	// The codec constructs each variant according to its receiver kind.
+	require.Contains(t, string(generated), "case \"Dog\":")
+	require.Contains(t, string(generated), "case \"Cat\":")
+	require.Contains(t, string(generated), "*Cat")
+}
+
+// TestSealedUnionMembershipDrift is the membership-drift golden: the exact
+// discriminator list for a representative union is pinned, so adding a
+// qualifying implementation or renaming a variant changes the generated
+// schema and is visible in review.
+func TestSealedUnionMembershipDrift(t *testing.T) {
+	targetDir := writeSealedUnionFixture(t, sealedZooTypes)
+	require.NoError(t, Run(BuilderArgs{TargetDir: targetDir}))
+	require.Equal(t, []string{"Cat", "Dog"}, unionDiscriminators(t, targetDir, "Zoo", "resident", "type"))
+
+	added := sealedZooTypes + `
+type Bird struct {
+	Wingspan int ` + "`json:\"wingspan\"`" + `
+}
+
+func (Bird) isAnimal() {}
+`
+	require.NoError(t, os.WriteFile(filepath.Join(targetDir, "types.go"), []byte("package fixture\n\n"+added), 0o644))
+	require.NoError(t, Run(BuilderArgs{TargetDir: targetDir}))
+	require.Equal(t, []string{"Bird", "Cat", "Dog"}, unionDiscriminators(t, targetDir, "Zoo", "resident", "type"))
+
+	renamed := strings.ReplaceAll(sealedZooTypes, "Dog", "Hound")
+	require.NoError(t, os.WriteFile(filepath.Join(targetDir, "types.go"), []byte("package fixture\n\n"+renamed), 0o644))
+	require.NoError(t, Run(BuilderArgs{TargetDir: targetDir}))
+	require.Equal(t, []string{"Cat", "Hound"}, unionDiscriminators(t, targetDir, "Zoo", "resident", "type"))
+}
+
+// TestSealedUnionDiagnosticsNameTheType covers every negative rule from
+// issue #87. Each diagnostic names the offending type or field and nothing
+// is written.
+func TestSealedUnionDiagnosticsNameTheType(t *testing.T) {
+	for _, test := range []struct {
+		name  string
+		types string
+		want  []string
+	}{
+		{
+			name: "reachable non-sealed interface",
+			types: `type Animal interface { Speak() string }
+type Dog struct { Name string ` + "`json:\"name\"`" + ` }
+func (Dog) Speak() string { return "woof" }
+type Zoo struct { Resident Animal ` + "`json:\"resident\"`" + ` }
+`,
+			want: []string{"field Zoo.Resident at ", "interface Animal at ", "is not sealed"},
+		},
+		{
+			name: "sealing method obtained by embedding",
+			types: `type sealed interface { isAnimal() }
+type Animal interface { sealed }
+type Dog struct { Name string ` + "`json:\"name\"`" + ` }
+func (Dog) isAnimal() {}
+type Zoo struct { Resident Animal ` + "`json:\"resident\"`" + ` }
+`,
+			want: []string{"field Zoo.Resident at ", "interface Animal at ", "acquires its sealing method isAnimal by embedding"},
+		},
+		{
+			name: "variant excluded for inheriting the sealing method",
+			types: `type Animal interface { isAnimal() }
+type Dog struct { Name string ` + "`json:\"name\"`" + ` }
+func (Dog) isAnimal() {}
+type Puppy struct {
+	Dog
+	Age int ` + "`json:\"age\"`" + `
+}
+type Zoo struct { Resident Animal ` + "`json:\"resident\"`" + ` }
+`,
+			want: []string{"type Puppy satisfies sealed interface Animal", "only through an embedded field and is excluded"},
+		},
+		{
+			name: "zero supported variants",
+			types: `type Animal interface { isAnimal() }
+type Zoo struct { Resident Animal ` + "`json:\"resident\"`" + ` }
+`,
+			want: []string{"field Zoo.Resident at ", "sealed interface Animal at ", "has no supported variants"},
+		},
+		{
+			name: "invalid direct candidate that does not implement the complete interface",
+			types: `type Animal interface { isAnimal(); Speak() string }
+type Dog struct { Name string ` + "`json:\"name\"`" + ` }
+func (Dog) isAnimal() {}
+func (*Dog) Speak() string { return "woof" }
+type Zoo struct { Resident Animal ` + "`json:\"resident\"`" + ` }
+`,
+			want: []string{"type Dog declares the sealing method of Animal", "Dog does not implement the complete interface"},
+		},
+		{
+			name: "embedded interface payload",
+			types: `type Animal interface { isAnimal() }
+type Dog struct { Name string ` + "`json:\"name\"`" + ` }
+func (Dog) isAnimal() {}
+type Zoo struct {
+	Animal
+	Name string ` + "`json:\"name\"`" + `
+}
+`,
+			want: []string{"embedded interface Animal at ", "is unsupported as a payload"},
+		},
+		{
+			name: "discriminator payload collision",
+			types: `type Animal interface { isAnimal() }
+type Dog struct {
+	Type string ` + "`json:\"type\"`" + `
+	Name string ` + "`json:\"name\"`" + `
+}
+func (Dog) isAnimal() {}
+type Zoo struct { Resident Animal ` + "`json:\"resident\"`" + ` }
+`,
+			want: []string{"variant Dog of sealed interface Animal", `payload property "type" that collides with the discriminator property`},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			targetDir := writeSealedUnionFixture(t, test.types)
+			err := Run(BuilderArgs{TargetDir: targetDir})
+			require.Error(t, err)
+			for _, want := range test.want {
+				require.ErrorContains(t, err, want)
+			}
+			_, statErr := os.Stat(filepath.Join(targetDir, "jsonschema_gen.go"))
+			require.True(t, os.IsNotExist(statErr), "generation must not write output on a sealed-union diagnostic")
+		})
+	}
+}
+
+// unionDiscriminators reads the generated schema for owner and returns the
+// discriminator const of every anyOf option under property, in order.
+func unionDiscriminators(t *testing.T, targetDir, owner, property, discriminator string) []string {
+	t.Helper()
+	data, err := os.ReadFile(filepath.Join(targetDir, "jsonschema", owner+".json"))
+	require.NoError(t, err)
+	var schema struct {
+		Properties map[string]struct {
+			AnyOf []struct {
+				Properties map[string]struct {
+					Const string `json:"const"`
+				} `json:"properties"`
+			} `json:"anyOf"`
+		} `json:"properties"`
+	}
+	require.NoError(t, json.Unmarshal(data, &schema))
+	var values []string
+	for _, option := range schema.Properties[property].AnyOf {
+		values = append(values, option.Properties[discriminator].Const)
+	}
+	return values
+}

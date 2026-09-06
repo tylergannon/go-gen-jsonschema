@@ -18,3 +18,6 @@ type Task struct {
 	Name     string   `json:"name"`
 	Priority Priority `json:"priority"`
 }
+
+// Priority declares itself as an enum; the generator emits its typed constants.
+func (Priority) enum() {}

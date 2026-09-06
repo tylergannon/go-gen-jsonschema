@@ -38,3 +38,6 @@ type Paint struct {
 	Finish   Finish                   `json:"finish"`
 	Remote   palette.Level            `json:"remote"`
 }
+
+// Color declares itself as an enum; the generator emits its typed constants.
+func (Color) enum() {}

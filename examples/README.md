@@ -56,7 +56,7 @@ String-based enums with explicit values.
 #### `enums_stringmode/`
 Alternative enum handling with string mode.
 - String representation of numeric enums
-- V1 API enum configuration
+- `.StringerEnum` field configuration
 
 #### `stringer_enums/`
 Integer enums with fmt.Stringer implementation.
@@ -65,24 +65,22 @@ Integer enums with fmt.Stringer implementation.
 - Enum validation
 
 #### `iota_global/`
-Global iota enum example.
-- Package-level iota constants
-- Enum value detection
+Integer iota enum example.
+- Package-level iota constants marked with `func (T) enum()`
+- Integer enum values
 
 ### Interface & Union Types
 
 #### `uniontypes/`
-Discriminated union types using Go interfaces.
-- Interface-based type unions
-- Multiple implementations
-- Discriminator properties
+Discriminated union types using sealed Go interfaces.
+- Inferred membership from the sealing method
+- Value and pointer variants
 - Direct scalar and slice fields
 
 #### `interfaces_options/`
-Advanced interface configuration with V1 API.
-- Custom interface implementations
-- Discriminator configuration
-- Implementation registration
+Minimal sealed interface with a custom discriminator.
+- Inferred union membership
+- `SealedUnion[IFace]("!kind")` discriminator declaration
 
 #### `sealed_interface_slices/`
 Direct slices of registered interface unions.
@@ -131,6 +129,7 @@ var _ = polytype.Declare(MyType.Schema)
 ### Enum Registration
 ```go
 type Status string
+func (Status) enum() {}
 const (
     StatusPending Status = "pending"
     StatusActive  Status = "active"
@@ -138,19 +137,21 @@ const (
 type Task struct{ Status Status }
 func (Task) Schema() json.RawMessage { panic("not implemented") }
 
-var _ = polytype.Declare(Task.Schema).Enum(Task{}.Status)
+var _ = polytype.Declare(Task.Schema)
 ```
 
-### Interface/Union Type Registration
+### Sealed Interface/Union Types
 ```go
-type Shape interface{ /* methods */ }
+type Shape interface{ isShape() }        // sealed by the unexported method
 type Circle struct{ /* fields */ }
+func (Circle) isShape() {}               // value variant, wire value "Circle"
 type Rectangle struct{ /* fields */ }
+func (*Rectangle) isShape() {}           // pointer variant, wire value "Rectangle"
 type Owner struct{ Shape Shape }
 func (Owner) Schema() json.RawMessage { panic("not implemented") }
 
-var _ = polytype.Declare(Owner.Schema).
-    Interface(Owner{}.Shape, polytype.Impl("circle", Circle{}), polytype.Impl("rectangle", Rectangle{}))
+var _ = polytype.Declare(Owner.Schema)   // membership is inferred
+var _ = polytype.SealedUnion[Shape]("kind") // optional; default property is "type"
 ```
 
 ### Provider-Based Schema Generation

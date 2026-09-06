@@ -35,3 +35,6 @@ type NullableConfig struct {
 	Mode   polytype.Nullable[Mode]   `json:"mode"`
 	Shared polytype.Nullable[Shared] `json:"shared"`
 }
+
+// Mode declares itself as an enum; the generator emits its typed constants.
+func (Mode) enum() {}

@@ -44,7 +44,7 @@ func (b Batch) MarshalJSON() ([]byte, error) {
 	}
 	__raw0 := make([]json.RawMessage, len(b.Events))
 	for __index, __value := range b.Events {
-		if __raw0[__index], err = __jsonMarshal__sealed_interface_slices__Event__3aa77891acd4489057e60e90c753c3882dd13b6daf79003e69c32598e37e8923(__value); err != nil {
+		if __raw0[__index], err = __jsonMarshal__sealed_interface_slices__Event__80f7ceda90c597aaba537b676c5fe3ceac0533d4ae4d871a0455c7d08043a461(__value); err != nil {
 			return nil, fmt.Errorf("field events[%d]: %w", __index, err)
 		}
 	}
@@ -79,7 +79,7 @@ func (b *Batch) UnmarshalJSON(data []byte) (err error) {
 			__decoded0 = make([]Event, len(__raw0))
 		}
 		for __index, __raw := range __raw0 {
-			if __decoded0[__index], err = __jsonUnmarshal__sealed_interface_slices__Event__3aa77891acd4489057e60e90c753c3882dd13b6daf79003e69c32598e37e8923(__raw); err != nil {
+			if __decoded0[__index], err = __jsonUnmarshal__sealed_interface_slices__Event__80f7ceda90c597aaba537b676c5fe3ceac0533d4ae4d871a0455c7d08043a461(__raw); err != nil {
 				return fmt.Errorf("field events[%d]: %w", __index, err)
 			}
 		}
@@ -90,7 +90,7 @@ func (b *Batch) UnmarshalJSON(data []byte) (err error) {
 	return nil
 }
 
-func __jsonMarshal__sealed_interface_slices__Event__3aa77891acd4489057e60e90c753c3882dd13b6daf79003e69c32598e37e8923(value Event) (json.RawMessage, error) {
+func __jsonMarshal__sealed_interface_slices__Event__80f7ceda90c597aaba537b676c5fe3ceac0533d4ae4d871a0455c7d08043a461(value Event) (json.RawMessage, error) {
 	if value == nil {
 		return nil, fmt.Errorf("cannot marshal nil registered interface Event")
 	}
@@ -121,7 +121,7 @@ func __jsonMarshal__sealed_interface_slices__Event__3aa77891acd4489057e60e90c753
 	)
 }
 
-func __jsonUnmarshal__sealed_interface_slices__Event__3aa77891acd4489057e60e90c753c3882dd13b6daf79003e69c32598e37e8923(data []byte) (Event, error) {
+func __jsonUnmarshal__sealed_interface_slices__Event__80f7ceda90c597aaba537b676c5fe3ceac0533d4ae4d871a0455c7d08043a461(data []byte) (Event, error) {
 	var (
 		temp          map[string]json.RawMessage
 		discriminator string

@@ -5,15 +5,19 @@ custom discriminators, free functions — or when you need exact CLI flags.
 
 ## Enums
 
-### String enums — `Enum`
+### Declare the enum on the type — `func (T) enum()`
 
-Values are auto-discovered from `const` declarations of the named type (the
-consts must live in the same package as the type). No separate registration of
-the enum type is needed:
+Enum-ness is a property of the type. Add the marker method `func (T) enum() {}`
+to the named type in ordinary (non-build-tagged) Go. Values are the typed
+`const` declarations of that type in the same package, and every use of the
+type — in every schema, codec, and TypeScript output — is an enum. There is no
+field-level enum declaration:
 
 ```go
 // types.go
 type Status string
+
+func (Status) enum() {}
 
 const (
     StatusPending    Status = "pending"
@@ -29,21 +33,34 @@ type Task struct {
 
 ```go
 // schema.go (//go:build jsonschema)
-var _ = polytype.Declare(Task.Schema).
-    Enum(Task{}.Status)
+var _ = polytype.Declare(Task.Schema)
 ```
 
 Produces `"status": {"type": "string", "enum": ["pending", "in_progress", "completed"]}`.
 
+The marker must be exactly `func (T) enum()` (value receiver, no parameters,
+no results); anything else on a method named `enum`, or a marked type with
+no typed constants, fails generation with a diagnostic naming the type. The
+marker means value mode — a `String()` method on a marked type is ignored.
+
+The generated file references every marked type in its package as
+`var _ interface{ enum() } = *new(T)`, so the marker is used from production
+code, its shape is checked by the compiler, and `staticcheck` stays quiet
+with no lint directives. A package that declares a marked enum but never
+runs generation (a shared enums package, say) needs that one line written
+by hand, once per package.
+
 ### Integer (iota) enums — `StringerEnum`
 
-`StringerEnum` emits the **constant names** as string enum values
-(`["LogDebug", "LogInfo", ...]`); plain `Enum` on an int type would emit
-the integers (`[0, 1, ...]`). Prefer the Stringer form for LLMs — names carry
-meaning, integers don't:
+A marked integer type emits its integers (`[0, 1, ...]`). `.StringerEnum` on
+a field emits the **constant names** as string enum values
+(`["LogDebug", "LogInfo", ...]`) for that field. Prefer the Stringer form for
+LLMs — names carry meaning, integers don't:
 
 ```go
 type LogLevel int
+
+func (LogLevel) enum() {}
 
 const (
     LogDebug LogLevel = iota
@@ -58,8 +75,8 @@ var _ = polytype.Declare(Config.Schema).
 
 String mode generates codecs on the containing owner, composing with any
 union fields. Marshal the owner value or pointer and decode into its pointer;
-the same enum can still use numeric `Enum` in another field. Do not add a
-global enum codec. Supported adapted fields are direct `E`, `Optional[E]`, and
+the same marked enum type still emits integers in any other field. Do not
+add a global enum codec. Supported adapted fields are direct `E`, `Optional[E]`, and
 `Nullable[E]`: absent/null wrappers bypass conversion, and present values use
 constant identifiers. Unknown names/values, undeclared zero, ambiguous aliases,
 custom enum JSON hooks, and other adapted containers are errors. Validate
@@ -67,20 +84,21 @@ external input before decoding for required-field and schema checks.
 Registered enum fields cannot use `json:",string"`; generation rejects that
 option before writing artifacts because its encoding differs from the schema.
 
-`.Enum`/`.StringerEnum` are not a full replacement for the legacy
-package-level `NewEnumType[T]()` when the enum type is shared across more
-than one struct field: they only support a direct named enum, `Optional[E]`,
-or `Nullable[E]` field, and annotating only some occurrences of a shared enum
-type silently degrades the ones left unmarked (lost constraint, lost shared
-TypeScript type). Keep a shared enum type on `NewEnumType[T]()`; it has no
-fluent replacement.
+Migration: `.Enum(field)`, `WithEnum(field)`, and the package-level
+`NewEnumType[T]()` are removed. Add `func (T) enum() {}` next to the type and
+delete those declarations; `.StringerEnum`/`WithStringerEnum` are unchanged.
 
-## Discriminated unions (interface fields)
+## Discriminated unions (sealed interface fields)
 
-An interface-typed field becomes a union (`anyOf`) of its registered
-implementations, discriminated by a `"type"` property. A direct
-one-dimensional slice field (`[]PaymentMethod`) becomes an array whose `items`
-contains that union. The generator emits owner `MarshalJSON` and `UnmarshalJSON` by default. Pass
+A field whose type is a **sealed interface** becomes an `anyOf` union of the
+interface's variants, discriminated by a `"type"` property whose value is the
+concrete type name. An interface is sealed when its own body declares an
+unexported method; its variants are inferred: every named struct type in the
+same package that declares that method directly. The receiver of the sealing
+method decides the variant kind: a value receiver is a value variant, a
+pointer receiver is a pointer variant, and decoding constructs the variant
+accordingly. Nothing is declared at the field. A direct one-dimensional slice
+of the interface becomes an array with the union under `items.anyOf`. The generator emits owner `MarshalJSON` and `UnmarshalJSON` by default. Pass
 `--formats=both` to add `go.yaml.in/yaml/v4` entry points for scalar values and
 every slice element. YAML is translated into the JSON data model and decoded
 through the same implementation. Both syntaxes use `type` as the default
@@ -90,19 +108,19 @@ custom `UnmarshalJSON` hooks remain authoritative.
 
 ```go
 // types.go
-type PaymentMethod interface{ IsPaymentMethod() }
+type PaymentMethod interface{ isPaymentMethod() } // sealed by the unexported method
 
 type CreditCard struct {
     Number string `json:"number"`
     Expiry string `json:"expiry"`
 }
-func (CreditCard) IsPaymentMethod() {}
+func (CreditCard) isPaymentMethod() {}   // value variant, wire value "CreditCard"
 
 type BankTransfer struct {
     AccountNumber string `json:"accountNumber"`
     RoutingNumber string `json:"routingNumber"`
 }
-func (BankTransfer) IsPaymentMethod() {}
+func (*BankTransfer) isPaymentMethod() {} // pointer variant, wire value "BankTransfer"
 
 type Payment struct {
     ID      string          `json:"id"`
@@ -110,34 +128,54 @@ type Payment struct {
 }
 ```
 
-Preferred per-field registration:
-
 ```go
 // schema.go (//go:build jsonschema)
-var _ = polytype.Declare(Payment.Schema).
-    Interface(
-        Payment{}.Methods,
-        polytype.Discriminator("!kind"), // optional; default "type"
-        polytype.Impl("credit_card", CreditCard{}),
-        polytype.Impl("bank_transfer", BankTransfer{}),
-    )
+var _ = polytype.Declare(Payment.Schema)
 ```
 
-`Impl` binds each implementation to a stable wire discriminator used by both
-the generated schema and owner encode/decode methods. Without explicit `Impl`
-values, discriminators derive from Go type names.
+Rejected with a diagnostic naming the type or field: a reachable interface
+field whose interface is not sealed (non-sealed unions are unsupported; there
+is no fallback), a sealing method obtained only by embedding another
+interface, a type that satisfies the interface only through an embedded field
+(excluded, distinct diagnostic), a direct candidate that does not implement
+the complete interface, a sealed interface with zero variants, an embedded
+interface payload, and a variant payload property that collides with the
+discriminator property. Variants behind other build tags are not discovered.
+Renaming a variant type changes its wire value and adding a qualifying
+implementation changes membership: review schema diffs.
+
+### Custom discriminator — `SealedUnion[I](name)`
+
+The discriminator property is a property of the union, never of a field. A
+union has one codec, so it has one discriminator. The default `"type"` needs
+no declaration; to use another property, declare it once, in the build-tagged
+file of the package that declares the interface:
+
+```go
+//go:build jsonschema
+
+var _ = polytype.SealedUnion[PaymentMethod]("kind")
+```
+
+Every use of `PaymentMethod` in every generated schema, codec, and TypeScript
+output now discriminates on `"kind"`; nothing changes at any field, and the
+values are still the concrete type names. The argument must be a string
+literal naming a nonempty property. A declaration in another package, a
+duplicate declaration, a declaration for a non-sealed interface or a
+non-interface type, a non-literal argument, an invalid property name, or a
+variant payload property colliding with the declared name is a generation
+error naming the interface.
+
+Migration: `.Interface(...)`, `WithInterface`, `WithInterfaceImpls`,
+`WithDiscriminator`, `Impl`, `Discriminator`, and `NewInterfaceImpl[I]` are
+removed. Seal the interface with an unexported method declared directly on
+every variant, delete the field-level declaration, and move a custom
+discriminator property to one `SealedUnion[I](name)` declaration in the
+interface's package.
 
 The slice must be the direct field type. Fixed arrays, nested slices, named
 slice containers, `Optional[[]I]`, and `Nullable[[]I]` are rejected during
 generation. An `Optional[I]` scalar is supported; `Nullable[I]` is not.
-
-Migration: `NewJSONSchemaMethod(Payment.Schema, WithInterface(Payment{}.Methods,
-Impl(...), ...))` is now `Declare(Payment.Schema).Interface(Payment{}.Methods,
-Impl(...), ...)`. `NewJSONSchemaMethod`/`NewJSONSchemaFunc` with `With*`
-options, the split `WithInterface`/`WithInterfaceImpls`/`WithDiscriminator`
-options, and the package-level `NewInterfaceImpl[I](impls...)` remain
-supported and source-compatible; each carries a `Deprecated:` godoc comment
-naming its fluent equivalent.
 
 ## Full registration surface
 
@@ -148,17 +186,20 @@ returned `*Declaration[T]`:
 - `.Accessor(field, T.method)` / `.Method(field, T.method)` / `.Function(field, fn)`
   — provider options: supply a field's schema at runtime instead of deriving
   it statically (see [`examples/providers_rendering`](../../../examples/providers_rendering)).
-- `.Enum(field)` / `.StringerEnum(field)` — enum options.
-- `.Interface(field, Discriminator(name), Impl(value, implementation), ...)` —
-  sealed-interface options.
+- `.StringerEnum(field)` — emit an integer enum field's constant names.
+  (Enum types themselves are declared with `func (T) enum()`, not here.)
 - `.Ref()` — render this type as `"$ref"` wherever it's referenced (see below).
 - `.RenderProviders()` — generate `RenderedSchema()` and run providers at
   runtime (advanced; rendered types get no `ValidateJSON` because their
   schemas depend on runtime values).
 
+Package-level, not chained: `polytype.SealedUnion[I](name)` sets the
+discriminator property of the sealed interface `I`, once, in `I`'s own
+package.
+
 `NewJSONSchemaMethod(T.Schema, ...opts)` / `NewJSONSchemaFunc(fn, ...opts)`
-with their `With*` options, and the legacy `NewEnumType[T]()` /
-`NewInterfaceImpl[I](impls...)`, remain supported for source compatibility.
+with their remaining `With*` options remain supported for source
+compatibility.
 
 Nested struct types are **inlined** into the parent schema (no `$ref`) by
 default, so a shared Address struct appears in full wherever it is used —
@@ -244,8 +285,8 @@ mypackage/
 
 Generate validation and TypeScript declarations together with
 `--validate --typescript web/src/generated`; add `--typescript-barrel` when an
-`index.ts` type-only export is useful. `.Interface` and `.StringerEnum`
-select the containing Go struct's JSON codecs automatically. TypeScript output
+`index.ts` type-only export is useful. Sealed interface fields and
+`.StringerEnum` select the containing Go struct's JSON codecs automatically. TypeScript output
 does not include a runtime decoder or validator: applications must validate
 untrusted TypeScript-side data, and Go consumers should call generated
 `ValidateJSON` before `json.Unmarshal`. Pin the tool and imported package to the
@@ -264,4 +305,5 @@ If generation fails:
 1. Every type referenced in `schema.go` must exist in the package's Go source.
 2. Check the build tag is exactly `//go:build jsonschema` on `schema.go`.
 3. Look for circular references between types.
-4. Enum consts must be declared in the same package as the enum type.
+4. Enum consts must be declared in the same package as the enum type, and
+   the type must declare `func (T) enum() {}`.

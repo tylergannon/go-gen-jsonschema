@@ -29,3 +29,6 @@ type SliceOfRemoteEnumType []enumsremote.RemoteEnumType
 
 // SliceOfPointerToRemoteEnum is a slice of pointers to the remote enum type
 type SliceOfPointerToRemoteEnum []*enumsremote.RemoteEnumType
+
+// EnumType declares itself as an enum; the generator emits its typed constants.
+func (EnumType) enum() {}

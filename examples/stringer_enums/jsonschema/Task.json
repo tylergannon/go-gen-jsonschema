@@ -2,6 +2,6 @@
 "description":"Task demonstrates another struct using the Stringer enums","properties":{
 "id":{"type":"string","description":"ID is the unique task identifier"},
 "name":{"type":"string","description":"Name is the task name"},
-"priority":{"type":"integer","enum":[100,200,300,400]},
-"log_level":{"type":"integer","enum":[0,1,2,3,4]}
+"priority":{"type":"integer","description":"Priority determines the task's importance","enum":[100,200,300,400]},
+"log_level":{"type":"integer","description":"LogLevel is the minimum log level for this task","enum":[0,1,2,3,4]}
 },"required":["id","name","priority","log_level"],"additionalProperties":false}

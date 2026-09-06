@@ -64,23 +64,6 @@
           "properties": {
             "!kind": {
               "type": "string",
-              "const": "Dog"
-            },
-            "name": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "!kind",
-            "name"
-          ],
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "properties": {
-            "!kind": {
-              "type": "string",
               "const": "Cat"
             },
             "lives": {
@@ -90,6 +73,23 @@
           "required": [
             "!kind",
             "lives"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "!kind": {
+              "type": "string",
+              "const": "Dog"
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "!kind",
+            "name"
           ],
           "additionalProperties": false
         }
@@ -323,7 +323,7 @@
     },
     {
       "name": "nullable interface",
-      "reason": "does not support registered interfaces"
+      "reason": "does not support sealed interfaces"
     },
     {
       "name": "nullable ref",

@@ -138,7 +138,7 @@ func TestIssue59JSONSchemaStrictRequiredOrderIsStable(t *testing.T) {
 
 			first, err := json.Marshal(schema)
 			require.NoError(t, err)
-			for i := 0; i < 20; i++ {
+			for range 20 {
 				current, err := json.Marshal(schema)
 				require.NoError(t, err)
 				require.Equal(t, first, current)

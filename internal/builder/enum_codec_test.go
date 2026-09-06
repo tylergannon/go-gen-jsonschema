@@ -41,13 +41,14 @@ func TestNonAdaptedEnumsAllowAliasValues(t *testing.T) {
 		{
 			name: "numeric mode",
 			types: `type Color int
+func (Color) enum() {}
 const (
 	ColorRed Color = 1
 	ColorCrimson Color = 1
 )
 type Owner struct { Color Color ` + "`json:\"color\"`" + ` }
 `,
-			option: `polytype.WithEnum(Owner{}.Color),`,
+			option: "none",
 		},
 		{
 			name: "string backed",
@@ -82,7 +83,7 @@ func TestEnumRejectsPointerFieldBeforeWriting(t *testing.T) {
 	targetDir := writeEnumCodecFixture(t, `type Color int
 const ColorRed Color = 1
 type Owner struct { Color *Color `+"`json:\"color,omitempty\"`"+` }
-`, `polytype.WithEnum(Owner{}.Color),`)
+`, `polytype.WithStringerEnum(Owner{}.Color),`)
 	err := Run(BuilderArgs{TargetDir: targetDir})
 	require.ErrorContains(t, err, "supports only a direct named enum, Optional[E], or Nullable[E]")
 	assertOwnerCollisionSentinels(t, targetDir)
@@ -94,9 +95,7 @@ func TestRegisteredEnumRejectsJSONStringOptionBeforeWriting(t *testing.T) {
 		option       string
 		registration string
 	}{
-		{name: "method numeric mode", option: `polytype.WithEnum(Owner{}.Color),`, registration: "method"},
 		{name: "method string mode", option: `polytype.WithStringerEnum(Owner{}.Color),`, registration: "method"},
-		{name: "function numeric mode", option: `polytype.WithEnum(Owner{}.Color),`, registration: "function"},
 		{name: "function string mode", option: `polytype.WithStringerEnum(Owner{}.Color),`, registration: "function"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -147,8 +146,11 @@ func writeEnumCodecFixture(t *testing.T, types, option string) string {
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, os.RemoveAll(targetDir)) })
 	require.NoError(t, os.WriteFile(filepath.Join(targetDir, "types.go"), []byte("package fixture\n\n"+types), 0o644))
-	if option == "" {
+	switch option {
+	case "":
 		option = `polytype.WithStringerEnum(Owner{}.Color),`
+	case "none":
+		option = ""
 	}
 	require.NoError(t, os.WriteFile(filepath.Join(targetDir, "schema.go"), []byte(`//go:build jsonschema
 

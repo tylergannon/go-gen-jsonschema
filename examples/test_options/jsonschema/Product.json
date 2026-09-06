@@ -1,0 +1,7 @@
+{"type":"object",
+"description":"Product demonstrates iota enums with Stringer","properties":{
+"name":{"type":"string"},
+"color":{"type":"integer","description":"Color represents an iota-based enum for colors","enum":[0,1,2,3,4]},
+"size":{"type":"integer","description":"Size represents an iota enum with custom values","enum":[10,20,30,40]},
+"log_level":{"type":"integer","description":"LogLevel represents logging levels","enum":[0,1,2,3,4]}
+},"required":["name","color","size","log_level"],"additionalProperties":false}

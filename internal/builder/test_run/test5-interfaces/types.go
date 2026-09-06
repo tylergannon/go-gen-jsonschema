@@ -68,3 +68,6 @@ type PointerToTestInterface struct {
 func (t *PointerToTestInterface) marker() {}
 
 var _ TestInterface = &PointerToTestInterface{}
+
+// MyEnumType declares itself as an enum; the generator emits its typed constants.
+func (MyEnumType) enum() {}

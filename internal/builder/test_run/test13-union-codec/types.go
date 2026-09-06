@@ -10,6 +10,10 @@ import (
 
 //go:generate go run ./gen
 
+// Event is sealed by isEvent. Every same-package struct declaring it directly
+// is a variant: Created (value), Deleted (pointer), Hooked (value, custom
+// JSON hooks), and PointerHookValue (value variant whose hooks live on the
+// pointer). The discriminator property is "!kind", declared once with SealedUnion.
 type Event interface{ isEvent() }
 
 type Created struct {
@@ -23,28 +27,6 @@ type Deleted struct {
 }
 
 func (*Deleted) isEvent() {}
-
-type Empty struct {
-	Name     string `json:"name"`
-	NullKind bool   `json:"-"`
-}
-
-func (Empty) isEvent() {}
-
-func (e Empty) MarshalJSON() ([]byte, error) {
-	if e.NullKind {
-		return json.Marshal(map[string]any{"!kind": nil, "name": e.Name})
-	}
-	return json.Marshal(struct {
-		Name string `json:"name"`
-	}{Name: e.Name})
-}
-
-type Unregistered struct {
-	Value string `json:"value"`
-}
-
-func (Unregistered) isEvent() {}
 
 var hookMarshalCalls int
 var ordinaryMarshalCalls int
@@ -62,11 +44,11 @@ func (h Hooked) MarshalJSON() ([]byte, error) {
 	hookMarshalCalls++
 	switch h.Behavior {
 	case "matching":
-		return json.Marshal(map[string]any{"hookKind": "hooked", "name": h.Name})
+		return json.Marshal(map[string]any{"!kind": "Hooked", "name": h.Name})
 	case "conflict":
-		return json.Marshal(map[string]any{"hookKind": "other", "name": h.Name})
+		return json.Marshal(map[string]any{"!kind": "other", "name": h.Name})
 	case "non-string":
-		return json.Marshal(map[string]any{"hookKind": 3, "name": h.Name})
+		return json.Marshal(map[string]any{"!kind": 3, "name": h.Name})
 	case "null":
 		return []byte("null"), nil
 	case "array":
@@ -86,13 +68,13 @@ func (h Hooked) MarshalJSON() ([]byte, error) {
 
 func (h *Hooked) UnmarshalJSON(data []byte) error {
 	var wire struct {
-		Kind string `json:"hookKind"`
+		Kind string `json:"!kind"`
 		Name string `json:"name"`
 	}
 	if err := json.Unmarshal(data, &wire); err != nil {
 		return err
 	}
-	if wire.Kind != "hooked" {
+	if wire.Kind != "Hooked" {
 		return errors.New("Hooked.UnmarshalJSON did not receive the registered discriminator")
 	}
 	*h = Hooked{Name: wire.Name, SawDiscriminator: true}
@@ -115,13 +97,13 @@ func (p *PointerHookValue) MarshalJSON() ([]byte, error) {
 
 func (p *PointerHookValue) UnmarshalJSON(data []byte) error {
 	var wire struct {
-		Kind string `json:"valueHookKind"`
+		Kind string `json:"!kind"`
 		Name string `json:"name"`
 	}
 	if err := json.Unmarshal(data, &wire); err != nil {
 		return err
 	}
-	if wire.Kind != "value-hook" {
+	if wire.Kind != "PointerHookValue" {
 		return errors.New("PointerHookValue.UnmarshalJSON did not receive the registered discriminator")
 	}
 	*p = PointerHookValue{Name: strings.TrimPrefix(wire.Name, "custom:"), SawDiscriminator: true}

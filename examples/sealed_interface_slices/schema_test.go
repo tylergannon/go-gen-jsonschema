@@ -67,7 +67,14 @@ func TestBatchUnmarshalInterfaceSlice(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if string(remarshaled) != `{"events":[{"!kind":"Created","name":"first"},{"!kind":"Deleted","id":"gone"}]}` {
+		var gotJSON, wantJSON any
+		if err := json.Unmarshal(remarshaled, &gotJSON); err != nil {
+			t.Fatal(err)
+		}
+		if err := json.Unmarshal([]byte(`{"events":[{"!kind":"Created","name":"first"},{"!kind":"Deleted","id":"gone"}]}`), &wantJSON); err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(gotJSON, wantJSON) {
 			t.Fatalf("re-marshaled batch = %s", remarshaled)
 		}
 		var roundTrip Batch

@@ -16,3 +16,6 @@ type WorkItem struct {
 	Name   string `json:"name"`
 	Status Status `json:"status"`
 }
+
+// Status declares itself as an enum; the generator emits its typed constants.
+func (Status) enum() {}

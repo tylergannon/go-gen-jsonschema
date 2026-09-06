@@ -5,6 +5,13 @@
 "currency":{"type":"string","description":"Currency is the payment currency code."},
 "date":{"type":"string","description":"Date is when the payment occurred.. Must be an RFC3339 formatted date-time string (e.g., \"2006-01-02T15:04:05Z07:00\")"},
 "method":{"anyOf":[{"type":"object",
+"description":"BankTransfer implements PaymentMethod for bank transfers.","properties":{
+"type":{"type":"string","const":"BankTransfer"},
+"accountNumber":{"type":"string","description":"AccountNumber is the bank account number."},
+"routingNumber":{"type":"string","description":"RoutingNumber is the bank routing number."},
+"bankName":{"type":"string","description":"BankName is the name of the bank."}
+},"required":["type","accountNumber","routingNumber","bankName"],"additionalProperties":false},
+{"type":"object",
 "description":"CreditCard implements PaymentMethod for credit card payments.","properties":{
 "type":{"type":"string","const":"CreditCard"},
 "cardNumber":{"type":"string","description":"CardNumber is the credit card number."},
@@ -12,13 +19,6 @@
 "expiryYear":{"type":"integer","description":"ExpiryYear is the year the card expires."},
 "cvv":{"type":"string","description":"CVV is the card verification value."}
 },"required":["type","cardNumber","expiryMonth","expiryYear","cvv"],"additionalProperties":false},
-{"type":"object",
-"description":"BankTransfer implements PaymentMethod for bank transfers.","properties":{
-"type":{"type":"string","const":"BankTransfer"},
-"accountNumber":{"type":"string","description":"AccountNumber is the bank account number."},
-"routingNumber":{"type":"string","description":"RoutingNumber is the bank routing number."},
-"bankName":{"type":"string","description":"BankName is the name of the bank."}
-},"required":["type","accountNumber","routingNumber","bankName"],"additionalProperties":false},
 {"type":"object",
 "description":"DigitalWallet implements PaymentMethod for digital wallet payments. This demonstrates using pointer receivers with interfaces.","properties":{
 "type":{"type":"string","const":"DigitalWallet"},

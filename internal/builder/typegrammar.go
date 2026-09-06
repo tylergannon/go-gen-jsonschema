@@ -423,15 +423,11 @@ func (l *typeGrammarLowerer) union(field registeredInterfaceField) (typegrammar.
 		if err := l.named(name); err != nil {
 			return typegrammar.Union{}, fmt.Errorf("union implementation %s: %w", name, err)
 		}
-		tag := impl.TypeName
-		if value, ok := field.DiscriminatorValues[impl]; ok {
-			tag = value
-		}
 		position, _ := l.builder.find(syntax.TypeID{PkgPath: impl.PkgPath, TypeName: impl.TypeName})
 		union.Variants = append(union.Variants, typegrammar.Variant{
 			Implementation: name,
 			Pointer:        impl.Indirection == syntax.Pointer,
-			Tag:            tag,
+			Tag:            impl.TypeName,
 			Source:         position,
 		})
 	}
@@ -599,8 +595,8 @@ func rejectCustomWireType(scan syntax.ScanResult, name, position string) error {
 	}
 	for _, candidate := range []types.Type{obj.Type(), types.NewPointer(obj.Type())} {
 		methods := types.NewMethodSet(candidate)
-		for i := 0; i < methods.Len(); i++ {
-			method := methods.At(i).Obj()
+		for method := range methods.Methods() {
+			method := method.Obj()
 			if customWireMethod(method.Name(), method.Type()) {
 				return fmt.Errorf("type %s.%s at %s defines %s; custom JSON/text wire mappings are not statically derivable", scan.Pkg.PkgPath, name, position, method.Name())
 			}

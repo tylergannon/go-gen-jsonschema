@@ -10,8 +10,4 @@ import (
 
 func (Config) Schema() json.RawMessage { panic("not implemented") }
 
-var _ = polytype.NewJSONSchemaMethod(
-	Config.Schema,
-	polytype.WithInterface(Config{}.Value),
-	polytype.WithInterfaceImpls(Config{}.Value, Text{}),
-)
+var _ = polytype.NewJSONSchemaMethod(Config.Schema)

@@ -33,13 +33,7 @@ var _ = polytype.Declare(FluentStruct.Schema).
 	Accessor(FluentStruct{}.A, FluentStruct.ASchema).
 	Method(FluentStruct{}.B, FluentStruct.BSchema).
 	Function(FluentStruct{}.C, FluentBoolSchema).
-	Enum(FluentStruct{}.E).
 	StringerEnum(FluentStruct{}.F).
-	Interface(
-		FluentStruct{}.G,
-		polytype.Discriminator("kind"),
-		polytype.Impl("one", Type001{}),
-	).
 	Ref().
 	RenderProviders()
 

@@ -86,3 +86,12 @@ type Configuration struct {
 	LogLevel LogLevel `json:"log_level"`
 	Theme    Color    `json:"theme"`
 }
+
+// Color declares itself as an enum; the generator emits its typed constants.
+func (Color) enum() {}
+
+// Size declares itself as an enum; the generator emits its typed constants.
+func (Size) enum() {}
+
+// LogLevel declares itself as an enum; the generator emits its typed constants.
+func (LogLevel) enum() {}

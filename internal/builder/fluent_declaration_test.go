@@ -160,7 +160,7 @@ func TestFluentPointerRootProviderParityWithLegacy(t *testing.T) {
 	require.Contains(t, legacyJSON, `{{.b}}`)
 }
 
-const fluentEnumFixture = `//go:build jsonschema
+const enumMarkerFixture = `//go:build jsonschema
 
 package fixture
 
@@ -172,42 +172,50 @@ import (
 
 type Paint string
 
+func (Paint) enum() {}
+
 const (
 	Red   Paint = "red"
 	Green Paint = "green"
 )
 
-func (p Paint) String() string { return string(p) }
+// String is ignored for a marked enum: the marker means value mode.
+func (p Paint) String() string { return "not-the-wire-value" }
+
+type Level int
+
+func (Level) enum() {}
+
+const (
+	Low  Level = 1
+	High Level = 2
+)
 
 type Widget struct {
-	Direct  Paint ` + "`json:\"direct\"`" + `
-	ViaStringer Paint ` + "`json:\"viaStringer\"`" + `
+	Direct      Paint ` + "`json:\"direct\"`" + `
+	Level       Level ` + "`json:\"level\"`" + `
+	ViaStringer Level ` + "`json:\"viaStringer\"`" + `
 }
 
 func (Widget) Schema() json.RawMessage { panic("not implemented") }
 
-var _ = %s
+var _ = polytype.Declare(Widget.Schema).
+	StringerEnum(Widget{}.ViaStringer)
 `
 
-const legacyEnumRegistration = `polytype.NewJSONSchemaMethod(
-	Widget.Schema,
-	polytype.WithEnum(Widget{}.Direct),
-	polytype.WithStringerEnum(Widget{}.ViaStringer),
-)`
-
-const fluentEnumRegistration = `polytype.Declare(Widget.Schema).
-	Enum(Widget{}.Direct).
-	StringerEnum(Widget{}.ViaStringer)`
-
-// TestFluentEnumParityWithLegacy proves that .Enum/.StringerEnum chaining
-// produces the exact same rendered schema as WithEnum/WithStringerEnum.
-func TestFluentEnumParityWithLegacy(t *testing.T) {
+// TestEnumMarkerEmitsConstantValuesAndIgnoresStringer proves that a type
+// declaring func (T) enum() is emitted as an enum of its typed constants
+// with no field-level declaration, that a String() method on the marked
+// type does not change the wire values, and that an explicit .StringerEnum
+// on a field of the marked type still selects name mode for that field.
+func TestEnumMarkerEmitsConstantValuesAndIgnoresStringer(t *testing.T) {
 	t.Parallel()
 
-	legacy := writeFluentFixture(t, fmt.Sprintf(fluentEnumFixture, legacyEnumRegistration))
-	fluent := writeFluentFixture(t, fmt.Sprintf(fluentEnumFixture, fluentEnumRegistration))
-
-	require.Equal(t, jsonFor(t, legacy, "Widget"), jsonFor(t, fluent, "Widget"))
+	builder := writeFluentFixture(t, enumMarkerFixture)
+	rendered := jsonFor(t, builder, "Widget")
+	require.Contains(t, rendered, `"direct":{"type":"string","enum":["red","green"]}`)
+	require.Contains(t, rendered, `"level":{"type":"integer","enum":[1,2]}`)
+	require.Contains(t, rendered, `"viaStringer":{"type":"string","enum":["Low","High"]}`)
 }
 
 const fluentRefFixture = `//go:build jsonschema
@@ -249,119 +257,6 @@ func TestFluentRefParityWithLegacy(t *testing.T) {
 
 	require.Equal(t, jsonFor(t, legacy, "Owner"), jsonFor(t, fluent, "Owner"))
 	require.Contains(t, jsonFor(t, legacy, "Owner"), `"$ref"`)
-}
-
-const fluentInterfaceFixture = `//go:build jsonschema
-
-package fixture
-
-import (
-	"encoding/json"
-
-	"github.com/tylergannon/polytype"
-)
-
-type Value interface{ value() }
-
-type First struct {
-	Name string ` + "`json:\"name\"`" + `
-}
-
-func (First) value() {}
-
-type Second struct {
-	Count int ` + "`json:\"count\"`" + `
-}
-
-func (Second) value() {}
-
-type Owner struct {
-	Value Value ` + "`json:\"value\"`" + `
-}
-
-func (Owner) Schema() json.RawMessage { panic("not implemented") }
-
-var _ = %s
-`
-
-const legacyInterfaceRegistration = `polytype.NewJSONSchemaMethod(
-	Owner.Schema,
-	polytype.WithInterface(
-		Owner{}.Value,
-		polytype.Discriminator("kind"),
-		polytype.Impl("first", First{}),
-		polytype.Impl("second", Second{}),
-	),
-)`
-
-const fluentInterfaceRegistration = `polytype.Declare(Owner.Schema).
-	Interface(
-		Owner{}.Value,
-		polytype.Discriminator("kind"),
-		polytype.Impl("first", First{}),
-		polytype.Impl("second", Second{}),
-	)`
-
-// TestFluentInterfaceParityWithLegacy proves that a sealed-interface fluent
-// declaration (.Interface with inline Discriminator/Impl options) produces
-// the same schema as the equivalent inline WithInterface(...) registration.
-func TestFluentInterfaceParityWithLegacy(t *testing.T) {
-	t.Parallel()
-
-	legacy := writeFluentFixture(t, fmt.Sprintf(fluentInterfaceFixture, legacyInterfaceRegistration))
-	fluent := writeFluentFixture(t, fmt.Sprintf(fluentInterfaceFixture, fluentInterfaceRegistration))
-
-	require.Equal(t, jsonFor(t, legacy, "Owner"), jsonFor(t, fluent, "Owner"))
-}
-
-// TestFluentInterfaceRegistrationDiagnosticsParity proves that a fluent
-// .Interface(...) declaration surfaces the exact same builder-level
-// diagnostic as the equivalent inline WithInterface(...) call when an Impl
-// type doesn't satisfy the interface, reusing the same error path rather
-// than a fluent-specific one.
-func TestFluentInterfaceRegistrationDiagnosticsParity(t *testing.T) {
-	t.Parallel()
-
-	cwd, err := os.Getwd()
-	require.NoError(t, err)
-	targetDir, err := os.MkdirTemp(filepath.Join(cwd, "testfixtures"), "fluent_interface_diag_")
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		require.NoError(t, os.RemoveAll(targetDir))
-	})
-
-	source := `//go:build jsonschema
-
-package fixture
-
-import (
-	"encoding/json"
-
-	"github.com/tylergannon/polytype"
-)
-
-type Value interface{ value() }
-
-type First struct { Name string ` + "`json:\"name\"`" + ` }
-func (First) value() {}
-
-type Stranger struct { Enabled bool ` + "`json:\"enabled\"`" + ` }
-
-type Owner struct { Value Value ` + "`json:\"value\"`" + ` }
-func (Owner) Schema() json.RawMessage { panic("not implemented") }
-
-var _ = polytype.Declare(Owner.Schema).
-	Interface(Owner{}.Value, polytype.Impl("stranger", Stranger{}))
-`
-	require.NoError(t, os.WriteFile(filepath.Join(targetDir, "schema.go"), []byte(source), 0o644))
-
-	pkgs, err := syntax.Load(targetDir)
-	require.NoError(t, err)
-	require.Len(t, pkgs, 1)
-	require.Empty(t, pkgs[0].Errors)
-
-	_, err = New(pkgs[0])
-	require.ErrorContains(t, err, "does not implement Value")
 }
 
 // TestFluentAccessorRejectsFreeFunctionProvider proves the issue #73 review

@@ -1,0 +1,8 @@
+{"type":"object",
+"description":"Task demonstrates usage of various enum types","properties":{
+"title":{"type":"string"},
+"status":{"type":"string","description":"Status represents a string-based enum","enum":["pending","active","complete","canceled"]},
+"priority":{"type":"string","description":"Priority represents a string-based priority enum for comparison","enum":["low","medium","high","urgent"]},
+"severity":{"type":"integer","description":"Severity represents an iota enum with custom string values","enum":[1,2,3,4]},
+"due_day":{"type":"integer","description":"WeekDay represents days of the week with custom iota values","enum":[0,1,2,3,4,5,6]}
+},"required":["title","status","priority","severity","due_day"],"additionalProperties":false}

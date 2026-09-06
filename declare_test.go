@@ -34,7 +34,6 @@ var (
 		Accessor(declareValueExample{}.A, declareValueExample.aSchema).
 		Method(declareValueExample{}.B, declareValueExample.bSchema).
 		Function(declareValueExample{}.C, declareBoolSchema).
-		Enum(declareValueExample{}.A).
 		StringerEnum(declareValueExample{}.A).
 		Ref().
 		RenderProviders()

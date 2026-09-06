@@ -86,3 +86,15 @@ type WorkItem struct {
 	Priority Priority `json:"priority"`
 	Level    Severity `json:"level"`
 }
+
+// Status declares itself as an enum; the generator emits its typed constants.
+func (Status) enum() {}
+
+// Priority declares itself as an enum; the generator emits its typed constants.
+func (Priority) enum() {}
+
+// Severity declares itself as an enum; the generator emits its typed constants.
+func (Severity) enum() {}
+
+// WeekDay declares itself as an enum; the generator emits its typed constants.
+func (WeekDay) enum() {}

@@ -10,11 +10,9 @@ import (
 
 func (Owner) Schema() json.RawMessage { panic("not implemented") }
 
-// v1 interface options example
-var _ = polytype.Declare(Owner.Schema).
-	Interface(
-		Owner{}.IF,
-		polytype.Discriminator("!kind"),
-		polytype.Impl("impl_one", Impl1{}),
-		polytype.Impl("impl_two", Impl2{}),
-	)
+// IFace is sealed by its unexported isIface method, so its variants (Impl1
+// and Impl2) are inferred; nothing is declared at the field.
+var _ = polytype.Declare(Owner.Schema)
+
+// IFace discriminates on "!kind" instead of the default "type".
+var _ = polytype.SealedUnion[IFace]("!kind")

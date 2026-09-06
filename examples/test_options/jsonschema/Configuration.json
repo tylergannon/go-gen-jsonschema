@@ -1,0 +1,6 @@
+{"type":"object",
+"description":"Configuration shows field-level enum config with iota","properties":{
+"app_name":{"type":"string"},
+"log_level":{"type":"integer","description":"LogLevel represents logging levels","enum":[0,1,2,3,4]},
+"theme":{"type":"integer","description":"Color represents an iota-based enum for colors","enum":[0,1,2,3,4]}
+},"required":["app_name","log_level","theme"],"additionalProperties":false}

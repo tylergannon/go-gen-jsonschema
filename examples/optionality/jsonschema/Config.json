@@ -47,23 +47,6 @@
           "properties": {
             "!kind": {
               "type": "string",
-              "const": "Dog"
-            },
-            "name": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "!kind",
-            "name"
-          ],
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "properties": {
-            "!kind": {
-              "type": "string",
               "const": "Cat"
             },
             "lives": {
@@ -73,6 +56,23 @@
           "required": [
             "!kind",
             "lives"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "!kind": {
+              "type": "string",
+              "const": "Dog"
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "!kind",
+            "name"
           ],
           "additionalProperties": false
         }

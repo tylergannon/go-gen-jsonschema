@@ -27,7 +27,7 @@ func (First) variant() {}
 		body string
 	}{
 		{
-			name: "v1 fixed array field",
+			name: "fixed array field",
 			body: commonTypes + `
 type Owner struct {
 	Values [2]Variant ` + "`json:\"values\"`" + `
@@ -35,11 +35,7 @@ type Owner struct {
 
 func (Owner) Schema() json.RawMessage { panic("not implemented") }
 
-var _ = polytype.NewJSONSchemaMethod(
-	Owner.Schema,
-	polytype.WithInterface(Owner{}.Values),
-	polytype.WithInterfaceImpls(Owner{}.Values, First{}),
-)
+var _ = polytype.NewJSONSchemaMethod(Owner.Schema)
 `,
 		},
 		{
@@ -51,11 +47,7 @@ type Owner struct {
 
 func (Owner) Schema() json.RawMessage { panic("not implemented") }
 
-var _ = polytype.NewJSONSchemaMethod(
-	Owner.Schema,
-	polytype.WithInterface(Owner{}.Values),
-	polytype.WithInterfaceImpls(Owner{}.Values, First{}),
-)
+var _ = polytype.NewJSONSchemaMethod(Owner.Schema)
 `,
 		},
 		{
@@ -67,11 +59,7 @@ type Owner struct {
 
 func (Owner) Schema() json.RawMessage { panic("not implemented") }
 
-var _ = polytype.NewJSONSchemaMethod(
-	Owner.Schema,
-	polytype.WithInterface(Owner{}.Values),
-	polytype.WithInterfaceImpls(Owner{}.Values, First{}),
-)
+var _ = polytype.NewJSONSchemaMethod(Owner.Schema)
 `,
 		},
 		{
@@ -83,11 +71,7 @@ type Owner struct {
 
 func (Owner) Schema() json.RawMessage { panic("not implemented") }
 
-var _ = polytype.NewJSONSchemaMethod(
-	Owner.Schema,
-	polytype.WithInterface(Owner{}.Values),
-	polytype.WithInterfaceImpls(Owner{}.Values, First{}),
-)
+var _ = polytype.NewJSONSchemaMethod(Owner.Schema)
 `,
 		},
 		{
@@ -101,15 +85,11 @@ type Owner struct {
 
 func (Owner) Schema() json.RawMessage { panic("not implemented") }
 
-var _ = polytype.NewJSONSchemaMethod(
-	Owner.Schema,
-	polytype.WithInterface(Owner{}.Values),
-	polytype.WithInterfaceImpls(Owner{}.Values, First{}),
-)
+var _ = polytype.NewJSONSchemaMethod(Owner.Schema)
 `,
 		},
 		{
-			name: "legacy fixed array field",
+			name: "fixed array field",
 			body: commonTypes + `
 type Owner struct {
 	Values [2]Variant ` + "`json:\"values\"`" + `
@@ -117,14 +97,11 @@ type Owner struct {
 
 func (Owner) Schema() json.RawMessage { panic("not implemented") }
 
-var (
-	_ = polytype.NewJSONSchemaMethod(Owner.Schema)
-	_ = polytype.NewInterfaceImpl[Variant](First{})
-)
+var _ = polytype.NewJSONSchemaMethod(Owner.Schema)
 `,
 		},
 		{
-			name: "legacy nested slice field",
+			name: "nested slice field",
 			body: commonTypes + `
 type Owner struct {
 	Values [][]Variant ` + "`json:\"values\"`" + `
@@ -132,14 +109,11 @@ type Owner struct {
 
 func (Owner) Schema() json.RawMessage { panic("not implemented") }
 
-var (
-	_ = polytype.NewJSONSchemaMethod(Owner.Schema)
-	_ = polytype.NewInterfaceImpl[Variant](First{})
-)
+var _ = polytype.NewJSONSchemaMethod(Owner.Schema)
 `,
 		},
 		{
-			name: "legacy nullable slice field",
+			name: "nullable slice field",
 			body: commonTypes + `
 type Owner struct {
 	Values polytype.Nullable[[]Variant] ` + "`json:\"values\"`" + `
@@ -147,14 +121,11 @@ type Owner struct {
 
 func (Owner) Schema() json.RawMessage { panic("not implemented") }
 
-var (
-	_ = polytype.NewJSONSchemaMethod(Owner.Schema)
-	_ = polytype.NewInterfaceImpl[Variant](First{})
-)
+var _ = polytype.NewJSONSchemaMethod(Owner.Schema)
 `,
 		},
 		{
-			name: "legacy optional slice field",
+			name: "optional slice field",
 			body: commonTypes + `
 type Owner struct {
 	Values polytype.Optional[[]Variant] ` + "`json:\"values,omitzero\"`" + `
@@ -162,14 +133,11 @@ type Owner struct {
 
 func (Owner) Schema() json.RawMessage { panic("not implemented") }
 
-var (
-	_ = polytype.NewJSONSchemaMethod(Owner.Schema)
-	_ = polytype.NewInterfaceImpl[Variant](First{})
-)
+var _ = polytype.NewJSONSchemaMethod(Owner.Schema)
 `,
 		},
 		{
-			name: "legacy named slice field",
+			name: "named slice field",
 			body: commonTypes + `
 type Variants []Variant
 
@@ -179,23 +147,17 @@ type Owner struct {
 
 func (Owner) Schema() json.RawMessage { panic("not implemented") }
 
-var (
-	_ = polytype.NewJSONSchemaMethod(Owner.Schema)
-	_ = polytype.NewInterfaceImpl[Variant](First{})
-)
+var _ = polytype.NewJSONSchemaMethod(Owner.Schema)
 `,
 		},
 		{
-			name: "legacy top-level named slice",
+			name: "top-level named slice",
 			body: commonTypes + `
 type Variants []Variant
 
 func (Variants) Schema() json.RawMessage { panic("not implemented") }
 
-var (
-	_ = polytype.NewJSONSchemaMethod(Variants.Schema)
-	_ = polytype.NewInterfaceImpl[Variant](First{})
-)
+var _ = polytype.NewJSONSchemaMethod(Variants.Schema)
 `,
 		},
 	}
@@ -239,10 +201,7 @@ type Owner struct {
 
 func (Owner) Schema() json.RawMessage { panic("not implemented") }
 
-var (
-	_ = polytype.NewJSONSchemaMethod(Owner.Schema)
-	_ = polytype.NewInterfaceImpl[Variant](First{})
-)
+var _ = polytype.NewJSONSchemaMethod(Owner.Schema)
 `)
 	pkgs, err := syntax.Load(targetDir)
 	require.NoError(t, err)

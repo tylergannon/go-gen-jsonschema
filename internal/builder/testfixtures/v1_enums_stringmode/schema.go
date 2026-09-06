@@ -15,7 +15,6 @@ var _ = polytype.NewJSONSchemaMethod(
 	polytype.WithStringerEnum(Paint{}.C),
 	polytype.WithStringerEnum(Paint{}.Optional),
 	polytype.WithStringerEnum(Paint{}.Nullable),
-	polytype.WithEnum(Paint{}.Numeric),
 	polytype.WithStringerEnum(Paint{}.Finish),
 	polytype.WithStringerEnum(Paint{}.Remote),
 )

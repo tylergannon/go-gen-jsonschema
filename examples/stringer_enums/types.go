@@ -95,3 +95,9 @@ type Task struct {
 	// LogLevel is the minimum log level for this task
 	LogLevel LogLevel `json:"log_level"`
 }
+
+// Priority declares itself as an enum; the generator emits its typed constants.
+func (Priority) enum() {}
+
+// LogLevel declares itself as an enum; the generator emits its typed constants.
+func (LogLevel) enum() {}
