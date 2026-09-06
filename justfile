@@ -1,6 +1,15 @@
 test:
     go test ./...
 
+# Build every examples/ package that carries a //go:build jsonschema
+# registration file, catching compile errors that `go test ./...` can't see
+# (those files are excluded from the default build).
+build-tagged:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    pkgs=$(grep -rl '^//go:build jsonschema$' --include='*.go' examples | xargs -n1 dirname | sort -u | sed 's#^#./#')
+    go build -tags jsonschema $pkgs
+
 watch focus:
     # no ginkgo; use `go test` with -run for focus
     go test ./... -run '{{focus}}'

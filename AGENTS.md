@@ -45,6 +45,11 @@ go test ./... -run 'TestName'
 # Lint (requires: modernize, staticcheck, govulncheck, golangci-lint, goimports)
 just lint
 
+# Build every examples/ package with a //go:build jsonschema registration
+# file — go test ./... doesn't compile these, so this is the only thing
+# that catches a broken registration before generation/CI does.
+just build-tagged
+
 # Build the CLI
 go build ./polytype
 

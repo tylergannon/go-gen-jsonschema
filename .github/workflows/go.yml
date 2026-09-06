@@ -29,6 +29,11 @@ jobs:
       - name: Test clean checkout
         run: go test ./...
 
+      - name: Build generation-tag registration packages
+        run: |
+          pkgs=$(grep -rl '^//go:build jsonschema$' --include='*.go' examples | xargs -n1 dirname | sort -u | sed 's#^#./#')
+          go build -tags jsonschema $pkgs
+
       - name: Regenerate
         run: go generate ./...
 

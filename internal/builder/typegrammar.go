@@ -34,6 +34,12 @@ func (s *SchemaBuilder) TypeDefinitions() (typegrammar.Definitions, error) {
 			return nil, fmt.Errorf("build type definitions for %s: %w", name, err)
 		}
 	}
+	for _, fn := range s.SchemaFreeFuncs() {
+		name := typegrammar.Name{PackagePath: fn.Receiver.PkgPath, Name: fn.Receiver.TypeName}
+		if err := l.named(name); err != nil {
+			return nil, fmt.Errorf("build type definitions for %s: %w", name, err)
+		}
+	}
 	if err := l.defs.Validate(); err != nil {
 		return nil, fmt.Errorf("validate type definitions: %w", err)
 	}

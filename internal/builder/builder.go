@@ -68,6 +68,31 @@ func Run(args BuilderArgs) (err error) {
 	builder.Validate = args.Validate
 	builder.UnmarshalFormats = args.UnmarshalFormats
 
+	// A NewJSONSchemaBuilder registration's stub takes no arguments; if its
+	// receiver type's underlying type is a pointer or interface, Go forbids
+	// a method there, and the zero-argument signature can't be preserved as
+	// a free function without risking a name collision (the same builder
+	// function reused for two such types) -- reject instead of
+	// miscompiling or silently dropping it.
+	for _, fn := range builder.InvalidReceiverBuilderRoots() {
+		return fmt.Errorf("%s: NewJSONSchemaBuilder is not supported for a type whose underlying type is a pointer or interface (Go forbids declaring a method on it); register a one-argument free function via Declare or NewJSONSchemaFunc instead", fn.Receiver.TypeName)
+	}
+
+	// A free-function schema root whose underlying type is a pointer or
+	// interface can't have any method declared on it, so modes that require
+	// one (RenderedSchema for RenderProviders(), ValidateJSON for
+	// --validate) can't be generated for it. Reject clearly rather than
+	// silently producing incomplete output.
+	for _, fn := range builder.SchemaFreeFuncs() {
+		name := fn.Receiver.TypeName
+		if builder.Rendered[name] {
+			return fmt.Errorf("%s: RenderProviders() is not supported for a free-function schema root whose underlying type is a pointer or interface (Go forbids declaring a method on it, so no RenderedSchema() can be generated); drop RenderProviders() for this type", name)
+		}
+		if builder.Validate {
+			return fmt.Errorf("--validate cannot generate ValidateJSON for %s: its schema entrypoint is a free function because its underlying type is a pointer or interface, and Go forbids declaring any method (so ValidateJSON) on it; remove --validate or drop this type's registration", name)
+		}
+	}
+
 	// Allow registered transforms to mutate the model before render (no-ops by default)
 	if err = (&builder).applyTransforms(); err != nil {
 		return err

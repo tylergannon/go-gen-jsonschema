@@ -45,3 +45,20 @@ func (BuilderType) BuilderTypeSchema() json.RawMessage {
 	}
 	return data
 }
+
+func PointerFuncTypeSchema(PointerFuncType) json.RawMessage {
+	const fileName = "jsonschema/PointerFuncType.json"
+	data, err := __gen_jsonschema_fs.ReadFile(fileName)
+	if err != nil {
+		__gen_jsonschema_panic(fileName, err)
+	}
+	return data
+}
+func InterfaceFuncTypeSchema(InterfaceFuncType) json.RawMessage {
+	const fileName = "jsonschema/InterfaceFuncType.json"
+	data, err := __gen_jsonschema_fs.ReadFile(fileName)
+	if err != nil {
+		__gen_jsonschema_panic(fileName, err)
+	}
+	return data
+}

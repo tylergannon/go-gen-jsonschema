@@ -108,3 +108,28 @@ func (ComplexStruct) Schema() json.RawMessage {
 	}
 	return data
 }
+
+func PointerToIntSchema(PointerToInt) json.RawMessage {
+	const fileName = "jsonschema/PointerToInt.json"
+	data, err := __gen_jsonschema_fs.ReadFile(fileName)
+	if err != nil {
+		__gen_jsonschema_panic(fileName, err)
+	}
+	return data
+}
+func PointerToSimpleIntSchema(PointerToSimpleInt) json.RawMessage {
+	const fileName = "jsonschema/PointerToSimpleInt.json"
+	data, err := __gen_jsonschema_fs.ReadFile(fileName)
+	if err != nil {
+		__gen_jsonschema_panic(fileName, err)
+	}
+	return data
+}
+func PointerToPersonSchema(PointerToPerson) json.RawMessage {
+	const fileName = "jsonschema/PointerToPerson.json"
+	data, err := __gen_jsonschema_fs.ReadFile(fileName)
+	if err != nil {
+		__gen_jsonschema_panic(fileName, err)
+	}
+	return data
+}

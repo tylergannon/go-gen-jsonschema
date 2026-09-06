@@ -711,23 +711,103 @@ func (s SchemaBuilder) imports() *ImportMap {
 	return importMap
 }
 
-func (s SchemaBuilder) SchemaMethods() []syntax.SchemaMethod {
-	// Merge methods and funcs, then filter out invalid receiver base types (underlying pointer/interface)
-	var out []syntax.SchemaMethod
-	appendIfValid := func(m syntax.SchemaMethod) {
-		if ts, ok := s.Scan.LocalNamedTypes[m.Receiver.TypeName]; ok {
-			switch ts.Type().Expr().(type) {
-			case *dst.StarExpr, *dst.InterfaceType:
-				return
-			}
-		}
-		out = append(out, m)
+// hasInvalidMethodReceiverBase reports whether typeName's underlying type is
+// itself a pointer or interface, meaning Go forbids declaring any method
+// (value or pointer receiver) on it.
+func (s SchemaBuilder) hasInvalidMethodReceiverBase(typeName string) bool {
+	// A type registered via NewInterfaceImpl/WithInterfaceImpls is recorded
+	// in Scan.Interfaces, not Scan.LocalNamedTypes (see scan_result.go's
+	// type-decl pass), but it's still an interface: no method can be
+	// declared on it either.
+	if _, ok := s.Scan.Interfaces[typeName]; ok {
+		return true
 	}
+	// Resolve through go/types rather than pattern-matching the immediate
+	// declaration AST: a forwarding definition (type Q P, where P is
+	// itself a pointer or interface) has an *dst.Ident, not a *dst.StarExpr
+	// or *dst.InterfaceType, as its own declaration expression, but Go
+	// still resolves Q's underlying type to a pointer/interface and
+	// forbids a method on it exactly the same as a direct declaration.
+	obj := s.Scan.Pkg.Types.Scope().Lookup(typeName)
+	if obj == nil {
+		return false
+	}
+	switch obj.Type().Underlying().(type) {
+	case *types.Pointer, *types.Interface:
+		return true
+	}
+	return false
+}
+
+// SchemaMethods returns registered schema entrypoints that can be generated
+// as a Go method on their receiver type: true method-root registrations,
+// plus free-function-root registrations (SchemaFuncs) whose receiver type
+// can legally have a method declared on it. Entries with an invalid
+// receiver base type are dropped here regardless of source, matching prior
+// behavior for method-root registrations (which should never have an
+// invalid base in a package that actually compiles).
+func (s SchemaBuilder) SchemaMethods() []syntax.SchemaMethod {
+	var out []syntax.SchemaMethod
 	for _, m := range s.Scan.SchemaMethods {
-		appendIfValid(m)
+		if !s.hasInvalidMethodReceiverBase(m.Receiver.TypeName) {
+			out = append(out, m)
+		}
 	}
 	for _, f := range s.Scan.SchemaFuncs {
-		appendIfValid(syntax.SchemaMethod(f))
+		if !s.hasInvalidMethodReceiverBase(f.Receiver.TypeName) {
+			out = append(out, syntax.SchemaMethod(f))
+		}
+	}
+	return out
+}
+
+// SchemaFreeFuncs returns free-function-root registrations whose receiver
+// type's underlying type is a pointer or interface, so they must be
+// generated as a free function (matching the original registration's
+// signature) rather than a method.
+// isBuilderMarker reports whether fn's registration was NewJSONSchemaBuilder,
+// whose stub takes no arguments (func() json.RawMessage) -- unlike
+// NewJSONSchemaFunc/fluent Declare's free-function form, whose stub takes
+// the receiver type as its sole argument (func(T) json.RawMessage). Both
+// land in Scan.SchemaFuncs, but they aren't interchangeable: emitting the
+// one-argument free-function shape for a builder registration would change
+// its signature and break callers (or collide if the same builder function
+// is reused for two invalid-receiver types).
+func isBuilderMarker(fn syntax.SchemaFunction) bool {
+	return fn.MarkerCall.CallExpr.MustIdentifyFunc().TypeName == syntax.MarkerFuncNewJSONSchemaBuilder
+}
+
+// SchemaFreeFuncs returns free-function-root registrations (NewJSONSchemaFunc
+// or fluent Declare with a free function) whose receiver type's underlying
+// type is a pointer or interface, so they must be generated as a free
+// function (matching the original registration's signature) rather than a
+// method. NewJSONSchemaBuilder registrations are excluded even when they'd
+// otherwise qualify: see InvalidReceiverBuilderRoots.
+func (s SchemaBuilder) SchemaFreeFuncs() []syntax.SchemaMethod {
+	var out []syntax.SchemaMethod
+	for _, f := range s.Scan.SchemaFuncs {
+		if isBuilderMarker(f) {
+			continue
+		}
+		if s.hasInvalidMethodReceiverBase(f.Receiver.TypeName) {
+			out = append(out, syntax.SchemaMethod(f))
+		}
+	}
+	return out
+}
+
+// InvalidReceiverBuilderRoots returns NewJSONSchemaBuilder registrations
+// whose receiver type's underlying type is a pointer or interface. Go
+// forbids a method there, and the builder's zero-argument stub signature
+// can't be preserved as a free function without risking a name collision
+// (the same builder function reused for two such types), so generation
+// must reject this combination rather than silently drop or miscompile it.
+func (s SchemaBuilder) InvalidReceiverBuilderRoots() []syntax.SchemaMethod {
+	var out []syntax.SchemaMethod
+	for _, f := range s.Scan.SchemaFuncs {
+		if isBuilderMarker(f) && s.hasInvalidMethodReceiverBase(f.Receiver.TypeName) {
+			out = append(out, syntax.SchemaMethod(f))
+		}
 	}
 	return out
 }

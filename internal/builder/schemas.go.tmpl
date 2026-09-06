@@ -128,6 +128,20 @@ func ({{if .IsPointer}}*{{end}}{{.Receiver.TypeName}}) {{.SchemaMethodName}}() j
     {{ end -}}
 {{ end -}}
 
+{{/* Free-function roots whose receiver's underlying type is a pointer or
+     interface can't have a method, so generate a free function matching
+     the original registration's name and signature instead. */}}
+{{ range .SchemaFreeFuncs -}}
+func {{.SchemaMethodName}}({{.Receiver.TypeName}}) json.RawMessage {
+	const fileName = "{{$subdir}}/{{.Receiver.TypeName}}.json"
+	data, err := __gen_jsonschema_fs.ReadFile(fileName)
+	if err != nil {
+		__gen_jsonschema_panic(fileName, err)
+	}
+	return data
+}
+{{ end -}}
+
 {{/* Generate ValidateJSON for non-rendered types when validation is enabled */}}
 {{ if .Validate -}}
 {{ range .SchemaMethods -}}

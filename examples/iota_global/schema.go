@@ -10,11 +10,10 @@ import (
 
 func (Task) Schema() json.RawMessage { panic("not implemented") }
 
-var (
-	_ = polytype.NewJSONSchemaMethod(Task.Schema)
-
-	// THIS WILL PANIC: iota enums can't be registered globally
-	// Error: panic: interface conversion: dst.Expr is *dst.Ident, not *dst.BasicLit
-	// Location: internal/builder/gen_schema.go:454
-	_ = polytype.NewEnumType[Priority]()
-)
+// Priority is a pure iota int enum. Iota enums can't be registered with the
+// global NewEnumType[T ~string](); they need field-level enum registration
+// instead. Trade-off: field-level registration doesn't pick up Priority's
+// own doc comment as a description (unlike a globally-registered enum
+// type), so "priority" below has no "description" in the generated schema.
+var _ = polytype.Declare(Task.Schema).
+	Enum(Task{}.Priority)
