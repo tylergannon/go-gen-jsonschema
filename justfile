@@ -17,6 +17,9 @@ watch focus:
 testregistry:
     cd internal/typeregistry && go test ./...
 
+# The goimports step formats only this module's own sources. ephemeral/ holds
+# tracked session artifacts with their own go.mod files (so ./... already skips
+# them, but a bare find does not), and node_modules is never ours to rewrite.
 lint:
     go mod tidy
     modernize -fix ./...
@@ -24,7 +27,7 @@ lint:
     staticcheck ./...
     govulncheck ./...
     golangci-lint run ./...
-    find . -name '*.go' -exec goimports -w {} \;
+    find . \( -path ./.git -o -path ./ephemeral -o -name node_modules \) -prune -o -name '*.go' -exec goimports -w {} +
 
 update-deps:
     #!/usr/bin/env sh
