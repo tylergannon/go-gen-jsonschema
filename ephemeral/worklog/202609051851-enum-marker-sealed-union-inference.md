@@ -416,3 +416,33 @@ docs). Flagged for a separate change: docs/spec/v1.md still specifies
 `Impl("created", Created{})` explicit wire values and "legacy derived names"
 in the #57 union decisions; reconciling the contract with rc.7 semantics is a
 spec amendment, not a prose fix.
+
+## Follow-up: v1 spec amendment and lint scope (branch claude/spec-and-lint-fixes)
+
+Task: (1) amend docs/spec/v1.md so the union/enum contract states the rc.7
+semantics (inferred sealed unions, type-name wire values, `SealedUnion[I]`,
+`func (T) enum()` marker); (2) stop `just lint` reformatting tracked files
+under ephemeral/. Branched from origin/main 622db5e (v1.0.0-rc.8).
+
+Commands:
+- `go test ./...` baseline: all ok.
+- `find ephemeral -name '*.go' -exec goimports -l {} \;` before the change:
+  21 files would be rewritten, all under ephemeral/. Zero elsewhere.
+- Every Go lint step already used `./...`, which stops at ephemeral's nested
+  go.mod files; only the `find . -name '*.go' -exec goimports -w` reached in.
+  No .golangci.yml or staticcheck.conf exists, so nothing else to exclude.
+- New find: `find . \( -path ./.git -o -path ./ephemeral -o -name node_modules \) -prune -o -name '*.go' -exec goimports -w {} +`
+  selects the same 312 files as the explicit-exclusion count, none under
+  ephemeral/ or website/.
+- Gate: `just lint` then `git status --porcelain` -> only docs/spec/v1.md
+  and justfile; `go generate ./...` -> tree unchanged; `go test ./...` ok.
+
+Spec edits (all in place, with a dated amendment note after the status
+paragraph): semantic-equality bullet, enum/interface capability rows,
+generated-method ownership paragraph and its `Impl("created", ...)` example,
+all of "Union decisions for #57", the custom-hook table (`"type":"Created"`),
+the enum-decisions opening, and the 1.x compatibility line.
+
+doc_bug: docs/spec/v1.md capability row linked internal/builder/interface_options_test.go, deleted in #93 -> now links sealed_union_test.go and sealed_union_discriminator_test.go.
+decision: comments belong above a just recipe, not inside its body; just echoes body comment lines as if they were commands, so the lint output showed the comment text.
+friction: zsh parses a bare `=====` token in a command line as a command name ("==== not found") -> quote separators in shell one-liners.
