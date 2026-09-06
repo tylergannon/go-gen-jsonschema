@@ -1,12 +1,16 @@
 # polytype 🧩
 
-Generate JSON Schemas from Go types for LLM tool definitions and structured
-output.
+**One Go type. Many typed projections.**
 
-The generator's primary output is a deterministic schema. Optional generated
-validation and selected JSON codecs/YAML input helpers are separate capabilities;
-schema generation does not create a general-purpose Go codec or guarantee a
-typed encode/decode round trip for every Go type.
+polytype reads your Go types at build time and projects them into the other
+type systems your program has to speak — deterministic JSON Schema for LLM
+tool calls and structured output, plus optional TypeScript declarations, Go
+JSON codecs for sealed unions and enums, and JSON/YAML validation.
+
+Schema generation is the primary, always-on projection. Validation, selected
+JSON codecs, YAML input, and TypeScript declarations are separate, opt-in
+capabilities; schema generation does not create a general-purpose Go codec or
+guarantee a typed encode/decode round trip for every Go type.
 
 <p align="center">
   <img src="gopher-front.svg" alt="Gopher mascot" width="200" height="auto">
