@@ -68,6 +68,12 @@ func Run(args BuilderArgs) (err error) {
 	builder.Validate = args.Validate
 	builder.UnmarshalFormats = args.UnmarshalFormats
 
+	if builder.Validate {
+		if invalid := builder.SchemaFreeFuncs(); len(invalid) > 0 {
+			return fmt.Errorf("--validate cannot generate ValidateJSON for %s: its schema entrypoint is a free function because its underlying type is a pointer or interface, and Go forbids declaring any method (so ValidateJSON) on it; remove --validate or drop this type's registration", invalid[0].Receiver.TypeName)
+		}
+	}
+
 	// Allow registered transforms to mutate the model before render (no-ops by default)
 	if err = (&builder).applyTransforms(); err != nil {
 		return err

@@ -278,6 +278,50 @@ nothing in the actual repo currently depends on (no example combines a
 free-function pointer/interface root with `-validate`). Filed as
 tylergannon/polytype#92 rather than expanding this PR further.
 
+## Round 4: reviewer disputed the #92 deferral; fixed it directly instead
+
+Round 3 (`ephemeral/reviews/202609051930-jsonschema-tag-build-fix-round-03.md`)
+raised two findings:
+
+1. Disputed deferring the `--validate` gap to #92: "filing #92 records the
+   debt but does not make the current implementation or proof complete,"
+   citing AGENTS.md's documented `--validate` contract and `Declare`'s
+   free-function-parity contract, and its own independent repro (silent
+   success, no `ValidateJSON` for the free-function root).
+2. Correct and cheap: issue #90's body (filed round 1, before I'd fully
+   understood the bug) still claimed `test2-indirecttypes` "isn't wired into
+   `TestBasic`" -- but my own worklog had already corrected that understanding
+   without the published issue ever being updated to match, leaving a
+   public, actionable-but-wrong premise.
+
+correction (accepted finding 1, in a narrower form than the reviewer's
+"implement full parity or reject" framing): rather than generating a
+free-function `ValidateJSON` equivalent (real new API surface, no current
+caller, real design cost) I implemented the reject-clearly option explicitly
+named in my own #92 body and consistent with #80's precedent: `Run(...)`
+(`internal/builder/builder.go`) now fails fast with an actionable error when
+`--validate` is combined with any `SchemaFreeFuncs()` entry (a free-function
+root whose type can't have a method) instead of silently succeeding with an
+incomplete result. Verified against the reviewer's own repro (disposable
+`entrypoints` copy, `-validate -force`): now exits 1 with a clear message
+instead of exiting 0 while omitting `PointerFuncType`'s validator. Added
+`TestValidateRejectsFreeFunctionPointerRoot`
+(`internal/builder/validate_free_func_test.go`). Closed #92 with the
+resolution noted, rather than leaving it open as a stale duplicate of fixed
+behavior.
+
+Fixed finding 2 directly: edited #90's body on GitHub to state the actual
+gap (the fixture *is* an active `TestBasic` case with real `go build`/`go
+test`; the real hole is that its `files` list omits `"jsonschema_gen.go"`,
+so nothing golden-diffs the generated Go code, so the same
+silently-dropped-accessor bug this whole PR is about goes completely
+unasserted for that fixture's four pointer-underlying-type registrations).
+Did not fix the fixture itself in this PR (same scope reasoning as before:
+cheap to describe accurately, not cheap to fix without further expanding an
+already-large change) -- left it as a corrected, actionable follow-up.
+
+Round 4 review launched against the fixed state.
+
 ## Verification
 
 - `go generate ./...` per touched example dir; diffed `jsonschema/*.json` and
