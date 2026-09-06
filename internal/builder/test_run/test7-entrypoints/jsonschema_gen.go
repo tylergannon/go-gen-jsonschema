@@ -54,3 +54,11 @@ func PointerFuncTypeSchema(PointerFuncType) json.RawMessage {
 	}
 	return data
 }
+func InterfaceFuncTypeSchema(InterfaceFuncType) json.RawMessage {
+	const fileName = "jsonschema/InterfaceFuncType.json"
+	data, err := __gen_jsonschema_fs.ReadFile(fileName)
+	if err != nil {
+		__gen_jsonschema_panic(fileName, err)
+	}
+	return data
+}

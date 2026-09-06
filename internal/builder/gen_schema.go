@@ -757,10 +757,47 @@ func (s SchemaBuilder) SchemaMethods() []syntax.SchemaMethod {
 // type's underlying type is a pointer or interface, so they must be
 // generated as a free function (matching the original registration's
 // signature) rather than a method.
+// isBuilderMarker reports whether fn's registration was NewJSONSchemaBuilder,
+// whose stub takes no arguments (func() json.RawMessage) -- unlike
+// NewJSONSchemaFunc/fluent Declare's free-function form, whose stub takes
+// the receiver type as its sole argument (func(T) json.RawMessage). Both
+// land in Scan.SchemaFuncs, but they aren't interchangeable: emitting the
+// one-argument free-function shape for a builder registration would change
+// its signature and break callers (or collide if the same builder function
+// is reused for two invalid-receiver types).
+func isBuilderMarker(fn syntax.SchemaFunction) bool {
+	return fn.MarkerCall.CallExpr.MustIdentifyFunc().TypeName == syntax.MarkerFuncNewJSONSchemaBuilder
+}
+
+// SchemaFreeFuncs returns free-function-root registrations (NewJSONSchemaFunc
+// or fluent Declare with a free function) whose receiver type's underlying
+// type is a pointer or interface, so they must be generated as a free
+// function (matching the original registration's signature) rather than a
+// method. NewJSONSchemaBuilder registrations are excluded even when they'd
+// otherwise qualify: see InvalidReceiverBuilderRoots.
 func (s SchemaBuilder) SchemaFreeFuncs() []syntax.SchemaMethod {
 	var out []syntax.SchemaMethod
 	for _, f := range s.Scan.SchemaFuncs {
+		if isBuilderMarker(f) {
+			continue
+		}
 		if s.hasInvalidMethodReceiverBase(f.Receiver.TypeName) {
+			out = append(out, syntax.SchemaMethod(f))
+		}
+	}
+	return out
+}
+
+// InvalidReceiverBuilderRoots returns NewJSONSchemaBuilder registrations
+// whose receiver type's underlying type is a pointer or interface. Go
+// forbids a method there, and the builder's zero-argument stub signature
+// can't be preserved as a free function without risking a name collision
+// (the same builder function reused for two such types), so generation
+// must reject this combination rather than silently drop or miscompile it.
+func (s SchemaBuilder) InvalidReceiverBuilderRoots() []syntax.SchemaMethod {
+	var out []syntax.SchemaMethod
+	for _, f := range s.Scan.SchemaFuncs {
+		if isBuilderMarker(f) && s.hasInvalidMethodReceiverBase(f.Receiver.TypeName) {
 			out = append(out, syntax.SchemaMethod(f))
 		}
 	}

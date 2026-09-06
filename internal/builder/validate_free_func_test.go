@@ -54,15 +54,18 @@ var _ = polytype.Declare(PointerRootSchema)
 	require.ErrorContains(t, err, "--validate cannot generate ValidateJSON for PointerRoot")
 }
 
-// TestFreeFunctionRootForRegisteredInterfaceCompilesAndRuns proves that a
-// free-function schema root for a type registered via the legacy
+// TestFreeFunctionRootForRegisteredInterfaceGeneratesFreeFunction proves
+// that a free-function schema root for a type registered via the legacy
 // NewInterfaceImpl (recorded in Scan.Interfaces, not Scan.LocalNamedTypes)
 // is correctly classified as needing a free function, not a method: before
 // this fix, hasInvalidMethodReceiverBase only consulted LocalNamedTypes, so
 // this exact shape would be misrouted into SchemaMethods() and generate an
 // uncompilable `func (Value) ValueSchema()` (Go forbids an interface
-// receiver base). Runs generation for real and calls the result.
-func TestFreeFunctionRootForRegisteredInterfaceCompilesAndRuns(t *testing.T) {
+// receiver base). This is a fast, source-level check of the classification
+// only; TestInterfaceFuncTypeSchemaCallable in
+// testfixtures/entrypoints/entrypoints_test.go is the real compile-and-call
+// proof, run through TestBasic's full go-build-and-test harness.
+func TestFreeFunctionRootForRegisteredInterfaceGeneratesFreeFunction(t *testing.T) {
 	dir := writeMultiFileFixture(t, map[string]string{
 		"types.go": `package fixture
 
@@ -101,6 +104,44 @@ var (
 	require.NotContains(t, string(generated), "func (Value) ValueSchema()")
 }
 
+// TestValidateRejectsFreeFunctionInterfaceRoot proves the same --validate
+// rejection fires for a registered-interface free-function root, not just a
+// named-pointer one, since hasInvalidMethodReceiverBase classifies both.
+func TestValidateRejectsFreeFunctionInterfaceRoot(t *testing.T) {
+	dir := writeMultiFileFixture(t, map[string]string{
+		"types.go": `package fixture
+
+type Value interface{ value() }
+
+type First struct {
+	Name string ` + "`json:\"name\"`" + `
+}
+
+func (First) value() {}
+`,
+		"schema.go": `//go:build jsonschema
+
+package fixture
+
+import (
+	"encoding/json"
+
+	"github.com/tylergannon/polytype"
+)
+
+func ValueSchema(Value) json.RawMessage { panic("not implemented") }
+
+var (
+	_ = polytype.NewInterfaceImpl[Value](First{})
+	_ = polytype.Declare(ValueSchema)
+)
+`,
+	})
+
+	err := Run(BuilderArgs{TargetDir: dir, Validate: true})
+	require.ErrorContains(t, err, "--validate cannot generate ValidateJSON for Value")
+}
+
 // TestRenderProvidersRejectsFreeFunctionPointerRoot proves that
 // RenderProviders() fails fast, with an actionable error, for a
 // free-function root whose type can't have a method (so no RenderedSchema()
@@ -126,4 +167,33 @@ var _ = polytype.Declare(PointerRootSchema).RenderProviders()
 
 	err := Run(BuilderArgs{TargetDir: dir})
 	require.ErrorContains(t, err, "PointerRoot: RenderProviders() is not supported")
+}
+
+// TestBuilderRejectsInvalidReceiverPointerRoot proves that
+// NewJSONSchemaBuilder (whose stub takes no arguments) fails fast for a
+// type whose underlying type is a pointer or interface, instead of being
+// misrouted through the free-function codegen path and emitted with the
+// wrong (one-argument) signature -- which would either not match the
+// original zero-argument stub's callers or, if the same builder function
+// is reused for two such types, collide as a duplicate declaration.
+func TestBuilderRejectsInvalidReceiverPointerRoot(t *testing.T) {
+	dir := writeTypeGrammarFixture(t, `//go:build jsonschema
+
+package fixture
+
+import (
+	"encoding/json"
+
+	"github.com/tylergannon/polytype"
+)
+
+type PointerRoot *int
+
+func BuildSchema() json.RawMessage { panic("not implemented") }
+
+var _ = polytype.NewJSONSchemaBuilder[PointerRoot](BuildSchema)
+`)
+
+	err := Run(BuilderArgs{TargetDir: dir})
+	require.ErrorContains(t, err, "PointerRoot: NewJSONSchemaBuilder is not supported")
 }

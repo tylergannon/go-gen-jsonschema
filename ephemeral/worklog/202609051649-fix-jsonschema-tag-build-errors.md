@@ -376,6 +376,54 @@ issue instead.
 
 Round 5 review launched against the fixed state.
 
+## Round 6: builder-marker signature bug; weak interface test upgraded
+
+Round 5 (`ephemeral/reviews/202609052000-jsonschema-tag-build-fix-round-05.md`)
+found round 4's fixes held, then found:
+
+1. Real bug, not another edge case: `NewJSONSchemaBuilder[T](fn)`'s stub is
+   `func() json.RawMessage` (zero arguments) -- structurally distinct from
+   `NewJSONSchemaFunc`/fluent-`Declare`'s free-function stub
+   (`func(T) json.RawMessage`, one argument) -- but the scanner appends both
+   to `Scan.SchemaFuncs` with no marker-kind distinction, and
+   `SchemaFreeFuncs()` swept up any invalid-receiver entry from either
+   without telling them apart. The template then emitted the one-argument
+   shape unconditionally, so a `NewJSONSchemaBuilder[PointerRoot](BuildSchema)`
+   registration would generate `func BuildSchema(PointerRoot)
+   json.RawMessage` -- wrong signature for existing callers of the
+   zero-argument form, and if the same builder function were reused for two
+   invalid-receiver types, a straight duplicate-declaration compile error.
+   Verified both the break and the fix against the real CLI with disposable
+   fixtures. Fixed by reading `MarkerCall.CallExpr.MustIdentifyFunc().TypeName`
+   to distinguish the two marker kinds, excluding builder-sourced entries
+   from `SchemaFreeFuncs()`, and adding a new
+   `SchemaBuilder.InvalidReceiverBuilderRoots()` + a `Run(...)` rejection
+   (same "fail clearly" pattern as the RenderProviders/--validate checks) --
+   nothing in the repo needs a zero-argument free function generated for an
+   invalid-receiver builder root, so reject rather than design that surface.
+   Added `TestBuilderRejectsInvalidReceiverPointerRoot`.
+
+2. Legitimate test-rigor gap: `TestFreeFunctionRootForRegisteredInterfaceCompilesAndRuns`
+   claimed (in its name and comment) to compile and call the generated code,
+   but only grepped source substrings out of a package that was never
+   actually built or run -- the worklog's claim of independent verification
+   was true (a disposable-fixture check was run manually earlier in this
+   round) but wasn't captured as durable, re-runnable proof. Fixed by
+   extending `testfixtures/entrypoints` (already wired into `TestBasic`'s
+   real `go build`+`go test` harness) with `InterfaceFuncType` -- a
+   registered sealed interface with a free-function schema root, exactly
+   the shape round 4/5 were probing -- plus
+   `TestInterfaceFuncTypeSchemaCallable`, which calls the generated function
+   and asserts the actual union-schema JSON shape. Renamed the original
+   in-process test to `...GeneratesFreeFunction` and narrowed its claim to
+   what it actually checks (source-level classification only), pointing at
+   the harness test as the real proof. Also added
+   `TestValidateRejectsFreeFunctionInterfaceRoot` per round 4's explicit ask
+   that the interface case get `--validate` coverage too, not just the
+   pointer case.
+
+Round 6 review launched against the fixed state.
+
 ## Verification
 
 - `go generate ./...` per touched example dir; diffed `jsonschema/*.json` and

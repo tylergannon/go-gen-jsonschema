@@ -181,6 +181,7 @@ func TestBasic(t *testing.T) {
 				"jsonschema/FuncType.json",
 				"jsonschema/BuilderType.json",
 				"jsonschema/PointerFuncType.json",
+				"jsonschema/InterfaceFuncType.json",
 				"jsonschema_gen.go",
 			},
 		},
