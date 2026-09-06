@@ -79,11 +79,12 @@ and the whole `jsonschema/` directory (each `T.json` schema comes with a
 
 For a Go and TypeScript integration, pin one explicit module release for both
 the tool and imported marker/runtime package. This combined surface requires
-`v1.0.0-rc.5` or newer; `v1.0.0-rc.4` includes TypeScript declarations but
-predates generated owner codecs:
+`v1.0.0-rc.8` or newer: `v1.0.0-rc.4` includes TypeScript declarations but
+predates generated owner codecs, and releases before `v1.0.0-rc.7` predate the
+marker-based enum and sealed-union registration:
 
 ```bash
-go get -tool github.com/tylergannon/polytype/polytype@v1.0.0-rc.5
+go get -tool github.com/tylergannon/polytype/polytype@v1.0.0-rc.8
 ```
 
 Generate the schema, validation, Go output, and TypeScript declarations in one

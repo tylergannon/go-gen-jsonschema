@@ -250,12 +250,14 @@ no typed constants. The marker means value mode; a `String()` method on a
 marked type is ignored. `.StringerEnum` on a field of a marked integer type
 still selects name mode for that field.
 
-The generated file references every marked type in its package as
-`var _ interface{ enum() } = *new(T)`, so the marker is used from production
-code, its shape is checked by the compiler, and `staticcheck` stays quiet
-with no lint directives. A package that declares a marked enum but never
-runs generation (a shared enums package, say) needs that one line written
-by hand, once per package.
+The generated file references every marked type in its package through its
+first typed constant, as `var _ interface{ enum() } = StatusPending`, so the
+marker is used from production code, its shape is checked by the compiler,
+and `staticcheck` stays quiet with no lint directives. The right-hand side
+must be a value of the marked type (a constant, not a pointer) because the
+marker uses a value receiver. A package that declares a marked enum but never
+runs generation (a shared enums package, say) needs one such line written by
+hand per marked type.
 
 String-mode fields receive generated codecs on the containing struct. Both
 `json.Marshal(Task{...})` and decoding into `*Task` use the registered constant
@@ -462,12 +464,13 @@ Pin an explicit module release that contains both capabilities; the generator
 and the imported marker/runtime package must use that same release:
 
 ```bash
-go get -tool github.com/tylergannon/polytype/polytype@v1.0.0-rc.5
+go get -tool github.com/tylergannon/polytype/polytype@v1.0.0-rc.8
 ```
 
-This combined surface requires `v1.0.0-rc.5` or newer. `v1.0.0-rc.4` includes
-TypeScript declarations but predates generated owner codecs. Pin the version
-explicitly.
+This combined surface requires `v1.0.0-rc.8` or newer: `v1.0.0-rc.4` includes
+TypeScript declarations but predates generated owner codecs, and releases before
+`v1.0.0-rc.7` predate the marker-based enum and sealed-union registration. Pin
+the version explicitly.
 
 Generate validation and TypeScript declarations together. The field
 registrations shown above automatically select the containing struct's enum and

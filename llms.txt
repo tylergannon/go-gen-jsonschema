@@ -133,12 +133,13 @@ module release for both the tool and imported marker/runtime package, then use a
 single directive:
 
 ```bash
-go get -tool github.com/tylergannon/polytype/polytype@v1.0.0-rc.5
+go get -tool github.com/tylergannon/polytype/polytype@v1.0.0-rc.8
 ```
 
-This combined surface requires `v1.0.0-rc.5` or newer. `v1.0.0-rc.4` includes
-TypeScript declarations but predates generated owner codecs. Pin the version
-explicitly.
+This combined surface requires `v1.0.0-rc.8` or newer: `v1.0.0-rc.4` includes
+TypeScript declarations but predates generated owner codecs, and releases before
+`v1.0.0-rc.7` predate the marker-based enum and sealed-union registration. Pin
+the version explicitly.
 
 ```go
 //go:generate go tool polytype --validate --typescript web/src/generated --typescript-barrel
@@ -297,10 +298,11 @@ var _ = polytype.Declare(Task.Schema)
 
 The marker must be exactly `func (T) enum()`; a pointer receiver, another
 signature, or a marked type with no typed constants fails generation naming
-the type. The generated file references each marked type as
-`var _ interface{ enum() } = *new(T)`, so the marker counts as used by
-staticcheck; a package with marked enums but no generation adds that line by
-hand. The marker means value mode and ignores any `String()` method. A
+the type. The generated file references each marked type through its first
+typed constant, as `var _ interface{ enum() } = StatusPending` (a value of the
+marked type, not a pointer, since the marker has a value receiver), so the
+marker counts as used by staticcheck; a package with marked enums but no
+generation adds one such line per marked type by hand. The marker means value mode and ignores any `String()` method. A
 marked integer type emits its raw numeric constant values; `.StringerEnum` on
 a field emits constant names such as `LogDebug` and `LogInfo` as strings
 instead (never the return values of `String()`).

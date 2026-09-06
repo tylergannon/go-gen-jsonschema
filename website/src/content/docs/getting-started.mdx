@@ -82,9 +82,10 @@ registrations automatically generate the containing struct's JSON codecs; there
 is no separate codec flag. The run writes `types.ts` and, when requested,
 `index.ts` alongside the schema and Go outputs.
 
-This combined surface requires `v1.0.0-rc.5` or newer. `v1.0.0-rc.4` includes
-TypeScript declarations but predates generated owner codecs. Pin the version
-explicitly.
+This combined surface requires `v1.0.0-rc.8` or newer: `v1.0.0-rc.4` includes
+TypeScript declarations but predates generated owner codecs, and releases before
+`v1.0.0-rc.7` predate the marker-based enum and sealed-union registration. Pin
+the version explicitly.
 
 The TypeScript files are structural declarations. They do not contain runtime
 decoders or validators. TypeScript code can use `JSON.parse` and
