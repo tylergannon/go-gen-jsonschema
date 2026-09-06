@@ -48,7 +48,7 @@ func (a Assertion) MarshalJSON() ([]byte, error) {
 	wrapper := Wrapper{Alias: Alias(a)}
 	var err error
 
-	if wrapper.Value, err = __jsonMarshal__messages__AssertionValue__19d2b8e727645a9ec719f208b545b64ed017760e1fcb2429751ed0dfefef37ce(a.Value); err != nil {
+	if wrapper.Value, err = __jsonMarshal__messages__AssertionValue__f72fdfb2f70c801e0971576b1607ca78647626b4b7cb89b213115af2322c2213(a.Value); err != nil {
 		return nil, fmt.Errorf("field value: %w", err)
 	}
 
@@ -70,7 +70,7 @@ func (a *Assertion) UnmarshalJSON(data []byte) (err error) {
 	__next := Assertion(wrapper.Alias)
 
 	var __decoded0 AssertionValue
-	if __decoded0, err = __jsonUnmarshal__messages__AssertionValue__19d2b8e727645a9ec719f208b545b64ed017760e1fcb2429751ed0dfefef37ce(wrapper.Value); err != nil {
+	if __decoded0, err = __jsonUnmarshal__messages__AssertionValue__f72fdfb2f70c801e0971576b1607ca78647626b4b7cb89b213115af2322c2213(wrapper.Value); err != nil {
 		return err
 	}
 	__next.Value = __decoded0
@@ -79,7 +79,7 @@ func (a *Assertion) UnmarshalJSON(data []byte) (err error) {
 	return nil
 }
 
-func __jsonMarshal__messages__AssertionValue__19d2b8e727645a9ec719f208b545b64ed017760e1fcb2429751ed0dfefef37ce(value AssertionValue) (json.RawMessage, error) {
+func __jsonMarshal__messages__AssertionValue__f72fdfb2f70c801e0971576b1607ca78647626b4b7cb89b213115af2322c2213(value AssertionValue) (json.RawMessage, error) {
 	if value == nil {
 		return nil, fmt.Errorf("cannot marshal nil registered interface AssertionValue")
 	}
@@ -89,20 +89,20 @@ func __jsonMarshal__messages__AssertionValue__19d2b8e727645a9ec719f208b545b64ed0
 		discriminator string
 	)
 	switch object := value.(type) {
+	case AssertArrayLength:
+		discriminator = "AssertArrayLength"
+		data, err = json.Marshal(&object)
+	case AssertBoolValue:
+		discriminator = "AssertBoolValue"
+		data, err = json.Marshal(&object)
 	case AssertNumericValue:
 		discriminator = "AssertNumericValue"
 		data, err = json.Marshal(&object)
 	case AssertStringValue:
 		discriminator = "AssertStringValue"
 		data, err = json.Marshal(&object)
-	case AssertBoolValue:
-		discriminator = "AssertBoolValue"
-		data, err = json.Marshal(&object)
 	case AssertType:
 		discriminator = "AssertType"
-		data, err = json.Marshal(&object)
-	case AssertArrayLength:
-		discriminator = "AssertArrayLength"
 		data, err = json.Marshal(&object)
 	default:
 		return nil, fmt.Errorf("unregistered dynamic implementation %T for AssertionValue", value)
@@ -116,7 +116,7 @@ func __jsonMarshal__messages__AssertionValue__19d2b8e727645a9ec719f208b545b64ed0
 	)
 }
 
-func __jsonUnmarshal__messages__AssertionValue__19d2b8e727645a9ec719f208b545b64ed017760e1fcb2429751ed0dfefef37ce(data []byte) (AssertionValue, error) {
+func __jsonUnmarshal__messages__AssertionValue__f72fdfb2f70c801e0971576b1607ca78647626b4b7cb89b213115af2322c2213(data []byte) (AssertionValue, error) {
 	var (
 		temp          map[string]json.RawMessage
 		discriminator string
@@ -131,6 +131,18 @@ func __jsonUnmarshal__messages__AssertionValue__19d2b8e727645a9ec719f208b545b64e
 		return nil, __jsonschema__unmarshalDiscriminatorError(_tempDiscriminator, err)
 	}
 	switch discriminator {
+	case "AssertArrayLength":
+		var obj AssertArrayLength
+		if err = json.Unmarshal(data, &obj); err != nil {
+			return nil, err
+		}
+		return obj, nil
+	case "AssertBoolValue":
+		var obj AssertBoolValue
+		if err = json.Unmarshal(data, &obj); err != nil {
+			return nil, err
+		}
+		return obj, nil
 	case "AssertNumericValue":
 		var obj AssertNumericValue
 		if err = json.Unmarshal(data, &obj); err != nil {
@@ -143,20 +155,8 @@ func __jsonUnmarshal__messages__AssertionValue__19d2b8e727645a9ec719f208b545b64e
 			return nil, err
 		}
 		return obj, nil
-	case "AssertBoolValue":
-		var obj AssertBoolValue
-		if err = json.Unmarshal(data, &obj); err != nil {
-			return nil, err
-		}
-		return obj, nil
 	case "AssertType":
 		var obj AssertType
-		if err = json.Unmarshal(data, &obj); err != nil {
-			return nil, err
-		}
-		return obj, nil
-	case "AssertArrayLength":
-		var obj AssertArrayLength
 		if err = json.Unmarshal(data, &obj); err != nil {
 			return nil, err
 		}

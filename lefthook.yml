@@ -6,6 +6,13 @@ pre-commit:
     golangci:
       run: golangci-lint run
 pre-push:
+  # Sequential on purpose: `generate` rewrites files that `test` reads.
+  # Do not move these into a `parallel: true` group.
+  piped: true
   commands:
+    generate:
+      priority: 1
+      run: go generate ./... && { out="$(git status --porcelain)"; [ -z "$out" ] || { printf 'go generate output is out of date:\n%s\n' "$out"; exit 1; }; }
     test:
+      priority: 2
       run: go test ./...

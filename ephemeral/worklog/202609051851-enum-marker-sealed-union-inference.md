@@ -252,3 +252,62 @@ b657dd8 Infer enum types from a func (T) enum() marker method
 ```
 
 Pushed with `git push --force-with-lease origin claude/issues-86-87-88-plan-20be51`.
+
+## CI generated-files drift
+
+PR #93 `test-and-generate` failed at "Verify generated files are current"
+(`test -z "$(git status --porcelain)"` after `go generate ./...`).
+
+drifted files (reproduced locally; two consecutive `go generate ./...`
+runs were byte-identical, so this is stale output, not non-determinism):
+- `internal/builder/messages/jsonschema/GeneratedTestResponse.json`
+- `internal/builder/messages/jsonschema/GeneratedTestResponse.json.sum`
+- `internal/builder/messages/jsonschema_gen.go`
+
+root cause: bf55de1 removed the explicit
+`NewInterfaceImpl[AssertionValue](AssertNumericValue{}, AssertStringValue{},
+AssertBoolValue{}, AssertType{}, AssertArrayLength{})` from
+`internal/builder/messages/schema.go`, so the variants are now inferred by
+`inferSealedUnion` (`internal/syntax/sealed.go`), which walks
+`pkg.Scope().Names()` and emits them in sorted name order
+(AssertArrayLength, AssertBoolValue, AssertNumericValue, AssertStringValue,
+AssertType) instead of the old declaration order. That reorders the `anyOf`
+branches, the marshal/unmarshal `switch` cases, and the content hash in the
+generated helper names. The checked-in output was never refreshed because
+the rebase verification above ran `go generate .` (root package only);
+the `//go:generate` in `internal/builder/messages/assertions.go` is only
+reached by `go generate ./...`. Nothing in `go test ./...` writes to
+`internal/builder/messages/`. No example, `.json.sum`, or
+`skills/polytype/references/examples.md` drifted.
+
+fix: committed the regenerated artifacts unchanged (8682882, amended to add
+this section). No generator change, no `.gitignore` change, no CI change.
+
+new hook (`lefthook.yml`): `pre-push` gains `generate`, which runs
+`go generate ./...` and fails, printing `git status --porcelain`, if the
+tree is dirty afterwards. The group is `piped: true` with priorities
+`generate`=1, `test`=2 so `generate` runs first and `test` is skipped on
+failure; it is deliberately not in a `parallel: true` group because
+`generate` rewrites files that `go test` reads. Note: a bare
+`lefthook run pre-push` skips both commands with "no matching push files"
+when HEAD equals the remote; use `--force` for a manual run.
+
+hook verification:
+- against the stale HEAD (before the fix), `lefthook run pre-push --force`:
+  `generate` failed with `go generate output is out of date:` followed by the
+  three `internal/builder/messages/...` paths; `test (skip) broken pipe`;
+  exit 1.
+- after the commit, clean tree: `✓ generate (5.11 seconds)`,
+  `✓ test (8.68 seconds)`, exit 0, tree still clean.
+- deliberately stale (edited a doc comment in
+  `internal/builder/messages/assertions.go`): `generate` failed listing
+  `assertions.go`, `GeneratedTestResponse.json`, and `.json.sum`; exit 1;
+  restored with `git checkout -- internal/builder/messages`.
+
+exact CI sequence from a clean tree, all exit 0: `git status --porcelain`
+empty; `go test ./...` all `ok`; `go generate ./...`;
+`test -z "$(git status --porcelain)"`; `JSONSCHEMA_NO_CHANGES=1 go generate
+./...`; `go test ./...` all `ok`. `go vet ./...` clean, `staticcheck ./...`
+clean, `golangci-lint run ./...` `0 issues.`; no lint directives added.
+`tests/typescript` npm suite not rerun: no file under `examples/` and no
+generator source changed.
