@@ -722,11 +722,19 @@ func (s SchemaBuilder) hasInvalidMethodReceiverBase(typeName string) bool {
 	if _, ok := s.Scan.Interfaces[typeName]; ok {
 		return true
 	}
-	if ts, ok := s.Scan.LocalNamedTypes[typeName]; ok {
-		switch ts.Type().Expr().(type) {
-		case *dst.StarExpr, *dst.InterfaceType:
-			return true
-		}
+	// Resolve through go/types rather than pattern-matching the immediate
+	// declaration AST: a forwarding definition (type Q P, where P is
+	// itself a pointer or interface) has an *dst.Ident, not a *dst.StarExpr
+	// or *dst.InterfaceType, as its own declaration expression, but Go
+	// still resolves Q's underlying type to a pointer/interface and
+	// forbids a method on it exactly the same as a direct declaration.
+	obj := s.Scan.Pkg.Types.Scope().Lookup(typeName)
+	if obj == nil {
+		return false
+	}
+	switch obj.Type().Underlying().(type) {
+	case *types.Pointer, *types.Interface:
+		return true
 	}
 	return false
 }

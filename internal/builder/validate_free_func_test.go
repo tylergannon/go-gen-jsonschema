@@ -197,3 +197,41 @@ var _ = polytype.NewJSONSchemaBuilder[PointerRoot](BuildSchema)
 	err := Run(BuilderArgs{TargetDir: dir})
 	require.ErrorContains(t, err, "PointerRoot: NewJSONSchemaBuilder is not supported")
 }
+
+// TestFreeFunctionRootForForwardingPointerTypeGeneratesFreeFunction proves
+// that a type defined in terms of another named pointer type (type Q P,
+// where P is itself a pointer) is classified as an invalid method receiver
+// base, not just a type declared directly as a pointer (type Q *int). The
+// classifier resolves through go/types' Underlying(), which follows
+// arbitrary chains of named-type indirection, rather than pattern-matching
+// only the immediate declaration's AST expression.
+func TestFreeFunctionRootForForwardingPointerTypeGeneratesFreeFunction(t *testing.T) {
+	dir := writeMultiFileFixture(t, map[string]string{
+		"types.go": `package fixture
+
+type P *int
+type Q P
+`,
+		"schema.go": `//go:build jsonschema
+
+package fixture
+
+import (
+	"encoding/json"
+
+	"github.com/tylergannon/polytype"
+)
+
+func QSchema(Q) json.RawMessage { panic("not implemented") }
+
+var _ = polytype.Declare(QSchema)
+`,
+	})
+
+	require.NoError(t, Run(BuilderArgs{TargetDir: dir}))
+
+	generated, err := os.ReadFile(filepath.Join(dir, "jsonschema_gen.go"))
+	require.NoError(t, err)
+	require.Contains(t, string(generated), "func QSchema(Q) json.RawMessage {")
+	require.NotContains(t, string(generated), "func (Q) QSchema()")
+}

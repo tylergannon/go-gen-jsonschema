@@ -424,6 +424,45 @@ found round 4's fixes held, then found:
 
 Round 6 review launched against the fixed state.
 
+## Round 7: classifier resolved AST syntax, not the actual Go type
+
+Round 6 (`ephemeral/reviews/202609052015-jsonschema-tag-build-fix-round-06.md`)
+found the deepest and most structural gap yet: `hasInvalidMethodReceiverBase`
+switched on `ts.Type().Expr()` -- the type's *own declaration's* immediate
+AST node -- so `type P *int; type Q P` misclassified `Q` as method-capable,
+because `Q`'s declaration expression is just the identifier `P`, not a
+`*dst.StarExpr`. Go itself resolves `Q`'s underlying type through the chain
+to a pointer and forbids a method on it regardless, so this was a real,
+verified compile break for a forwarding named-pointer (or -interface) type,
+not a narrower edge case -- reproduced directly against the Go compiler by
+the reviewer and confirmed by me building a disposable fixture before and
+after the fix.
+
+Given every prior round's fix in this area was a patch reacting to one more
+declaration shape the AST-pattern-matching approach didn't cover, this was
+the point to fix the *method*, not add another shape to the switch: found
+the codebase's own existing pattern for this exact problem
+(`internal/builder/gen_schema.go`'s `renderEnum`:
+`enum.TypeSpec.Pkg().Types.Scope().Lookup(name).Type().Underlying()`) and
+used real `go/types` resolution instead of AST pattern-matching.
+`go/types.Underlying()` follows arbitrary chains of named-type indirection
+by construction, so this isn't just a fix for the one reported shape -- it's
+categorically immune to the whole class of "another way to spell a pointer
+type" that rounds 4-6 kept finding one instance of at a time. Verified
+against the real CLI (compiles, generates a free function, not a method) and
+added `TestFreeFunctionRootForForwardingPointerTypeGeneratesFreeFunction`.
+
+Also used this pass to proactively check (before a hypothetical round 7 found
+it) the remaining `Declare(...)` chain options against an invalid-receiver
+free-function root: `.Enum`/`.StringerEnum`/`.Accessor`/`.Method`/
+`.Function`/`.Interface` all require a `Type{}.Field` selector as their
+first argument, which doesn't type-check against a pointer or interface
+type in the first place (no fields to select) -- so those combinations are
+already impossible to write, not silently broken. Verified `.Ref()`
+specifically (the other no-argument chain option, and the only remaining
+unverified one) against a disposable fixture: works correctly, since `$ref`/
+`$defs` generation only touches JSON-schema output, not a Go accessor shape.
+
 ## Verification
 
 - `go generate ./...` per touched example dir; diffed `jsonschema/*.json` and
