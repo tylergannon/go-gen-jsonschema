@@ -384,3 +384,35 @@ Out of scope, noted: website getting-started.mdx line ~81 still says
 codecs" although `.Interface` was removed in rc.7 (doc_bug: stale API
 name -> should read `.StringerEnum` registrations and inferred sealed
 unions).
+
+## Follow-up: stale removed-API prose in docs (rc.8 followups branch)
+
+Task: fix the getting-started.mdx sentence flagged above, then sweep .md/.mdx/.txt
+for `.Interface(`, `WithInterface`, `NewInterfaceImpl`, `NewEnumType`, `WithEnum`,
+`.Enum(`, `Discriminator(` presented as current API. Docs only; no Go or
+generated files touched.
+
+Commands:
+- `go test ./...` baseline before edits: all ok.
+- `grep -rnE '\.Interface\(|WithInterface|NewInterfaceImpl|NewEnumType|WithEnum|\.Enum\(|Discriminator\(' --include='*.md' --include='*.mdx' --include='*.txt' --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=ephemeral .`
+  plus a broader pass for backticked `.Interface` / `.Enum` without a paren
+  (the getting-started sentence itself only matched the broader form).
+- Checked `internal/builder/gen_schema.go` (`adapted := config.UseStringer && underlying == enumUnderlyingInteger`):
+  only sealed-union fields and `.StringerEnum` integer fields produce owner
+  codecs; marked enums in value mode do not. Wording was chosen to match that.
+
+Changed: website/src/content/docs/getting-started.mdx,
+website/src/content/docs/reference/cli.md, docs/tutorial.mdx, llms.txt (one
+`.Enum` mention), AGENTS.md (registration list/root package/discriminator
+lines described the removed fluent API as current), docs/design/v1-roadmap.md
+(disposition said `WithEnum` and interface options "are implemented").
+
+Left alone, deliberately: migration notes in README.md, llms.txt,
+features/enums.md, features/interfaces.md, skills/polytype/references/registration-api.md
+(they describe the APIs as removed); docs/internal-dev-notes.md,
+docs/design/issue-29-plan.md, .agent/memory/current.mdx, prompts/description.md
+(historical snapshots / stale prompt artifact, headered as such or not user
+docs). Flagged for a separate change: docs/spec/v1.md still specifies
+`Impl("created", Created{})` explicit wire values and "legacy derived names"
+in the #57 union decisions; reconciling the contract with rc.7 semantics is a
+spec amendment, not a prose fix.

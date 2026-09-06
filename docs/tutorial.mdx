@@ -97,9 +97,9 @@ the version explicitly.
 //go:generate go tool polytype --validate --typescript web/src/generated --typescript-barrel
 ```
 
-The barrel flag is optional. Registrations such as `.Interface` and
-`.StringerEnum` automatically generate the containing struct's JSON codecs;
-there is no separate codec flag. Run `go generate ./...` and `go mod tidy`, then
+The barrel flag is optional. Sealed-interface union fields and `.StringerEnum`
+registrations automatically generate the containing struct's JSON codecs; there
+is no separate codec flag. Run `go generate ./...` and `go mod tidy`, then
 commit the schema, Go, and requested TypeScript outputs together.
 
 Use `json.Marshal` on the containing Go struct. Validate incoming JSON before

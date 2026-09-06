@@ -73,7 +73,7 @@ Task runner is `just` (justfile), not `make`.
 - **`internal/builder/`** — Schema generation engine. `SchemaBuilder` orchestrates: type scanning → schema node construction → JSON output → Go code generation
 - **`internal/builder/model.go`** — Schema node types: `ObjectNode`, `PropertyNode`, `ArrayNode`, `UnionTypeNode`, `RefNode`, `TemplateHoleNode`
 - **`internal/common/`** — Struct tag parsing, helpers
-- **Root package (`polytype`)** — Declaration/registration API (`Declare`, `.Interface`, `.Enum`, `Discriminator`, `Impl`, ...) and runtime codec types (`Optional[T]`, `Nullable[T]`)
+- **Root package (`polytype`)** — Declaration/registration API (`Declare`, `.StringerEnum`, `.Ref`, `SealedUnion`, ...) and runtime codec types (`Optional[T]`, `Nullable[T]`)
 - **`jsonschema/`** — Hand-rolled JSON Schema construction helpers (`JSONSchema`, `ObjectSchema`, `ParentSchema`, `StringSchema`, `ArraySchema`, `ConstSchema`, `EnumSchema`, ...) for writing provider functions
 
 ### Registration System
@@ -81,17 +81,18 @@ Task runner is `just` (justfile), not `make`.
 Schema types are registered via no-op marker functions in build-tagged `schema.go` files. The scanner reads these as AST call expressions. `Declare(fn)` — a method expression (`T.Schema`) or a free function taking `T` — is the primary entry point; chain options onto the returned `*Declaration[T]`:
 
 - `Declare(T.Schema)` — primary registration
-- `.Enum(T{}.Field)` / `.StringerEnum(T{}.Field)` — enum fields
-- `.Interface(T{}.Field, Discriminator(name), Impl(value, impl), ...)` — union types with discriminators
+- `.StringerEnum(T{}.Field)` — emit an integer enum field's constant names as strings
 - `.Accessor(...)` / `.Method(...)` / `.Function(...)` / `.RenderProviders()` — provider-based template rendering
 - `.Ref()` — render this type as `"$ref"` wherever it's referenced
 
-`NewJSONSchemaMethod`/`NewJSONSchemaFunc` with their `With*` options, the package-level `NewEnumType[T]()`, and `NewInterfaceImpl[I](impls...)` remain supported for source compatibility (each carries a `Deprecated:` godoc comment naming its fluent equivalent), but new registration code should use `Declare(...)`. `NewEnumType[T]()` has no fluent replacement when an enum type is shared across more than one struct field — keep that case on the legacy form.
+Enums and unions are not declared per field. A type is an enum when it declares the marker method `func (T) enum()` in ordinary (non-build-tagged) Go; its values are the typed constants in the same package. A field whose type is a sealed interface (one whose own body declares an unexported method) becomes a discriminated union of every named struct in the same package that declares that method directly. The discriminator property defaults to `"type"`; override it once per interface with the package-level `SealedUnion[I](name)` marker in the interface's package.
+
+`NewJSONSchemaMethod`/`NewJSONSchemaFunc` with their remaining `With*` options stay supported for source compatibility (each carries a `Deprecated:` godoc comment naming its fluent equivalent), but new registration code should use `Declare(...)`. `.Enum`, `.Interface`, `Discriminator`, `Impl`, `WithEnum`, `WithInterface*`, `WithDiscriminator`, `NewEnumType`, and `NewInterfaceImpl` were removed in v1.0.0-rc.7.
 
 ### Key Patterns
 
 - **Build tags**: `//go:build jsonschema` for registration code, `//go:build !jsonschema` for generated code
-- **Discriminators**: Default `"type"`, overridable per-field with `Discriminator(name)` inside `.Interface(...)`
+- **Discriminators**: Default `"type"`, overridable per interface with `SealedUnion[I](name)`; the wire value is always the concrete variant type name
 - **Comments → descriptions**: Go doc comments automatically become JSON Schema `description` fields
 - **Optional fields**: `polytype.Optional[T]` with `json:",omitzero"` (not `omitempty`, which only affects Go marshaling)
 
