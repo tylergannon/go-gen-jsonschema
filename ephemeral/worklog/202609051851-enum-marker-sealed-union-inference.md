@@ -144,3 +144,30 @@ regenerates; goldens refreshed in place for union_codec and
 v1_interfaces_options; lint clean; skill examples and website api/index.md
 regenerated. origin/main had not moved during the session, so no rebase was
 needed.
+
+## Follow-up: enum marker and staticcheck U1000
+
+correction: user rejected the `//lint:ignore U1000` approach for the enum
+marker ("nothing calls it" read as untested; the marker IS covered by
+builder, CLI, example round-trip, and TypeScript tests, but the lint
+directive was still friction).
+
+discovery: staticcheck marks a method as used when it satisfies the method
+set of any *used* interface in the same package, so one
+`var _ interface{ enum() } = *new(T)` clears every enum() marker in that
+package. A constraint declared in polytype cannot do this: an unexported
+method name is package-scoped, so `polytype.Enum interface{ enum() }` can
+never be satisfied from another package, and build-tagged registrations are
+invisible to the linter anyway.
+
+decision: the generator now emits `var _ interface{ enum() } = *new(T)` for
+every marked enum type in the generated package (schemas.go.tmpl,
+`EnumMarkers` in template data). All lint directives removed. Packages that
+never generate (remote enum fixtures, scanner fixtures, the TypeScript
+fixture that is generated in a temp copy) carry the same one-line assertion
+by hand, which is the documented instruction for consumers' shared enum
+packages.
+
+proof: staticcheck and golangci-lint clean with zero directives; go test
+./...; npm test 11/11; all examples regenerated; goldens refreshed for
+interfaces and v1_enums_stringmode.

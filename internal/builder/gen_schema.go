@@ -11,6 +11,7 @@ import (
 	"go/token"
 	"go/types"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -369,6 +370,12 @@ type schemaTemplateData struct {
 	OwnerCodecs []OwnerCodec
 	YAMLTypes   []YAMLType
 	Interfaces  []InterfaceInfo
+	// EnumMarkers lists every type in the generated package that declares
+	// the func (T) enum() marker. The template emits one interface
+	// assertion per type so the marker is referenced from production code:
+	// that keeps its shape checked at compile time and satisfies the
+	// staticcheck unused-method check without any lint directives.
+	EnumMarkers []string
 }
 
 func (s schemaTemplateData) HaveInterfaces() bool {
@@ -1350,6 +1357,7 @@ func (s *SchemaBuilder) RenderGoCode() (err error) {
 	templateData := schemaTemplateData{
 		SchemaBuilder: *s,
 		Imports:       importMap.ImportStatements(),
+		EnumMarkers:   slices.Sorted(maps.Keys(s.Scan.Constants)),
 	}
 	generatedInterfaceHelpers := make(map[string]bool)
 

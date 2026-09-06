@@ -16,6 +16,10 @@ const (
 const EnumVal4 RemoteEnumType = "val4"
 
 // RemoteEnumType declares itself as an enum; the generator emits its typed constants.
-//
-//lint:ignore U1000 enum marker method, read by the polytype generator
 func (RemoteEnumType) enum() {}
+
+// This package runs no generation of its own, so it references its marked
+// enum types by hand; a generated file would emit the same assertions.
+var (
+	_ interface{ enum() } = *new(RemoteEnumType)
+)

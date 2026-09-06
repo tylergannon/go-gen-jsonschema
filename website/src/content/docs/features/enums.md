@@ -37,9 +37,12 @@ named `enum` is a generation error naming the type, as is a marked type with
 no typed constants. The marker means value mode: a `String()` method on a
 marked type is ignored.
 
-Nothing calls the marker, so `staticcheck` reports it as unused (U1000);
-silence that with a `//lint:ignore U1000 enum marker` comment on the line
-above the method.
+The generated file references every marked type in its package as
+`var _ interface{ enum() } = *new(T)`, so the marker is used from production
+code, its shape is checked by the compiler, and `staticcheck` stays quiet
+with no lint directives. A package that declares a marked enum but never
+runs generation (a shared enums package, say) needs that one line written
+by hand, once per package.
 
 ## Integer and iota constants
 

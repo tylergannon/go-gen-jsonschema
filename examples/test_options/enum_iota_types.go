@@ -88,16 +88,10 @@ type Configuration struct {
 }
 
 // Color declares itself as an enum; the generator emits its typed constants.
-//
-//lint:ignore U1000 enum marker method, read by the polytype generator
 func (Color) enum() {}
 
 // Size declares itself as an enum; the generator emits its typed constants.
-//
-//lint:ignore U1000 enum marker method, read by the polytype generator
 func (Size) enum() {}
 
 // LogLevel declares itself as an enum; the generator emits its typed constants.
-//
-//lint:ignore U1000 enum marker method, read by the polytype generator
 func (LogLevel) enum() {}

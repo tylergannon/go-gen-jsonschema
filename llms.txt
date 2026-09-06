@@ -297,7 +297,10 @@ var _ = polytype.Declare(Task.Schema)
 
 The marker must be exactly `func (T) enum()`; a pointer receiver, another
 signature, or a marked type with no typed constants fails generation naming
-the type. The marker means value mode and ignores any `String()` method. A
+the type. The generated file references each marked type as
+`var _ interface{ enum() } = *new(T)`, so the marker counts as used by
+staticcheck; a package with marked enums but no generation adds that line by
+hand. The marker means value mode and ignores any `String()` method. A
 marked integer type emits its raw numeric constant values; `.StringerEnum` on
 a field emits constant names such as `LogDebug` and `LogInfo` as strings
 instead (never the return values of `String()`).
