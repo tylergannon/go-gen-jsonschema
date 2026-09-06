@@ -21,3 +21,5 @@ var _ = polytype.NewJSONSchemaMethod(Plain.Schema)
 // IFace is sealed by isIface, so Impl1 and Impl2 are inferred for every
 // Owner field of that type.
 var _ = polytype.NewJSONSchemaMethod(Owner.Schema)
+
+var _ = polytype.SealedUnion[IFace]("!kind")

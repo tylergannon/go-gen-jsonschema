@@ -36,8 +36,8 @@ func TestBatchSchemaPlacesUnionUnderArrayItems(t *testing.T) {
 	}
 	wantDiscriminators := []string{"Created", "Deleted"}
 	for i, want := range wantDiscriminators {
-		if got := events.Items.AnyOf[i].Properties["type"].Const; got != want {
-			t.Fatalf("events.items.anyOf[%d] type const = %q, want %q", i, got, want)
+		if got := events.Items.AnyOf[i].Properties["!kind"].Const; got != want {
+			t.Fatalf("events.items.anyOf[%d] !kind const = %q, want %q", i, got, want)
 		}
 	}
 }
@@ -55,7 +55,7 @@ func TestBatchUnmarshalInterfaceSlice(t *testing.T) {
 
 	t.Run("mixed value and pointer implementations", func(t *testing.T) {
 		var got Batch
-		input := []byte(`{"events":[{"type":"Created","name":"first"},{"type":"Deleted","id":"gone"}]}`)
+		input := []byte(`{"events":[{"!kind":"Created","name":"first"},{"!kind":"Deleted","id":"gone"}]}`)
 		if err := json.Unmarshal(input, &got); err != nil {
 			t.Fatal(err)
 		}
@@ -71,7 +71,7 @@ func TestBatchUnmarshalInterfaceSlice(t *testing.T) {
 		if err := json.Unmarshal(remarshaled, &gotJSON); err != nil {
 			t.Fatal(err)
 		}
-		if err := json.Unmarshal([]byte(`{"events":[{"type":"Created","name":"first"},{"type":"Deleted","id":"gone"}]}`), &wantJSON); err != nil {
+		if err := json.Unmarshal([]byte(`{"events":[{"!kind":"Created","name":"first"},{"!kind":"Deleted","id":"gone"}]}`), &wantJSON); err != nil {
 			t.Fatal(err)
 		}
 		if !reflect.DeepEqual(gotJSON, wantJSON) {
@@ -112,14 +112,14 @@ func TestBatchUnmarshalErrorsAreIndexedAndTransactional(t *testing.T) {
 		second     string
 		wantDetail string
 	}{
-		{name: "missing discriminator", second: `{"id":"gone"}`, wantDetail: "no discriminator property 'type' found"},
-		{name: "unknown discriminator", second: `{"type":"Other","id":"gone"}`, wantDetail: "unknown discriminator: Other"},
+		{name: "missing discriminator", second: `{"id":"gone"}`, wantDetail: "no discriminator property '!kind' found"},
+		{name: "unknown discriminator", second: `{"!kind":"Other","id":"gone"}`, wantDetail: "unknown discriminator: Other"},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			original := Batch{Events: []Event{Created{Name: "original"}}}
 			got := original
-			input := `{"events":[{"type":"Created","name":"replacement"},` + test.second + `]}`
+			input := `{"events":[{"!kind":"Created","name":"replacement"},` + test.second + `]}`
 			err := json.Unmarshal([]byte(input), &got)
 			if err == nil {
 				t.Fatal("invalid discriminator unexpectedly succeeded")

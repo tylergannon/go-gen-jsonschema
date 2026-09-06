@@ -62,7 +62,7 @@
         {
           "type": "object",
           "properties": {
-            "type": {
+            "!kind": {
               "type": "string",
               "const": "Cat"
             },
@@ -71,7 +71,7 @@
             }
           },
           "required": [
-            "type",
+            "!kind",
             "lives"
           ],
           "additionalProperties": false
@@ -79,7 +79,7 @@
         {
           "type": "object",
           "properties": {
-            "type": {
+            "!kind": {
               "type": "string",
               "const": "Dog"
             },
@@ -88,7 +88,7 @@
             }
           },
           "required": [
-            "type",
+            "!kind",
             "name"
           ],
           "additionalProperties": false
@@ -241,7 +241,7 @@
     },
     {
       "name": "optional interface",
-      "input": "{\"name\":\"pet\",\"pet\":{\"type\":\"Dog\",\"name\":\"Rex\"},\"timeout\":null,\"detail\":null}",
+      "input": "{\"name\":\"pet\",\"pet\":{\"!kind\":\"Dog\",\"name\":\"Rex\"},\"timeout\":null,\"detail\":null}",
       "valid": true,
       "decode_ok": true,
       "state": {
@@ -278,11 +278,11 @@
           "value": 0
         }
       },
-      "remarshaled": "{\"name\":\"pet\",\"timeout\":null,\"detail\":null,\"pet\":{\"name\":\"Rex\",\"type\":\"Dog\"}}"
+      "remarshaled": "{\"name\":\"pet\",\"timeout\":null,\"detail\":null,\"pet\":{\"!kind\":\"Dog\",\"name\":\"Rex\"}}"
     },
     {
       "name": "unknown interface",
-      "input": "{\"name\":\"bad\",\"pet\":{\"type\":\"Bird\"},\"timeout\":null,\"detail\":null}",
+      "input": "{\"name\":\"bad\",\"pet\":{\"!kind\":\"Bird\"},\"timeout\":null,\"detail\":null}",
       "valid": false,
       "decode_ok": false,
       "unchanged_after_error": true

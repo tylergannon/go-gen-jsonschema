@@ -401,9 +401,18 @@ events:
 Run `go mod tidy` after YAML-enabled generation so the module records its
 `go.yaml.in/yaml/v4` dependency.
 
+The discriminator property is a property of the union. To use a property other
+than `type`, declare it once in the build-tagged file of the package that
+declares the interface: `var _ = polytype.SealedUnion[Event]("kind")`. Every
+use of `Event` then discriminates on `kind`; values stay the type names. The
+argument must be a nonempty string literal; a declaration in another package,
+a duplicate, a non-sealed or non-interface target, or a payload collision with
+the declared name fails generation naming the interface.
+
 Migration: `.Interface(...)`, `WithInterface`, `WithInterfaceImpls`,
 `WithDiscriminator`, `Impl`, `Discriminator`, and `NewInterfaceImpl[I]` are
-removed; seal the interface and delete the field-level declaration.
+removed; seal the interface, delete the field-level declaration, and move a
+custom discriminator to `SealedUnion[I](name)`.
 
 Marshal the containing value with `json.Marshal(batch)` or
 `json.Marshal(&batch)`. Its generated owner codec injects each field's
@@ -545,7 +554,8 @@ var _ = polytype.Declare(Task.Schema).
 
 Enum types are declared on the type itself with `func (T) enum()`, and
 sealed unions are inferred from an interface's unexported method; neither
-appears in the registration chain.
+appears in the registration chain. A union's discriminator property is
+declared once with the package-level `polytype.SealedUnion[I](name)`.
 
 Registration markers are read from the build-tagged file by the generator and
 are no-ops at runtime.
@@ -567,7 +577,7 @@ schema accessor stub) has no fluent form yet and is unaffected.
 | `WithInterface(field, options...)` | removed; membership is inferred from the sealing method |
 | `Impl(value, implementation)` | removed; the wire value is the concrete type name |
 | `WithInterfaceImpls(field, impls...)` | removed; membership is inferred from the sealing method |
-| `WithDiscriminator(field, name)` / `Discriminator(name)` | removed; see `SealedUnion` |
+| `WithDiscriminator(field, name)` / `Discriminator(name)` | removed; declare `SealedUnion[I](name)` once in `I`'s package |
 | `WithFunction(field, fn)` | `.Function(field, fn)` |
 | `WithStructAccessorMethod(field, method)` | `.Accessor(field, T.method)` |
 | `WithStructFunctionMethod(field, method)` | `.Method(field, T.method)` |

@@ -78,9 +78,9 @@ Discriminated union types using sealed Go interfaces.
 - Direct scalar and slice fields
 
 #### `interfaces_options/`
-Minimal sealed interface with a single declaration.
+Minimal sealed interface with a custom discriminator.
 - Inferred union membership
-- Default `type` discriminator
+- `SealedUnion[IFace]("!kind")` discriminator declaration
 
 #### `sealed_interface_slices/`
 Direct slices of registered interface unions.
@@ -151,6 +151,7 @@ type Owner struct{ Shape Shape }
 func (Owner) Schema() json.RawMessage { panic("not implemented") }
 
 var _ = polytype.Declare(Owner.Schema)   // membership is inferred
+var _ = polytype.SealedUnion[Shape]("kind") // optional; default property is "type"
 ```
 
 ### Provider-Based Schema Generation

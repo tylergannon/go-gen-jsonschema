@@ -116,3 +116,31 @@ covered by the projection lane only.
 proof: `go test ./...` green; `npm test` 11/11 PASS; all examples
 regenerate; optionality proof transcript regenerated; lint clean; website
 api/index.md regenerated.
+
+## #88 execution
+
+decision: `SealedUnion[I](name)` markers are collected in the scanner's
+marker loop and applied after type declarations are classified, so the
+same-package rule, duplicates, literal shape, and property-name validation
+are scanner diagnostics, while "not sealed" / "not an interface" reuse the
+recorded inference diagnostic for the target.
+
+decision: property-name validation is nonempty + valid UTF-8 (the only
+validation the removed `Discriminator(...)` option performed was
+"string literal"; the typegrammar validator adds the nonempty/UTF-8 rule).
+`"!kind"` keeps working.
+
+decision: `union_codec` fixture now declares `SealedUnion[Event]("!kind")`
+so its custom-hook coordination, two-owner reuse (Envelope and Nested), and
+value+pointer round trips all run on a custom property; the TypeScript
+conformance fixture likewise restores `"!kind"`.
+
+doc_bug: `ENUM_OPTIONS_TODO.md` (root) described the removed
+WithEnum/NewEnumType pattern as broken -> deleted; the marker supersedes
+everything it tracked.
+
+proof: `go test ./...` green; `npm test` 11/11 PASS; every example
+regenerates; goldens refreshed in place for union_codec and
+v1_interfaces_options; lint clean; skill examples and website api/index.md
+regenerated. origin/main had not moved during the session, so no rebase was
+needed.

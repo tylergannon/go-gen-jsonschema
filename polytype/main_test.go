@@ -156,3 +156,20 @@ func TestGenCommandRejectsUnsealedInterfaceField(t *testing.T) {
 	require.Contains(t, stderr, "is not sealed")
 	require.Contains(t, stderr, "unsealed_interface/fixture.go")
 }
+
+// TestGenCommandRejectsSealedUnionDeclaredOutsideInterfacePackage runs the
+// actual polytype binary against the checked-in sealed_union_foreign_package
+// fixture, proving the command itself fails with a non-zero exit and a
+// source-positioned diagnostic naming the interface and the package that
+// must hold the declaration.
+func TestGenCommandRejectsSealedUnionDeclaredOutsideInterfacePackage(t *testing.T) {
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+
+	exitCode, _, stderr, err := testutils.RunCommand("go", cwd, "run", ".", "-target", "../internal/syntax/testfixtures/sealed_union_foreign_package")
+	require.NoError(t, err)
+	require.NotEqual(t, 0, exitCode, "stderr:\n%s", stderr)
+	require.Contains(t, stderr, "polytype.SealedUnion[Animal] at ")
+	require.Contains(t, stderr, "must be declared in package github.com/tylergannon/polytype/internal/syntax/testfixtures/sealed_union_foreign_package/animals")
+	require.Contains(t, stderr, "sealed_union_foreign_package/fixture.go")
+}

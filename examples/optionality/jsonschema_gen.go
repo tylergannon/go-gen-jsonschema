@@ -105,7 +105,7 @@ func (c Config) MarshalJSON() ([]byte, error) {
 	var err error
 
 	if c.Pet.Present {
-		if wrapper.Pet, err = __jsonMarshal__optionality__Pet__432bb5b47f9f1453b754714099a475d118085cd08d14ff700b8431c395f59387(c.Pet.Value); err != nil {
+		if wrapper.Pet, err = __jsonMarshal__optionality__Pet__b5e2b30ec0ee11c33157179140b477c8e97b5f1f0a98cf47a68561ae874663b1(c.Pet.Value); err != nil {
 			return nil, fmt.Errorf("field pet: %w", err)
 		}
 	}
@@ -129,7 +129,7 @@ func (c *Config) UnmarshalJSON(data []byte) (err error) {
 
 	if len(wrapper.Pet) > 0 {
 		var __decoded0 Pet
-		if __decoded0, err = __jsonUnmarshal__optionality__Pet__432bb5b47f9f1453b754714099a475d118085cd08d14ff700b8431c395f59387(wrapper.Pet); err != nil {
+		if __decoded0, err = __jsonUnmarshal__optionality__Pet__b5e2b30ec0ee11c33157179140b477c8e97b5f1f0a98cf47a68561ae874663b1(wrapper.Pet); err != nil {
 			return err
 		}
 		__next.Pet.Value = __decoded0
@@ -140,7 +140,7 @@ func (c *Config) UnmarshalJSON(data []byte) (err error) {
 	return nil
 }
 
-func __jsonMarshal__optionality__Pet__432bb5b47f9f1453b754714099a475d118085cd08d14ff700b8431c395f59387(value Pet) (json.RawMessage, error) {
+func __jsonMarshal__optionality__Pet__b5e2b30ec0ee11c33157179140b477c8e97b5f1f0a98cf47a68561ae874663b1(value Pet) (json.RawMessage, error) {
 	if value == nil {
 		return nil, fmt.Errorf("cannot marshal nil registered interface Pet")
 	}
@@ -163,12 +163,12 @@ func __jsonMarshal__optionality__Pet__432bb5b47f9f1453b754714099a475d118085cd08d
 		return nil, fmt.Errorf("marshal registered implementation %T for Pet: %w", value, err)
 	}
 	return __jsonschema__marshalUnionObject(data,
-		"type",
+		"!kind",
 		discriminator,
 	)
 }
 
-func __jsonUnmarshal__optionality__Pet__432bb5b47f9f1453b754714099a475d118085cd08d14ff700b8431c395f59387(data []byte) (Pet, error) {
+func __jsonUnmarshal__optionality__Pet__b5e2b30ec0ee11c33157179140b477c8e97b5f1f0a98cf47a68561ae874663b1(data []byte) (Pet, error) {
 	var (
 		temp          map[string]json.RawMessage
 		discriminator string
@@ -177,8 +177,9 @@ func __jsonUnmarshal__optionality__Pet__432bb5b47f9f1453b754714099a475d118085cd0
 
 	if err != nil {
 		return nil, err
-	} else if _tempDiscriminator, ok := temp["type"]; !ok {
-		return nil, errNoDiscriminator
+	} else if _tempDiscriminator, ok := temp["!kind"]; !ok {
+		// per-field discriminator property
+		return nil, fmt.Errorf("no discriminator property '%s' found", "!kind")
 	} else if discriminator, err = __jsonschema__decodeDiscriminator(_tempDiscriminator); err != nil {
 		return nil, __jsonschema__unmarshalDiscriminatorError(_tempDiscriminator, err)
 	}

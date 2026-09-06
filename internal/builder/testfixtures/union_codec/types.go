@@ -13,7 +13,7 @@ import (
 // Event is sealed by isEvent. Every same-package struct declaring it directly
 // is a variant: Created (value), Deleted (pointer), Hooked (value, custom
 // JSON hooks), and PointerHookValue (value variant whose hooks live on the
-// pointer). The discriminator is the default "type" property.
+// pointer). The discriminator property is "!kind", declared once with SealedUnion.
 type Event interface{ isEvent() }
 
 type Created struct {
@@ -44,11 +44,11 @@ func (h Hooked) MarshalJSON() ([]byte, error) {
 	hookMarshalCalls++
 	switch h.Behavior {
 	case "matching":
-		return json.Marshal(map[string]any{"type": "Hooked", "name": h.Name})
+		return json.Marshal(map[string]any{"!kind": "Hooked", "name": h.Name})
 	case "conflict":
-		return json.Marshal(map[string]any{"type": "other", "name": h.Name})
+		return json.Marshal(map[string]any{"!kind": "other", "name": h.Name})
 	case "non-string":
-		return json.Marshal(map[string]any{"type": 3, "name": h.Name})
+		return json.Marshal(map[string]any{"!kind": 3, "name": h.Name})
 	case "null":
 		return []byte("null"), nil
 	case "array":
@@ -68,7 +68,7 @@ func (h Hooked) MarshalJSON() ([]byte, error) {
 
 func (h *Hooked) UnmarshalJSON(data []byte) error {
 	var wire struct {
-		Kind string `json:"type"`
+		Kind string `json:"!kind"`
 		Name string `json:"name"`
 	}
 	if err := json.Unmarshal(data, &wire); err != nil {
@@ -97,7 +97,7 @@ func (p *PointerHookValue) MarshalJSON() ([]byte, error) {
 
 func (p *PointerHookValue) UnmarshalJSON(data []byte) error {
 	var wire struct {
-		Kind string `json:"type"`
+		Kind string `json:"!kind"`
 		Name string `json:"name"`
 	}
 	if err := json.Unmarshal(data, &wire); err != nil {

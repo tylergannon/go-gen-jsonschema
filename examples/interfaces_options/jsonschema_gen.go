@@ -39,7 +39,7 @@ func (o Owner) MarshalJSON() ([]byte, error) {
 	wrapper := Wrapper{Alias: Alias(o)}
 	var err error
 
-	if wrapper.IF, err = __jsonMarshal__interfaces_options__IFace__cbeb027733854e84792a0555cb54f1e7ee9c60a9962543628a1d253ecc764f43(o.IF); err != nil {
+	if wrapper.IF, err = __jsonMarshal__interfaces_options__IFace__9dba3949824378de417a1c1fbf07c5150152ce951f178a8bedfad8311788dec0(o.IF); err != nil {
 		return nil, fmt.Errorf("field if: %w", err)
 	}
 
@@ -61,7 +61,7 @@ func (o *Owner) UnmarshalJSON(data []byte) (err error) {
 	__next := Owner(wrapper.Alias)
 
 	var __decoded0 IFace
-	if __decoded0, err = __jsonUnmarshal__interfaces_options__IFace__cbeb027733854e84792a0555cb54f1e7ee9c60a9962543628a1d253ecc764f43(wrapper.IF); err != nil {
+	if __decoded0, err = __jsonUnmarshal__interfaces_options__IFace__9dba3949824378de417a1c1fbf07c5150152ce951f178a8bedfad8311788dec0(wrapper.IF); err != nil {
 		return err
 	}
 	__next.IF = __decoded0
@@ -70,7 +70,7 @@ func (o *Owner) UnmarshalJSON(data []byte) (err error) {
 	return nil
 }
 
-func __jsonMarshal__interfaces_options__IFace__cbeb027733854e84792a0555cb54f1e7ee9c60a9962543628a1d253ecc764f43(value IFace) (json.RawMessage, error) {
+func __jsonMarshal__interfaces_options__IFace__9dba3949824378de417a1c1fbf07c5150152ce951f178a8bedfad8311788dec0(value IFace) (json.RawMessage, error) {
 	if value == nil {
 		return nil, fmt.Errorf("cannot marshal nil registered interface IFace")
 	}
@@ -93,12 +93,12 @@ func __jsonMarshal__interfaces_options__IFace__cbeb027733854e84792a0555cb54f1e7e
 		return nil, fmt.Errorf("marshal registered implementation %T for IFace: %w", value, err)
 	}
 	return __jsonschema__marshalUnionObject(data,
-		"type",
+		"!kind",
 		discriminator,
 	)
 }
 
-func __jsonUnmarshal__interfaces_options__IFace__cbeb027733854e84792a0555cb54f1e7ee9c60a9962543628a1d253ecc764f43(data []byte) (IFace, error) {
+func __jsonUnmarshal__interfaces_options__IFace__9dba3949824378de417a1c1fbf07c5150152ce951f178a8bedfad8311788dec0(data []byte) (IFace, error) {
 	var (
 		temp          map[string]json.RawMessage
 		discriminator string
@@ -107,8 +107,9 @@ func __jsonUnmarshal__interfaces_options__IFace__cbeb027733854e84792a0555cb54f1e
 
 	if err != nil {
 		return nil, err
-	} else if _tempDiscriminator, ok := temp["type"]; !ok {
-		return nil, errNoDiscriminator
+	} else if _tempDiscriminator, ok := temp["!kind"]; !ok {
+		// per-field discriminator property
+		return nil, fmt.Errorf("no discriminator property '%s' found", "!kind")
 	} else if discriminator, err = __jsonschema__decodeDiscriminator(_tempDiscriminator); err != nil {
 		return nil, __jsonschema__unmarshalDiscriminatorError(_tempDiscriminator, err)
 	}

@@ -147,6 +147,9 @@ type Batch struct{ Events []Event `json:"events"` }
 var _ = polytype.Declare(Batch.Schema)
 ```
 
+To discriminate on another property, declare it once in the package that
+declares the interface: `var _ = polytype.SealedUnion[Event]("kind")`.
+
 A reachable field of a non-sealed interface fails generation. A direct `[]I`
 field becomes an array whose `items` contain the union. The generated owner
 `MarshalJSON` emits the discriminator when called

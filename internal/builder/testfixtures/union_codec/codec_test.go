@@ -118,7 +118,7 @@ func TestUnionMarshalErrors(t *testing.T) {
 		{name: "typed nil slice element", edit: func(v *Envelope) { v.Events[1] = typedNil }, want: "field events[1]: cannot marshal typed nil"},
 		{name: "present nil optional", edit: func(v *Envelope) { v.Optional = polytype.Optional[Event]{Present: true} }, want: "field optional: cannot marshal nil registered interface"},
 		{name: "custom conflict", edit: func(v *Envelope) { v.Hook.Value = Hooked{Name: "x", Behavior: "conflict"} }, want: "is \"other\", want registered value \"Hooked\""},
-		{name: "custom non-string discriminator", edit: func(v *Envelope) { v.Hook.Value = Hooked{Name: "x", Behavior: "non-string"} }, want: "discriminator property \"type\" must be a string"},
+		{name: "custom non-string discriminator", edit: func(v *Envelope) { v.Hook.Value = Hooked{Name: "x", Behavior: "non-string"} }, want: "discriminator property \"!kind\" must be a string"},
 		{name: "custom null", edit: func(v *Envelope) { v.Hook.Value = Hooked{Name: "x", Behavior: "null"} }, want: "must encode as a JSON object, got null"},
 		{name: "custom array", edit: func(v *Envelope) { v.Hook.Value = Hooked{Name: "x", Behavior: "array"} }, want: "must encode as a JSON object"},
 		{name: "custom string", edit: func(v *Envelope) { v.Hook.Value = Hooked{Name: "x", Behavior: "string"} }, want: "must encode as a JSON object"},
@@ -139,7 +139,7 @@ func TestUnionMarshalErrors(t *testing.T) {
 
 func TestNullDiscriminatorIsRejected(t *testing.T) {
 	var decoded Envelope
-	nullInput := []byte(`{"primary":{"type":null,"name":"rejected"}}`)
+	nullInput := []byte(`{"primary":{"!kind":null,"name":"rejected"}}`)
 	if err := json.Unmarshal(nullInput, &decoded); err == nil || !strings.Contains(err.Error(), "JSON null is not a string") {
 		t.Fatalf("null discriminator error = %v", err)
 	}
@@ -169,7 +169,7 @@ func TestCustomUnionHookAcceptsMissingAndMatchingDiscriminator(t *testing.T) {
 func TestGeneratedDecodeErrorIsTransactionalAndSuccessReplaces(t *testing.T) {
 	original := validEnvelope()
 	got := original
-	err := json.Unmarshal([]byte(`{"primary":{"type":"Created","name":"replacement"},"events":[{"type":"Created","name":"ok"},{"type":"unknown"}]}`), &got)
+	err := json.Unmarshal([]byte(`{"primary":{"!kind":"Created","name":"replacement"},"events":[{"!kind":"Created","name":"ok"},{"!kind":"unknown"}]}`), &got)
 	if err == nil || !strings.Contains(err.Error(), "events[1]") {
 		t.Fatalf("error = %v, want indexed failure", err)
 	}
@@ -178,7 +178,7 @@ func TestGeneratedDecodeErrorIsTransactionalAndSuccessReplaces(t *testing.T) {
 	}
 
 	got = original
-	input := []byte(`{"primary":{"type":"Created","name":"replacement"},"events":[],"nested":{"event":{"type":"Created","name":"nested"}},"ordinary":{"value":"new"},"state":"StateOpen","label":"new"}`)
+	input := []byte(`{"primary":{"!kind":"Created","name":"replacement"},"events":[],"nested":{"event":{"!kind":"Created","name":"nested"}},"ordinary":{"value":"new"},"state":"StateOpen","label":"new"}`)
 	if err := (Envelope{}).ValidateJSON(input); err != nil {
 		t.Fatalf("manual replacement input failed schema validation: %v", err)
 	}
@@ -202,12 +202,12 @@ func assertDiscriminators(t *testing.T, data []byte) {
 	if err := json.Unmarshal(data, &root); err != nil {
 		t.Fatal(err)
 	}
-	assertObjectString(t, root["primary"], "type", "Created")
-	assertObjectString(t, root["optional"], "type", "Deleted")
-	assertObjectString(t, root["alternate"], "type", "Created")
-	assertObjectString(t, root["single"], "type", "Created")
-	assertObjectString(t, root["hook"], "type", "Hooked")
-	assertObjectString(t, root["value_hook"], "type", "PointerHookValue")
+	assertObjectString(t, root["primary"], "!kind", "Created")
+	assertObjectString(t, root["optional"], "!kind", "Deleted")
+	assertObjectString(t, root["alternate"], "!kind", "Created")
+	assertObjectString(t, root["single"], "!kind", "Created")
+	assertObjectString(t, root["hook"], "!kind", "Hooked")
+	assertObjectString(t, root["value_hook"], "!kind", "PointerHookValue")
 	assertObjectString(t, root["value_hook"], "name", "custom:value-hook")
 	assertObjectString(t, root["ordinary"], "value", "custom:ordinary")
 	assertStringValue(t, root["state"], "StateClosed")
@@ -215,13 +215,13 @@ func assertDiscriminators(t *testing.T, data []byte) {
 	if err := json.Unmarshal(root["nested"], &nested); err != nil {
 		t.Fatal(err)
 	}
-	assertObjectString(t, nested["event"], "type", "Deleted")
+	assertObjectString(t, nested["event"], "!kind", "Deleted")
 	var events []json.RawMessage
 	if err := json.Unmarshal(root["events"], &events); err != nil {
 		t.Fatal(err)
 	}
-	assertObjectString(t, events[0], "type", "Created")
-	assertObjectString(t, events[1], "type", "Deleted")
+	assertObjectString(t, events[0], "!kind", "Created")
+	assertObjectString(t, events[1], "!kind", "Deleted")
 }
 
 func assertObjectString(t *testing.T, data []byte, key, want string) {

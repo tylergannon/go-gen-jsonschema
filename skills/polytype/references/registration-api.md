@@ -141,10 +141,34 @@ discriminator property. Variants behind other build tags are not discovered.
 Renaming a variant type changes its wire value and adding a qualifying
 implementation changes membership: review schema diffs.
 
+### Custom discriminator — `SealedUnion[I](name)`
+
+The discriminator property is a property of the union, never of a field. A
+union has one codec, so it has one discriminator. The default `"type"` needs
+no declaration; to use another property, declare it once, in the build-tagged
+file of the package that declares the interface:
+
+```go
+//go:build jsonschema
+
+var _ = polytype.SealedUnion[PaymentMethod]("kind")
+```
+
+Every use of `PaymentMethod` in every generated schema, codec, and TypeScript
+output now discriminates on `"kind"`; nothing changes at any field, and the
+values are still the concrete type names. The argument must be a string
+literal naming a nonempty property. A declaration in another package, a
+duplicate declaration, a declaration for a non-sealed interface or a
+non-interface type, a non-literal argument, an invalid property name, or a
+variant payload property colliding with the declared name is a generation
+error naming the interface.
+
 Migration: `.Interface(...)`, `WithInterface`, `WithInterfaceImpls`,
 `WithDiscriminator`, `Impl`, `Discriminator`, and `NewInterfaceImpl[I]` are
 removed. Seal the interface with an unexported method declared directly on
-every variant and delete the field-level declaration.
+every variant, delete the field-level declaration, and move a custom
+discriminator property to one `SealedUnion[I](name)` declaration in the
+interface's package.
 
 The slice must be the direct field type. Fixed arrays, nested slices, named
 slice containers, `Optional[[]I]`, and `Nullable[[]I]` are rejected during
@@ -165,6 +189,10 @@ returned `*Declaration[T]`:
 - `.RenderProviders()` — generate `RenderedSchema()` and run providers at
   runtime (advanced; rendered types get no `ValidateJSON` because their
   schemas depend on runtime values).
+
+Package-level, not chained: `polytype.SealedUnion[I](name)` sets the
+discriminator property of the sealed interface `I`, once, in `I`'s own
+package.
 
 `NewJSONSchemaMethod(T.Schema, ...opts)` / `NewJSONSchemaFunc(fn, ...opts)`
 with their remaining `With*` options remain supported for source

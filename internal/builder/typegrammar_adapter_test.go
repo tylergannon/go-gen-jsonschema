@@ -62,7 +62,7 @@ func (Huge) enum() {}
 type Event interface{ event() }
 
 type Created struct {
-	Kind string ` + "`json:\"kind\"`" + `
+	Kind string ` + "`json:\"label\"`" + `
 	Name string ` + "`json:\"name\"`" + `
 }
 
@@ -117,6 +117,7 @@ var (
 		Envelope.Schema,
 		polytype.WithStringerEnum(Envelope{}.State),
 	)
+	_ = polytype.SealedUnion[Event]("kind")
 )
 `
 
@@ -135,7 +136,7 @@ var (
 	event := requireField(t, object.Fields, "event")
 	direct, ok := event.Value.(*typegrammar.Union)
 	require.True(t, ok)
-	require.Equal(t, "type", direct.Discriminator)
+	require.Equal(t, "kind", direct.Discriminator)
 	require.Len(t, direct.Variants, 2)
 	require.Equal(t, "Created", direct.Variants[0].Tag)
 	require.True(t, direct.Variants[0].Pointer)

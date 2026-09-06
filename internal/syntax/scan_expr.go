@@ -13,6 +13,7 @@ const (
 	MarkerFuncNewJSONSchemaMethod  = "NewJSONSchemaMethod"  // NewJSONSchemaMethod
 	MarkerFuncNewJSONSchemaFunc    = "NewJSONSchemaFunc"    // NewJSONSchemaFunc
 	MarkerFuncDeclare              = "Declare"              // Declare (v1 fluent entrypoint)
+	MarkerFuncSealedUnion          = "SealedUnion"          // SealedUnion[I](discriminator)
 )
 
 // TypeID is our structured representation of a type. It can represent named types,
@@ -63,6 +64,7 @@ var markerFunctions = []string{
 	MarkerFuncNewJSONSchemaMethod,
 	MarkerFuncNewJSONSchemaFunc,
 	MarkerFuncDeclare,
+	MarkerFuncSealedUnion,
 }
 
 func ParseValueExprForMarkerFunctionCall(e ValueSpec) []MarkerFunctionCall {

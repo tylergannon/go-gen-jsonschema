@@ -41,7 +41,6 @@ func inferSealedUnion(pkg *types.Package, typeName string, position token.Positi
 
 	var sealing []string
 	for method := range iface.ExplicitMethods() {
-		method := method
 		if !method.Exported() {
 			sealing = append(sealing, method.Name())
 		}

@@ -45,7 +45,7 @@
         {
           "type": "object",
           "properties": {
-            "type": {
+            "!kind": {
               "type": "string",
               "const": "Cat"
             },
@@ -54,7 +54,7 @@
             }
           },
           "required": [
-            "type",
+            "!kind",
             "lives"
           ],
           "additionalProperties": false
@@ -62,7 +62,7 @@
         {
           "type": "object",
           "properties": {
-            "type": {
+            "!kind": {
               "type": "string",
               "const": "Dog"
             },
@@ -71,7 +71,7 @@
             }
           },
           "required": [
-            "type",
+            "!kind",
             "name"
           ],
           "additionalProperties": false

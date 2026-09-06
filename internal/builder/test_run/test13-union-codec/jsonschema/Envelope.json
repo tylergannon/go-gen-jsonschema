@@ -6,7 +6,7 @@
         {
           "type": "object",
           "properties": {
-            "type": {
+            "!kind": {
               "type": "string",
               "const": "Created"
             },
@@ -15,7 +15,7 @@
             }
           },
           "required": [
-            "type",
+            "!kind",
             "name"
           ],
           "additionalProperties": false
@@ -23,7 +23,7 @@
         {
           "type": "object",
           "properties": {
-            "type": {
+            "!kind": {
               "type": "string",
               "const": "Deleted"
             },
@@ -32,7 +32,7 @@
             }
           },
           "required": [
-            "type",
+            "!kind",
             "id"
           ],
           "additionalProperties": false
@@ -40,7 +40,7 @@
         {
           "type": "object",
           "properties": {
-            "type": {
+            "!kind": {
               "type": "string",
               "const": "Hooked"
             },
@@ -49,7 +49,7 @@
             }
           },
           "required": [
-            "type",
+            "!kind",
             "name"
           ],
           "additionalProperties": false
@@ -57,7 +57,7 @@
         {
           "type": "object",
           "properties": {
-            "type": {
+            "!kind": {
               "type": "string",
               "const": "PointerHookValue"
             },
@@ -66,7 +66,7 @@
             }
           },
           "required": [
-            "type",
+            "!kind",
             "name"
           ],
           "additionalProperties": false
@@ -80,7 +80,7 @@
           {
             "type": "object",
             "properties": {
-              "type": {
+              "!kind": {
                 "type": "string",
                 "const": "Created"
               },
@@ -89,7 +89,7 @@
               }
             },
             "required": [
-              "type",
+              "!kind",
               "name"
             ],
             "additionalProperties": false
@@ -97,7 +97,7 @@
           {
             "type": "object",
             "properties": {
-              "type": {
+              "!kind": {
                 "type": "string",
                 "const": "Deleted"
               },
@@ -106,7 +106,7 @@
               }
             },
             "required": [
-              "type",
+              "!kind",
               "id"
             ],
             "additionalProperties": false
@@ -114,7 +114,7 @@
           {
             "type": "object",
             "properties": {
-              "type": {
+              "!kind": {
                 "type": "string",
                 "const": "Hooked"
               },
@@ -123,7 +123,7 @@
               }
             },
             "required": [
-              "type",
+              "!kind",
               "name"
             ],
             "additionalProperties": false
@@ -131,7 +131,7 @@
           {
             "type": "object",
             "properties": {
-              "type": {
+              "!kind": {
                 "type": "string",
                 "const": "PointerHookValue"
               },
@@ -140,7 +140,7 @@
               }
             },
             "required": [
-              "type",
+              "!kind",
               "name"
             ],
             "additionalProperties": false
@@ -153,7 +153,7 @@
         {
           "type": "object",
           "properties": {
-            "type": {
+            "!kind": {
               "type": "string",
               "const": "Created"
             },
@@ -162,7 +162,7 @@
             }
           },
           "required": [
-            "type",
+            "!kind",
             "name"
           ],
           "additionalProperties": false
@@ -170,7 +170,7 @@
         {
           "type": "object",
           "properties": {
-            "type": {
+            "!kind": {
               "type": "string",
               "const": "Deleted"
             },
@@ -179,7 +179,7 @@
             }
           },
           "required": [
-            "type",
+            "!kind",
             "id"
           ],
           "additionalProperties": false
@@ -187,7 +187,7 @@
         {
           "type": "object",
           "properties": {
-            "type": {
+            "!kind": {
               "type": "string",
               "const": "Hooked"
             },
@@ -196,7 +196,7 @@
             }
           },
           "required": [
-            "type",
+            "!kind",
             "name"
           ],
           "additionalProperties": false
@@ -204,7 +204,7 @@
         {
           "type": "object",
           "properties": {
-            "type": {
+            "!kind": {
               "type": "string",
               "const": "PointerHookValue"
             },
@@ -213,7 +213,7 @@
             }
           },
           "required": [
-            "type",
+            "!kind",
             "name"
           ],
           "additionalProperties": false
@@ -225,7 +225,7 @@
         {
           "type": "object",
           "properties": {
-            "type": {
+            "!kind": {
               "type": "string",
               "const": "Created"
             },
@@ -234,7 +234,7 @@
             }
           },
           "required": [
-            "type",
+            "!kind",
             "name"
           ],
           "additionalProperties": false
@@ -242,7 +242,7 @@
         {
           "type": "object",
           "properties": {
-            "type": {
+            "!kind": {
               "type": "string",
               "const": "Deleted"
             },
@@ -251,7 +251,7 @@
             }
           },
           "required": [
-            "type",
+            "!kind",
             "id"
           ],
           "additionalProperties": false
@@ -259,7 +259,7 @@
         {
           "type": "object",
           "properties": {
-            "type": {
+            "!kind": {
               "type": "string",
               "const": "Hooked"
             },
@@ -268,7 +268,7 @@
             }
           },
           "required": [
-            "type",
+            "!kind",
             "name"
           ],
           "additionalProperties": false
@@ -276,7 +276,7 @@
         {
           "type": "object",
           "properties": {
-            "type": {
+            "!kind": {
               "type": "string",
               "const": "PointerHookValue"
             },
@@ -285,7 +285,7 @@
             }
           },
           "required": [
-            "type",
+            "!kind",
             "name"
           ],
           "additionalProperties": false
@@ -297,7 +297,7 @@
         {
           "type": "object",
           "properties": {
-            "type": {
+            "!kind": {
               "type": "string",
               "const": "Created"
             },
@@ -306,7 +306,7 @@
             }
           },
           "required": [
-            "type",
+            "!kind",
             "name"
           ],
           "additionalProperties": false
@@ -314,7 +314,7 @@
         {
           "type": "object",
           "properties": {
-            "type": {
+            "!kind": {
               "type": "string",
               "const": "Deleted"
             },
@@ -323,7 +323,7 @@
             }
           },
           "required": [
-            "type",
+            "!kind",
             "id"
           ],
           "additionalProperties": false
@@ -331,7 +331,7 @@
         {
           "type": "object",
           "properties": {
-            "type": {
+            "!kind": {
               "type": "string",
               "const": "Hooked"
             },
@@ -340,7 +340,7 @@
             }
           },
           "required": [
-            "type",
+            "!kind",
             "name"
           ],
           "additionalProperties": false
@@ -348,7 +348,7 @@
         {
           "type": "object",
           "properties": {
-            "type": {
+            "!kind": {
               "type": "string",
               "const": "PointerHookValue"
             },
@@ -357,7 +357,7 @@
             }
           },
           "required": [
-            "type",
+            "!kind",
             "name"
           ],
           "additionalProperties": false
@@ -369,7 +369,7 @@
         {
           "type": "object",
           "properties": {
-            "type": {
+            "!kind": {
               "type": "string",
               "const": "Created"
             },
@@ -378,7 +378,7 @@
             }
           },
           "required": [
-            "type",
+            "!kind",
             "name"
           ],
           "additionalProperties": false
@@ -386,7 +386,7 @@
         {
           "type": "object",
           "properties": {
-            "type": {
+            "!kind": {
               "type": "string",
               "const": "Deleted"
             },
@@ -395,7 +395,7 @@
             }
           },
           "required": [
-            "type",
+            "!kind",
             "id"
           ],
           "additionalProperties": false
@@ -403,7 +403,7 @@
         {
           "type": "object",
           "properties": {
-            "type": {
+            "!kind": {
               "type": "string",
               "const": "Hooked"
             },
@@ -412,7 +412,7 @@
             }
           },
           "required": [
-            "type",
+            "!kind",
             "name"
           ],
           "additionalProperties": false
@@ -420,7 +420,7 @@
         {
           "type": "object",
           "properties": {
-            "type": {
+            "!kind": {
               "type": "string",
               "const": "PointerHookValue"
             },
@@ -429,7 +429,7 @@
             }
           },
           "required": [
-            "type",
+            "!kind",
             "name"
           ],
           "additionalProperties": false
@@ -441,7 +441,7 @@
         {
           "type": "object",
           "properties": {
-            "type": {
+            "!kind": {
               "type": "string",
               "const": "Created"
             },
@@ -450,7 +450,7 @@
             }
           },
           "required": [
-            "type",
+            "!kind",
             "name"
           ],
           "additionalProperties": false
@@ -458,7 +458,7 @@
         {
           "type": "object",
           "properties": {
-            "type": {
+            "!kind": {
               "type": "string",
               "const": "Deleted"
             },
@@ -467,7 +467,7 @@
             }
           },
           "required": [
-            "type",
+            "!kind",
             "id"
           ],
           "additionalProperties": false
@@ -475,7 +475,7 @@
         {
           "type": "object",
           "properties": {
-            "type": {
+            "!kind": {
               "type": "string",
               "const": "Hooked"
             },
@@ -484,7 +484,7 @@
             }
           },
           "required": [
-            "type",
+            "!kind",
             "name"
           ],
           "additionalProperties": false
@@ -492,7 +492,7 @@
         {
           "type": "object",
           "properties": {
-            "type": {
+            "!kind": {
               "type": "string",
               "const": "PointerHookValue"
             },
@@ -501,7 +501,7 @@
             }
           },
           "required": [
-            "type",
+            "!kind",
             "name"
           ],
           "additionalProperties": false
@@ -516,7 +516,7 @@
             {
               "type": "object",
               "properties": {
-                "type": {
+                "!kind": {
                   "type": "string",
                   "const": "Created"
                 },
@@ -525,7 +525,7 @@
                 }
               },
               "required": [
-                "type",
+                "!kind",
                 "name"
               ],
               "additionalProperties": false
@@ -533,7 +533,7 @@
             {
               "type": "object",
               "properties": {
-                "type": {
+                "!kind": {
                   "type": "string",
                   "const": "Deleted"
                 },
@@ -542,7 +542,7 @@
                 }
               },
               "required": [
-                "type",
+                "!kind",
                 "id"
               ],
               "additionalProperties": false
@@ -550,7 +550,7 @@
             {
               "type": "object",
               "properties": {
-                "type": {
+                "!kind": {
                   "type": "string",
                   "const": "Hooked"
                 },
@@ -559,7 +559,7 @@
                 }
               },
               "required": [
-                "type",
+                "!kind",
                 "name"
               ],
               "additionalProperties": false
@@ -567,7 +567,7 @@
             {
               "type": "object",
               "properties": {
-                "type": {
+                "!kind": {
                   "type": "string",
                   "const": "PointerHookValue"
                 },
@@ -576,7 +576,7 @@
                 }
               },
               "required": [
-                "type",
+                "!kind",
                 "name"
               ],
               "additionalProperties": false

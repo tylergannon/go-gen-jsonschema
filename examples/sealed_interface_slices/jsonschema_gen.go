@@ -44,7 +44,7 @@ func (b Batch) MarshalJSON() ([]byte, error) {
 	}
 	__raw0 := make([]json.RawMessage, len(b.Events))
 	for __index, __value := range b.Events {
-		if __raw0[__index], err = __jsonMarshal__sealed_interface_slices__Event__047579420e0e3ae7be6132ab4f4360bf8c0d1188ccc1536afe68fb6399db5a96(__value); err != nil {
+		if __raw0[__index], err = __jsonMarshal__sealed_interface_slices__Event__80f7ceda90c597aaba537b676c5fe3ceac0533d4ae4d871a0455c7d08043a461(__value); err != nil {
 			return nil, fmt.Errorf("field events[%d]: %w", __index, err)
 		}
 	}
@@ -79,7 +79,7 @@ func (b *Batch) UnmarshalJSON(data []byte) (err error) {
 			__decoded0 = make([]Event, len(__raw0))
 		}
 		for __index, __raw := range __raw0 {
-			if __decoded0[__index], err = __jsonUnmarshal__sealed_interface_slices__Event__047579420e0e3ae7be6132ab4f4360bf8c0d1188ccc1536afe68fb6399db5a96(__raw); err != nil {
+			if __decoded0[__index], err = __jsonUnmarshal__sealed_interface_slices__Event__80f7ceda90c597aaba537b676c5fe3ceac0533d4ae4d871a0455c7d08043a461(__raw); err != nil {
 				return fmt.Errorf("field events[%d]: %w", __index, err)
 			}
 		}
@@ -90,7 +90,7 @@ func (b *Batch) UnmarshalJSON(data []byte) (err error) {
 	return nil
 }
 
-func __jsonMarshal__sealed_interface_slices__Event__047579420e0e3ae7be6132ab4f4360bf8c0d1188ccc1536afe68fb6399db5a96(value Event) (json.RawMessage, error) {
+func __jsonMarshal__sealed_interface_slices__Event__80f7ceda90c597aaba537b676c5fe3ceac0533d4ae4d871a0455c7d08043a461(value Event) (json.RawMessage, error) {
 	if value == nil {
 		return nil, fmt.Errorf("cannot marshal nil registered interface Event")
 	}
@@ -116,12 +116,12 @@ func __jsonMarshal__sealed_interface_slices__Event__047579420e0e3ae7be6132ab4f43
 		return nil, fmt.Errorf("marshal registered implementation %T for Event: %w", value, err)
 	}
 	return __jsonschema__marshalUnionObject(data,
-		"type",
+		"!kind",
 		discriminator,
 	)
 }
 
-func __jsonUnmarshal__sealed_interface_slices__Event__047579420e0e3ae7be6132ab4f4360bf8c0d1188ccc1536afe68fb6399db5a96(data []byte) (Event, error) {
+func __jsonUnmarshal__sealed_interface_slices__Event__80f7ceda90c597aaba537b676c5fe3ceac0533d4ae4d871a0455c7d08043a461(data []byte) (Event, error) {
 	var (
 		temp          map[string]json.RawMessage
 		discriminator string
@@ -130,8 +130,9 @@ func __jsonUnmarshal__sealed_interface_slices__Event__047579420e0e3ae7be6132ab4f
 
 	if err != nil {
 		return nil, err
-	} else if _tempDiscriminator, ok := temp["type"]; !ok {
-		return nil, errNoDiscriminator
+	} else if _tempDiscriminator, ok := temp["!kind"]; !ok {
+		// per-field discriminator property
+		return nil, fmt.Errorf("no discriminator property '%s' found", "!kind")
 	} else if discriminator, err = __jsonschema__decodeDiscriminator(_tempDiscriminator); err != nil {
 		return nil, __jsonschema__unmarshalDiscriminatorError(_tempDiscriminator, err)
 	}

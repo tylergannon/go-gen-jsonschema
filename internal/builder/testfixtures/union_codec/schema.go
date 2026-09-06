@@ -20,3 +20,7 @@ var _ = polytype.NewJSONSchemaMethod(
 )
 
 var _ = polytype.NewJSONSchemaMethod(Nested.Schema)
+
+// One discriminator for the one Event union, used from both Envelope and
+// Nested, for value (Created) and pointer (Deleted) variants alike.
+var _ = polytype.SealedUnion[Event]("!kind")

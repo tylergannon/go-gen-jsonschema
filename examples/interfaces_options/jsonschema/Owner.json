@@ -2,12 +2,12 @@
 "properties":{
 "if":{"anyOf":[{"type":"object",
 "properties":{
-"type":{"type":"string","const":"Impl1"},
+"!kind":{"type":"string","const":"Impl1"},
 "x":{"type":"string"}
-},"required":["type","x"],"additionalProperties":false},
+},"required":["!kind","x"],"additionalProperties":false},
 {"type":"object",
 "properties":{
-"type":{"type":"string","const":"Impl2"},
+"!kind":{"type":"string","const":"Impl2"},
 "y":{"type":"integer"}
-},"required":["type","y"],"additionalProperties":false}]}
+},"required":["!kind","y"],"additionalProperties":false}]}
 },"required":["if"],"additionalProperties":false}

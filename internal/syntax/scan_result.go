@@ -387,6 +387,9 @@ func (r *ScanResult) loadPackageInternal(seen seenPackages, typesToMap map[strin
 	var (
 		_, ok  = seen.add(r.Pkg)
 		_decls = loadPkgDecls(r.Pkg)
+		// sealedUnionDeclarations collects SealedUnion[I](name) markers by
+		// interface name until the type declarations have been classified.
+		sealedUnionDeclarations = map[string]sealedUnionDeclaration{}
 	)
 	if !ok {
 		return fmt.Errorf("circular package dependency detected. %v", seen)
@@ -433,6 +436,11 @@ func (r *ScanResult) loadPackageInternal(seen seenPackages, typesToMap map[strin
 				r.SchemaFuncs = append(r.SchemaFuncs, SchemaFunction(method))
 			}
 
+		case MarkerFuncSealedUnion:
+			if err := r.parseSealedUnionDeclaration(decl, sealedUnionDeclarations); err != nil {
+				return err
+			}
+
 		default:
 			return fmt.Errorf("unsupported marker function: %s", decl.CallExpr.MustIdentifyFunc())
 		}
@@ -472,6 +480,9 @@ func (r *ScanResult) loadPackageInternal(seen seenPackages, typesToMap map[strin
 			}
 			r.LocalNamedTypes[spec.Name.Name] = typeSpec
 		}
+	}
+	if err := r.applySealedUnionDeclarations(sealedUnionDeclarations); err != nil {
+		return err
 	}
 	for _, iface := range r.Interfaces {
 		for _, impl := range iface.Impls {

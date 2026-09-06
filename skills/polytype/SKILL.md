@@ -209,7 +209,8 @@ sealed, and its variants are the same-package struct types declaring that
 method directly (value receiver = value variant, pointer receiver = pointer
 variant). Non-sealed interface fields fail generation. Discriminator values
 are the concrete type names. The default discriminator property is `type` for
-both JSON and YAML. Generation
+both JSON and YAML; declare another once per union with
+`polytype.SealedUnion[I](name)` in the package that declares `I`. Generation
 is JSON-only by default; `--formats=both` adds yaml/v4 entry points that
 translate YAML into the JSON data model and reuse the JSON validator and
 decoder. JSON Schema property names and `json` tags are canonical. Go `yaml`

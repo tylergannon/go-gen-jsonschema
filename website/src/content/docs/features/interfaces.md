@@ -59,6 +59,28 @@ Each of these fails generation with a diagnostic naming the type or field:
 Variants behind other build tags are not discovered: the scanner loads the
 package with the `jsonschema` build tag.
 
+## Custom discriminator
+
+The discriminator property is a property of the union, never of a field. A
+union has one codec, so it has one discriminator. The default `"type"` needs
+no declaration; to use another property, declare it once, in the build-tagged
+file of the package that declares the interface:
+
+```go
+//go:build jsonschema
+
+var _ = polytype.SealedUnion[PaymentMethod]("kind")
+```
+
+Every use of `PaymentMethod` in every generated schema, codec, and TypeScript
+output now discriminates on `"kind"`; nothing changes at any field, and the
+values are still the concrete type names. The argument must be a string
+literal naming a nonempty property. A declaration in another package, a
+duplicate declaration, a declaration for a non-sealed interface or a
+non-interface type, a non-literal argument, an invalid property name, or a
+variant payload property colliding with the declared name is a generation
+error naming the interface.
+
 ## Wire-contract hazard
 
 The discriminator value is the concrete type name, so renaming a variant type
@@ -110,7 +132,9 @@ supported. `Nullable[I]` is not.
 `WithInterfaceImpls`, `WithDiscriminator`, `Impl`, `Discriminator`, and the
 package-level `NewInterfaceImpl[I](...)` are removed. Seal the interface with
 an unexported method, declare it directly on every variant, and delete the
-field-level declaration. Wire values are the concrete type names.
+field-level declaration. Wire values are the concrete type names; a custom
+discriminator property moves to one `SealedUnion[I](name)` declaration in the
+interface's package.
 
 See the compiling [`examples/sealed_interface_slices`](https://github.com/tylergannon/polytype/tree/main/examples/sealed_interface_slices)
 package for schema and runtime coverage, including value and pointer

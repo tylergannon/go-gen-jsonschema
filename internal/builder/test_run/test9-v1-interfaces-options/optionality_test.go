@@ -57,16 +57,16 @@ func TestGeneratedYAMLUnmarshalComprehensive(t *testing.T) {
 	input := []byte(`
 defaults: &defaults
   if:
-    "type": Impl1
+    "!kind": Impl1
     x: merged
 <<: *defaults
 ifs:
-  - "type": Impl1
+  - "!kind": Impl1
     x: one
-  - "type": Impl2
+  - "!kind": Impl2
     y: 2
 optional_if:
-  "type": Impl2
+  "!kind": Impl2
   y: 3
 label: ""
 timeout: 0
@@ -93,7 +93,7 @@ timeout: 0
 	var nullish Owner
 	if err := yaml.Load([]byte(`
 if:
-  "type": Impl1
+  "!kind": Impl1
   x: required
 ifs: []
 timeout: null
@@ -113,12 +113,12 @@ timeout: null
 	got = original
 	bad := []byte(`
 if:
-  "type": Impl1
+  "!kind": Impl1
   x: replacement
 ifs:
-  - "type": Impl2
+  - "!kind": Impl2
     y: 2
-  - "type": unknown
+  - "!kind": unknown
 `)
 	err := yaml.Load(bad, &got, yaml.WithV4Defaults())
 	if err == nil || !strings.Contains(err.Error(), "ifs[1]") {
@@ -131,7 +131,7 @@ ifs:
 	got = original
 	err = yaml.Load([]byte(`
 if:
-  "type": Impl1
+  "!kind": Impl1
   x: replacement
 ifs: []
 label: null
@@ -148,7 +148,7 @@ timeout: null
 func TestGeneratedYAMLValidationUsesJSONSchema(t *testing.T) {
 	valid := []byte(`
 if:
-  "type": Impl1
+  "!kind": Impl1
   x: required
 ifs: []
 timeout: null
@@ -164,7 +164,7 @@ timeout: null
 
 	yamlNames := []byte(`
 yaml_if:
-  "type": Impl1
+  "!kind": Impl1
   x: required
 yaml_ifs: []
 timeout: null
@@ -175,7 +175,7 @@ timeout: null
 
 	nullOptional := []byte(`
 if:
-  "type": Impl1
+  "!kind": Impl1
   x: required
 ifs: []
 label: null
@@ -188,7 +188,7 @@ timeout: null
 
 func TestInterfaceSliceDecode(t *testing.T) {
 	var got Owner
-	input := []byte(`{"if":{"type":"Impl1","x":"required"},"ifs":[{"type":"Impl1","x":"one"},{"type":"Impl2","y":2}]}`)
+	input := []byte(`{"if":{"!kind":"Impl1","x":"required"},"ifs":[{"!kind":"Impl1","x":"one"},{"!kind":"Impl2","y":2}]}`)
 	if err := json.Unmarshal(input, &got); err != nil {
 		t.Fatal(err)
 	}
@@ -205,7 +205,7 @@ func TestInterfaceSliceDecode(t *testing.T) {
 func TestOptionalInterfaceDecodeIsTransactional(t *testing.T) {
 	original := Owner{IF: Impl1{X: "original"}}
 	got := original
-	if err := json.Unmarshal([]byte(`{"if":{"type":"Impl2","y":2},"optional_if":{"type":"unknown"}}`), &got); err == nil {
+	if err := json.Unmarshal([]byte(`{"if":{"!kind":"Impl2","y":2},"optional_if":{"!kind":"unknown"}}`), &got); err == nil {
 		t.Fatal("unknown optional interface discriminator unexpectedly succeeded")
 	}
 	if current, ok := got.IF.(Impl1); !ok || current.X != "original" || got.OptionalIF.Present {
@@ -215,7 +215,7 @@ func TestOptionalInterfaceDecodeIsTransactional(t *testing.T) {
 
 func TestOptionalInterfaceStates(t *testing.T) {
 	var missing Owner
-	if err := json.Unmarshal([]byte(`{"if":{"type":"Impl1","x":"required"}}`), &missing); err != nil {
+	if err := json.Unmarshal([]byte(`{"if":{"!kind":"Impl1","x":"required"}}`), &missing); err != nil {
 		t.Fatal(err)
 	}
 	if missing.OptionalIF.Present {
@@ -223,7 +223,7 @@ func TestOptionalInterfaceStates(t *testing.T) {
 	}
 
 	var present Owner
-	if err := json.Unmarshal([]byte(`{"if":{"type":"Impl1","x":"required"},"optional_if":{"type":"Impl2","y":0}}`), &present); err != nil {
+	if err := json.Unmarshal([]byte(`{"if":{"!kind":"Impl1","x":"required"},"optional_if":{"!kind":"Impl2","y":0}}`), &present); err != nil {
 		t.Fatal(err)
 	}
 	value, ok := present.OptionalIF.Value.(Impl2)
@@ -232,7 +232,7 @@ func TestOptionalInterfaceStates(t *testing.T) {
 	}
 
 	got := Owner{IF: Impl1{X: "original"}}
-	if err := json.Unmarshal([]byte(`{"if":{"type":"Impl1","x":"required"},"optional_if":null}`), &got); err == nil {
+	if err := json.Unmarshal([]byte(`{"if":{"!kind":"Impl1","x":"required"},"optional_if":null}`), &got); err == nil {
 		t.Fatal("null optional interface unexpectedly succeeded")
 	}
 	if current, ok := got.IF.(Impl1); !ok || current.X != "original" || got.OptionalIF.Present {

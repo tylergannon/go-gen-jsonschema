@@ -111,7 +111,7 @@ func (e Envelope) MarshalJSON() ([]byte, error) {
 	wrapper := Wrapper{Alias: Alias(e)}
 	var err error
 
-	if wrapper.Primary, err = __jsonMarshal__union_codec__Event__5ad13344b1051c6aa1648772957cbbc8e73bddaca1f60eedd00e5ed091782872(e.Primary); err != nil {
+	if wrapper.Primary, err = __jsonMarshal__union_codec__Event__7e7faa344cb53c0c7c5f74113c04e5f30685279da7d19bf41e6415221de5e913(e.Primary); err != nil {
 		return nil, fmt.Errorf("field primary: %w", err)
 	}
 
@@ -120,7 +120,7 @@ func (e Envelope) MarshalJSON() ([]byte, error) {
 	}
 	__raw1 := make([]json.RawMessage, len(e.Events))
 	for __index, __value := range e.Events {
-		if __raw1[__index], err = __jsonMarshal__union_codec__Event__5ad13344b1051c6aa1648772957cbbc8e73bddaca1f60eedd00e5ed091782872(__value); err != nil {
+		if __raw1[__index], err = __jsonMarshal__union_codec__Event__7e7faa344cb53c0c7c5f74113c04e5f30685279da7d19bf41e6415221de5e913(__value); err != nil {
 			return nil, fmt.Errorf("field events[%d]: %w", __index, err)
 		}
 	}
@@ -129,31 +129,31 @@ func (e Envelope) MarshalJSON() ([]byte, error) {
 	}
 
 	if e.Optional.Present {
-		if wrapper.Optional, err = __jsonMarshal__union_codec__Event__5ad13344b1051c6aa1648772957cbbc8e73bddaca1f60eedd00e5ed091782872(e.Optional.Value); err != nil {
+		if wrapper.Optional, err = __jsonMarshal__union_codec__Event__7e7faa344cb53c0c7c5f74113c04e5f30685279da7d19bf41e6415221de5e913(e.Optional.Value); err != nil {
 			return nil, fmt.Errorf("field optional: %w", err)
 		}
 	}
 
 	if e.Alternate.Present {
-		if wrapper.Alternate, err = __jsonMarshal__union_codec__Event__5ad13344b1051c6aa1648772957cbbc8e73bddaca1f60eedd00e5ed091782872(e.Alternate.Value); err != nil {
+		if wrapper.Alternate, err = __jsonMarshal__union_codec__Event__7e7faa344cb53c0c7c5f74113c04e5f30685279da7d19bf41e6415221de5e913(e.Alternate.Value); err != nil {
 			return nil, fmt.Errorf("field alternate: %w", err)
 		}
 	}
 
 	if e.Single.Present {
-		if wrapper.Single, err = __jsonMarshal__union_codec__Event__5ad13344b1051c6aa1648772957cbbc8e73bddaca1f60eedd00e5ed091782872(e.Single.Value); err != nil {
+		if wrapper.Single, err = __jsonMarshal__union_codec__Event__7e7faa344cb53c0c7c5f74113c04e5f30685279da7d19bf41e6415221de5e913(e.Single.Value); err != nil {
 			return nil, fmt.Errorf("field single: %w", err)
 		}
 	}
 
 	if e.Hook.Present {
-		if wrapper.Hook, err = __jsonMarshal__union_codec__Event__5ad13344b1051c6aa1648772957cbbc8e73bddaca1f60eedd00e5ed091782872(e.Hook.Value); err != nil {
+		if wrapper.Hook, err = __jsonMarshal__union_codec__Event__7e7faa344cb53c0c7c5f74113c04e5f30685279da7d19bf41e6415221de5e913(e.Hook.Value); err != nil {
 			return nil, fmt.Errorf("field hook: %w", err)
 		}
 	}
 
 	if e.ValueHook.Present {
-		if wrapper.ValueHook, err = __jsonMarshal__union_codec__Event__5ad13344b1051c6aa1648772957cbbc8e73bddaca1f60eedd00e5ed091782872(e.ValueHook.Value); err != nil {
+		if wrapper.ValueHook, err = __jsonMarshal__union_codec__Event__7e7faa344cb53c0c7c5f74113c04e5f30685279da7d19bf41e6415221de5e913(e.ValueHook.Value); err != nil {
 			return nil, fmt.Errorf("field value_hook: %w", err)
 		}
 	}
@@ -187,7 +187,7 @@ func (e *Envelope) UnmarshalJSON(data []byte) (err error) {
 	__next := Envelope(wrapper.Alias)
 
 	var __decoded0 Event
-	if __decoded0, err = __jsonUnmarshal__union_codec__Event__5ad13344b1051c6aa1648772957cbbc8e73bddaca1f60eedd00e5ed091782872(wrapper.Primary); err != nil {
+	if __decoded0, err = __jsonUnmarshal__union_codec__Event__7e7faa344cb53c0c7c5f74113c04e5f30685279da7d19bf41e6415221de5e913(wrapper.Primary); err != nil {
 		return err
 	}
 	__next.Primary = __decoded0
@@ -202,7 +202,7 @@ func (e *Envelope) UnmarshalJSON(data []byte) (err error) {
 			__decoded1 = make([]Event, len(__raw1))
 		}
 		for __index, __raw := range __raw1 {
-			if __decoded1[__index], err = __jsonUnmarshal__union_codec__Event__5ad13344b1051c6aa1648772957cbbc8e73bddaca1f60eedd00e5ed091782872(__raw); err != nil {
+			if __decoded1[__index], err = __jsonUnmarshal__union_codec__Event__7e7faa344cb53c0c7c5f74113c04e5f30685279da7d19bf41e6415221de5e913(__raw); err != nil {
 				return fmt.Errorf("field events[%d]: %w", __index, err)
 			}
 		}
@@ -211,7 +211,7 @@ func (e *Envelope) UnmarshalJSON(data []byte) (err error) {
 
 	if len(wrapper.Optional) > 0 {
 		var __decoded2 Event
-		if __decoded2, err = __jsonUnmarshal__union_codec__Event__5ad13344b1051c6aa1648772957cbbc8e73bddaca1f60eedd00e5ed091782872(wrapper.Optional); err != nil {
+		if __decoded2, err = __jsonUnmarshal__union_codec__Event__7e7faa344cb53c0c7c5f74113c04e5f30685279da7d19bf41e6415221de5e913(wrapper.Optional); err != nil {
 			return err
 		}
 		__next.Optional.Value = __decoded2
@@ -220,7 +220,7 @@ func (e *Envelope) UnmarshalJSON(data []byte) (err error) {
 
 	if len(wrapper.Alternate) > 0 {
 		var __decoded3 Event
-		if __decoded3, err = __jsonUnmarshal__union_codec__Event__5ad13344b1051c6aa1648772957cbbc8e73bddaca1f60eedd00e5ed091782872(wrapper.Alternate); err != nil {
+		if __decoded3, err = __jsonUnmarshal__union_codec__Event__7e7faa344cb53c0c7c5f74113c04e5f30685279da7d19bf41e6415221de5e913(wrapper.Alternate); err != nil {
 			return err
 		}
 		__next.Alternate.Value = __decoded3
@@ -229,7 +229,7 @@ func (e *Envelope) UnmarshalJSON(data []byte) (err error) {
 
 	if len(wrapper.Single) > 0 {
 		var __decoded4 Event
-		if __decoded4, err = __jsonUnmarshal__union_codec__Event__5ad13344b1051c6aa1648772957cbbc8e73bddaca1f60eedd00e5ed091782872(wrapper.Single); err != nil {
+		if __decoded4, err = __jsonUnmarshal__union_codec__Event__7e7faa344cb53c0c7c5f74113c04e5f30685279da7d19bf41e6415221de5e913(wrapper.Single); err != nil {
 			return err
 		}
 		__next.Single.Value = __decoded4
@@ -238,7 +238,7 @@ func (e *Envelope) UnmarshalJSON(data []byte) (err error) {
 
 	if len(wrapper.Hook) > 0 {
 		var __decoded5 Event
-		if __decoded5, err = __jsonUnmarshal__union_codec__Event__5ad13344b1051c6aa1648772957cbbc8e73bddaca1f60eedd00e5ed091782872(wrapper.Hook); err != nil {
+		if __decoded5, err = __jsonUnmarshal__union_codec__Event__7e7faa344cb53c0c7c5f74113c04e5f30685279da7d19bf41e6415221de5e913(wrapper.Hook); err != nil {
 			return err
 		}
 		__next.Hook.Value = __decoded5
@@ -247,7 +247,7 @@ func (e *Envelope) UnmarshalJSON(data []byte) (err error) {
 
 	if len(wrapper.ValueHook) > 0 {
 		var __decoded6 Event
-		if __decoded6, err = __jsonUnmarshal__union_codec__Event__5ad13344b1051c6aa1648772957cbbc8e73bddaca1f60eedd00e5ed091782872(wrapper.ValueHook); err != nil {
+		if __decoded6, err = __jsonUnmarshal__union_codec__Event__7e7faa344cb53c0c7c5f74113c04e5f30685279da7d19bf41e6415221de5e913(wrapper.ValueHook); err != nil {
 			return err
 		}
 		__next.ValueHook.Value = __decoded6
@@ -305,7 +305,7 @@ func (n Nested) MarshalJSON() ([]byte, error) {
 	wrapper := Wrapper{Alias: Alias(n)}
 	var err error
 
-	if wrapper.Event, err = __jsonMarshal__union_codec__Event__5ad13344b1051c6aa1648772957cbbc8e73bddaca1f60eedd00e5ed091782872(n.Event); err != nil {
+	if wrapper.Event, err = __jsonMarshal__union_codec__Event__7e7faa344cb53c0c7c5f74113c04e5f30685279da7d19bf41e6415221de5e913(n.Event); err != nil {
 		return nil, fmt.Errorf("field event: %w", err)
 	}
 
@@ -327,7 +327,7 @@ func (n *Nested) UnmarshalJSON(data []byte) (err error) {
 	__next := Nested(wrapper.Alias)
 
 	var __decoded0 Event
-	if __decoded0, err = __jsonUnmarshal__union_codec__Event__5ad13344b1051c6aa1648772957cbbc8e73bddaca1f60eedd00e5ed091782872(wrapper.Event); err != nil {
+	if __decoded0, err = __jsonUnmarshal__union_codec__Event__7e7faa344cb53c0c7c5f74113c04e5f30685279da7d19bf41e6415221de5e913(wrapper.Event); err != nil {
 		return err
 	}
 	__next.Event = __decoded0
@@ -339,7 +339,7 @@ func (n *Nested) UnmarshalJSON(data []byte) (err error) {
 func __jsonschema__isJSONNull(data []byte) bool {
 	return bytes.Equal(bytes.TrimSpace(data), []byte("null"))
 }
-func __jsonMarshal__union_codec__Event__5ad13344b1051c6aa1648772957cbbc8e73bddaca1f60eedd00e5ed091782872(value Event) (json.RawMessage, error) {
+func __jsonMarshal__union_codec__Event__7e7faa344cb53c0c7c5f74113c04e5f30685279da7d19bf41e6415221de5e913(value Event) (json.RawMessage, error) {
 	if value == nil {
 		return nil, fmt.Errorf("cannot marshal nil registered interface Event")
 	}
@@ -371,12 +371,12 @@ func __jsonMarshal__union_codec__Event__5ad13344b1051c6aa1648772957cbbc8e73bddac
 		return nil, fmt.Errorf("marshal registered implementation %T for Event: %w", value, err)
 	}
 	return __jsonschema__marshalUnionObject(data,
-		"type",
+		"!kind",
 		discriminator,
 	)
 }
 
-func __jsonUnmarshal__union_codec__Event__5ad13344b1051c6aa1648772957cbbc8e73bddaca1f60eedd00e5ed091782872(data []byte) (Event, error) {
+func __jsonUnmarshal__union_codec__Event__7e7faa344cb53c0c7c5f74113c04e5f30685279da7d19bf41e6415221de5e913(data []byte) (Event, error) {
 	var (
 		temp          map[string]json.RawMessage
 		discriminator string
@@ -385,8 +385,9 @@ func __jsonUnmarshal__union_codec__Event__5ad13344b1051c6aa1648772957cbbc8e73bdd
 
 	if err != nil {
 		return nil, err
-	} else if _tempDiscriminator, ok := temp["type"]; !ok {
-		return nil, errNoDiscriminator
+	} else if _tempDiscriminator, ok := temp["!kind"]; !ok {
+		// per-field discriminator property
+		return nil, fmt.Errorf("no discriminator property '%s' found", "!kind")
 	} else if discriminator, err = __jsonschema__decodeDiscriminator(_tempDiscriminator); err != nil {
 		return nil, __jsonschema__unmarshalDiscriminatorError(_tempDiscriminator, err)
 	}
