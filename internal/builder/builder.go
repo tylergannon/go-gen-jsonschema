@@ -68,9 +68,18 @@ func Run(args BuilderArgs) (err error) {
 	builder.Validate = args.Validate
 	builder.UnmarshalFormats = args.UnmarshalFormats
 
-	if builder.Validate {
-		if invalid := builder.SchemaFreeFuncs(); len(invalid) > 0 {
-			return fmt.Errorf("--validate cannot generate ValidateJSON for %s: its schema entrypoint is a free function because its underlying type is a pointer or interface, and Go forbids declaring any method (so ValidateJSON) on it; remove --validate or drop this type's registration", invalid[0].Receiver.TypeName)
+	// A free-function schema root whose underlying type is a pointer or
+	// interface can't have any method declared on it, so modes that require
+	// one (RenderedSchema for RenderProviders(), ValidateJSON for
+	// --validate) can't be generated for it. Reject clearly rather than
+	// silently producing incomplete output.
+	for _, fn := range builder.SchemaFreeFuncs() {
+		name := fn.Receiver.TypeName
+		if builder.Rendered[name] {
+			return fmt.Errorf("%s: RenderProviders() is not supported for a free-function schema root whose underlying type is a pointer or interface (Go forbids declaring a method on it, so no RenderedSchema() can be generated); drop RenderProviders() for this type", name)
+		}
+		if builder.Validate {
+			return fmt.Errorf("--validate cannot generate ValidateJSON for %s: its schema entrypoint is a free function because its underlying type is a pointer or interface, and Go forbids declaring any method (so ValidateJSON) on it; remove --validate or drop this type's registration", name)
 		}
 	}
 

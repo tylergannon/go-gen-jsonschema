@@ -715,6 +715,13 @@ func (s SchemaBuilder) imports() *ImportMap {
 // itself a pointer or interface, meaning Go forbids declaring any method
 // (value or pointer receiver) on it.
 func (s SchemaBuilder) hasInvalidMethodReceiverBase(typeName string) bool {
+	// A type registered via NewInterfaceImpl/WithInterfaceImpls is recorded
+	// in Scan.Interfaces, not Scan.LocalNamedTypes (see scan_result.go's
+	// type-decl pass), but it's still an interface: no method can be
+	// declared on it either.
+	if _, ok := s.Scan.Interfaces[typeName]; ok {
+		return true
+	}
 	if ts, ok := s.Scan.LocalNamedTypes[typeName]; ok {
 		switch ts.Type().Expr().(type) {
 		case *dst.StarExpr, *dst.InterfaceType:

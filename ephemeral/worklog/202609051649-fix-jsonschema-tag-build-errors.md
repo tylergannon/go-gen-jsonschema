@@ -322,6 +322,60 @@ already-large change) -- left it as a corrected, actionable follow-up.
 
 Round 4 review launched against the fixed state.
 
+## Round 5: classifier gap for legacy interface roots; RenderProviders gap
+
+Round 4 (`ephemeral/reviews/202609051945-jsonschema-tag-build-fix-round-04.md`)
+confirmed rounds 1-3's findings fixed, then found two more in the same new
+surface:
+
+1. `hasInvalidMethodReceiverBase` only checked `Scan.LocalNamedTypes`, but a
+   type registered via legacy `NewInterfaceImpl[I](...)` is recorded in
+   `Scan.Interfaces` instead (scan_result.go's type-decl pass explicitly
+   routes it there, *not* into `LocalNamedTypes`). So a free-function root
+   for such an interface was misclassified as method-capable, routed into
+   `SchemaMethods()`, and would generate `func (I) Name() json.RawMessage`
+   -- Go rejects an interface receiver base exactly like it rejects a
+   pointer one. This is a real bug in the classifier's own stated contract
+   (its doc comment already claimed to cover "pointer or interface"), not a
+   hypothetical feature-combination ask -- fixed by also checking
+   `Scan.Interfaces` membership.
+2. `RenderProviders()` requests a rendered/template schema
+   (`<Type>.json.tmpl` + generated `RenderedSchema()`), but the new
+   `SchemaFreeFuncs` template block unconditionally reads `<Type>.json`, and
+   the `RenderedSchema()`-emitting block only ranges over `SchemaMethods`.
+   A free-function pointer/interface root with `RenderProviders()` would
+   silently get a `.json.tmpl` file and a schema accessor that panics
+   trying to read the wrong filename, no way to execute it. Also caught: my
+   round-4 `--validate` rejection didn't exempt rendered roots, which don't
+   get `ValidateJSON` regardless of method/free-function status (per
+   AGENTS.md), so it could reject `--validate` for a reason that wasn't
+   actually a gap.
+
+Verified both independently with disposable fixtures against the real CLI
+before and after fixing (not just trusting the review): the interface case
+now generates a real free function and a correct union JSON schema, compiles,
+and the callable function returns the expected `anyOf` schema; the
+RenderProviders case now fails fast with a clear error instead of writing an
+unusable template. Fixed by adding `Scan.Interfaces` to the classifier and
+adding a `RenderProviders()` rejection alongside the (now correctly
+rendered-aware) `--validate` rejection in `Run(...)`. Added
+`TestFreeFunctionRootForRegisteredInterfaceCompilesAndRuns` (full
+generation, real compile, real call) and
+`TestRenderProvidersRejectsFreeFunctionPointerRoot`.
+
+Did not chase this further into a full audit of every other option
+(`.Accessor`, `.Method`, `.Function`, `.Enum`, `.StringerEnum`, `.Ref`,
+`.Interface` chained *onto* a free-function pointer/interface root) against
+the free-function path -- reviewer found two real, verifiable gaps in code
+this session actually introduced; auditing every remaining option
+combination is open-ended and not what anything in the repo currently needs.
+If round 5 finds another such gap in the same vein (a documented contract
+this session's new code claims to honor but doesn't), fix it; a request to
+audit the full combinatorial option surface preemptively goes to a follow-up
+issue instead.
+
+Round 5 review launched against the fixed state.
+
 ## Verification
 
 - `go generate ./...` per touched example dir; diffed `jsonschema/*.json` and
