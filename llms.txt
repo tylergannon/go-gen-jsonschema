@@ -47,23 +47,8 @@ type Person struct {
 }
 ```
 
-Scaffold the build-tagged registration file and generate:
-
-```bash
-go tool polytype new \
-  -out schema.go \
-  -methods 'Person=Schema' \
-  --validate \
-  --formats=both \
-  --generate
-go mod tidy
-```
-
-Run `go mod tidy` when generation adds dependencies. Validation imports
-`github.com/santhosh-tekuri/jsonschema/v6`; opted-in YAML support imports
-`go.yaml.in/yaml/v4`.
-
-The scaffolded file has the generation-only build tag and panic stubs:
+Write the build-tagged registration file by hand. It holds one panic stub
+per generated method and one `Declare` line per root type:
 
 ```go
 // schema.go
@@ -82,6 +67,22 @@ func (Person) ValidateYAML(_ []byte) error { panic("not implemented") }
 
 var _ = polytype.Declare(Person.Schema)
 ```
+
+The stubs exist only so the package compiles under the `jsonschema` tag
+while the generator runs. Write a `ValidateJSON` stub when the directive
+passes `--validate` and a `ValidateYAML` stub when it also passes
+`--formats=both`.
+
+Generate:
+
+```bash
+go generate ./...
+go mod tidy
+```
+
+Run `go mod tidy` when generation adds dependencies. Validation imports
+`github.com/santhosh-tekuri/jsonschema/v6`; opted-in YAML support imports
+`go.yaml.in/yaml/v4`.
 
 Generation writes:
 
@@ -223,8 +224,8 @@ not compatible with that strict requirement.
 
 ## Validate before unmarshaling
 
-Pass `--validate` both to the generation directive and to `new`. Generated
-schemas are compiled once during package initialization. With
+Pass `--validate` to the generation directive and write a `ValidateJSON`
+stub in the tagged file. Generated schemas are compiled once during package initialization. With
 `--formats=both`, `ValidateYAML` translates YAML to the same JSON data model
 before applying the schema.
 
@@ -604,14 +605,6 @@ go tool polytype gen [flags]
   --formats MODE        decoding and validation: json (default) or both
   --typescript DIR      generate structural TypeScript declarations in DIR
   --typescript-barrel   also generate index.ts type-only exports; requires --typescript
-
-go tool polytype new [flags]
-  -out FILE             output path; empty or -- writes to stdout
-  -pkg NAME             package override for stdout mode
-  -methods LIST         required comma-separated Type=Method entries
-  --validate            include validation stubs for the selected formats
-  --formats MODE        validation stubs: json (default) or both
-  --generate            run go generate ./... after writing
 ```
 
 The command without a subcommand is equivalent to `gen`. Any non-empty
@@ -621,6 +614,63 @@ requested TypeScript artifact, including missing or stale `types.ts` and barrel
 state, without modifying the TypeScript destination. Generation can still
 update `jsonschema_gen.go` when schemas and requested TypeScript files are
 unchanged.
+
+## Driving polytype from another generator
+
+polytype is a pure function of a package's Go source. A tool that has
+already decided which types need schemas or codecs drives it by writing one
+file and running one command; there is no library entry point, and none is
+needed.
+
+For each package that owns root types, emit one `//go:build jsonschema` file:
+
+```go
+//go:build jsonschema
+
+package orders
+
+import (
+    "encoding/json"
+
+    "github.com/tylergannon/polytype"
+)
+
+func (Order) Schema() json.RawMessage     { panic("not implemented") }
+func (Order) ValidateJSON(_ []byte) error { panic("not implemented") }
+
+var _ = polytype.Declare(Order.Schema).
+    StringerEnum(Order{}.Priority)
+
+var _ = polytype.SealedUnion[Payment]("kind")
+```
+
+Per root type: one stub with the exact signature and one `Declare` line.
+Chain `.StringerEnum`, `.Ref()`, or a provider option only when wanted. Add
+`SealedUnion[I](name)` only for a non-default discriminator, and only in the
+package that declares `I`. The method name is the tool's choice; `Schema` is
+the convention.
+
+Then run, once per package:
+
+```bash
+go tool polytype gen -target ./orders --validate
+```
+
+Output lands at fixed paths under the target: `jsonschema_gen.go`,
+`jsonschema/<Type>.json`, and `jsonschema/<Type>.json.sum`. A nonzero exit
+means nothing was written; the diagnostic on stderr names the offending type
+or field.
+
+Rules a driving tool must respect:
+
+- Enum markers (`func (T) enum()`) and sealing methods belong in the
+  author's untagged type source. The tool reads them; it never writes them.
+- Roots are package-local. `Declare` must sit in the package that declares
+  the type, so group roots by package and emit one tagged file each.
+- The tagged file is compiled before scanning. A wrong signature, a missing
+  stub, or a `T{}.Field` that does not exist fails as a Go compile error.
+- Shape rules (maps, recursion, unsealed interface fields, Nullable
+  placement) are checked only at generation time.
 
 ## Keep generated output current
 
@@ -665,7 +715,8 @@ detects untracked generated files.
    `go tool polytype`.
 2. Ensure `schema.go` begins with `//go:build jsonschema` and every registered
    type exists in the package.
-3. Pass `--validate` consistently to both `new` and generation.
+3. When the directive passes `--validate`, the tagged file needs a
+   `ValidateJSON` stub (and `ValidateYAML` with `--formats=both`).
 4. Run `go mod tidy` after first generating validation code.
 5. Check for unsupported wrapper placement, interface containers, maps, or
    recursive types.

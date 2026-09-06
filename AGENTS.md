@@ -68,7 +68,7 @@ Task runner is `just` (justfile), not `make`.
 
 ### Package Layout
 
-- **`polytype/`** — CLI entry point with `gen` and `new` subcommands
+- **`polytype/`** — CLI entry point (`gen`, the only subcommand)
 - **`internal/syntax/`** — AST parsing, package loading (uses `golang.org/x/tools/go/packages` with `jsonschema` build tag), type scanning, comment extraction
 - **`internal/builder/`** — Schema generation engine. `SchemaBuilder` orchestrates: type scanning → schema node construction → JSON output → Go code generation
 - **`internal/builder/model.go`** — Schema node types: `ObjectNode`, `PropertyNode`, `ArrayNode`, `UnionTypeNode`, `RefNode`, `TemplateHoleNode`
@@ -98,7 +98,7 @@ Enums and unions are not declared per field. A type is an enum when it declares 
 
 ### Validation
 
-Pass `--validate` to generation (and to `new`, which then scaffolds a panic stub such as `func (Person) ValidateJSON(_ []byte) error { panic("not implemented") }`) to get a generated `ValidateJSON([]byte) error` method. Schemas are compiled once in `init()` using `github.com/santhosh-tekuri/jsonschema/v6`. Rendered/template types don't receive one because their schemas depend on runtime values.
+Pass `--validate` to generation, and add a panic stub such as `func (Person) ValidateJSON(_ []byte) error { panic("not implemented") }` to the tagged file, to get a generated `ValidateJSON([]byte) error` method. Schemas are compiled once in `init()` using `github.com/santhosh-tekuri/jsonschema/v6`. Rendered/template types don't receive one because their schemas depend on runtime values.
 
 ### Limitations
 

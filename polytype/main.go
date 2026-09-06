@@ -1,27 +1,15 @@
 package main
 
 import (
-	_ "embed"
 	"flag"
 	"fmt"
-	"go/build"
-	"io"
 	"log"
 	"os"
-	"os/exec"
-	"path/filepath"
-	"strings"
 
 	"github.com/tylergannon/polytype/internal/builder"
-	"github.com/tylergannon/polytype/internal/common"
-	"github.com/tylergannon/polytype/internal/syntax"
 )
 
-//go:embed tmpl/config.go.tmpl
-var configTmplContents string
-
 func main() {
-
 	if len(os.Args) == 1 {
 		handleGen(1)
 		return
@@ -31,15 +19,9 @@ func main() {
 		return
 	}
 
-	// Extract the subcommand
-	subcommand := os.Args[1]
-
-	// Switch on the subcommand
-	switch subcommand {
+	switch os.Args[1] {
 	case "gen":
 		handleGen(2)
-	case "new":
-		handleNew()
 	default:
 		handleGen(1)
 	}
@@ -48,11 +30,8 @@ func main() {
 // Prints global help for the script
 func printGlobalHelp() {
 	fmt.Println("Usage:")
-	fmt.Println("  [subcommand] [options]")
-	fmt.Println("\nSubcommands:")
-	fmt.Println("  gen      Generate output (default)")
-	fmt.Println("  new      Create a new project")
-	fmt.Println("\nRun '[subcommand] --help' for more details.")
+	fmt.Println("  [gen] [options]")
+	fmt.Println("\nRun 'gen --help' for options.")
 }
 
 type genOptions struct {
@@ -136,154 +115,4 @@ func parseUnmarshalFormats(value string) (builder.UnmarshalFormats, error) {
 	default:
 		return "", fmt.Errorf("invalid --formats value %q: expected json or both", value)
 	}
-}
-
-func handleNew() {
-	// Define the --out flag
-	var (
-		newCmd      = flag.NewFlagSet("new", flag.ExitOnError)
-		out         = newCmd.String("out", "", "Path to output file.  Empty val or '--' means print to stdout")
-		pkg         = newCmd.String("pkg", "", "Package for generated file. Default is current directory or using the package name for the package specified in --out")
-		methods     = newCmd.String("methods", "", "Comma-separated list of methods to generate in the form of TypeName=MethodName,TypeName2=MethodName2")
-		runGenerate = newCmd.Bool("generate", false, "Run go generate in the target package after creating the stub file")
-		newValidate = newCmd.Bool("validate", false, "Include validation stubs for the selected formats")
-		newFormats  = newCmd.String("formats", "json", "Generated decoding and validation formats: json or both")
-	)
-
-	// Check if --help was requested
-	if len(os.Args) > 2 && os.Args[2] == "--help" {
-		fmt.Println("Usage: new [options] FILENAME")
-		fmt.Println("\nOptions:")
-		newCmd.PrintDefaults()
-		return
-	}
-
-	// Parse flags for the "new" subcommand
-	var (
-		err       = newCmd.Parse(os.Args[2:])
-		pkgName   string
-		useStdout = *out == "" || *out == "--"
-	)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	unmarshalFormats, err := parseUnmarshalFormats(*newFormats)
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	// Remaining args (after parsing)
-
-	if useStdout {
-		if *pkg != "" {
-			pkgName = *pkg
-		} else {
-			var wd string
-			if wd, err = os.Getwd(); err != nil {
-				log.Fatalln(err)
-			}
-			if pkgName, err = getPackageName(wd); err != nil {
-				log.Fatalln(err)
-			}
-		}
-	} else if pkgName, err = getPackageName(filepath.Dir(*out)); err != nil {
-		log.Fatalln(err)
-	}
-
-	var tmplArg = configArg{
-		BuildTag: syntax.BuildTag,
-		PkgName:  pkgName,
-		Validate: *newValidate,
-		YAML:     unmarshalFormats == builder.UnmarshalFormatsBoth,
-	}
-
-	for methodArg := range strings.SplitSeq(*methods, ",") {
-		if len(methodArg) == 0 {
-			continue
-		}
-		parts := strings.SplitN(methodArg, "=", 2)
-		if len(parts) != 2 {
-			log.Fatalln("Invalid method argument.  Must be keyvalue in the form TypeName=MethodName. -- ", methodArg)
-		}
-		tmplArg.Methods = append(tmplArg.Methods, methodDef{
-			TypeName:   parts[0],
-			MethodName: parts[1],
-		})
-	}
-	if len(tmplArg.Methods) == 0 {
-		log.Fatalln("No methods to generate.")
-	}
-
-	fmt.Println("Package name:", pkgName)
-
-	writer, err := getOutputWriter(*out)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	defer common.LogClose(writer)
-	data, err := builder.RenderTemplate(configTmplContents, tmplArg)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	if formatted, err := builder.FormatCodeWithGoimports(data.Bytes()); err != nil {
-		log.Fatalln(err)
-	} else if _, err = writer.Write(formatted); err != nil {
-		log.Fatalln(err)
-	}
-
-	fmt.Printf("Output written to: %s\n", *out)
-
-	// Optionally run go generate in the target package
-	if *runGenerate && !useStdout {
-		targetDir := filepath.Dir(*out)
-		if targetDir == "" {
-			targetDir = "."
-		}
-		fmt.Printf("Running go generate in %s...\n", targetDir)
-		cmd := exec.Command("go", "generate", "./...")
-		cmd.Dir = targetDir
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		if err := cmd.Run(); err != nil {
-			log.Fatalf("go generate failed: %v", err)
-		}
-		fmt.Println("Code generation complete.")
-	}
-}
-
-func getPackageName(path string) (string, error) {
-	// Use build.Import to analyze the directory
-	pkg, err := build.ImportDir(path, 0)
-	if err != nil {
-		return "", err
-	}
-
-	return pkg.Name, nil
-}
-
-type methodDef struct {
-	TypeName, MethodName string
-}
-
-type configArg struct {
-	PkgName  string
-	BuildTag string
-	Validate bool
-	YAML     bool
-	Methods  []methodDef
-}
-
-// getOutputWriter returns an io.WriteCloser for either a file or stdout based on the output path.
-func getOutputWriter(outputPath string) (io.WriteCloser, error) {
-	if outputPath == "" || outputPath == "--" {
-		// Use stdout
-		return os.Stdout, nil
-	}
-
-	// Open a file for writing
-	file, err := os.Create(outputPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create output file: %w", err)
-	}
-	return file, nil
 }

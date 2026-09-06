@@ -16,15 +16,11 @@ Use a Go tool directive so the generator version is recorded in `go.mod`:
 go get -tool github.com/tylergannon/polytype/polytype@latest
 ```
 
-Add a generation directive beside the types, create a build-tagged
-`schema.go`, and run:
+Add a generation directive beside the types, write a build-tagged
+`schema.go` (see "Registration entry points" below), and run:
 
 ```bash
-go tool polytype new \
-  -out schema.go \
-  -methods 'Person=Schema' \
-  --validate \
-  --generate
+go generate ./...
 go mod tidy
 ```
 
@@ -46,7 +42,7 @@ The normal entry point is a method marker:
 ```go
 func (Person) Schema() json.RawMessage { panic("not implemented") }
 
-var _ = polytype.NewJSONSchemaMethod(Person.Schema)
+var _ = polytype.Declare(Person.Schema)
 ```
 
 `NewJSONSchemaFunc[T](func(T) json.RawMessage, options...)` registers a free

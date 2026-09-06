@@ -35,28 +35,6 @@ go tool polytype gen [flags]
 
 The command without a subcommand is equivalent to `gen`.
 
-## Scaffold a registration file
-
-```text
-go tool polytype new [flags]
-  -out FILE          output path; empty or -- writes to stdout
-  -pkg NAME          package name override for stdout mode
-  -methods LIST      required comma-separated Type=Method entries
-  --validate         include validation stubs for the selected formats
-  --formats MODE     validation stubs: json (default) or both
-  --generate         run go generate ./... after writing
-```
-
-Example:
-
-```bash
-go tool polytype new \
-  -out schema.go \
-  -methods 'Person=Schema,Address=Schema' \
-  --validate \
-  --generate
-```
-
 ## Environment
 
 Any non-empty `JSONSCHEMA_NO_CHANGES` value is equivalent to `-no-changes` and
