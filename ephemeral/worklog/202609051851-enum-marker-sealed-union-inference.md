@@ -171,3 +171,84 @@ packages.
 proof: staticcheck and golangci-lint clean with zero directives; go test
 ./...; npm test 11/11; all examples regenerated; goldens refreshed for
 interfaces and v1_enums_stringmode.
+
+## Rebase onto main (#94)
+
+context: origin/main advanced by 1af8982 ("Fix jsonschema-tag compile
+errors; harden free-function schema roots (#94)", 44 files) after this
+branch's base (8f5764f). Rebased the branch's four commits
+(c88e6db/84fad8a/b09ae78/0ebe397) onto origin/main with `git rebase
+origin/main`, resolving conflicts in place and continuing with
+`GIT_EDITOR=true git rebase --continue` (no squashing).
+
+conflicts (2 files, both in the first commit, c88e6db):
+
+- `examples/iota_global/schema.go`: main's #94 fix and this branch's
+  c88e6db independently repaired the same pre-existing breakage (Priority,
+  a pure iota enum, could not be registered under the old API). Main's fix
+  used the fluent `Declare(Task.Schema).Enum(Task{}.Priority)` field-level
+  form and documented a known trade-off: field-level enum registration
+  loses Priority's doc comment as the schema description. This branch's
+  fix uses the `func (Priority) enum()` marker instead, which has no such
+  trade-off. Resolved by keeping this branch's version (marker-based,
+  `var _ = polytype.NewJSONSchemaMethod(Task.Schema)` with no enum call).
+- `examples/test_options/schema.go`: same shape of conflict. Main's #94
+  fix replaced a broken `polytype.WithDescription(...)` option call on
+  Team's registration with a plain call relying on Team's doc comment, and
+  left Task/WorkItem enum registration commented out (Severity/WeekDay
+  can't be global enums under the old API). This branch's c88e6db already
+  made the identical Team fix (doc-comment-only) as a side effect of
+  migrating everything to marker-based enums, and additionally registers
+  Task and WorkItem directly since Status/Priority/Severity/WeekDay now
+  each carry their own `enum()` marker. Resolved by keeping this branch's
+  version in full.
+
+Commits 84fad8a, b09ae78, and 0ebe397 applied without conflict.
+
+tests ported/dropped: none. Main's #94 commit added no new tests that
+exercised a removed API (`internal/builder/validate_free_func_test.go` and
+its other new coverage target free-function schema roots and pointer-type
+registration, both orthogonal to enum/union registration style, and both
+still pass unmodified after the rebase).
+
+post-rebase regeneration: `go build ./...` clean; `go generate ./...` in
+every `examples/*/` directory; regenerating `examples/iota_global`
+produced a real diff in `jsonschema/Task.json`/`.json.sum` (the description
+comes back now that Priority's enum-ness is marker-based, not field-level)
+committed separately as 8e4e675; no other example regenerated with a diff.
+`examples/optionality/cmd/proof` transcript is byte-identical to
+`proof/expected.json`; `go run ./cmd/proof` exits 0. `TestBasic` reported
+no golden mismatches, so no builder fixture goldens needed refreshing.
+`go generate .` at the repo root produced no diff.
+
+gate results:
+- `go test ./...`: all packages `ok` (internal/builder 28.7s, others
+  sub-second to a few seconds), zero failures.
+- `cd tests/typescript && npm ci --ignore-scripts --no-audit --no-fund &&
+  npm test`: 11/11 PASS lines (fresh backend projection, CLI relative
+  barrel, JSON Schema/TS enum parity, deterministic regeneration, stale-TS
+  detection, barrel lifecycle, user-owned-output preservation, strict TS
+  positive/negative/narrowing/enum/reference/composition, discriminated
+  union exhaustiveness, sealed-interface exhaustiveness break, generated
+  Go consumer build+test).
+- `go vet ./...`: clean.
+- `staticcheck ./...`: clean.
+- `golangci-lint run ./...`: `0 issues.`
+
+No lint directives were added anywhere during the rebase or the follow-up
+regeneration commit.
+
+final state: `git log --oneline -6` on
+`claude/issues-86-87-88-plan-20be51` after the rebase and the regeneration
+commit:
+
+```
+8e4e675 Regenerate iota_global Task schema after rebase onto main
+515ab94 Reference each enum marker from generated code instead of lint directives
+d530fea Declare a custom discriminator per sealed union with SealedUnion[I](name)
+bf55de1 Infer sealed union membership from the sealing method; drop non-sealed unions
+b657dd8 Infer enum types from a func (T) enum() marker method
+1af8982 Fix jsonschema-tag compile errors; harden free-function schema roots (#94)
+```
+
+Pushed with `git push --force-with-lease origin claude/issues-86-87-88-plan-20be51`.
