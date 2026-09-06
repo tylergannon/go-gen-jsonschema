@@ -15,9 +15,9 @@ var _ = polytype.Declare(ApplicationConfig.Schema).
 	StringerEnum(ApplicationConfig{}.LogLevel).
 	StringerEnum(ApplicationConfig{}.DefaultPriority)
 
-// Task schema with regular Enum (also WITHOUT NewEnumType!)
+// Task uses the same enum types in value mode: Priority and LogLevel declare
+// `func (T) enum()` in types.go, so their fields emit integer values with no
+// field-level registration.
 func (Task) Schema() json.RawMessage { panic("not implemented") }
 
-var _ = polytype.Declare(Task.Schema).
-	Enum(Task{}.Priority). // This will use integer values
-	Enum(Task{}.LogLevel)  // This will use integer values
+var _ = polytype.Declare(Task.Schema)

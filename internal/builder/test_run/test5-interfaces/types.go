@@ -68,3 +68,8 @@ type PointerToTestInterface struct {
 func (t *PointerToTestInterface) marker() {}
 
 var _ TestInterface = &PointerToTestInterface{}
+
+// MyEnumType declares itself as an enum; the generator emits its typed constants.
+//
+//lint:ignore U1000 enum marker method, read by the polytype generator
+func (MyEnumType) enum() {}

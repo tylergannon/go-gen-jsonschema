@@ -61,7 +61,7 @@ func LoadDecls(path, fileName string, tok token.Token) []fileSpecs {
 func TestFuncCallParser(t *testing.T) {
 	specs := LoadDecls("./testfixtures/typescanner", "calls.go", token.VAR)
 	require.Len(t, specs, 1)
-	require.Len(t, specs[0].specs, 10)
+	require.Len(t, specs[0].specs, 8)
 	valueSpec := func(idx int) ValueSpec {
 		return NewValueSpec(specs[0].genDecl, specs[0].specs[idx].(*dst.ValueSpec), specs[0].pkg, specs[0].file)
 	}
@@ -70,7 +70,7 @@ func TestFuncCallParser(t *testing.T) {
 	for _, spec := range specs[0].specs {
 		calls = append(calls, ParseValueExprForMarkerFunctionCall(NewValueSpec(specs[0].genDecl, spec.(*dst.ValueSpec), specs[0].pkg, specs[0].file))...)
 	}
-	require.Len(t, calls, 10)
+	require.Len(t, calls, 8)
 
 	t.Run("Call number 1", func(t *testing.T) {
 		call := ParseValueExprForMarkerFunctionCall(valueSpec(0))[0]
@@ -134,18 +134,8 @@ func TestFuncCallParser(t *testing.T) {
 		require.Equal(t, "Type004", callArgs[3].TypeName)
 	})
 
-	t.Run("Call number 6", func(t *testing.T) {
-		call := ParseValueExprForMarkerFunctionCall(valueSpec(5))[0]
-		require.Equal(t, MarkerFuncNewEnumType, call.CallExpr.MustIdentifyFunc().TypeName)
-		require.Len(t, call.CallExpr.Args(), 0)
-		require.NotNil(t, call.MustTypeArgument())
-		require.Equal(t, "NiceEnumType", call.MustTypeArgument().TypeName)
-		require.Equal(t, NormalConcrete, call.MustTypeArgument().Indirection)
-		require.Equal(t, pkgPath, call.MustTypeArgument().PkgPath)
-	})
-
 	t.Run("Call number 7", func(t *testing.T) {
-		call := ParseValueExprForMarkerFunctionCall(valueSpec(6))[0]
+		call := ParseValueExprForMarkerFunctionCall(valueSpec(5))[0]
 		require.Equal(t, MarkerFuncNewJSONSchemaBuilder, call.CallExpr.MustIdentifyFunc().TypeName)
 		require.Len(t, call.CallExpr.Args(), 1)
 		require.NotNil(t, call.MustTypeArgument())
@@ -155,7 +145,7 @@ func TestFuncCallParser(t *testing.T) {
 	})
 
 	t.Run("Call number 8", func(t *testing.T) {
-		call := ParseValueExprForMarkerFunctionCall(valueSpec(7))[0]
+		call := ParseValueExprForMarkerFunctionCall(valueSpec(6))[0]
 		require.Equal(t, MarkerFuncNewJSONSchemaBuilder, call.CallExpr.MustIdentifyFunc().TypeName)
 		require.Len(t, call.CallExpr.Args(), 1)
 		require.NotNil(t, call.MustTypeArgument())
@@ -165,7 +155,7 @@ func TestFuncCallParser(t *testing.T) {
 	})
 
 	t.Run("Call number 9", func(t *testing.T) {
-		call := ParseValueExprForMarkerFunctionCall(valueSpec(8))[0]
+		call := ParseValueExprForMarkerFunctionCall(valueSpec(7))[0]
 		require.Equal(t, MarkerFuncNewInterfaceImpl, call.CallExpr.MustIdentifyFunc().TypeName)
 		require.Len(t, call.CallExpr.Args(), 4)
 		require.NotNil(t, call.MustTypeArgument())
@@ -184,15 +174,6 @@ func TestFuncCallParser(t *testing.T) {
 		require.Equal(t, Pointer, callArgs[3].Indirection)
 	})
 
-	t.Run("Call number 10", func(t *testing.T) {
-		call := ParseValueExprForMarkerFunctionCall(valueSpec(9))[0]
-		require.Equal(t, MarkerFuncNewEnumType, call.CallExpr.MustIdentifyFunc().TypeName)
-		require.Len(t, call.CallExpr.Args(), 0)
-		require.NotNil(t, call.MustTypeArgument())
-		require.Equal(t, "NiceEnumType", call.MustTypeArgument().TypeName)
-		require.Equal(t, NormalConcrete, call.MustTypeArgument().Indirection)
-		require.Equal(t, subpkg, call.MustTypeArgument().PkgPath)
-	})
 }
 
 func TestFluentDeclareParser(t *testing.T) {
@@ -221,7 +202,6 @@ func TestFluentDeclareParser(t *testing.T) {
 			{Kind: "WithStructAccessorMethod", FieldName: "A", ProviderName: "ASchema", ProviderIsMethod: true},
 			{Kind: "WithStructFunctionMethod", FieldName: "B", ProviderName: "BSchema", ProviderIsMethod: true},
 			{Kind: "WithFunction", FieldName: "C", ProviderName: "FluentBoolSchema"},
-			{Kind: "WithEnum", FieldName: "E"},
 			{Kind: "WithStringerEnum", FieldName: "F"},
 			{Kind: "WithInterface", FieldName: "G"},
 			{Kind: "WithDiscriminator", FieldName: "G", Discriminator: "kind"},
@@ -285,7 +265,7 @@ func TestFluentDeclareParser(t *testing.T) {
 
 // TestFluentChainFieldSelectorMismatchFailsToLoad proves that a fluent chain
 // link whose field selector names a type other than the Declare(...) root
-// (a typo Go's type system can't catch, since Enum's field parameter is
+// (a typo Go's type system can't catch, since StringerEnum's field parameter is
 // `any`) is a hard, source-positioned scanner error rather than the silent
 // skip the legacy variadic-option parser applies to an analogous mismatch.
 func TestFluentChainFieldSelectorMismatchFailsToLoad(t *testing.T) {
@@ -295,7 +275,7 @@ func TestFluentChainFieldSelectorMismatchFailsToLoad(t *testing.T) {
 
 	_, err = LoadPackage(pkgs[0])
 	require.Error(t, err)
-	require.ErrorContains(t, err, "polytype.Declare: .Enum expects a field selector on Owner{}")
+	require.ErrorContains(t, err, "polytype.Declare: .StringerEnum expects a field selector on Owner{}")
 	require.ErrorContains(t, err, "fixture.go")
 }
 

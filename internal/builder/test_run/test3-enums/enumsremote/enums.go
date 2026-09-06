@@ -14,3 +14,8 @@ const (
 
 // EnumVal4 is the fourth value
 const EnumVal4 RemoteEnumType = "val4"
+
+// RemoteEnumType declares itself as an enum; the generator emits its typed constants.
+//
+//lint:ignore U1000 enum marker method, read by the polytype generator
+func (RemoteEnumType) enum() {}

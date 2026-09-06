@@ -56,7 +56,7 @@ String-based enums with explicit values.
 #### `enums_stringmode/`
 Alternative enum handling with string mode.
 - String representation of numeric enums
-- V1 API enum configuration
+- `.StringerEnum` field configuration
 
 #### `stringer_enums/`
 Integer enums with fmt.Stringer implementation.
@@ -65,9 +65,9 @@ Integer enums with fmt.Stringer implementation.
 - Enum validation
 
 #### `iota_global/`
-Global iota enum example.
-- Package-level iota constants
-- Enum value detection
+Integer iota enum example.
+- Package-level iota constants marked with `func (T) enum()`
+- Integer enum values
 
 ### Interface & Union Types
 
@@ -131,6 +131,7 @@ var _ = polytype.Declare(MyType.Schema)
 ### Enum Registration
 ```go
 type Status string
+func (Status) enum() {}
 const (
     StatusPending Status = "pending"
     StatusActive  Status = "active"
@@ -138,7 +139,7 @@ const (
 type Task struct{ Status Status }
 func (Task) Schema() json.RawMessage { panic("not implemented") }
 
-var _ = polytype.Declare(Task.Schema).Enum(Task{}.Status)
+var _ = polytype.Declare(Task.Schema)
 ```
 
 ### Interface/Union Type Registration

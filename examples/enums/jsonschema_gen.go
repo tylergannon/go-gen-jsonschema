@@ -4,10 +4,13 @@
 package enums
 
 import (
+	"bytes"
 	"embed"
 	"encoding/json"
 	"errors"
 	"fmt"
+
+	jsonschema "github.com/santhosh-tekuri/jsonschema/v6"
 )
 
 //go:embed jsonschema
@@ -17,6 +20,53 @@ var errNoDiscriminator = errors.New("no discriminator property 'type' found")
 
 func __gen_jsonschema_panic(fname string, err error) {
 	panic(fmt.Sprintf("error reading %s from embedded FS: %s", fname, err.Error()))
+}
+
+// Compiled JSON schemas for validation, initialized once at startup.
+var (
+	__gen_jsonschema_compiled_Status        *jsonschema.Schema
+	__gen_jsonschema_compiled_Priority      *jsonschema.Schema
+	__gen_jsonschema_compiled_Task          *jsonschema.Schema
+	__gen_jsonschema_compiled_SliceOfStatus *jsonschema.Schema
+)
+
+func init() {
+	compile := func(typeName string, schemaData json.RawMessage) *jsonschema.Schema {
+		doc, err := jsonschema.UnmarshalJSON(bytes.NewReader(schemaData))
+		if err != nil {
+			panic(fmt.Sprintf("polytype: failed to parse schema for %s: %s", typeName, err))
+		}
+		c := jsonschema.NewCompiler()
+		url := typeName + ".json"
+		if err := c.AddResource(url, doc); err != nil {
+			panic(fmt.Sprintf("polytype: failed to add schema resource for %s: %s", typeName, err))
+		}
+		sch, err := c.Compile(url)
+		if err != nil {
+			panic(fmt.Sprintf("polytype: failed to compile schema for %s: %s", typeName, err))
+		}
+		return sch
+	}
+
+	{
+		var __zero Status
+		__gen_jsonschema_compiled_Status = compile("Status", __zero.Schema())
+	}
+
+	{
+		var __zero Priority
+		__gen_jsonschema_compiled_Priority = compile("Priority", __zero.Schema())
+	}
+
+	{
+		var __zero Task
+		__gen_jsonschema_compiled_Task = compile("Task", __zero.Schema())
+	}
+
+	{
+		var __zero SliceOfStatus
+		__gen_jsonschema_compiled_SliceOfStatus = compile("SliceOfStatus", __zero.Schema())
+	}
 }
 
 func (Status) Schema() json.RawMessage {
@@ -53,4 +103,40 @@ func (SliceOfStatus) Schema() json.RawMessage {
 		__gen_jsonschema_panic(fileName, err)
 	}
 	return data
+}
+
+// ValidateJSON validates the given JSON bytes against the schema for Status.
+func (Status) ValidateJSON(data []byte) error {
+	inst, err := jsonschema.UnmarshalJSON(bytes.NewReader(data))
+	if err != nil {
+		return err
+	}
+	return __gen_jsonschema_compiled_Status.Validate(inst)
+}
+
+// ValidateJSON validates the given JSON bytes against the schema for Priority.
+func (Priority) ValidateJSON(data []byte) error {
+	inst, err := jsonschema.UnmarshalJSON(bytes.NewReader(data))
+	if err != nil {
+		return err
+	}
+	return __gen_jsonschema_compiled_Priority.Validate(inst)
+}
+
+// ValidateJSON validates the given JSON bytes against the schema for Task.
+func (Task) ValidateJSON(data []byte) error {
+	inst, err := jsonschema.UnmarshalJSON(bytes.NewReader(data))
+	if err != nil {
+		return err
+	}
+	return __gen_jsonschema_compiled_Task.Validate(inst)
+}
+
+// ValidateJSON validates the given JSON bytes against the schema for SliceOfStatus.
+func (SliceOfStatus) ValidateJSON(data []byte) error {
+	inst, err := jsonschema.UnmarshalJSON(bytes.NewReader(data))
+	if err != nil {
+		return err
+	}
+	return __gen_jsonschema_compiled_SliceOfStatus.Validate(inst)
 }

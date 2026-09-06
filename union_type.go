@@ -5,7 +5,6 @@ import (
 )
 
 type (
-	EnumType     struct{}
 	SchemaMarker struct{}
 
 	InterfaceMarker struct{}
@@ -112,9 +111,6 @@ func WithDiscriminator[T any](field T, name string) SchemaMethodOption {
 
 // Enum options (v1) - stubs for scanning/type-checking; parsed by scanner
 //
-// Deprecated: use Declare(T.Schema).Enum(field) instead.
-func WithEnum[T any](field T) SchemaMethodOption { return SchemaMethodOptionObj{} }
-
 // Deprecated: use Declare(T.Schema).StringerEnum(field) instead.
 func WithStringerEnum[T any](field T) SchemaMethodOption { return SchemaMethodOptionObj{} }
 
@@ -122,8 +118,8 @@ func WithStringerEnum[T any](field T) SchemaMethodOption { return SchemaMethodOp
 // with a proper json schema and, as needed, unmarshaler functionality.
 //
 // Deprecated: use Declare(T.Schema) instead. For example,
-// NewJSONSchemaMethod(Task.Schema, WithEnum(Task{}.Status)) becomes
-// Declare(Task.Schema).Enum(Task{}.Status).
+// NewJSONSchemaMethod(Task.Schema, WithStringerEnum(Task{}.Level)) becomes
+// Declare(Task.Schema).StringerEnum(Task{}.Level).
 func NewJSONSchemaMethod[T any](SchemaMethod[T], ...SchemaMethodOption) SchemaMarker {
 	return SchemaMarker{}
 }
@@ -154,20 +150,4 @@ var _ SchemaMarker = NewJSONSchemaMethod(
 // on the field referencing the interface instead.
 func NewInterfaceImpl[T any](...T) InterfaceMarker {
 	return InterfaceMarker{}
-}
-
-// NewEnumType denotes that the type argument should be an enum.
-// If called in the same package where the type is declared, then
-// it applies globally.
-// In all cases, the const values MUST be declared in the same
-// package as the call to NewEnumType.
-//
-// For now, only string types are supported.
-//
-// Deprecated: use Declare(T.Schema).Enum(field) on the field referencing the
-// enum type for direct field registrations. NewEnumType has no fluent
-// replacement and must be retained when the enum type is shared across more
-// than one struct field.
-func NewEnumType[T ~string]() EnumType {
-	return EnumType{}
 }

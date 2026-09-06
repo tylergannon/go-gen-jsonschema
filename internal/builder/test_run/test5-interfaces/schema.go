@@ -21,8 +21,4 @@ var (
 	// implementations.  In this case there are three implementations of the
 	// TestInterface interface, which will go in to the union type.
 	_ = polytype.NewInterfaceImpl[TestInterface](TestInterface1{}, TestInterface2{}, (*PointerToTestInterface)(nil))
-	// Identifies MyEnumType as an enum.  Instances of MyEnumType will
-	// therefore be described as enums in the schema.  All `const` values of
-	// this type defined within the same package will become possible values.
-	_ = polytype.NewEnumType[MyEnumType]()
 )

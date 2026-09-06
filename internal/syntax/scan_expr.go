@@ -16,7 +16,6 @@ const (
 	MarkerFuncNewJSONSchemaMethod  = "NewJSONSchemaMethod"  // NewJSONSchemaMethod
 	MarkerFuncNewJSONSchemaFunc    = "NewJSONSchemaFunc"    // NewJSONSchemaFunc
 	MarkerFuncNewInterfaceImpl     = "NewInterfaceImpl"     // NewInterfaceImpl
-	MarkerFuncNewEnumType          = "NewEnumType"          // NewEnumType
 	MarkerFuncDeclare              = "Declare"              // Declare (v1 fluent entrypoint)
 )
 
@@ -29,7 +28,7 @@ type (
 	MarkerFunctionCall struct {
 		CallExpr CallExpr
 		// fluentLinks holds the chained method calls (e.g. .Accessor(...),
-		// .Enum(...)) found on top of a polytype.Declare(...) marker call,
+		// .StringerEnum(...)) found on top of a polytype.Declare(...) marker call,
 		// innermost (leftmost in source) first. Empty for every other marker
 		// function and for a bare Declare(fn) call with no chained options.
 		fluentLinks []fluentChainLink
@@ -68,7 +67,6 @@ var markerFunctions = []string{
 	MarkerFuncNewJSONSchemaMethod,
 	MarkerFuncNewJSONSchemaFunc,
 	MarkerFuncNewInterfaceImpl,
-	MarkerFuncNewEnumType,
 	MarkerFuncDeclare,
 }
 
@@ -399,8 +397,6 @@ func parseSchemaMethodOptions(args []Expr, receiver TypeID, m MarkerFunctionCall
 			kind = SchemaMethodOptionKind("WithStructFunctionMethod")
 		case "WithInterfaceImpls":
 			kind = SchemaMethodOptionKind("WithInterfaceImpls")
-		case "WithEnum":
-			kind = SchemaMethodOptionKind("WithEnum")
 		case "WithStringerEnum":
 			kind = SchemaMethodOptionKind("WithStringerEnum")
 		default:

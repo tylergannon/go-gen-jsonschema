@@ -29,5 +29,4 @@ var (
 	_ = polytype.NewJSONSchemaMethod(StructType2.Schema)
 	_ = polytype.NewJSONSchemaMethod(StructWithRefs.Schema)
 	_ = polytype.NewJSONSchemaMethod(JSONTagNames.Schema)
-	_ = polytype.NewEnumType[EnumType123]()
 )

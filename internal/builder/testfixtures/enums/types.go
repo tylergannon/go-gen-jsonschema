@@ -29,3 +29,8 @@ type SliceOfRemoteEnumType []enumsremote.RemoteEnumType
 
 // SliceOfPointerToRemoteEnum is a slice of pointers to the remote enum type
 type SliceOfPointerToRemoteEnum []*enumsremote.RemoteEnumType
+
+// EnumType declares itself as an enum; the generator emits its typed constants.
+//
+//lint:ignore U1000 enum marker method, read by the polytype generator
+func (EnumType) enum() {}

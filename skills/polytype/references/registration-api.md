@@ -5,15 +5,19 @@ custom discriminators, free functions — or when you need exact CLI flags.
 
 ## Enums
 
-### String enums — `Enum`
+### Declare the enum on the type — `func (T) enum()`
 
-Values are auto-discovered from `const` declarations of the named type (the
-consts must live in the same package as the type). No separate registration of
-the enum type is needed:
+Enum-ness is a property of the type. Add the marker method `func (T) enum() {}`
+to the named type in ordinary (non-build-tagged) Go. Values are the typed
+`const` declarations of that type in the same package, and every use of the
+type — in every schema, codec, and TypeScript output — is an enum. There is no
+field-level enum declaration:
 
 ```go
 // types.go
 type Status string
+
+func (Status) enum() {}
 
 const (
     StatusPending    Status = "pending"
@@ -29,21 +33,31 @@ type Task struct {
 
 ```go
 // schema.go (//go:build jsonschema)
-var _ = polytype.Declare(Task.Schema).
-    Enum(Task{}.Status)
+var _ = polytype.Declare(Task.Schema)
 ```
 
 Produces `"status": {"type": "string", "enum": ["pending", "in_progress", "completed"]}`.
 
+The marker must be exactly `func (T) enum()` (value receiver, no parameters,
+no results); anything else on a method named `enum`, or a marked type with
+no typed constants, fails generation with a diagnostic naming the type. The
+marker means value mode — a `String()` method on a marked type is ignored.
+
+Nothing calls the marker, so `staticcheck` reports it as unused (U1000);
+silence that with a `//lint:ignore U1000 enum marker` comment on the line
+above the method.
+
 ### Integer (iota) enums — `StringerEnum`
 
-`StringerEnum` emits the **constant names** as string enum values
-(`["LogDebug", "LogInfo", ...]`); plain `Enum` on an int type would emit
-the integers (`[0, 1, ...]`). Prefer the Stringer form for LLMs — names carry
-meaning, integers don't:
+A marked integer type emits its integers (`[0, 1, ...]`). `.StringerEnum` on
+a field emits the **constant names** as string enum values
+(`["LogDebug", "LogInfo", ...]`) for that field. Prefer the Stringer form for
+LLMs — names carry meaning, integers don't:
 
 ```go
 type LogLevel int
+
+func (LogLevel) enum() {}
 
 const (
     LogDebug LogLevel = iota
@@ -58,8 +72,8 @@ var _ = polytype.Declare(Config.Schema).
 
 String mode generates codecs on the containing owner, composing with any
 union fields. Marshal the owner value or pointer and decode into its pointer;
-the same enum can still use numeric `Enum` in another field. Do not add a
-global enum codec. Supported adapted fields are direct `E`, `Optional[E]`, and
+the same marked enum type still emits integers in any other field. Do not
+add a global enum codec. Supported adapted fields are direct `E`, `Optional[E]`, and
 `Nullable[E]`: absent/null wrappers bypass conversion, and present values use
 constant identifiers. Unknown names/values, undeclared zero, ambiguous aliases,
 custom enum JSON hooks, and other adapted containers are errors. Validate
@@ -67,13 +81,9 @@ external input before decoding for required-field and schema checks.
 Registered enum fields cannot use `json:",string"`; generation rejects that
 option before writing artifacts because its encoding differs from the schema.
 
-`.Enum`/`.StringerEnum` are not a full replacement for the legacy
-package-level `NewEnumType[T]()` when the enum type is shared across more
-than one struct field: they only support a direct named enum, `Optional[E]`,
-or `Nullable[E]` field, and annotating only some occurrences of a shared enum
-type silently degrades the ones left unmarked (lost constraint, lost shared
-TypeScript type). Keep a shared enum type on `NewEnumType[T]()`; it has no
-fluent replacement.
+Migration: `.Enum(field)`, `WithEnum(field)`, and the package-level
+`NewEnumType[T]()` are removed. Add `func (T) enum() {}` next to the type and
+delete those declarations; `.StringerEnum`/`WithStringerEnum` are unchanged.
 
 ## Discriminated unions (interface fields)
 
@@ -148,7 +158,8 @@ returned `*Declaration[T]`:
 - `.Accessor(field, T.method)` / `.Method(field, T.method)` / `.Function(field, fn)`
   — provider options: supply a field's schema at runtime instead of deriving
   it statically (see [`examples/providers_rendering`](../../../examples/providers_rendering)).
-- `.Enum(field)` / `.StringerEnum(field)` — enum options.
+- `.StringerEnum(field)` — emit an integer enum field's constant names.
+  (Enum types themselves are declared with `func (T) enum()`, not here.)
 - `.Interface(field, Discriminator(name), Impl(value, implementation), ...)` —
   sealed-interface options.
 - `.Ref()` — render this type as `"$ref"` wherever it's referenced (see below).
@@ -157,7 +168,7 @@ returned `*Declaration[T]`:
   schemas depend on runtime values).
 
 `NewJSONSchemaMethod(T.Schema, ...opts)` / `NewJSONSchemaFunc(fn, ...opts)`
-with their `With*` options, and the legacy `NewEnumType[T]()` /
+with their `With*` options, and the legacy
 `NewInterfaceImpl[I](impls...)`, remain supported for source compatibility.
 
 Nested struct types are **inlined** into the parent schema (no `$ref`) by
@@ -264,4 +275,5 @@ If generation fails:
 1. Every type referenced in `schema.go` must exist in the package's Go source.
 2. Check the build tag is exactly `//go:build jsonschema` on `schema.go`.
 3. Look for circular references between types.
-4. Enum consts must be declared in the same package as the enum type.
+4. Enum consts must be declared in the same package as the enum type, and
+   the type must declare `func (T) enum() {}`.

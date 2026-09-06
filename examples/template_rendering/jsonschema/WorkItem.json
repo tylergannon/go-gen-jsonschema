@@ -2,5 +2,5 @@
 "description":"WorkItem demonstrates field-level enum configuration","properties":{
 "id":{"type":"string"},
 "name":{"type":"string"},
-"status":{"type":"string","enum":["pending","active","complete"]}
+"status":{"type":"string","description":"Status is a simple string enum","enum":["pending","active","complete"]}
 },"required":["id","name","status"],"additionalProperties":false}

@@ -204,12 +204,19 @@ no `$ref` — which is what LLM APIs handle best.
 
 ## 🎯 Enums
 
-String enums: values are auto-discovered from `const` declarations of the
-type (same package). Integer/iota enums: `StringerEnum` emits the constant
-*names* as string values — far more meaningful to an LLM than raw integers.
+Enum-ness is a property of the type. A named type declares itself as an enum
+with the marker method `func (T) enum()` in ordinary (non-build-tagged) Go;
+its values are the typed `const` declarations in the same package, and every
+use of the type in every generated schema, codec, and TypeScript output is an
+enum. No field-level declaration is needed. Integer/iota enums emit their
+integer values by default; `StringerEnum` on a field emits the constant
+*names* as string values instead — far more meaningful to an LLM than raw
+integers.
 
 ```go
 type Status string
+
+func (Status) enum() {}
 
 const (
     StatusPending    Status = "pending"
@@ -226,7 +233,7 @@ const (
 )
 
 type Task struct {
-    Status   Status   `json:"status"`
+    Status   Status   `json:"status"`   // ["pending", "in_progress", "completed"]
     LogLevel LogLevel `json:"logLevel"`
 }
 ```
@@ -234,9 +241,18 @@ type Task struct {
 ```go
 // schema.go (//go:build jsonschema)
 var _ = polytype.Declare(Task.Schema).
-    Enum(Task{}.Status).          // ["pending", "in_progress", "completed"]
     StringerEnum(Task{}.LogLevel) // ["LogDebug", "LogInfo", "LogError"]
 ```
+
+The marker must be `func (T) enum()` exactly: a pointer receiver, parameters,
+or results are a generation error naming the type, as is a marked type with
+no typed constants. The marker means value mode; a `String()` method on a
+marked type is ignored. `.StringerEnum` on a field of a marked integer type
+still selects name mode for that field.
+
+Nothing calls the marker, so `staticcheck` reports it as unused (U1000);
+silence that with a `//lint:ignore U1000 enum marker` comment on the line
+above the method.
 
 String-mode fields receive generated codecs on the containing struct. Both
 `json.Marshal(Task{...})` and decoding into `*Task` use the registered constant
@@ -254,20 +270,11 @@ custom enum JSON hooks, and unsupported adapted containers are rejected.
 Validate external JSON before decoding to enforce required fields and schema
 membership. See [the enum guide](website/src/content/docs/features/enums.md).
 
-Migration: `NewJSONSchemaMethod(Task.Schema, WithEnum(Task{}.Status))` is now
-`Declare(Task.Schema).Enum(Task{}.Status)`. The legacy forms
-(`NewJSONSchemaMethod`/`NewJSONSchemaFunc` with `With*` options, and the
-package-level `polytype.NewEnumType[Status]()`) remain supported and
-source-compatible; see their `Deprecated:` godoc for the fluent equivalent of
-each.
-
-Field-level `.Enum`/`.StringerEnum` is not a full replacement for
-`NewEnumType[T]()` when the enum type is shared across more than one struct
-field: field-level options only support a direct named enum, `Optional[E]`,
-or `Nullable[E]` field (not, for example, `Optional[[]E]`), and annotating
-only some occurrences of a shared enum type silently degrades the ones left
-unmarked. Keep a shared enum type on the package-level `NewEnumType[T]()`
-form; it has no fluent replacement.
+Migration: `Declare(Task.Schema).Enum(Task{}.Status)`, `WithEnum(...)`, and
+the package-level `NewEnumType[Status]()` are removed. Add
+`func (Status) enum() {}` next to the type and delete the field-level and
+package-level declarations; `.StringerEnum` / `WithStringerEnum` are
+unchanged.
 
 ## 🔄 Union types (interfaces)
 
@@ -524,7 +531,6 @@ onto the returned `*Declaration[T]`:
 | `.Accessor(field, T.method)` | Provider is a struct method taking only the receiver |
 | `.Method(field, T.method)` | Provider is a struct method also taking the field's own value |
 | `.Function(field, fn)` | Provider is a free function taking the field's own value |
-| `.Enum(field)` | Field is an enum compared directly |
 | `.StringerEnum(field)` | Field is an enum compared via `fmt.Stringer` |
 | `.Ref()` | Render this type as `"$ref"` wherever it's referenced |
 | `.RenderProviders()` | Generate `RenderedSchema()` and run providers at runtime |
@@ -534,15 +540,17 @@ onto the returned `*Declaration[T]`:
 var _ = polytype.Declare(Person.Schema)
 
 var _ = polytype.Declare(Task.Schema).
-    Enum(Task{}.Status).
     StringerEnum(Task{}.LogLevel)
 ```
+
+Enum types are not declared here at all: a type with `func (T) enum()` is an
+enum everywhere it appears.
 
 These markers are no-ops at runtime — the generator reads them from the AST of
 your build-tagged `schema.go`.
 
-`NewJSONSchemaMethod`/`NewJSONSchemaFunc` with their `With*` options,
-`NewEnumType[T]()`, and `NewInterfaceImpl[I](impls...)` remain supported for
+`NewJSONSchemaMethod`/`NewJSONSchemaFunc` with their `With*` options and
+`NewInterfaceImpl[I](impls...)` remain supported for
 source compatibility; each carries a `Deprecated:` godoc comment naming its
 fluent equivalent. `NewJSONSchemaBuilder[T](fn)` (registers a no-argument
 schema accessor stub) has no fluent form yet and is unaffected.

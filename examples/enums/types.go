@@ -1,6 +1,6 @@
 package enums
 
-//go:generate go run ../../polytype/
+//go:generate go run ../../polytype/ --validate
 
 // Status represents the state of an item in the system.
 // This enum type will be represented as a string with a fixed set of possible values.
@@ -62,3 +62,13 @@ type Task struct {
 // SliceOfStatus demonstrates how to use a slice of enum values.
 // This type will be represented as an array of enum values in the schema.
 type SliceOfStatus []Status
+
+// Status declares itself as an enum; the generator emits its typed constants.
+//
+//lint:ignore U1000 enum marker method, read by the polytype generator
+func (Status) enum() {}
+
+// Priority declares itself as an enum; the generator emits its typed constants.
+//
+//lint:ignore U1000 enum marker method, read by the polytype generator
+func (Priority) enum() {}

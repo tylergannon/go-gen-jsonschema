@@ -86,3 +86,23 @@ type WorkItem struct {
 	Priority Priority `json:"priority"`
 	Level    Severity `json:"level"`
 }
+
+// Status declares itself as an enum; the generator emits its typed constants.
+//
+//lint:ignore U1000 enum marker method, read by the polytype generator
+func (Status) enum() {}
+
+// Priority declares itself as an enum; the generator emits its typed constants.
+//
+//lint:ignore U1000 enum marker method, read by the polytype generator
+func (Priority) enum() {}
+
+// Severity declares itself as an enum; the generator emits its typed constants.
+//
+//lint:ignore U1000 enum marker method, read by the polytype generator
+func (Severity) enum() {}
+
+// WeekDay declares itself as an enum; the generator emits its typed constants.
+//
+//lint:ignore U1000 enum marker method, read by the polytype generator
+func (WeekDay) enum() {}

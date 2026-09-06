@@ -273,11 +273,15 @@ generated schema.
 
 ## Enums
 
-For a named string field, `.Enum` discovers typed constants declared in the
-same package:
+Enum-ness is a property of the type. A named type declares itself as an enum
+with the marker method `func (T) enum() {}` in ordinary Go; its typed
+constants in the same package become the enum values wherever the type is
+used, with no field-level declaration:
 
 ```go
 type Status string
+
+func (Status) enum() {}
 
 const (
     StatusPending Status = "pending"
@@ -288,31 +292,19 @@ type Task struct {
     Status Status `json:"status"`
 }
 
-var _ = polytype.Declare(Task.Schema).
-    Enum(Task{}.Status)
+var _ = polytype.Declare(Task.Schema)
 ```
 
-For an integer or iota enum, choose the wire representation explicitly:
+The marker must be exactly `func (T) enum()`; a pointer receiver, another
+signature, or a marked type with no typed constants fails generation naming
+the type. The marker means value mode and ignores any `String()` method. A
+marked integer type emits its raw numeric constant values; `.StringerEnum` on
+a field emits constant names such as `LogDebug` and `LogInfo` as strings
+instead (never the return values of `String()`).
 
-- `.Enum` emits the raw numeric constant values.
-- `.StringerEnum` emits constant names such as `LogDebug` and `LogInfo` as
-  strings. It does not emit the return values of `String()`.
-
-Migration: `NewJSONSchemaMethod(Task.Schema, WithEnum(Task{}.Status))` is now
-`Declare(Task.Schema).Enum(Task{}.Status)`. The legacy
-`NewJSONSchemaMethod`/`NewJSONSchemaFunc` with `WithEnum`/`WithStringerEnum`
-remain supported and source-compatible; each carries a `Deprecated:` godoc
-comment naming its fluent equivalent.
-
-Field-level `.Enum`/`.StringerEnum` is not a full replacement for the
-package-level `NewEnumType[T]()` form when the enum type is shared across
-more than one struct field: `.Enum`/`.StringerEnum` only support a direct
-named enum, `Optional[E]`, or `Nullable[E]` field (not, for example,
-`Optional[[]E]`), and annotating only some of a shared enum type's
-occurrences degrades the ones left unmarked (they render as plain
-unconstrained types and lose their generated TypeScript type). Keep a shared
-enum type on the package-level `NewEnumType[T]()` form; it remains supported
-and applies wherever the type appears, with no fluent replacement.
+Migration: `.Enum(field)`, `WithEnum(field)`, and the package-level
+`NewEnumType[T]()` are removed; add `func (T) enum() {}` next to the type.
+`.StringerEnum`/`WithStringerEnum` are unchanged.
 
 String-mode integer fields generate one composed owner codec for encoding and
 decoding, shared with any union adapters. Marshal the containing owner value
@@ -481,17 +473,13 @@ type NullableConfig struct {
     Shared polytype.Nullable[Shared] `json:"shared"`
 }
 
-var (
-    _ = polytype.Declare(NullableConfig.Schema)
-    _ = polytype.NewEnumType[Mode]()
-)
+var _ = polytype.Declare(NullableConfig.Schema)
 ```
 
 Migration: `NewJSONSchemaMethod(Shared.Schema, AsRef())` is now
 `Declare(Shared.Schema).Ref()`. The legacy `NewJSONSchemaMethod`/
-`NewJSONSchemaFunc` with `AsRef()`, and the package-level `NewEnumType[T]()`,
-remain supported and source-compatible; each carries a `Deprecated:` godoc
-comment naming its fluent equivalent.
+`NewJSONSchemaFunc` with `AsRef()` remain supported and source-compatible;
+each carries a `Deprecated:` godoc comment naming its fluent equivalent.
 
 `$defs` are assembled per generated JSON file, keyed by the type's bare name.
 Two distinct `.Ref()`-registered types reachable in one generation run that
@@ -551,7 +539,6 @@ onto the returned `*Declaration[T]`:
 | `.Accessor(field, T.method)` | Provider is a struct method taking only the receiver. |
 | `.Method(field, T.method)` | Provider is a struct method also taking the field's own value. |
 | `.Function(field, fn)` | Provider is a free function taking the field's own value. |
-| `.Enum(field)` | Field is an enum compared directly. |
 | `.StringerEnum(field)` | Field is an enum compared via `fmt.Stringer`. |
 | `.Ref()` | Render this type as `"$ref"` wherever it's referenced. |
 | `.RenderProviders()` | Generate `RenderedSchema()` and run providers at runtime. |
@@ -561,15 +548,17 @@ onto the returned `*Declaration[T]`:
 var _ = polytype.Declare(Person.Schema)
 
 var _ = polytype.Declare(Task.Schema).
-    Enum(Task{}.Status).
     StringerEnum(Task{}.LogLevel)
 ```
+
+Enum types are declared on the type itself with `func (T) enum()`, never in
+the registration chain.
 
 Registration markers are read from the build-tagged file by the generator and
 are no-ops at runtime.
 
-`NewJSONSchemaMethod`/`NewJSONSchemaFunc` with their legacy `With*` options,
-`NewEnumType[T]()`, and `NewInterfaceImpl[I](impls...)` remain supported for
+`NewJSONSchemaMethod`/`NewJSONSchemaFunc` with their legacy `With*` options
+and `NewInterfaceImpl[I](impls...)` remain supported for
 source compatibility; each carries a `Deprecated:` godoc comment naming its
 fluent equivalent. `NewJSONSchemaBuilder[T](fn)` (registers a no-argument
 schema accessor stub) has no fluent form yet and is unaffected.
@@ -579,9 +568,9 @@ schema accessor stub) has no fluent form yet and is unaffected.
 | `NewJSONSchemaMethod(T.Schema, ...opts)` | `Declare(T.Schema)` |
 | `NewJSONSchemaFunc(fn, ...opts)` | `Declare(fn)` |
 | `NewJSONSchemaBuilder[T](fn)` | none (unaffected) |
-| `NewEnumType[T]()` | none for a type shared across fields; keep the legacy form |
+| `NewEnumType[T]()` | removed; declare `func (T) enum() {}` on the type |
 | `NewInterfaceImpl[I](impls...)` | `.Interface(field, Impl(value, impl), ...)` |
-| `WithEnum(field)` | `.Enum(field)` |
+| `WithEnum(field)` | removed; declare `func (T) enum() {}` on the field's type |
 | `WithStringerEnum(field)` | `.StringerEnum(field)` |
 | `WithInterface(field, options...)` | `.Interface(field, options...)` |
 | `Discriminator(name)` | `Discriminator(name)` (unchanged, used inside `.Interface`) |

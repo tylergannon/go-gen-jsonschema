@@ -19,6 +19,24 @@ func __gen_jsonschema_panic(fname string, err error) {
 	panic(fmt.Sprintf("error reading %s from embedded FS: %s", fname, err.Error()))
 }
 
+func (Product) Schema() json.RawMessage {
+	const fileName = "jsonschema/Product.json"
+	data, err := __gen_jsonschema_fs.ReadFile(fileName)
+	if err != nil {
+		__gen_jsonschema_panic(fileName, err)
+	}
+	return data
+}
+
+func (Configuration) Schema() json.RawMessage {
+	const fileName = "jsonschema/Configuration.json"
+	data, err := __gen_jsonschema_fs.ReadFile(fileName)
+	if err != nil {
+		__gen_jsonschema_panic(fileName, err)
+	}
+	return data
+}
+
 func (Person) Schema() json.RawMessage {
 	const fileName = "jsonschema/Person.json"
 	data, err := __gen_jsonschema_fs.ReadFile(fileName)
@@ -30,6 +48,24 @@ func (Person) Schema() json.RawMessage {
 
 func (Team) Schema() json.RawMessage {
 	const fileName = "jsonschema/Team.json"
+	data, err := __gen_jsonschema_fs.ReadFile(fileName)
+	if err != nil {
+		__gen_jsonschema_panic(fileName, err)
+	}
+	return data
+}
+
+func (Task) Schema() json.RawMessage {
+	const fileName = "jsonschema/Task.json"
+	data, err := __gen_jsonschema_fs.ReadFile(fileName)
+	if err != nil {
+		__gen_jsonschema_panic(fileName, err)
+	}
+	return data
+}
+
+func (WorkItem) Schema() json.RawMessage {
+	const fileName = "jsonschema/WorkItem.json"
 	data, err := __gen_jsonschema_fs.ReadFile(fileName)
 	if err != nil {
 		__gen_jsonschema_panic(fileName, err)

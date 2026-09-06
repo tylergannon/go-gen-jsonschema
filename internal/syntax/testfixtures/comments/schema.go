@@ -13,6 +13,5 @@ func (StructType) SchemaBuilder() json.RawMessage {
 }
 
 var (
-	_ = polytype.NewEnumType[StringType]()
 	_ = polytype.NewJSONSchemaMethod(StructType.SchemaBuilder)
 )

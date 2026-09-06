@@ -84,7 +84,7 @@ func NewForTypes(pkg *decorator.Package, typeNames []string) (SchemaBuilder, err
 			case "WithInterface", "WithInterfaceImpls", "WithDiscriminator", "Impl":
 				foundNewInterfaceOpts = true
 				continue
-			case "WithEnum", "WithStringerEnum":
+			case "WithStringerEnum":
 				// Enum options don't create providers, they're handled inline
 				continue
 			}
@@ -118,18 +118,14 @@ func NewForTypes(pkg *decorator.Package, typeNames []string) (SchemaBuilder, err
 				curr := builder.IfaceV1[recv][opt.FieldName]
 				curr.Registered = true
 				builder.IfaceV1[recv][opt.FieldName] = curr
-			case "WithEnum", "WithStringerEnum":
+			case "WithStringerEnum":
 				if builder.EnumV1[recv] == nil {
 					builder.EnumV1[recv] = make(map[string]enumFieldConfig)
 				}
-				useStringer := opt.Kind == "WithStringerEnum"
-				if previous, ok := builder.EnumV1[recv][opt.FieldName]; ok {
-					if previous.UseStringer != useStringer {
-						return fmt.Errorf("field %s.%s: cannot combine WithEnum and WithStringerEnum", recv, opt.FieldName)
-					}
+				if _, ok := builder.EnumV1[recv][opt.FieldName]; ok {
 					return fmt.Errorf("field %s.%s: duplicate enum registration", recv, opt.FieldName)
 				}
-				builder.EnumV1[recv][opt.FieldName] = enumFieldConfig{UseStringer: useStringer}
+				builder.EnumV1[recv][opt.FieldName] = enumFieldConfig{UseStringer: true}
 
 			case "WithDiscriminator":
 				if builder.IfaceV1[recv] == nil {
@@ -1098,7 +1094,7 @@ func (s SchemaBuilder) resolveEnumFieldPlan(owner, fieldName string, field synta
 	}
 	ident, direct := fieldType.(*dst.Ident)
 	if !direct {
-		return nil, fmt.Errorf("field %s.%s: WithEnum/WithStringerEnum supports only a direct named enum, Optional[E], or Nullable[E] at %s", owner, fieldName, field.Position())
+		return nil, fmt.Errorf("field %s.%s: .StringerEnum supports only a direct named enum, Optional[E], or Nullable[E] at %s", owner, fieldName, field.Position())
 	}
 	pkgPath := ident.Path
 	if pkgPath == "" {

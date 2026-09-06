@@ -599,8 +599,8 @@ func rejectCustomWireType(scan syntax.ScanResult, name, position string) error {
 	}
 	for _, candidate := range []types.Type{obj.Type(), types.NewPointer(obj.Type())} {
 		methods := types.NewMethodSet(candidate)
-		for i := 0; i < methods.Len(); i++ {
-			method := methods.At(i).Obj()
+		for method := range methods.Methods() {
+			method := method.Obj()
 			if customWireMethod(method.Name(), method.Type()) {
 				return fmt.Errorf("type %s.%s at %s defines %s; custom JSON/text wire mappings are not statically derivable", scan.Pkg.PkgPath, name, position, method.Name())
 			}

@@ -127,3 +127,8 @@ type StructType struct {
 		} `json:"field_one99"` // "After" Comment
 	} `json:"field_one99"` // "After" Comment
 }
+
+// StringType declares itself as an enum; the generator emits its typed constants.
+//
+//lint:ignore U1000 enum marker method, read by the polytype generator
+func (StringType) enum() {}

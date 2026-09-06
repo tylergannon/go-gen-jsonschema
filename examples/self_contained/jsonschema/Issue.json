@@ -2,6 +2,6 @@
 "description":"Issue with multiple enum fields","properties":{
 "id":{"type":"string"},
 "description":{"type":"string"},
-"priority":{"type":"string","enum":["low","medium","high"]},
-"severity":{"type":"string","enum":["info","warning","error","critical"]}
+"priority":{"type":"string","description":"Priority for tasks","enum":["low","medium","high"]},
+"severity":{"type":"string","description":"Severity for issues","enum":["info","warning","error","critical"]}
 },"required":["id","description","priority","severity"],"additionalProperties":false}

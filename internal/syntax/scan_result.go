@@ -397,8 +397,6 @@ func (r *ScanResult) loadPackageInternal(seen seenPackages, typesToMap map[strin
 	r.MarkerCalls = _decls.varDecls.MarkerFuncs()
 	for _, decl := range r.MarkerCalls {
 		switch decl.CallExpr.MustIdentifyFunc().TypeName {
-		case MarkerFuncNewEnumType:
-			r.Constants[decl.MustTypeArgument().TypeName] = &EnumSet{}
 		case MarkerFuncNewInterfaceImpl:
 			var (
 				err   error
@@ -461,18 +459,28 @@ func (r *ScanResult) loadPackageInternal(seen seenPackages, typesToMap map[strin
 
 	for _, _typeDecl := range _decls.typeDecls {
 		for _, spec := range _typeDecl.Specs {
+			typeSpec := NewTypeSpec(_typeDecl.Decl, spec, _typeDecl.Pkg, _typeDecl.File)
 			if iface, ok := r.Interfaces[spec.Name.Name]; ok {
-				iface.TypeSpec = NewTypeSpec(_typeDecl.Decl, spec, _typeDecl.Pkg, _typeDecl.File)
+				iface.TypeSpec = typeSpec
 				r.Interfaces[spec.Name.Name] = iface
-			} else if enum, ok := r.Constants[spec.Name.Name]; ok {
-				resolved, err := ResolveEnum(NewTypeSpec(_typeDecl.Decl, spec, _typeDecl.Pkg, _typeDecl.File))
+				continue
+			}
+			marked, err := hasEnumMarker(r.Pkg.Types, spec.Name.Name, typeSpec.Position())
+			if err != nil {
+				return err
+			}
+			if marked {
+				resolved, err := ResolveEnum(typeSpec)
 				if err != nil {
 					return err
 				}
-				*enum = *resolved
-			} else {
-				r.LocalNamedTypes[spec.Name.Name] = NewTypeSpec(_typeDecl.Decl, spec, _typeDecl.Pkg, _typeDecl.File)
+				if len(resolved.Values) == 0 {
+					return fmt.Errorf("enum type %s at %s declares enum() but has no typed constants", spec.Name.Name, typeSpec.Position())
+				}
+				r.Constants[spec.Name.Name] = resolved
+				continue
 			}
+			r.LocalNamedTypes[spec.Name.Name] = typeSpec
 		}
 	}
 	for typeName := range typesToMap {

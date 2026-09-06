@@ -1,0 +1,7 @@
+{"type":"object",
+"description":"WorkItem demonstrates field-level enum configuration (v1 pattern)","properties":{
+"id":{"type":"string"},
+"name":{"type":"string"},
+"priority":{"type":"string","description":"Priority represents a string-based priority enum for comparison","enum":["low","medium","high","urgent"]},
+"level":{"type":"integer","description":"Severity represents an iota enum with custom string values","enum":[1,2,3,4]}
+},"required":["id","name","priority","level"],"additionalProperties":false}

@@ -29,5 +29,4 @@ var (
 	_ = polytype.NewJSONSchemaMethod(SliceOfEnumType.Schema)
 	_ = polytype.NewJSONSchemaMethod(SliceOfRemoteEnumType.Schema)
 	_ = polytype.NewJSONSchemaMethod(SliceOfPointerToRemoteEnum.Schema)
-	_ = polytype.NewEnumType[EnumType]()
 )

@@ -1,7 +1,7 @@
 //go:build jsonschema
 
 // Package fluentfieldmismatch is a standalone negative fixture: its
-// .Enum(...) chain link names a field on a type other than the Declare
+// .StringerEnum(...) chain link names a field on a type other than the Declare
 // root, which must be a hard scanner error, not a silent skip. It lives in
 // its own directory (rather than testfixtures/typescanner, which every
 // happy-path fluent scanner test shares) because loading a package eagerly
@@ -26,4 +26,4 @@ type Other struct {
 func (Owner) Schema() json.RawMessage { panic("not implemented") }
 
 var _ = polytype.Declare(Owner.Schema).
-	Enum(Other{}.X)
+	StringerEnum(Other{}.X)

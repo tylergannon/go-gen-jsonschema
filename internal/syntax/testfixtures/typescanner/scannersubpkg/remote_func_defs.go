@@ -41,3 +41,8 @@ const (
 	Val4 NiceEnumType = "val4"
 	Val5 NiceEnumType = "val5"
 )
+
+// NiceEnumType declares itself as an enum; the generator emits its typed constants.
+//
+//lint:ignore U1000 enum marker method, read by the polytype generator
+func (NiceEnumType) enum() {}

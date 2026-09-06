@@ -27,3 +27,13 @@ type Issue struct {
 	Priority    Priority `json:"priority"`
 	Severity    Severity `json:"severity"`
 }
+
+// Priority declares itself as an enum; the generator emits its typed constants.
+//
+//lint:ignore U1000 enum marker method, read by the polytype generator
+func (Priority) enum() {}
+
+// Severity declares itself as an enum; the generator emits its typed constants.
+//
+//lint:ignore U1000 enum marker method, read by the polytype generator
+func (Severity) enum() {}

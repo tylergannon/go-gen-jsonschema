@@ -22,5 +22,4 @@ var _ = polytype.Declare(Container.Schema)
 
 var (
 	_ = polytype.Declare(NullableConfig.Schema)
-	_ = polytype.NewEnumType[Mode]()
 )

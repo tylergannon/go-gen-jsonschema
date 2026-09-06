@@ -95,3 +95,13 @@ type Task struct {
 	// LogLevel is the minimum log level for this task
 	LogLevel LogLevel `json:"log_level"`
 }
+
+// Priority declares itself as an enum; the generator emits its typed constants.
+//
+//lint:ignore U1000 enum marker method, read by the polytype generator
+func (Priority) enum() {}
+
+// LogLevel declares itself as an enum; the generator emits its typed constants.
+//
+//lint:ignore U1000 enum marker method, read by the polytype generator
+func (LogLevel) enum() {}

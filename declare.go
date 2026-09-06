@@ -13,8 +13,11 @@ type Declaration[T any] struct{}
 // method expression (e.g. Example.Schema) or a free function taking T as its
 // sole parameter (e.g. BuildExampleSchema); both forms infer T from fn's
 // signature. Chain the returned *Declaration[T] with Accessor, Method,
-// Function, Enum, StringerEnum, Ref, RenderProviders, and Interface to add
+// Function, StringerEnum, Ref, RenderProviders, and Interface to add
 // options, matching the equivalent WithXxx options on NewJSONSchemaMethod.
+//
+// Enum types need no declaration: a named type that declares the marker
+// method `func (T) enum()` is emitted as an enum wherever it is used.
 func Declare[T any](fn func(T) json.RawMessage) *Declaration[T] {
 	_ = fn
 	return &Declaration[T]{}
@@ -39,12 +42,6 @@ func (d *Declaration[T]) Method[F any](field F, provider func(T, F) json.Marshal
 // provider must agree on F: passing a field of one type alongside a provider
 // expecting another fails to compile.
 func (d *Declaration[T]) Function[F any](field F, provider func(F) json.Marshaler) *Declaration[T] {
-	return d
-}
-
-// Enum marks field as an enum whose values are compared directly
-// (equivalent to WithEnum).
-func (d *Declaration[T]) Enum(field any) *Declaration[T] {
 	return d
 }
 

@@ -25,7 +25,6 @@ var fluentMethodToOptionKind = map[string]SchemaMethodOptionKind{
 	"Accessor":     SchemaMethodOptionKind("WithStructAccessorMethod"),
 	"Method":       SchemaMethodOptionKind("WithStructFunctionMethod"),
 	"Function":     SchemaMethodOptionKind("WithFunction"),
-	"Enum":         SchemaMethodOptionKind("WithEnum"),
 	"StringerEnum": SchemaMethodOptionKind("WithStringerEnum"),
 }
 
@@ -290,7 +289,7 @@ func parseFluentChainOptions(links []fluentChainLink, receiver TypeID, m MarkerF
 			out = append(out, SchemaMethodOptionInfo{Kind: SchemaMethodOptionKind("WithRenderProviders")})
 		case "Ref":
 			out = append(out, SchemaMethodOptionInfo{Kind: SchemaMethodOptionKind("AsRef")})
-		case "Enum", "StringerEnum":
+		case "StringerEnum":
 			if len(ceArgs) != 1 {
 				return nil, fmt.Errorf("polytype.Declare: .%s expects one field argument at %s", link.methodName, pos.Position())
 			}
