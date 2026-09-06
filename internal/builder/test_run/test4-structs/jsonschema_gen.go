@@ -15,10 +15,11 @@ var __gen_jsonschema_fs embed.FS
 
 var errNoDiscriminator = errors.New("no discriminator property 'type' found")
 
-// Each marked enum type is referenced here so that its enum() marker is used
-// from production code and keeps the shape the generator requires.
+// Each marked enum type is referenced here through its first typed constant
+// so that its enum() marker is used from production code and keeps the shape
+// the generator requires.
 var (
-	_ interface{ enum() } = *new(EnumType123)
+	_ interface{ enum() } = Var1
 )
 
 func __gen_jsonschema_panic(fname string, err error) {

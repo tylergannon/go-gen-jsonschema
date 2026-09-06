@@ -134,5 +134,5 @@ func (StringType) enum() {}
 // This package runs no generation of its own, so it references its marked
 // enum types by hand; a generated file would emit the same assertions.
 var (
-	_ interface{ enum() } = *new(StringType)
+	_ interface{ enum() } = StringType1
 )

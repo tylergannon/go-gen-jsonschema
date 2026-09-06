@@ -311,3 +311,76 @@ empty; `go test ./...` all `ok`; `go generate ./...`;
 clean, `golangci-lint run ./...` `0 issues.`; no lint directives added.
 `tests/typescript` npm suite not rerun: no file under `examples/` and no
 generator source changed.
+
+## 2026-09-05 rc.8 follow-ups (branch `claude/rc8-followups`, from origin/main 12359fd = v1.0.0-rc.7)
+
+Scope: (1) point the TypeScript+codec install/version prose at `v1.0.0-rc.8`
+(the release that will follow this PR); (2) spell the generated enum-marker
+assertion as `_ interface{ enum() } = <FirstConstant>` instead of
+`*new(T)`.
+
+decision: the version sentence now reads "requires `v1.0.0-rc.8` or newer:
+`v1.0.0-rc.4` includes TypeScript declarations but predates generated owner
+codecs, and releases before `v1.0.0-rc.7` predate the marker-based enum and
+sealed-union registration" (README.md, docs/tutorial.mdx, llms.txt,
+website getting-started.mdx, skills/polytype/SKILL.md). Rationale: the
+`enum()` marker / `SealedUnion` API the docs show only exists from rc.7, so
+rc.5/rc.6 pins would not compile against the shown registration code.
+`grep -rn 'rc\.5'` (excluding node_modules/.git/ephemeral) is now empty.
+
+decision: `schemaTemplateData.EnumMarkers` is `[]EnumMarker{TypeName,
+Constant}` built by `(*SchemaBuilder).enumMarkers()` in
+`internal/builder/gen_schema.go`: types sorted by name (deterministic),
+constant = `Scan.Constants[type].Values[0].Name`. `ResolveEnum`
+(`internal/syntax/enums.go`) walks `Pkg().Syntax` files then decls then
+specs then names, so `Values[0]` is source declaration order; the zero-
+constant case is rejected in `scan_result.go` before the map is populated,
+so `Values[0]` always exists. Unexported first constants are fine (same
+package); covered by `TestEnumMarkerAssertionUsesFirstConstant`.
+
+doc_bug: README/enums.md/registration-api.md/llms.txt described the
+assertion as `*new(T)` and said "once per package" -> now describe the
+first-constant form, note the RHS must be a value of the marked type (value
+receiver), and say one line per marked type.
+
+friction: TestBasic golden files have no update flag; `AssertGoldenFile` is
+diff-only and `t.Fatalf`s on the outer `t`, so one mismatch aborts the
+remaining cases -> refreshed by looping: copy
+`test_run/<case>/jsonschema_gen.go` over
+`testfixtures/<fixture>/jsonschema_gen.go.golden` when the diff is confined
+to the marker block, re-run, repeat. Only `interfaces` and
+`v1_enums_stringmode` goldens carried markers; passed on iteration 1.
+`test_run/` is tracked and was rewritten by the test run (test3/4/5/10).
+
+friction: `just lint` runs `find . -name '*.go' -exec goimports -w` and
+`modernize -fix ./...`, which reformatted 21 tracked historical files under
+`ephemeral/` (codec-integration-consumer, typescript-generation proof runs)
+-> reverted with `git checkout -- ephemeral/`; lint changed nothing else.
+Consider excluding `ephemeral/` from the lint `find`.
+
+Hand-written assertions updated to the first constant: tests/typescript
+fixture (`Ready`, `Low`), internal/syntax comments fixture (`StringType1`),
+typescanner fixtures (`Val1` x2), builder enumsremote (`EnumVal1`),
+traversal remoteenum (`RemoteEnumFirst`). Historical `ephemeral/` proof
+consumers intentionally left on `*new(T)`.
+
+Proof (all from this worktree, clean tree after commit):
+- `go test ./... -count=1`: all packages `ok`, no FAIL.
+- `go generate ./...` run twice; second run left `git status --porcelain`
+  identical (33 files changed, all intended). Examples regenerated:
+  enums, iota_global, ref_types, self_contained, stringer_enums,
+  template_rendering, test_options; internal/builder/messages unchanged
+  (no marked enums).
+- `just build-tagged`: exit 0.
+- `just lint`: vet/staticcheck/govulncheck clean, golangci-lint `0 issues.`
+- `cd tests/typescript && npm ci && npm test`: 11 PASS lines; proof retained
+  at `ephemeral/typescript-generation/proof/run-dyHogF` (committed, 29
+  files, its consumer/jsonschema_gen.go shows `= Low` / `= Ready`).
+- `grep -rn '\*new(' --include='*.golden' --include='*_gen.go'` outside
+  ephemeral: empty.
+
+Out of scope, noted: website getting-started.mdx line ~81 still says
+"`.Interface` and `.StringerEnum` registrations automatically generate ...
+codecs" although `.Interface` was removed in rc.7 (doc_bug: stale API
+name -> should read `.StringerEnum` registrations and inferred sealed
+unions).

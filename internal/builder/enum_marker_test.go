@@ -125,3 +125,37 @@ func countOccurrences(haystack, needle string) int {
 	}
 	return count
 }
+
+// TestEnumMarkerAssertionUsesFirstConstant pins the spelling of the marker
+// assertion in the generated file: each marked type is referenced through
+// its first typed constant in declaration order (unexported is fine within
+// the package), never through *new(T).
+func TestEnumMarkerAssertionUsesFirstConstant(t *testing.T) {
+	targetDir := writeEnumMarkerFixture(t, `type Status string
+
+func (Status) enum() {}
+
+const (
+	Ready   Status = "ready"
+	Waiting Status = "waiting"
+)
+
+type mode int
+
+func (mode) enum() {}
+
+const modeFast mode = 1
+const modeSlow mode = 2
+
+type Owner struct {
+	Status Status `+"`json:\"status\"`"+`
+	Mode   mode   `+"`json:\"mode\"`"+`
+}
+`)
+	require.NoError(t, Run(BuilderArgs{TargetDir: targetDir}))
+	generated, err := os.ReadFile(filepath.Join(targetDir, "jsonschema_gen.go"))
+	require.NoError(t, err)
+	require.Contains(t, string(generated), "_ interface{ enum() } = Ready\n")
+	require.Contains(t, string(generated), "_ interface{ enum() } = modeFast\n")
+	require.NotContains(t, string(generated), "*new(")
+}

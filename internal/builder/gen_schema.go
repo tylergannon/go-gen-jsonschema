@@ -371,11 +371,21 @@ type schemaTemplateData struct {
 	YAMLTypes   []YAMLType
 	Interfaces  []InterfaceInfo
 	// EnumMarkers lists every type in the generated package that declares
-	// the func (T) enum() marker. The template emits one interface
-	// assertion per type so the marker is referenced from production code:
-	// that keeps its shape checked at compile time and satisfies the
-	// staticcheck unused-method check without any lint directives.
-	EnumMarkers []string
+	// the func (T) enum() marker, sorted by type name. The template emits one
+	// interface assertion per type, assigning the type's first typed constant,
+	// so the marker is referenced from production code: that keeps its shape
+	// checked at compile time and satisfies the staticcheck unused-method
+	// check without any lint directives.
+	EnumMarkers []EnumMarker
+}
+
+// EnumMarker is one enum-marked type in the generated package together with
+// the name of its first typed constant in declaration order. The assertion
+// assigns a value of the type rather than a pointer because the marker uses
+// a value receiver.
+type EnumMarker struct {
+	TypeName string
+	Constant string
 }
 
 func (s schemaTemplateData) HaveInterfaces() bool {
@@ -1352,12 +1362,28 @@ func (s SchemaBuilder) sortedOwnerCodecNames() []string {
 	return names
 }
 
+// enumMarkers returns one EnumMarker per enum-marked type in the scanned
+// package, sorted by type name so generation is deterministic. Each carries
+// the type's first constant in the order ResolveEnum yields them (source
+// declaration order); a marked type with no constants is rejected during
+// scanning, so every entry has one.
+func (s *SchemaBuilder) enumMarkers() []EnumMarker {
+	markers := make([]EnumMarker, 0, len(s.Scan.Constants))
+	for _, typeName := range slices.Sorted(maps.Keys(s.Scan.Constants)) {
+		markers = append(markers, EnumMarker{
+			TypeName: typeName,
+			Constant: s.Scan.Constants[typeName].Values[0].Name,
+		})
+	}
+	return markers
+}
+
 func (s *SchemaBuilder) RenderGoCode() (err error) {
 	importMap := s.imports()
 	templateData := schemaTemplateData{
 		SchemaBuilder: *s,
 		Imports:       importMap.ImportStatements(),
-		EnumMarkers:   slices.Sorted(maps.Keys(s.Scan.Constants)),
+		EnumMarkers:   s.enumMarkers(),
 	}
 	generatedInterfaceHelpers := make(map[string]bool)
 

@@ -37,12 +37,14 @@ named `enum` is a generation error naming the type, as is a marked type with
 no typed constants. The marker means value mode: a `String()` method on a
 marked type is ignored.
 
-The generated file references every marked type in its package as
-`var _ interface{ enum() } = *new(T)`, so the marker is used from production
-code, its shape is checked by the compiler, and `staticcheck` stays quiet
-with no lint directives. A package that declares a marked enum but never
-runs generation (a shared enums package, say) needs that one line written
-by hand, once per package.
+The generated file references every marked type in its package through its
+first typed constant, as `var _ interface{ enum() } = StatusPending`, so the
+marker is used from production code, its shape is checked by the compiler,
+and `staticcheck` stays quiet with no lint directives. The right-hand side
+must be a value of the marked type (a constant, not a pointer) because the
+marker uses a value receiver. A package that declares a marked enum but never
+runs generation (a shared enums package, say) needs one such line written by
+hand per marked type.
 
 ## Integer and iota constants
 
