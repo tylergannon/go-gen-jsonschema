@@ -1,13 +1,17 @@
 # polytype
 
-`polytype` generates deterministic JSON Schema from Go types. It is
-designed for LLM tool definitions and structured output: properties follow Go
-field order, unknown properties are rejected, and Go doc comments become schema
-descriptions. The generator can also emit schema accessors, optional runtime
-validation, and selected JSON codecs/YAML input methods. Schema generation is
-separate from codecs; it does not promise general-purpose typed
-encode/decode round trips for every Go type. JSON is the canonical data model
-and the default format.
+`polytype` projects Go types into the other typed representations a program
+needs at its boundaries: deterministic JSON Schema for LLM tool definitions and
+structured output, structural TypeScript declarations for a Go/TypeScript
+protocol, and Go JSON codecs for sealed unions and enums. The Go type is the
+single source of truth; projection happens statically, at `go generate` time,
+from the AST — not via runtime reflection. Properties follow Go field order,
+unknown properties are rejected, and Go doc comments become schema
+descriptions. The generator can also emit optional runtime validation and
+selected JSON codecs/YAML input methods. These are separate capabilities;
+schema generation does not promise general-purpose typed encode/decode round
+trips for every Go type. JSON is the canonical data model and the default
+format.
 `--formats=both` adds `go.yaml.in/yaml/v4` entry points that translate YAML to
 JSON before reusing the JSON validator and decoder. The default discriminator
 property is `type` in either syntax.

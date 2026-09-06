@@ -7,10 +7,13 @@ description: >
 
 # polytype
 
-Code generator that turns Go structs into JSON Schema files plus Go accessors,
-optional validation, and selectable JSON/YAML input. Schema generation is
-separate from codecs: generated encoding/decoding is limited to the documented shapes,
-and no general-purpose typed encode/decode round-trip is implied.
+Projects Go types into the other typed representations a program needs at its
+boundaries: JSON Schema files plus Go accessors, structural TypeScript
+declarations, optional validation, and selectable JSON/YAML input. The Go type
+is the source of truth; projection is static (AST-driven at `go generate`
+time), not runtime reflection. Schema generation is separate from codecs:
+generated encoding/decoding is limited to the documented shapes, and no
+general-purpose typed encode/decode round-trip is implied.
 Built for LLM function calling:
 properties are emitted in struct field order (deterministic, prompt-controllable),
 `additionalProperties: false`, ordinary and nullable fields required,
