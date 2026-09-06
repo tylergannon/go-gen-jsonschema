@@ -233,7 +233,8 @@ Notes:
 
 ## Validation (`--validate`)
 
-Opt in with `--validate` on generation and `new`. Each registered type gets
+Opt in with `--validate` on generation and write a matching `ValidateJSON`
+stub in the tagged file. Each registered type gets
 `ValidateJSON([]byte) error`; `--formats=both` also adds
 `ValidateYAML([]byte) error`. Schemas are compiled once in `init()` using
 `github.com/santhosh-tekuri/jsonschema/v6`. Failures return a
@@ -255,13 +256,6 @@ polytype gen [flags]
   --formats MODE     # decoding and validation: json (default) or both
   --typescript DIR   # generate structural TypeScript declarations in DIR
   --typescript-barrel # also generate index.ts type-only exports; requires --typescript
-polytype new [flags]
-  -out FILE          # stub file path ("" or "--" = stdout)
-  -pkg NAME          # package name override (stdout mode)
-  -methods 'T=Schema,U=Schema'   # required; one entry per type
-  --validate         # include validation stubs for the selected formats
-  --formats MODE     # validation stubs: json (default) or both
-  --generate         # run `go generate ./...` in the target dir afterward
 ```
 
 Environment: `JSONSCHEMA_NO_CHANGES` (any non-empty value) is equivalent to

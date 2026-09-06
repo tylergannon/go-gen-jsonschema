@@ -53,16 +53,11 @@ and the whole `jsonschema/` directory (each `T.json` schema comes with a
    `--formats=both` when inputs may be JSON or YAML; validation then includes
    `ValidateYAML`.
 
-3. **Create the stub file.** Let the CLI write it (it derives the package name
-   and stubs from your flags), then generation runs immediately via `--generate`:
-
-   ```bash
-   go tool polytype new -out schema.go -methods 'Person=Schema,Address=Schema' --validate --generate
-   ```
-
-   Pass `--formats=both` to `new` as well when the generation directive uses it.
-
-   Or write `schema.go` by hand — see the example below.
+3. **Write `schema.go` by hand** — see the example below. One panic stub per
+   generated method and one `Declare` line per root type. Add a
+   `ValidateJSON` stub when the directive passes `--validate`, and a
+   `ValidateYAML` stub when it also passes `--formats=both`. Then run
+   `go generate ./...`.
 
 4. **Tidy** when generation adds dependencies: run `go mod tidy`. Validation
    imports `github.com/santhosh-tekuri/jsonschema/v6`; opted-in YAML support

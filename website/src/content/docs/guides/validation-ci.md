@@ -5,18 +5,24 @@ description: Validate generated JSON or YAML and prevent committed schemas from 
 
 ## Generate validation methods
 
-Add `--validate` to both the generation directive and the scaffold command:
+Add `--validate` to the generation directive and a matching stub to the
+build-tagged registration file:
 
 ```go
 //go:generate go tool polytype --validate
 ```
 
+```go
+//go:build jsonschema
+
+func (ToolInput) Schema() json.RawMessage     { panic("not implemented") }
+func (ToolInput) ValidateJSON(_ []byte) error { panic("not implemented") }
+
+var _ = polytype.Declare(ToolInput.Schema)
+```
+
 ```bash
-go tool polytype new \
-  -out schema.go \
-  -methods 'ToolInput=Schema' \
-  --validate \
-  --generate
+go generate ./...
 go mod tidy
 ```
 

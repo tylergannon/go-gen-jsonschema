@@ -34,8 +34,7 @@ This is an internal, living document for deep understanding, navigation, and ref
 
 ## 1) Architecture map
 - polytype (CLI)
-  - main.go: subcommands gen (default), new. Calls builder.Run(...)
-  - tmpl/config.go.tmpl: used by `new` to scaffold.
+  - main.go: `gen` (the only subcommand, and the default). Calls builder.Run(...)
 - internal/syntax (package loader, AST scanner, type resolver)
   - loader.go: load packages with `-tags=jsonschema`.
   - scan_result.go: central scan pipeline → collects markers, local types, interfaces, enums, resolves types, tracks remote deps.

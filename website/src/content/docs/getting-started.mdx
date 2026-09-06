@@ -52,14 +52,28 @@ produce the JSON.
 
 ## 3. Create the build-tagged registration file
 
-The CLI writes the stubs and can run generation immediately:
+Write `schema.go` with one panic stub per generated method and one
+`Declare` line per root type, then generate:
+
+```go
+//go:build jsonschema
+
+package contacts
+
+import (
+    "encoding/json"
+
+    "github.com/tylergannon/polytype"
+)
+
+func (Person) Schema() json.RawMessage     { panic("not implemented") }
+func (Person) ValidateJSON(_ []byte) error { panic("not implemented") }
+
+var _ = polytype.Declare(Person.Schema)
+```
 
 ```bash
-go tool polytype new \
-  -out schema.go \
-  -methods 'Person=Schema' \
-  --validate \
-  --generate
+go generate ./...
 go mod tidy
 ```
 

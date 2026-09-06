@@ -46,10 +46,11 @@ Then just ask your agent to "add polytype to this project."
    //go:generate go tool polytype --validate --formats=both
    ```
 
-3. **Scaffold the registration file and generate:**
+3. **Write the registration file and generate** (the file is shown under
+   "How it works" below):
 
    ```bash
-   go tool polytype new -out schema.go -methods 'Person=Schema' --validate --formats=both --generate
+   go generate ./...
    go mod tidy   # records dependencies added by validation or opted-in YAML decoding
    ```
 
@@ -507,8 +508,8 @@ consumer owns TypeScript-side runtime validation.
 
 ## 🛡️ Validation
 
-Pass `--validate` to generation (and to `new`, so stubs match) and every
-registered type gets `ValidateJSON([]byte) error`. With `--formats=both`, it
+Pass `--validate` to generation, add a matching `ValidateJSON` stub to the
+tagged file, and every registered type gets `ValidateJSON([]byte) error`. With `--formats=both`, it
 also gets `ValidateYAML([]byte) error`. Both methods validate the same JSON data
 model and schemas are compiled once in `init()` via
 [santhosh-tekuri/jsonschema](https://github.com/santhosh-tekuri/jsonschema).
@@ -605,14 +606,6 @@ polytype [gen] [options]     # generate (default subcommand)
   --formats MODE       decoding and validation: json (default) or both
   --typescript DIR     generate structural TypeScript declarations in DIR
   --typescript-barrel  also generate index.ts type-only exports (requires --typescript)
-
-polytype new [options]       # scaffold schema.go
-  -out FILE            output path ("" or "--" = stdout)
-  -pkg NAME            package name override (stdout mode)
-  -methods 'T=Schema,U=Schema'     types to register (required)
-  --validate           include validation stubs for the selected formats
-  --formats MODE       validation stubs: json (default) or both
-  --generate           run `go generate ./...` afterward
 ```
 
 Environment: `JSONSCHEMA_NO_CHANGES` (any non-empty value) ≡ `-no-changes`.

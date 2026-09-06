@@ -3,11 +3,9 @@ package main
 import (
 	"flag"
 	"os"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tylergannon/polytype/internal/builder"
 	"github.com/tylergannon/polytype/internal/testutils"
 )
 
@@ -50,42 +48,6 @@ func TestParseUnmarshalFormats(t *testing.T) {
 	}
 }
 
-func TestNewConfigUsesOnlyGoBuildConstraint(t *testing.T) {
-	data, err := builder.RenderTemplate(configTmplContents, configArg{
-		PkgName:  "example",
-		BuildTag: "jsonschema",
-		Methods: []methodDef{
-			{TypeName: "Example", MethodName: "Schema"},
-		},
-	})
-	require.NoError(t, err)
-
-	formatted, err := builder.FormatCodeWithGoimports(data.Bytes())
-	require.NoError(t, err)
-
-	source := string(formatted)
-	require.True(t, strings.HasPrefix(source, "//go:build jsonschema\n\npackage example\n"))
-	require.NotContains(t, source, "// +build")
-}
-
-func TestNewConfigUsesFluentDeclareForm(t *testing.T) {
-	data, err := builder.RenderTemplate(configTmplContents, configArg{
-		PkgName:  "example",
-		BuildTag: "jsonschema",
-		Methods: []methodDef{
-			{TypeName: "Example", MethodName: "Schema"},
-		},
-	})
-	require.NoError(t, err)
-
-	formatted, err := builder.FormatCodeWithGoimports(data.Bytes())
-	require.NoError(t, err)
-
-	source := string(formatted)
-	require.Contains(t, source, "polytype.Declare(Example.Schema)")
-	require.NotContains(t, source, "NewJSONSchemaMethod")
-}
-
 // TestGenCommandRejectsInvalidFluentFieldAssociationWithSourcePosition runs
 // the actual polytype binary (not an in-process builder.Run call)
 // against the checked-in fluent_field_mismatch scanner fixture
@@ -103,25 +65,6 @@ func TestGenCommandRejectsInvalidFluentFieldAssociationWithSourcePosition(t *tes
 	require.NotEqual(t, 0, exitCode, "stderr:\n%s", stderr)
 	require.Contains(t, stderr, "polytype.Declare: .StringerEnum expects a field selector on Owner{}")
 	require.Contains(t, stderr, "fluent_field_mismatch/fixture.go")
-}
-
-func TestNewConfigValidationStubsFollowFormats(t *testing.T) {
-	data, err := builder.RenderTemplate(configTmplContents, configArg{
-		PkgName:  "example",
-		BuildTag: "jsonschema",
-		Validate: true,
-		YAML:     true,
-		Methods: []methodDef{
-			{TypeName: "Example", MethodName: "Schema"},
-		},
-	})
-	require.NoError(t, err)
-
-	formatted, err := builder.FormatCodeWithGoimports(data.Bytes())
-	require.NoError(t, err)
-	source := string(formatted)
-	require.Contains(t, source, "func (Example) ValidateJSON(")
-	require.Contains(t, source, "func (Example) ValidateYAML(")
 }
 
 // TestGenCommandRejectsEnumMarkerWithPointerReceiver runs the actual
